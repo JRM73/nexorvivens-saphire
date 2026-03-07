@@ -1,7 +1,9 @@
 // =============================================================================
-// algorithms/ — Algorithmes (version lite)
+// algorithms/ — Algorithms (lite edition)
+// =============================================================================
 //
-// Seul le module bandit (UCB1) est porte dans la version lite.
+// Purpose: Entry point for the algorithms module. Only the bandit (UCB1)
+//          sub-module is ported in the lite edition.
 // =============================================================================
 
 pub mod bandit;

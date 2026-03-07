@@ -1,78 +1,78 @@
 // =============================================================================
-// brain_regions.rs — Reseau de regions cerebrales (remplacement du modele triunique)
+// brain_regions.rs — Brain region network (replacement for the triune model)
 // =============================================================================
 //
-// Role : Modelise 12 regions cerebrales fonctionnelles interconnectees,
-// chacune avec sa propre sensibilite aux neurotransmetteurs, son niveau
-// d'activation, et ses connexions ponderees vers les autres regions.
+// Purpose: Models 12 interconnected functional brain regions, each with its
+//          own neurotransmitter sensitivity, activation level, and weighted
+//          connections to other regions.
 //
-// Ce modele remplace le simpliste "3 cerveaux" (MacLean) par un reseau
-// distribue base sur les neurosciences modernes.
+// This model replaces the simplistic "3 brains" model (MacLean) with a
+// distributed network based on modern neuroscience.
 //
-// References scientifiques :
+// Scientific references:
 //   - Global Workspace Theory (Baars 1988, Dehaene 2014)
-//   - Connectome humain : Human Connectome Project (2013)
-//   - Regions fonctionnelles : Brodmann areas + fMRI modernes
+//   - Human connectome: Human Connectome Project (2013)
+//   - Functional regions: Brodmann areas + modern fMRI
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 
-/// Index des 12 regions cerebrales.
-/// Chaque constante correspond a un index dans les tableaux de BrainNetwork.
-pub const AMYGDALA: usize = 0;       // Peur, saillance emotionnelle
-pub const HIPPOCAMPUS: usize = 1;    // Memoire episodique, navigation spatiale
-pub const PFC_DORSO: usize = 2;      // Cortex prefrontal dorsolateral : planification, WM
-pub const PFC_VENTRO: usize = 3;     // Cortex prefrontal ventromedian : valeur, decision
-pub const INSULA: usize = 4;         // Interoception, degout, conscience corporelle
-pub const ACC: usize = 5;            // Cortex cingulaire anterieur : conflit, erreur
-pub const BASAL_GANGLIA: usize = 6;  // Noyaux de la base : habitudes, reward
-pub const BRAINSTEM: usize = 7;      // Tronc cerebral : arousal, veille/sommeil
-pub const OFC: usize = 8;            // Cortex orbitofrontal : valeur subjective
-pub const TEMPORAL: usize = 9;       // Cortex temporal : langage, semantique
-pub const PARIETAL: usize = 10;      // Cortex parietal : attention spatiale, integration
-pub const CEREBELLUM: usize = 11;    // Cervelet : timing, coordination, prediction
+/// Indices of the 12 brain regions.
+/// Each constant corresponds to an index in the BrainNetwork arrays.
+pub const AMYGDALA: usize = 0;       // Fear, emotional salience
+pub const HIPPOCAMPUS: usize = 1;    // Episodic memory, spatial navigation
+pub const PFC_DORSO: usize = 2;      // Dorsolateral prefrontal cortex: planning, WM
+pub const PFC_VENTRO: usize = 3;     // Ventromedial prefrontal cortex: value, decision
+pub const INSULA: usize = 4;         // Interoception, disgust, bodily awareness
+pub const ACC: usize = 5;            // Anterior cingulate cortex: conflict, error
+pub const BASAL_GANGLIA: usize = 6;  // Basal ganglia: habits, reward
+pub const BRAINSTEM: usize = 7;      // Brainstem: arousal, wake/sleep
+pub const OFC: usize = 8;            // Orbitofrontal cortex: subjective value
+pub const TEMPORAL: usize = 9;       // Temporal cortex: language, semantics
+pub const PARIETAL: usize = 10;      // Parietal cortex: spatial attention, integration
+pub const CEREBELLUM: usize = 11;    // Cerebellum: timing, coordination, prediction
 
-/// Nombre total de regions cerebrales.
+/// Total number of brain regions.
 pub const NUM_REGIONS: usize = 12;
 
-/// Noms des regions (pour l'affichage).
+/// Region names (for display).
 pub const REGION_NAMES: [&str; NUM_REGIONS] = [
     "Amygdale", "Hippocampe", "CPF-Dorso", "CPF-Ventro",
     "Insula", "CCA", "Noyaux-Base", "Tronc",
     "COF", "Temporal", "Parietal", "Cervelet",
 ];
 
-/// Region cerebrale individuelle.
+/// Individual brain region.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BrainRegion {
-    /// Nom de la region
+    /// Name of the region
     pub name: String,
-    /// Activation courante [0.0, 1.0]
+    /// Current activation level [0.0, 1.0]
     pub activation: f64,
-    /// Activation au cycle precedent (pour calcul de delta)
+    /// Activation at the previous cycle (for delta computation)
     pub prev_activation: f64,
-    /// Sensibilite a chaque molecule [9 valeurs : dopa, cort, sero, adre, ocyt, endo, nora, gaba, glut]
-    /// Positif = excite par cette molecule, negatif = inhibe
+    /// Sensitivity to each molecule [9 values: dopa, cort, sero, adre, oxyt, endo, nora, gaba, glut]
+    /// Positive = excited by this molecule, negative = inhibited
     pub nt_sensitivity: [f64; 9],
-    /// Seuil d'activation minimum pour participer au Global Workspace
+    /// Minimum activation threshold for participating in the Global Workspace
     pub broadcast_threshold: f64,
 }
 
-/// Reseau complet des 12 regions cerebrales.
+/// Complete network of 12 brain regions.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BrainNetwork {
-    /// Les 12 regions
+    /// The 12 regions
     pub regions: Vec<BrainRegion>,
-    /// Matrice de connexion [12x12] : weights[i][j] = influence de region i sur region j
-    /// Positif = excitateur, negatif = inhibiteur
+    /// Connection matrix [12x12]: weights[i][j] = influence of region i on region j
+    /// Positive = excitatory, negative = inhibitory
     pub weights: [[f64; NUM_REGIONS]; NUM_REGIONS],
-    /// Contenu du Global Workspace : index de la region dominante
+    /// Global Workspace content: index of the dominant region
     pub workspace_winner: Option<usize>,
-    /// Score de broadcast (force du signal gagnant)
+    /// Broadcast score (strength of the winning signal)
     pub workspace_strength: f64,
-    /// Historique des gagnants (pour mesurer la variete)
+    /// History of winners (for measuring variety)
     pub workspace_history: Vec<usize>,
-    /// Surprise globale : ecart entre prediction et realite
+    /// Global surprise: discrepancy between prediction and reality
     pub global_surprise: f64,
 }
 
@@ -83,76 +83,76 @@ impl Default for BrainNetwork {
 }
 
 impl BrainNetwork {
-    /// Cree un reseau cerebral avec les connexions anatomiques par defaut.
+    /// Creates a brain network with the default anatomical connections.
     pub fn new() -> Self {
         let regions = vec![
-            // Amygdale : sensible au cortisol et adrenaline (peur), inhibee par GABA
+            // Amygdala: sensitive to cortisol and adrenaline (fear), inhibited by GABA
             BrainRegion {
                 name: "Amygdale".into(), activation: 0.2, prev_activation: 0.2,
                 nt_sensitivity: [0.1, 0.6, -0.3, 0.5, -0.2, -0.3, 0.3, -0.5, 0.2],
                 broadcast_threshold: 0.4,
             },
-            // Hippocampe : sensible a la serotonine (consolidation), cortisol la degrade
+            // Hippocampus: sensitive to serotonin (consolidation), cortisol degrades it
             BrainRegion {
                 name: "Hippocampe".into(), activation: 0.3, prev_activation: 0.3,
                 nt_sensitivity: [0.2, -0.4, 0.4, -0.1, 0.2, 0.1, 0.3, -0.1, 0.3],
                 broadcast_threshold: 0.3,
             },
-            // CPF dorsolateral : focus (noradrenaline), degrade par cortisol
+            // Dorsolateral PFC: focus (noradrenaline), degraded by cortisol
             BrainRegion {
                 name: "CPF-Dorso".into(), activation: 0.4, prev_activation: 0.4,
                 nt_sensitivity: [0.2, -0.5, 0.3, -0.2, 0.0, 0.1, 0.6, -0.1, 0.2],
                 broadcast_threshold: 0.35,
             },
-            // CPF ventromedian : valeur, decision, sensible a la dopamine
+            // Ventromedial PFC: value, decision, sensitive to dopamine
             BrainRegion {
                 name: "CPF-Ventro".into(), activation: 0.35, prev_activation: 0.35,
                 nt_sensitivity: [0.5, -0.3, 0.3, -0.1, 0.2, 0.2, 0.2, -0.1, 0.1],
                 broadcast_threshold: 0.35,
             },
-            // Insula : interoception, sensible au cortisol et endorphines
+            // Insula: interoception, sensitive to cortisol and endorphins
             BrainRegion {
                 name: "Insula".into(), activation: 0.25, prev_activation: 0.25,
                 nt_sensitivity: [0.1, 0.4, -0.1, 0.3, 0.1, -0.4, 0.2, -0.2, 0.2],
                 broadcast_threshold: 0.4,
             },
-            // CCA : conflit/erreur, sensible a la noradrenaline et dopamine
+            // ACC: conflict/error, sensitive to noradrenaline and dopamine
             BrainRegion {
                 name: "CCA".into(), activation: 0.3, prev_activation: 0.3,
                 nt_sensitivity: [0.3, 0.3, -0.1, 0.2, 0.0, -0.1, 0.5, -0.2, 0.3],
                 broadcast_threshold: 0.35,
             },
-            // Noyaux de la base : habitudes/reward, tres sensible a la dopamine
+            // Basal ganglia: habits/reward, highly sensitive to dopamine
             BrainRegion {
                 name: "Noyaux-Base".into(), activation: 0.3, prev_activation: 0.3,
                 nt_sensitivity: [0.8, -0.2, 0.1, 0.1, 0.0, 0.2, 0.1, -0.3, 0.1],
                 broadcast_threshold: 0.3,
             },
-            // Tronc cerebral : arousal, sensible a l'adrenaline et noradrenaline
+            // Brainstem: arousal, sensitive to adrenaline and noradrenaline
             BrainRegion {
                 name: "Tronc".into(), activation: 0.4, prev_activation: 0.4,
                 nt_sensitivity: [0.1, 0.2, -0.2, 0.6, 0.0, -0.1, 0.5, -0.4, 0.3],
                 broadcast_threshold: 0.3,
             },
-            // COF : valeur subjective, sensible a dopamine et serotonine
+            // OFC: subjective value, sensitive to dopamine and serotonin
             BrainRegion {
                 name: "COF".into(), activation: 0.3, prev_activation: 0.3,
                 nt_sensitivity: [0.5, -0.2, 0.4, -0.1, 0.3, 0.2, 0.1, -0.1, 0.1],
                 broadcast_threshold: 0.35,
             },
-            // Temporal : langage, semantique, noradrenaline et glutamate
+            // Temporal: language, semantics, noradrenaline and glutamate
             BrainRegion {
                 name: "Temporal".into(), activation: 0.3, prev_activation: 0.3,
                 nt_sensitivity: [0.2, -0.2, 0.2, 0.0, 0.1, 0.1, 0.3, -0.1, 0.4],
                 broadcast_threshold: 0.3,
             },
-            // Parietal : attention spatiale, integration multi-sensorielle
+            // Parietal: spatial attention, multi-sensory integration
             BrainRegion {
                 name: "Parietal".into(), activation: 0.3, prev_activation: 0.3,
                 nt_sensitivity: [0.1, -0.1, 0.1, 0.2, 0.0, 0.1, 0.4, -0.2, 0.3],
                 broadcast_threshold: 0.3,
             },
-            // Cervelet : timing, prediction, apprentissage moteur
+            // Cerebellum: timing, prediction, motor learning
             BrainRegion {
                 name: "Cervelet".into(), activation: 0.3, prev_activation: 0.3,
                 nt_sensitivity: [0.1, -0.1, 0.2, 0.1, 0.0, 0.1, 0.2, -0.3, 0.4],
@@ -160,55 +160,55 @@ impl BrainNetwork {
             },
         ];
 
-        // Matrice de connexion anatomique (simplifiee des donnees du HCP)
+        // Anatomical connection matrix (simplified from HCP data)
         let mut weights = [[0.0f64; NUM_REGIONS]; NUM_REGIONS];
 
-        // Amygdale → CPF (regulation top-down), Hippocampe (memoire emotionnelle)
+        // Amygdala -> PFC (top-down regulation), Hippocampus (emotional memory)
         weights[AMYGDALA][PFC_VENTRO] = 0.4;
         weights[AMYGDALA][HIPPOCAMPUS] = 0.5;
-        weights[AMYGDALA][BRAINSTEM] = 0.6;  // reponse fight-or-flight
-        weights[AMYGDALA][INSULA] = 0.3;     // signaux corporels
+        weights[AMYGDALA][BRAINSTEM] = 0.6;  // fight-or-flight response
+        weights[AMYGDALA][INSULA] = 0.3;     // bodily signals
 
-        // Hippocampe ↔ CPF (consolidation memoire)
+        // Hippocampus <-> PFC (memory consolidation)
         weights[HIPPOCAMPUS][PFC_DORSO] = 0.4;
         weights[HIPPOCAMPUS][PFC_VENTRO] = 0.3;
-        weights[HIPPOCAMPUS][TEMPORAL] = 0.5;  // memoire semantique
+        weights[HIPPOCAMPUS][TEMPORAL] = 0.5;  // semantic memory
 
-        // CPF dorsolateral → inhibition amygdale (regulation emotionnelle)
+        // Dorsolateral PFC -> amygdala inhibition (emotional regulation)
         weights[PFC_DORSO][AMYGDALA] = -0.3;
         weights[PFC_DORSO][ACC] = 0.4;
         weights[PFC_DORSO][BASAL_GANGLIA] = 0.3;
         weights[PFC_DORSO][PARIETAL] = 0.3;
 
-        // CPF ventromedian → valeur, decision
+        // Ventromedial PFC -> value, decision
         weights[PFC_VENTRO][OFC] = 0.5;
-        weights[PFC_VENTRO][AMYGDALA] = -0.2;  // regulation emotionnelle
+        weights[PFC_VENTRO][AMYGDALA] = -0.2;  // emotional regulation
         weights[PFC_VENTRO][BASAL_GANGLIA] = 0.4;
 
-        // CCA → detection de conflit
-        weights[ACC][PFC_DORSO] = 0.5;   // recrute le CPF en cas de conflit
-        weights[ACC][AMYGDALA] = 0.2;    // alerte emotionnelle
+        // ACC -> conflict detection
+        weights[ACC][PFC_DORSO] = 0.5;   // recruits PFC during conflict
+        weights[ACC][AMYGDALA] = 0.2;    // emotional alert
         weights[ACC][BRAINSTEM] = 0.3;   // arousal
 
-        // Noyaux de la base → boucle cortico-basale
+        // Basal ganglia -> cortico-basal loop
         weights[BASAL_GANGLIA][PFC_DORSO] = 0.3;
         weights[BASAL_GANGLIA][PFC_VENTRO] = 0.3;
         weights[BASAL_GANGLIA][CEREBELLUM] = 0.2;
 
-        // Tronc cerebral → arousal global
+        // Brainstem -> global arousal
         weights[BRAINSTEM][AMYGDALA] = 0.2;
         weights[BRAINSTEM][PFC_DORSO] = 0.3;
         weights[BRAINSTEM][PARIETAL] = 0.2;
 
-        // COF → valeur
+        // OFC -> value
         weights[OFC][AMYGDALA] = 0.3;
         weights[OFC][BASAL_GANGLIA] = 0.4;
 
-        // Insula → conscience corporelle
+        // Insula -> bodily awareness
         weights[INSULA][ACC] = 0.4;
         weights[INSULA][AMYGDALA] = 0.3;
 
-        // Cervelet → prediction
+        // Cerebellum -> prediction
         weights[CEREBELLUM][PFC_DORSO] = 0.2;
         weights[CEREBELLUM][TEMPORAL] = 0.2;
 
@@ -222,17 +222,17 @@ impl BrainNetwork {
         }
     }
 
-    /// Met a jour les activations des regions en fonction de la chimie et des sens.
-    /// 1. Chaque region recoit l'influence chimique via sa sensibilite NT
-    /// 1b. Les sens actifs boostent directement leurs regions anatomiques
-    /// 2. Les connexions inter-regions propagent l'activation
-    /// 3. Le Global Workspace selectionne le signal dominant
+    /// Updates region activations based on chemistry and sensory input.
+    /// 1. Each region receives chemical influence via its NT sensitivity
+    /// 1b. Active senses directly boost their anatomical regions
+    /// 2. Inter-region connections propagate activation
+    /// 3. The Global Workspace selects the dominant signal
     ///
-    /// sensory_input : [lecture, ecoute, contact, saveur, ambiance] (intensites 0-1)
+    /// sensory_input: [reading, listening, contact, taste, ambiance] (intensities 0-1)
     pub fn tick(&mut self, chemistry: &crate::neurochemistry::NeuroChemicalState, sensory_input: [f64; 5]) {
         let chem9 = chemistry.to_vec9();
 
-        // Phase 1 : Activation chimique directe
+        // Phase 1: Direct chemical activation
         let mut new_activations = [0.0f64; NUM_REGIONS];
         for (i, region) in self.regions.iter().enumerate() {
             let mut chem_input = 0.0;
@@ -242,14 +242,14 @@ impl BrainNetwork {
             new_activations[i] = region.activation * 0.7 + chem_input * 0.3;
         }
 
-        // Phase 1b : Boost sensoriel direct (anatomiquement correct)
-        // Coefficient modere (0.08) pour colorer l'activite sans la dominer.
-        // Chaque sens stimule ses regions anatomiques naturelles :
-        //   Lecture (vue)    → Temporal (stream ventral) + Parietal (stream dorsal)
-        //   Ecoute (ouie)    → Temporal (cortex auditif)
-        //   Contact (toucher) → Insula (interoception) + Parietal (somatosensoriel)
-        //   Saveur (gout)    → Insula (cortex gustatif) + COF
-        //   Ambiance (odorat) → COF (cortex olfactif) + Amygdale (valence emotionnelle)
+        // Phase 1b: Direct sensory boost (anatomically correct)
+        // Moderate coefficient (0.08) to color activity without dominating it.
+        // Each sense stimulates its natural anatomical regions:
+        //   Reading (vision)  -> Temporal (ventral stream) + Parietal (dorsal stream)
+        //   Listening (hearing) -> Temporal (auditory cortex)
+        //   Contact (touch)   -> Insula (interoception) + Parietal (somatosensory)
+        //   Taste (gustation)  -> Insula (gustatory cortex) + OFC
+        //   Ambiance (smell)  -> OFC (olfactory cortex) + Amygdala (emotional valence)
         const SENS_COEFF: f64 = 0.08;
         let [reading, listening, contact, taste, ambiance] = sensory_input;
 
@@ -267,7 +267,7 @@ impl BrainNetwork {
         new_activations[OFC]       += ambiance * SENS_COEFF * 0.6;
         new_activations[AMYGDALA]  += ambiance * SENS_COEFF * 0.4;
 
-        // Phase 2 : Propagation inter-regions
+        // Phase 2: Inter-region propagation
         let mut propagated = new_activations;
         for i in 0..NUM_REGIONS {
             let mut input = 0.0;
@@ -276,21 +276,21 @@ impl BrainNetwork {
                     input += new_activations[j] * self.weights[j][i];
                 }
             }
-            propagated[i] += input * 0.15; // facteur d'influence inter-regionale
+            propagated[i] += input * 0.15; // inter-regional influence factor
         }
 
-        // Phase 3 : Normalisation et mise a jour
+        // Phase 3: Normalization and update
         for (i, region) in self.regions.iter_mut().enumerate() {
             region.prev_activation = region.activation;
             region.activation = propagated[i].clamp(0.0, 1.0);
         }
 
-        // Phase 4 : Global Workspace — competition pour le broadcast
+        // Phase 4: Global Workspace -- competition for broadcast
         self.compute_global_workspace();
     }
 
-    /// Global Workspace Theory : la region la plus active au-dessus de son
-    /// seuil de broadcast gagne la competition et diffuse son signal.
+    /// Global Workspace Theory: the most active region above its broadcast
+    /// threshold wins the competition and broadcasts its signal.
     pub fn compute_global_workspace(&mut self) {
         let mut best_idx = None;
         let mut best_score = 0.0;
@@ -305,19 +305,19 @@ impl BrainNetwork {
             }
         }
 
-        // Calculer la surprise : ecart par rapport a la prediction
+        // Compute surprise: discrepancy from prediction
         if let Some(prev_winner) = self.workspace_winner {
             if let Some(current_winner) = best_idx {
                 self.global_surprise = if prev_winner != current_winner { 0.8 } else { 0.1 };
             } else {
-                self.global_surprise = 0.5; // pas de gagnant = moderement surprenant
+                self.global_surprise = 0.5; // no winner = moderately surprising
             }
         }
 
         self.workspace_winner = best_idx;
         self.workspace_strength = best_score;
 
-        // Historique (garder les 50 derniers)
+        // History (keep the last 50)
         if let Some(idx) = best_idx {
             self.workspace_history.push(idx);
             if self.workspace_history.len() > 50 {
@@ -326,7 +326,7 @@ impl BrainNetwork {
         }
     }
 
-    /// Retourne le nom de la region dominant le Global Workspace.
+    /// Returns the name of the region dominating the Global Workspace.
     pub fn workspace_region_name(&self) -> &str {
         match self.workspace_winner {
             Some(idx) if idx < NUM_REGIONS => REGION_NAMES[idx],
@@ -334,18 +334,18 @@ impl BrainNetwork {
         }
     }
 
-    /// Calcule la diversite du Global Workspace sur les derniers cycles.
-    /// 0.0 = toujours la meme region, 1.0 = toutes les regions representees.
+    /// Computes the diversity of the Global Workspace over recent cycles.
+    /// 0.0 = always the same region, 1.0 = all regions represented.
     pub fn workspace_diversity(&self) -> f64 {
         if self.workspace_history.is_empty() { return 0.0; }
         let unique: std::collections::HashSet<&usize> = self.workspace_history.iter().collect();
         unique.len() as f64 / NUM_REGIONS as f64
     }
 
-    /// Mapping vers l'ancien modele triunique pour compatibilite.
-    /// Reptilien = moyenne(Amygdale, Tronc cerebral)
-    /// Limbique = moyenne(Hippocampe, Noyaux de la base, Insula)
-    /// Neocortex = moyenne(CPF-Dorso, CPF-Ventro, CCA, COF, Temporal, Parietal)
+    /// Mapping to the legacy triune model for compatibility.
+    /// Reptilian = average(Amygdala, Brainstem)
+    /// Limbic = average(Hippocampus, Basal Ganglia, Insula)
+    /// Neocortex = average(PFC-Dorso, PFC-Ventro, ACC, OFC, Temporal, Parietal)
     pub fn triune_compat(&self) -> [f64; 3] {
         let r = &self.regions;
         let reptilian = (r[AMYGDALA].activation + r[BRAINSTEM].activation) / 2.0;
@@ -356,7 +356,7 @@ impl BrainNetwork {
         [reptilian, limbic, neocortex]
     }
 
-    /// Resume pour le dashboard.
+    /// Summary for the dashboard.
     pub fn summary(&self) -> BrainNetworkSummary {
         BrainNetworkSummary {
             activations: self.regions.iter().map(|r| (r.name.clone(), r.activation)).collect(),
@@ -368,7 +368,7 @@ impl BrainNetwork {
         }
     }
 
-    /// Serialise l'etat pour persistance.
+    /// Serializes the state for persistence.
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::json!({
             "activations": self.regions.iter().map(|r| r.activation).collect::<Vec<_>>(),
@@ -378,7 +378,7 @@ impl BrainNetwork {
         })
     }
 
-    /// Restaure les activations depuis un JSON persiste.
+    /// Restores activations from a persisted JSON value.
     pub fn restore_from_json(&mut self, json: &serde_json::Value) {
         if let Some(activations) = json.get("activations").and_then(|v| v.as_array()) {
             for (i, val) in activations.iter().enumerate().take(NUM_REGIONS) {
@@ -393,7 +393,7 @@ impl BrainNetwork {
     }
 }
 
-/// Resume du reseau cerebral pour le dashboard.
+/// Brain network summary for the dashboard.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BrainNetworkSummary {
     pub activations: Vec<(String, f64)>,
@@ -401,6 +401,6 @@ pub struct BrainNetworkSummary {
     pub workspace_strength: f64,
     pub workspace_diversity: f64,
     pub global_surprise: f64,
-    /// Compatibilite triunique [reptilien, limbique, neocortex]
+    /// Triune compatibility [reptilian, limbic, neocortex]
     pub triune_compat: [f64; 3],
 }

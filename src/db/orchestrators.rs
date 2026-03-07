@@ -80,9 +80,22 @@ impl SaphireDb {
         Ok(results)
     }
 
-    // ─── Desirs ─────────────────────────────────────────────────────────────────
+    // ─── Desires ────────────────────────────────────────────────────────────────
 
-    /// Sauvegarde un nouveau desir.
+    /// Saves a new desire.
+    ///
+    /// # Parameters
+    /// - `title`: short title of the desire
+    /// - `description`: detailed description
+    /// - `desire_type`: category (e.g., "knowledge", "social", "creative")
+    /// - `priority`: priority level [0.0 - 1.0]
+    /// - `milestones`: JSON array of milestone definitions
+    /// - `born_from`: optional description of the experience that spawned this desire
+    /// - `emotion_at_birth`: optional dominant emotion when the desire was born
+    /// - `chemistry_at_birth`: neurochemical signature at birth (array of f32)
+    ///
+    /// # Returns
+    /// The ID of the inserted desire
     #[allow(clippy::too_many_arguments)]
     pub async fn save_desire(
         &self,
@@ -104,7 +117,7 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Met a jour la progression et la priorite d'un desir.
+    /// Updates the progress and priority of a desire.
     pub async fn update_desire_progress(
         &self,
         id: i64,
@@ -121,7 +134,8 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Change le statut d'un desir (active, fulfilled, abandoned).
+    /// Changes the status of a desire (active, fulfilled, abandoned).
+    /// Automatically sets completed_at for fulfilled or abandoned desires.
     pub async fn update_desire_status(&self, id: i64, status: &str) -> Result<(), DbError> {
         let client = self.pool.get().await?;
         let completed_at: Option<DateTime<Utc>> = if status == "fulfilled" || status == "abandoned" {
@@ -136,7 +150,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Charge tous les desirs actifs.
+    /// Loads all active desires, sorted by priority descending.
     pub async fn load_active_desires(&self) -> Result<Vec<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -166,9 +180,19 @@ impl SaphireDb {
         Ok(results)
     }
 
-    // ─── Lecons ─────────────────────────────────────────────────────────────────
+    // ─── Lessons ────────────────────────────────────────────────────────────────
 
-    /// Sauvegarde une nouvelle lecon.
+    /// Saves a new lesson.
+    ///
+    /// # Parameters
+    /// - `title`: short title of the lesson
+    /// - `content`: full lesson content
+    /// - `source_experience`: optional description of the experience that taught this lesson
+    /// - `category`: category of the lesson (e.g., "social", "technical", "philosophical")
+    /// - `confidence`: initial confidence level [0.0 - 1.0]
+    ///
+    /// # Returns
+    /// The ID of the inserted lesson
     pub async fn save_lesson(
         &self,
         title: &str,
@@ -186,7 +210,7 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Met a jour la confiance et les compteurs d'une lecon.
+    /// Updates the confidence and counters of a lesson.
     pub async fn update_lesson_confidence(
         &self,
         id: i64,
@@ -202,7 +226,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Charge toutes les lecons.
+    /// Loads all lessons, sorted by confidence descending.
     pub async fn load_all_lessons(&self) -> Result<Vec<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -228,9 +252,17 @@ impl SaphireDb {
         Ok(results)
     }
 
-    // ─── Blessures ──────────────────────────────────────────────────────────────
+    // ─── Wounds ─────────────────────────────────────────────────────────────────
 
-    /// Sauvegarde une nouvelle blessure.
+    /// Saves a new wound.
+    ///
+    /// # Parameters
+    /// - `wound_type`: type of wound (e.g., "rejection", "failure", "betrayal")
+    /// - `description`: detailed description of the wound
+    /// - `severity`: severity level [0.0 - 1.0]
+    ///
+    /// # Returns
+    /// The ID of the inserted wound
     pub async fn save_wound(
         &self,
         wound_type: &str,
@@ -246,7 +278,13 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Met a jour la progression de guerison d'une blessure.
+    /// Updates the healing progress of a wound.
+    ///
+    /// # Parameters
+    /// - `id`: wound ID
+    /// - `healing_progress`: current healing progress [0.0 - 1.0]
+    /// - `healing_strategy`: optional description of the healing strategy being used
+    /// - `healed_at`: optional timestamp when the wound was fully healed
     pub async fn update_wound_healing(
         &self,
         id: i64,
@@ -262,7 +300,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Charge les blessures actives (non gueries).
+    /// Loads active (unhealed) wounds, sorted by creation date ascending.
     pub async fn load_active_wounds(&self) -> Result<Vec<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -286,7 +324,7 @@ impl SaphireDb {
         Ok(results)
     }
 
-    /// Compte les blessures gueries (pour calculer la resilience).
+    /// Counts healed wounds (used to calculate resilience).
     pub async fn count_healed_wounds(&self) -> Result<i64, DbError> {
         let client = self.pool.get().await?;
         let row = client.query_one(

@@ -37,8 +37,8 @@ pub enum WeatherError {
 impl std::fmt::Display for WeatherError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            WeatherError::Network(e) => write!(f, "Météo réseau: {}", e),
-            WeatherError::Parse(e) => write!(f, "Météo parse: {}", e),
+            WeatherError::Network(e) => write!(f, "Weather network: {}", e),
+            WeatherError::Parse(e) => write!(f, "Weather parse: {}", e),
         }
     }
 }
@@ -233,7 +233,7 @@ impl WeatherService {
         // Check if an update is needed
         let should_update = self.last_update
             .map(|t| t.elapsed() > self.update_interval)
-            .unwrap_or(true); // Toujours mettre à jour si jamais fait
+            .unwrap_or(true); // Always update if never done before
 
         if should_update {
             match self.fetch_weather() {
@@ -242,7 +242,7 @@ impl WeatherService {
                     self.last_update = Some(Instant::now());
                 }
                 Err(e) => {
-                    tracing::warn!("Échec récupération météo: {}", e);
+                    tracing::warn!("Weather fetch failed: {}", e);
                     // Keep old value if available (graceful degradation)
                 }
             }

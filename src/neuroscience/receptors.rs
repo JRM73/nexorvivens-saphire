@@ -1,47 +1,47 @@
 // =============================================================================
-// receptors.rs — Modele pharmacologique des recepteurs neuronaux
+// receptors.rs — Pharmacological model of neuronal receptors
 // =============================================================================
 //
-// Role : Modelise les recepteurs synaptiques avec courbes dose-reponse
-// sigmoidales (equation de Hill), adaptation (up/down regulation),
-// et sous-types par molecule. Chaque molecule agit via ses recepteurs
-// specifiques, et l'effet reel depend de la densite et de l'affinite.
+// Purpose: Models synaptic receptors with sigmoidal dose-response curves
+//          (Hill equation), adaptation (up/down regulation), and subtypes
+//          per molecule. Each molecule acts via its specific receptors,
+//          and the actual effect depends on density and affinity.
 //
-// References scientifiques :
-//   - Equation de Hill (1910) : response = Emax * [C]^n / (EC50^n + [C]^n)
-//   - Up/down regulation : Stahl's Essential Psychopharmacology (2021)
-//   - Sous-types : Goodman & Gilman's Pharmacological Basis (2023)
+// Scientific references:
+//   - Hill equation (1910): response = Emax * [C]^n / (EC50^n + [C]^n)
+//   - Up/down regulation: Stahl's Essential Psychopharmacology (2021)
+//   - Subtypes: Goodman & Gilman's Pharmacological Basis (2023)
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 
-/// Sous-type de recepteur pour une molecule donnee.
-/// Chaque molecule peut avoir plusieurs sous-types avec des affinites
-/// et effets differents (ex: D1 excitateur vs D2 inhibiteur pour la dopamine).
+/// Receptor subtype for a given molecule.
+/// Each molecule can have multiple subtypes with different affinities
+/// and effects (e.g., D1 excitatory vs D2 inhibitory for dopamine).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReceptorSubtype {
-    /// Nom du sous-type (ex: "D1", "5-HT1A", "alpha-1")
+    /// Subtype name (e.g., "D1", "5-HT1A", "alpha-1")
     pub name: String,
-    /// EC50 : concentration produisant 50% de l'effet maximal [0.0-1.0]
-    /// Plus bas = plus sensible (affinite elevee)
+    /// EC50: concentration producing 50% of the maximal effect [0.0-1.0]
+    /// Lower = more sensitive (high affinity)
     pub ec50: f64,
-    /// Coefficient de Hill : pente de la sigmoide
-    /// 1.0 = hyperbolique (standard), >1 = cooperative (switch-like), <1 = graduel
+    /// Hill coefficient: slope of the sigmoid
+    /// 1.0 = hyperbolic (standard), >1 = cooperative (switch-like), <1 = gradual
     pub hill_coefficient: f64,
-    /// Effet maximal normalise [-1.0, +1.0]
-    /// Positif = excitateur, negatif = inhibiteur
+    /// Normalized maximal effect [-1.0, +1.0]
+    /// Positive = excitatory, negative = inhibitory
     pub emax: f64,
-    /// Densite de recepteurs [0.1, 2.0]
+    /// Receptor density [0.1, 2.0]
     /// 1.0 = normal, <1.0 = down-regulated, >1.0 = up-regulated
     pub density: f64,
-    /// Tolerance accumulee [0.0, 1.0]
-    /// Augmente avec exposition prolongee, reduit l'efficacite
+    /// Accumulated tolerance [0.0, 1.0]
+    /// Increases with prolonged exposure, reduces efficacy
     pub tolerance: f64,
 }
 
 impl ReceptorSubtype {
-    /// Equation de Hill : reponse sigmoidale a une concentration donnee.
-    /// Inclut la modulation par la densite et la tolerance.
+    /// Hill equation: sigmoidal response to a given concentration.
+    /// Includes modulation by density and tolerance.
     ///
     /// response = emax * density * (1 - tolerance) * C^n / (EC50^n + C^n)
     pub fn response(&self, concentration: f64) -> f64 {
@@ -54,50 +54,50 @@ impl ReceptorSubtype {
         self.emax * self.density * (1.0 - self.tolerance * 0.5) * hill_response
     }
 
-    /// Adaptation des recepteurs a l'exposition prolongee.
-    /// Exposition haute → down-regulation (densite baisse, tolerance monte)
-    /// Exposition basse → up-regulation (densite monte, tolerance baisse)
+    /// Adapts the receptor to prolonged exposure.
+    /// High exposure -> down-regulation (density decreases, tolerance increases)
+    /// Low exposure -> up-regulation (density increases, tolerance decreases)
     pub fn adapt(&mut self, concentration: f64, adaptation_rate: f64) {
         let deviation = concentration - self.ec50;
         if deviation > 0.1 {
-            // Exposition elevee : down-regulation progressive
+            // High exposure: progressive down-regulation
             self.density = (self.density - adaptation_rate * 0.5).max(0.3);
             self.tolerance = (self.tolerance + adaptation_rate * 0.3).min(0.8);
         } else if deviation < -0.1 {
-            // Exposition faible : up-regulation (sensibilisation)
+            // Low exposure: up-regulation (sensitization)
             self.density = (self.density + adaptation_rate * 0.3).min(2.0);
             self.tolerance = (self.tolerance - adaptation_rate * 0.5).max(0.0);
         } else {
-            // Equilibre : retour lent vers la normale
+            // Equilibrium: slow return to normal
             self.density += (1.0 - self.density) * adaptation_rate * 0.1;
             self.tolerance = (self.tolerance - adaptation_rate * 0.1).max(0.0);
         }
     }
 }
 
-/// Banque de recepteurs — contient tous les sous-types pour les 9 molecules.
-/// Chaque molecule a 1 a 4 sous-types avec des profils pharmacologiques distincts.
+/// Receptor bank — contains all subtypes for the 9 molecules.
+/// Each molecule has 1 to 4 subtypes with distinct pharmacological profiles.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReceptorBank {
-    /// Recepteurs dopaminergiques (D1 excitateur, D2 inhibiteur)
+    /// Dopaminergic receptors (D1 excitatory, D2 inhibitory)
     pub dopamine: Vec<ReceptorSubtype>,
-    /// Recepteurs cortisoliques (GR glucocorticoide, MR mineralocorticoide)
+    /// Corticosteroid receptors (GR glucocorticoid, MR mineralocorticoid)
     pub cortisol: Vec<ReceptorSubtype>,
-    /// Recepteurs serotoninergiques (5-HT1A inhibiteur, 5-HT2A excitateur)
+    /// Serotonergic receptors (5-HT1A inhibitory, 5-HT2A excitatory)
     pub serotonin: Vec<ReceptorSubtype>,
-    /// Recepteurs adrenergiques (alpha-1 vasoconstricteur, beta-1 cardiaque)
+    /// Adrenergic receptors (alpha-1 vasoconstrictor, beta-1 cardiac)
     pub adrenaline: Vec<ReceptorSubtype>,
-    /// Recepteurs ocytocinergiques (OTR unique, haute affinite)
+    /// Oxytocinergic receptors (OTR single, high affinity)
     pub oxytocin: Vec<ReceptorSubtype>,
-    /// Recepteurs opioides (mu analgesique, delta euphorisant)
+    /// Opioid receptors (mu analgesic, delta euphoric)
     pub endorphin: Vec<ReceptorSubtype>,
-    /// Recepteurs noradrenergiques (alpha-2 autorecepteur, beta-1 excitateur)
+    /// Noradrenergic receptors (alpha-2 autoreceptor, beta-1 excitatory)
     pub noradrenaline: Vec<ReceptorSubtype>,
-    /// Recepteurs GABAergiques (GABA-A rapide ionotrope, GABA-B lent metabotrope)
+    /// GABAergic receptors (GABA-A fast ionotropic, GABA-B slow metabotropic)
     pub gaba: Vec<ReceptorSubtype>,
-    /// Recepteurs glutamatergiques (NMDA, AMPA)
+    /// Glutamatergic receptors (NMDA, AMPA)
     pub glutamate: Vec<ReceptorSubtype>,
-    /// Vitesse d'adaptation des recepteurs (0.001 = lent, 0.01 = rapide)
+    /// Receptor adaptation rate (0.001 = slow, 0.01 = fast)
     pub adaptation_rate: f64,
 }
 
@@ -108,8 +108,8 @@ impl Default for ReceptorBank {
 }
 
 impl ReceptorBank {
-    /// Cree une banque de recepteurs avec les profils pharmacologiques par defaut.
-    /// Basee sur les donnees de Stahl's Essential Psychopharmacology.
+    /// Creates a receptor bank with default pharmacological profiles.
+    /// Based on data from Stahl's Essential Psychopharmacology.
     pub fn new() -> Self {
         Self {
             dopamine: vec![
@@ -202,9 +202,9 @@ impl ReceptorBank {
         }
     }
 
-    /// Calcule la reponse effective totale d'une molecule via ses recepteurs.
-    /// Somme ponderee des reponses de chaque sous-type.
-    /// Retourne une valeur normalisee dans [-1.0, 1.0].
+    /// Computes the total effective response of a molecule via its receptors.
+    /// Weighted sum of each subtype's response.
+    /// Returns a normalized value in [-1.0, 1.0].
     pub fn effective_response(&self, molecule: &str, concentration: f64) -> f64 {
         let receptors = match molecule {
             "dopamine" => &self.dopamine,
@@ -225,8 +225,8 @@ impl ReceptorBank {
         (total / receptors.len() as f64).clamp(-1.0, 1.0)
     }
 
-    /// Adaptation de tous les recepteurs a l'exposition courante.
-    /// Appelee a chaque cycle cognitif pour simuler l'adaptation neuronale.
+    /// Adapts all receptors to current exposure levels.
+    /// Called at each cognitive cycle to simulate neuronal adaptation.
     pub fn tick_adaptation(&mut self, chemistry: &crate::neurochemistry::NeuroChemicalState) {
         let rate = self.adaptation_rate;
         for r in &mut self.dopamine { r.adapt(chemistry.dopamine, rate); }
@@ -240,17 +240,17 @@ impl ReceptorBank {
         for r in &mut self.glutamate { r.adapt(chemistry.glutamate, rate); }
     }
 
-    /// Serialise l'etat des recepteurs pour persistance.
+    /// Serializes the receptor state for persistence.
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::to_value(self).unwrap_or_default()
     }
 
-    /// Restaure l'etat des recepteurs depuis un JSON persiste.
+    /// Restores the receptor state from a persisted JSON value.
     pub fn restore_from_json(json: &serde_json::Value) -> Option<Self> {
         serde_json::from_value(json.clone()).ok()
     }
 
-    /// Resume l'etat de la banque de recepteurs pour le dashboard.
+    /// Summarizes the receptor bank state for the dashboard.
     pub fn summary(&self) -> ReceptorSummary {
         let mut entries = Vec::new();
         let summarize = |name: &str, receptors: &[ReceptorSubtype]| -> ReceptorMoleculeSummary {
@@ -278,13 +278,13 @@ impl ReceptorBank {
     }
 }
 
-/// Resume des recepteurs pour le dashboard.
+/// Receptor summary for the dashboard.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReceptorSummary {
     pub molecules: Vec<ReceptorMoleculeSummary>,
 }
 
-/// Resume par molecule.
+/// Per-molecule summary.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReceptorMoleculeSummary {
     pub molecule: String,
@@ -293,13 +293,13 @@ pub struct ReceptorMoleculeSummary {
     pub avg_tolerance: f64,
 }
 
-/// Matrice d'interactions croisees entre molecules.
-/// Modelise les effets modulateurs d'une molecule sur les autres.
-/// Basee sur les donnees pharmacologiques connues.
+/// Cross-interaction matrix between molecules.
+/// Models the modulatory effects of one molecule on others.
+/// Based on known pharmacological data.
 #[derive(Debug, Clone)]
 pub struct InteractionMatrix {
-    /// Chaque entree : (source, cible, coefficient)
-    /// Coefficient positif = potentialisation, negatif = inhibition
+    /// Each entry: (source, target, coefficient)
+    /// Positive coefficient = potentiation, negative = inhibition
     pub interactions: Vec<(String, String, f64)>,
 }
 
@@ -310,44 +310,44 @@ impl Default for InteractionMatrix {
 }
 
 impl InteractionMatrix {
-    /// Cree la matrice d'interactions basee sur la pharmacologie connue.
+    /// Creates the interaction matrix based on known pharmacology.
     pub fn new() -> Self {
         Self {
             interactions: vec![
-                // Cortisol supprime dopamine (axe HPA → mesolimbique)
+                // Cortisol suppresses dopamine (HPA axis -> mesolimbic)
                 ("cortisol".into(), "dopamine".into(), -0.12),
-                // Cortisol reduit serotonine (depletion tryptophane)
+                // Cortisol reduces serotonin (tryptophan depletion)
                 ("cortisol".into(), "serotonin".into(), -0.08),
-                // GABA inhibe glutamate (equilibre excitation/inhibition)
+                // GABA inhibits glutamate (excitation/inhibition balance)
                 ("gaba".into(), "glutamate".into(), -0.15),
-                // Glutamate excite le systeme (arousal global)
+                // Glutamate excites the system (global arousal)
                 ("glutamate".into(), "noradrenaline".into(), 0.08),
                 ("glutamate".into(), "adrenaline".into(), 0.05),
-                // GABA calme le systeme (anxiolytique)
+                // GABA calms the system (anxiolytic)
                 ("gaba".into(), "cortisol".into(), -0.10),
                 ("gaba".into(), "adrenaline".into(), -0.08),
-                // Endorphines tamponnent le cortisol (analgesie du stress)
+                // Endorphins buffer cortisol (stress analgesia)
                 ("endorphin".into(), "cortisol".into(), -0.12),
-                // Ocytocine tampon social du cortisol
+                // Oxytocin provides social buffering of cortisol
                 ("oxytocin".into(), "cortisol".into(), -0.08),
-                // Dopamine et noradrenaline partagent une voie (tyrosine hydroxylase)
+                // Dopamine and noradrenaline share a pathway (tyrosine hydroxylase)
                 ("dopamine".into(), "noradrenaline".into(), 0.04),
-                // Serotonine freine la dopamine (frein 5-HT sur VTA)
+                // Serotonin brakes dopamine (5-HT brake on VTA)
                 ("serotonin".into(), "dopamine".into(), -0.05),
-                // Noradrenaline potentialise le glutamate (eveil cortical)
+                // Noradrenaline potentiates glutamate (cortical arousal)
                 ("noradrenaline".into(), "glutamate".into(), 0.06),
-                // Adrenaline stimule le cortisol (boucle HPA)
+                // Adrenaline stimulates cortisol (HPA loop)
                 ("adrenaline".into(), "cortisol".into(), 0.06),
-                // Glutamate facilite la dopamine (voie mesolimbique)
+                // Glutamate facilitates dopamine (mesolimbic pathway)
                 ("glutamate".into(), "dopamine".into(), 0.05),
             ],
         }
     }
 
-    /// Calcule les deltas d'interaction pour un etat chimique donne.
-    /// Retourne un tableau de 9 deltas (un par molecule).
-    /// Ordre : dopamine, cortisol, serotonin, adrenaline, oxytocin,
-    ///         endorphin, noradrenaline, gaba, glutamate
+    /// Computes interaction deltas for a given chemical state.
+    /// Returns an array of 9 deltas (one per molecule).
+    /// Order: dopamine, cortisol, serotonin, adrenaline, oxytocin,
+    ///        endorphin, noradrenaline, gaba, glutamate
     pub fn compute_deltas(&self, chemistry: &crate::neurochemistry::NeuroChemicalState) -> [f64; 9] {
         let mut deltas = [0.0f64; 9];
         let mol_index = |name: &str| -> Option<usize> {
@@ -368,8 +368,8 @@ impl InteractionMatrix {
 
         for (source, target, coeff) in &self.interactions {
             if let (Some(src_idx), Some(tgt_idx)) = (mol_index(source), mol_index(target)) {
-                // L'effet depend de la concentration de la source
-                // et est proportionnel au coefficient d'interaction
+                // The effect depends on the source concentration
+                // and is proportional to the interaction coefficient
                 let effect = concentrations[src_idx] * coeff;
                 deltas[tgt_idx] += effect;
             }
@@ -389,7 +389,7 @@ mod tests {
             emax: 1.0, density: 1.0, tolerance: 0.0,
         };
         let response = receptor.response(0.5);
-        assert!((response - 0.5).abs() < 0.01, "A EC50, la reponse doit etre 50% de Emax");
+        assert!((response - 0.5).abs() < 0.01, "At EC50, response must be 50% of Emax");
     }
 
     #[test]
@@ -400,8 +400,8 @@ mod tests {
         };
         let response_high = receptor.response(0.9);
         let response_low = receptor.response(0.1);
-        assert!(response_high > response_low, "Concentration haute → reponse plus forte");
-        assert!(response_high > 0.8, "Pres de saturation a haute concentration");
+        assert!(response_high > response_low, "High concentration -> stronger response");
+        assert!(response_high > 0.8, "Near saturation at high concentration");
     }
 
     #[test]
@@ -413,7 +413,7 @@ mod tests {
         let response_clean = receptor.response(0.5);
         receptor.tolerance = 0.5;
         let response_tolerant = receptor.response(0.5);
-        assert!(response_tolerant < response_clean, "La tolerance reduit la reponse");
+        assert!(response_tolerant < response_clean, "Tolerance reduces the response");
     }
 
     #[test]
@@ -422,19 +422,19 @@ mod tests {
             name: "test".into(), ec50: 0.3, hill_coefficient: 1.0,
             emax: 1.0, density: 1.0, tolerance: 0.0,
         };
-        // Exposition elevee pendant 100 cycles
+        // Prolonged high exposure over 100 cycles
         for _ in 0..100 {
             receptor.adapt(0.9, 0.01);
         }
-        assert!(receptor.density < 1.0, "Exposition prolongee → down-regulation");
-        assert!(receptor.tolerance > 0.0, "Exposition prolongee → tolerance accrue");
+        assert!(receptor.density < 1.0, "Prolonged exposure -> down-regulation");
+        assert!(receptor.tolerance > 0.0, "Prolonged exposure -> increased tolerance");
     }
 
     #[test]
     fn test_bank_effective_response() {
         let bank = ReceptorBank::new();
         let response = bank.effective_response("dopamine", 0.5);
-        assert!(response.abs() > 0.0, "Reponse non nulle a concentration non nulle");
-        assert!(response >= -1.0 && response <= 1.0, "Reponse normalisee");
+        assert!(response.abs() > 0.0, "Non-zero response at non-zero concentration");
+        assert!(response >= -1.0 && response <= 1.0, "Normalized response");
     }
 }

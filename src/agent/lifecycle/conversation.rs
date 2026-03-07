@@ -1,12 +1,12 @@
 // =============================================================================
-// lifecycle/conversation.rs — Traitement des messages humains (version lite)
+// lifecycle/conversation.rs — Human message processing (lite version)
 // =============================================================================
 //
-// Version allegee pour le papier ArXiv.
-// Supprime : sleep check, attention_orch, senses, tom, prospective_mem,
-//            metacognition, encoder vectoriel, ocean_context (profiling),
-//            psychology::ownership, relationships, save_metric_snapshot complet,
-//            micro_nn learning, broadcasts avances.
+// Streamlined version for the ArXiv paper.
+// Removed: sleep check, attention_orch, senses, tom, prospective_mem,
+//          metacognition, vector encoder, ocean_context (profiling),
+//          psychology::ownership, relationships, full save_metric_snapshot,
+//          micro_nn learning, advanced broadcasts.
 // =============================================================================
 
 use std::sync::atomic::Ordering;
@@ -20,24 +20,31 @@ use super::SaphireAgent;
 use super::truncate_utf8;
 
 impl SaphireAgent {
-    /// Traite un message humain de bout en bout et retourne la reponse de Saphire.
+    /// Processes a human message end-to-end and returns Saphire's response.
     ///
-    /// Pipeline :
-    /// 1. Bonus social immediat (l'interaction humaine est benefique).
-    /// 2. Injection du message dans la memoire de travail.
-    /// 3. Analyse NLP du texte → creation d'un Stimulus.
-    /// 4. Pipeline cerebral complet (`process_stimulus`).
-    /// 5. Construction du contexte memoire (WM + episodique + LTM).
-    /// 6. Appel au LLM → generation de la reponse.
-    /// 7. Stockage en memoire de travail et episodique.
-    /// 8. Decay, homeostasie chimique, broadcast WebSocket.
+    /// Pipeline:
+    /// 1. Immediate social bonus (human interaction is beneficial).
+    /// 2. Inject the message into working memory.
+    /// 3. NLP analysis of the text -> Stimulus creation.
+    /// 4. Full brain pipeline (`process_stimulus`).
+    /// 5. Build memory context (working memory + episodic + LTM).
+    /// 6. LLM call -> response generation.
+    /// 7. Store in working memory and episodic memory.
+    /// 8. Decay, chemical homeostasis, WebSocket broadcast.
+    ///
+    /// # Parameters
+    /// - `text` — the human's message text.
+    /// - `username` — the name of the human interlocutor.
+    ///
+    /// # Returns
+    /// The generated response text from Saphire.
     pub async fn handle_human_message(&mut self, text: &str, username: &str) -> String {
         let cycle_start = Instant::now();
         self.log(LogLevel::Info, LogCategory::Cycle,
             format!("Message humain recu ({} chars)", text.len()),
             serde_json::json!({"preview": text.chars().take(100).collect::<String>()}));
 
-        // ═══ PREMIER MESSAGE — bonus de contact ═══
+        // === FIRST MESSAGE — contact bonus ===
         if !self.in_conversation {
             self.chemistry.oxytocin = (self.chemistry.oxytocin + 0.05).min(1.0);
             self.chemistry.serotonin = (self.chemistry.serotonin + 0.03).min(1.0);
@@ -46,7 +53,7 @@ impl SaphireAgent {
             self.conversation_id = Some(format!("conv_{}", chrono::Utc::now().timestamp()));
         }
 
-        // ═══ FEEDBACK RLHF ═══
+        // === RLHF FEEDBACK ===
         if let Some(feedback) = self.feedback_pending.take() {
             let positive = super::thinking::is_positive_feedback(text);
             let boost = if positive {
@@ -73,7 +80,7 @@ impl SaphireAgent {
                     "auto_reward": feedback.auto_reward,
                 }));
 
-            // Mise a jour du feedback dans le dernier sample LoRA
+            // Update the human feedback in the latest LoRA sample
             if self.config.lora.enabled {
                 if let Some(ref db) = self.db {
                     let _ = db.pool.get().await.map(|client| {
@@ -90,7 +97,7 @@ impl SaphireAgent {
             }
         }
 
-        // ═══ Memoire de travail : pousser le message humain ═══
+        // === Working memory: push the human message ===
         let chem_sig = crate::neurochemistry::ChemicalSignature::from(&self.chemistry);
         let wm_ejected = self.working_memory.push(
             text.chars().take(200).collect(),
@@ -109,12 +116,12 @@ impl SaphireAgent {
             ).await;
         }
 
-        // Etape 1 : analyse NLP
+        // Step 1: NLP analysis
         let nlp_result = self.nlp.analyze(text);
         let mut stimulus = nlp_result.stimulus.clone();
         stimulus.apply_human_source_adjustments();
 
-        // ═══ BONUS SOCIAL CONDITIONNEL ═══
+        // === CONDITIONAL SOCIAL BONUS ===
         let sentiment_compound = nlp_result.sentiment.compound;
         if sentiment_compound > 0.2 {
             self.chemistry.boost(crate::neurochemistry::Molecule::Oxytocin, 0.05);
@@ -127,11 +134,11 @@ impl SaphireAgent {
             self.chemistry.boost(crate::neurochemistry::Molecule::Oxytocin, 0.02);
         }
 
-        // Etapes 2-7 : pipeline cerebral
+        // Steps 2-7: brain pipeline
         let mut result = self.process_stimulus(&stimulus);
 
-        // ═══ Construction du contexte memoire ═══
-        // Version lite : recherche textuelle simple (sans encoder vectoriel)
+        // === Build memory context ===
+        // Lite version: simple text search (without vector encoder)
         let wm_summary = self.working_memory.context_summary();
         let ep_limit = self.config.memory.recall_episodic_limit as i64;
         let episodic_recent = if let Some(ref db) = self.db {
@@ -139,7 +146,7 @@ impl SaphireAgent {
         } else {
             vec![]
         };
-        // Recherche LTM par texte (simple, sans vecteur d'embedding)
+        // LTM search by text (simple, without embedding vectors)
         let ltm_limit = self.config.memory.recall_ltm_limit as i64;
         let ltm_threshold = self.config.memory.recall_ltm_threshold;
         let mut ltm_similar = if let Some(ref db) = self.db {
@@ -147,13 +154,13 @@ impl SaphireAgent {
         } else {
             vec![]
         };
-        // Re-ranking par similarite chimique (state-dependent memory)
+        // Re-ranking by chemical similarity (state-dependent memory)
         if !ltm_similar.is_empty() {
             crate::memory::recall::recall_with_chemical_context(
                 &mut ltm_similar, &self.chemistry, 0.8, 0.2,
             );
         }
-        // Recherche archives par texte
+        // Archive search by text
         let arc_limit = self.config.memory.recall_archive_limit as i64;
         let arc_threshold = self.config.memory.recall_archive_threshold;
         let archive_similar = if let Some(ref db) = self.db {
@@ -161,13 +168,13 @@ impl SaphireAgent {
         } else {
             vec![]
         };
-        // Construire le contexte memoire (sans vecteurs subconscients)
+        // Build the memory context (without subconscious vectors)
         let memory_context = crate::memory::build_memory_context(
             &wm_summary, &episodic_recent, &ltm_similar, &archive_similar,
             &[],
         );
 
-        // Etape 8 : Appel au LLM
+        // Step 8: LLM call
         let (response, llm_elapsed_ms) = if !self.llm_busy.load(Ordering::Relaxed) {
             self.llm_busy.store(true, Ordering::Relaxed);
 
@@ -186,7 +193,7 @@ impl SaphireAgent {
                 &memory_context,
                 &body_ctx,
                 &vital_ctx,
-                "",  // pas de contexte sensoriel dans la version lite
+                "",  // no sensory context in the lite version
                 &self.config.general.language,
             );
 
@@ -203,7 +210,7 @@ impl SaphireAgent {
             let start = Instant::now();
             let msg = text.to_string();
 
-            // Detection de stagnation conversationnelle
+            // Detect conversational stagnation
             let conv_stagnating = self.detect_conversation_stagnation();
             let temp = if conv_stagnating {
                 let boosted = (llm_config.temperature + 0.35).min(1.2);
@@ -243,19 +250,19 @@ impl SaphireAgent {
             ("[Mon esprit est occupé, un instant...]".to_string(), 0.0)
         };
 
-        // Stocker la reponse pour detection anti-repetition (max 5)
+        // Store the response for anti-repetition detection (max 5)
         self.recent_responses.push(response.clone());
         if self.recent_responses.len() > 5 {
             self.recent_responses.remove(0);
         }
 
-        // Historique multi-turn (max 5 echanges)
+        // Multi-turn history (max 5 exchanges)
         self.chat_history.push((text.to_string(), response.clone()));
         if self.chat_history.len() > 5 {
             self.chat_history.remove(0);
         }
 
-        // Log LLM history
+        // Log LLM call history
         self.log(LogLevel::Info, LogCategory::Llm,
             format!("Reponse LLM ({} chars, {:.1}s)", response.len(), self.avg_response_time),
             serde_json::json!({}));
@@ -278,7 +285,7 @@ impl SaphireAgent {
             });
         }
 
-        // ═══ Memoire de travail : pousser la reponse ═══
+        // === Working memory: push the response ===
         let resp_preview: String = response.chars().take(200).collect();
         let chem_sig_resp = crate::neurochemistry::ChemicalSignature::from(&self.chemistry);
         let _ = self.working_memory.push(
@@ -288,7 +295,7 @@ impl SaphireAgent {
             chem_sig_resp.clone(),
         );
 
-        // Stocker dans thought_log et memoire episodique
+        // Store in thought_log and episodic memory
         if let Some(ref db) = self.db {
             let chemistry_json = serde_json::json!({
                 "dopamine": self.chemistry.dopamine,
@@ -319,7 +326,7 @@ impl SaphireAgent {
             ).await;
         }
 
-        // ═══ Decay de la memoire de travail ═══
+        // === Working memory decay ===
         let wm_decayed = self.working_memory.decay();
         if let Some(ref db) = self.db {
             let arousal = self.mood.arousal as f32;
@@ -335,10 +342,10 @@ impl SaphireAgent {
             }
         }
 
-        // Homeostasie chimique (config.feedback.homeostasis_rate)
+        // Chemical homeostasis (config.feedback.homeostasis_rate)
         self.chemistry.homeostasis(&self.baselines, self.config.feedback.homeostasis_rate);
 
-        // Metric snapshot simplifie
+        // Simplified metric snapshot
         if let Some(ref logs_db) = self.logs_db {
             let db = logs_db.clone();
             let cycle = self.cycle_count;
@@ -383,7 +390,7 @@ impl SaphireAgent {
             });
         }
 
-        // ═══ Trace cognitive ═══
+        // === Cognitive trace ===
         if let Some(mut trace) = result.trace.take() {
             trace.set_nlp(serde_json::json!({
                 "sentiment": {
@@ -487,7 +494,7 @@ impl SaphireAgent {
             }
         }
 
-        // Diffuser l'etat au WebSocket
+        // Broadcast state to WebSocket
         self.broadcast_state(&result, 0);
         self.broadcast_body_update();
         self.broadcast_memory_update().await;
@@ -497,7 +504,8 @@ impl SaphireAgent {
         response
     }
 
-    /// Detecte la stagnation dans les reponses conversationnelles recentes.
+    /// Detects stagnation in recent conversational responses.
+    /// Uses lexical overlap analysis to determine if responses are too similar.
     fn detect_conversation_stagnation(&self) -> bool {
         let texts: Vec<&str> = self.recent_responses.iter().map(|s| s.as_str()).collect();
         let (stagnating, _) = crate::nlp::stagnation::detect_stagnation(&texts, 4, 0.6, 3);

@@ -23,8 +23,12 @@ use super::SaphireAgent;
 use super::ProcessResult;
 
 impl SaphireAgent {
-    /// Diffuse l'etat interne simplifie de Saphire au WebSocket.
-    /// Version lite : sans brain_regions, predictive, neural_network, clustering, sleep.
+    /// Broadcasts Saphire's simplified internal state to the WebSocket.
+    /// Lite version: without brain_regions, predictive, neural_network, clustering, or sleep.
+    ///
+    /// # Parameters
+    /// - `result` — the pipeline processing result for this cycle.
+    /// - `_learnings_count` — unused in the lite version (learnings removed).
     pub(super) fn broadcast_state(&self, result: &ProcessResult, _learnings_count: i64) {
         if let Some(ref tx) = self.ws_tx {
             let state = serde_json::json!({
@@ -94,7 +98,8 @@ impl SaphireAgent {
         }
     }
 
-    /// Diffuse l'etat memoire complet au WebSocket.
+    /// Broadcasts the full memory state to the WebSocket.
+    /// Includes working memory, episodic memory stats, and long-term memory stats.
     pub(super) async fn broadcast_memory_update(&self) {
         if let Some(ref tx) = self.ws_tx {
             let episodic_stats = if let Some(ref db) = self.db {
@@ -144,7 +149,7 @@ impl SaphireAgent {
         }
     }
 
-    /// Diffuse l'etat du corps virtuel au WebSocket.
+    /// Broadcasts the virtual body state to the WebSocket.
     pub(super) fn broadcast_body_update(&self) {
         if !self.config.body.enabled {
             return;
@@ -168,8 +173,9 @@ impl SaphireAgent {
         }
     }
 
-    /// Diffuse l'etat ethique complet au WebSocket.
-    /// Version lite : sans toltec, moral_conscience, psychology.
+    /// Broadcasts the full ethics state to the WebSocket.
+    /// Lite version: without toltec, moral_conscience, or psychology.
+    /// Also includes "readiness" conditions for principle formulation.
     pub(super) fn broadcast_ethics_update(&self) {
         if !self.config.ethics.enabled {
             return;
@@ -177,7 +183,7 @@ impl SaphireAgent {
         if let Some(ref tx) = self.ws_tx {
             let mut msg = self.ethics.to_broadcast_json();
 
-            // Conditions de formulation d'un principe ethique (readiness)
+            // Conditions for ethical principle formulation (readiness check)
             let cfg = &self.config.ethics;
             let c_min_cycles = self.identity.total_cycles >= 50;
             let c_moral = self.moral_reflection_count >= cfg.min_moral_reflections_before as u64;
@@ -207,7 +213,7 @@ impl SaphireAgent {
         }
     }
 
-    /// Diffuse l'etat vital (spark, intuition, premonition) au WebSocket.
+    /// Broadcasts the vital state (spark, intuition, premonition) to the WebSocket.
     pub(super) fn broadcast_vital_update(&self) {
         if !self.config.vital_spark.enabled {
             return;
@@ -259,7 +265,9 @@ impl SaphireAgent {
         }
     }
 
-    /// Construit le contexte du corps virtuel pour les prompts LLM.
+    /// Builds the virtual body context for LLM prompts.
+    /// Returns a multi-line French-language description of heart rate,
+    /// energy, tension, warmth, comfort, pain, vitality, and breath rate.
     pub(super) fn build_body_context(&self) -> String {
         if !self.config.body.enabled {
             return String::new();
@@ -284,8 +292,8 @@ impl SaphireAgent {
         )
     }
 
-    /// Construit le contexte vital pour les prompts LLM.
-    /// Combine spark.describe() + intuition.describe() + premonition.describe().
+    /// Builds the vital context for LLM prompts.
+    /// Combines spark.describe() + intuition.describe() + premonition.describe().
     pub(super) fn build_vital_context(&self) -> String {
         if !self.config.vital_spark.enabled {
             return String::new();
@@ -309,19 +317,25 @@ impl SaphireAgent {
         parts.join("\n")
     }
 
-    /// Construit le contexte des orchestrateurs pour les prompts LLM.
-    /// Version lite : stub vide (tous les orchestrateurs sont supprimes).
+    /// Builds the orchestrators context for LLM prompts.
+    /// Lite version: empty stub (all orchestrators are removed).
     pub(super) fn build_orchestrators_context(&self) -> String {
         // attention_orch, desire_orch, learning_orch, healing_orch, dream_orch,
         // cognitive_profile_orch, personality_preset_orch, tom, narrative_identity,
-        // imagery, dissonance — tous supprimes dans la version lite
+        // imagery, dissonance — all removed in the lite version
         String::new()
     }
 
-    /// Calcule la tendance d'une molecule chimique sur l'historique recent.
-    /// Retourne la pente (positif = augmentation, negatif = diminution).
-    /// `index` : 0=dopamine, 1=cortisol, 2=serotonin, 3=adrenaline,
-    ///           4=oxytocin, 5=endorphin, 6=noradrenaline
+    /// Computes the trend of a chemical molecule over recent history.
+    /// Returns the slope (positive = increasing, negative = decreasing).
+    ///
+    /// # Parameters
+    /// - `index` — molecule index: 0=dopamine, 1=cortisol, 2=serotonin,
+    ///   3=adrenaline, 4=oxytocin, 5=endorphin, 6=noradrenaline.
+    ///
+    /// # Returns
+    /// The difference between the mean of the second half and the first half
+    /// of the history. Returns 0.0 if fewer than 3 history entries exist.
     pub(super) fn compute_chemistry_trend(&self, index: usize) -> f64 {
         let n = self.chemistry_history.len();
         if n < 3 {
@@ -337,7 +351,11 @@ impl SaphireAgent {
         second_half - first_half
     }
 
-    /// Diffuse le resultat d'un feedback humain RLHF au WebSocket.
+    /// Broadcasts the result of an RLHF human feedback to the WebSocket.
+    ///
+    /// # Parameters
+    /// - `positive` — whether the feedback was positive.
+    /// - `boost` — the reward boost applied to the bandit.
     pub(super) fn broadcast_feedback_result(&self, positive: bool, boost: f64) {
         if let Some(ref tx) = self.ws_tx {
             let _ = tx.send(serde_json::json!({

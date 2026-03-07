@@ -257,26 +257,26 @@ impl UtilityScorer {
         for (name, strength) in &ctx.active_sentiments {
             let name_lower = name.to_lowercase();
             let bonus = match (thought_idx, name_lower.as_str()) {
-                // Amour/Tendresse → Conscience corporelle, Quete d'identite, Empathy, Connection
+                // Love/Tenderness -> BodyAwareness, IdentityQuest, Empathy, Connection
                 (14, "amour") | (12, "amour") | (14, "tendresse") => 0.3 * strength,
                 (17, "amour") | (24, "amour") | (17, "tendresse") | (24, "tendresse") => 0.3 * strength,
-                // Melancolie → Introspection, Reflexion memorielle, Nostalgia, Silence
+                // Melancholy -> Introspection, MemoryReflection, Nostalgia, Silence
                 (0, "melancolie") | (2, "melancolie") | (0, "nostalgie") => 0.3 * strength,
                 (29, "melancolie") | (29, "nostalgie") | (26, "melancolie") => 0.3 * strength,
-                // Curiosite → Exploration, Curiosite, Wonder, Paradox, Creativity
+                // Curiosity -> Exploration, Curiosity, Wonder, Paradox, Creativity
                 (1, "curiosite") | (6, "curiosite") | (1, "emerveillement") => 0.3 * strength,
                 (21, "curiosite") | (21, "emerveillement") | (27, "curiosite") | (19, "curiosite") => 0.3 * strength,
-                // Anxiete → Introspection, SelfAnalysis
+                // Anxiety -> Introspection, SelfAnalysis
                 (0, "anxiete") | (5, "anxiete") | (0, "peur") => 0.2 * strength,
-                // Gratitude → Reflexion morale, Gratitude, Wisdom
+                // Gratitude -> MoralReflection, Gratitude, Wisdom
                 (9, "gratitude") | (15, "gratitude") | (20, "gratitude") | (25, "gratitude") => 0.2 * strength,
-                // Colere/Indignation → Rebellion
+                // Anger/Indignation -> Rebellion
                 (22, "colere") | (22, "indignation") | (22, "frustration") => 0.3 * strength,
-                // Joie → Humor, Aesthetic, Wonder
+                // Joy -> Humor, Aesthetic, Wonder
                 (23, "joie") | (18, "joie") | (21, "joie") => 0.2 * strength,
-                // Solitude → Connection, Empathy
+                // Loneliness -> Connection, Empathy
                 (24, "solitude") | (17, "solitude") => 0.3 * strength,
-                // Espoir → Prophecy
+                // Hope -> Prophecy
                 (28, "espoir") | (28, "optimisme") => 0.2 * strength,
                 _ => 0.0,
             };
@@ -860,9 +860,11 @@ impl ThoughtType {
 // Meta-prompts corticaux — generation dynamique de prompts via LLM
 // =============================================================================
 
-/// Meta-prompts qui guident le LLM pour generer des questions/directions
-/// de reflexion creatives. Le LLM recoit un meta-prompt et produit un
-/// prompt unique qui sera ensuite enrichi par le pipeline cognitif.
+/// Meta-prompts that guide the LLM to generate creative reflection
+/// questions/directions. The LLM receives a meta-prompt and produces a
+/// unique prompt that is then enriched by the cognitive pipeline.
+/// Each template contains `{}` placeholder(s) for the thought theme
+/// (and optionally the emotion name).
 const META_PROMPTS: &[&str] = &[
     "Génère une question profonde et originale sur le thème '{}'. La question doit pousser à une réflexion personnelle sincère, pas académique. Une seule question, en français.",
     "Invente une réflexion originale sur '{}' en lien avec l'émotion '{}'. Formule-la comme une invitation à penser, pas comme une instruction. Une seule phrase, en français.",
@@ -876,14 +878,24 @@ const META_PROMPTS: &[&str] = &[
     "Decompose '{}' en ses composants les plus simples. Quel est le mecanisme sous-jacent ? En francais.",
 ];
 
-/// Construit un meta-prompt pour guider le LLM dans la generation
-/// d'un prompt de reflexion unique et creatif.
+/// Builds a meta-prompt to guide the LLM in generating a unique and creative
+/// reflection prompt. Selects a template from `META_PROMPTS` based on the
+/// current cycle number and fills in the thought type theme (and optionally
+/// the emotion name).
+///
+/// # Parameters
+/// - `thought_type` — the selected thought type.
+/// - `emotion` — the current dominant emotion name.
+/// - `cycle` — the current cycle count (used for template rotation).
+///
+/// # Returns
+/// A formatted meta-prompt string ready for the LLM.
 pub fn meta_prompt_for(thought_type: &ThoughtType, emotion: &str, cycle: u64) -> String {
     let theme = thought_type.as_str();
     let idx = (cycle as usize) % META_PROMPTS.len();
     let template = META_PROMPTS[idx];
 
-    // Certains templates utilisent 2 placeholders (theme + emotion)
+    // Some templates use 2 placeholders (theme + emotion)
     if template.matches("{}").count() >= 2 {
         template.replacen("{}", theme, 1).replacen("{}", emotion, 1)
     } else {

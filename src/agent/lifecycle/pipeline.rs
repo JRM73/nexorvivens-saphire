@@ -1,26 +1,26 @@
 // =============================================================================
-// lifecycle/pipeline.rs — Pipeline cerebral simplifie (version lite)
+// lifecycle/pipeline.rs — Simplified brain pipeline (lite version)
 // =============================================================================
 //
-// Version allegee pour le papier ArXiv.
-// Les modules supprimes (hormones, besoins, phobies, conditions, sentiments,
-// connectome, neural, tuning, plugins, senses, sleep, etc.) sont retires.
+// Streamlined version for the ArXiv paper.
+// Removed modules (hormones, needs, phobias, conditions, sentiments,
+// connectome, neural, tuning, plugins, senses, sleep, etc.) are stripped out.
 //
-// Pipeline lite :
-//   VAGUE 1 — PERCEPTION
-//     1. Snapshot chimie avant traitement
-//     2. Calcul de l'emotion (36 emotions)
+// Lite pipeline:
+//   WAVE 1 — PERCEPTION
+//     1. Chemistry snapshot before processing
+//     2. Emotion computation (36 emotions)
 //
-//   VAGUE 2 — TRAITEMENT
-//     3. 3 modules cerebraux (reptilien, limbique, neocortex)
-//     4. Consensus pondere (seuils depuis config)
-//     5. Penalite physiologique (corps virtuel)
-//     6. Evaluation de la conscience (IIT/Phi)
+//   WAVE 2 — PROCESSING
+//     3. Three brain modules (reptilian, limbic, neocortex)
+//     4. Weighted consensus (thresholds from config)
+//     5. Physiological penalty (virtual body)
+//     6. Consciousness evaluation (IIT/Phi)
 //
-//   VAGUE 3 — REPONSE
-//     7. Regulation ethique (Asimov)
-//     8. Retroaction chimique
-//     9. Surveillance chimique, logs, trace, return
+//   WAVE 3 — RESPONSE
+//     7. Ethical regulation (Asimov laws)
+//     8. Chemical feedback
+//     9. Chemical monitoring, logs, trace, return
 // =============================================================================
 
 use crate::consensus::{self, ConsensusThresholds, Decision};
@@ -34,19 +34,25 @@ use super::SaphireAgent;
 use super::ProcessResult;
 
 impl SaphireAgent {
-    /// Traite un stimulus a travers le pipeline cerebral simplifie.
+    /// Processes a stimulus through the simplified brain pipeline.
     ///
-    /// Pipeline 3 vagues :
-    ///   VAGUE 1 — Perception (chimie, emotion)
-    ///   VAGUE 2 — Traitement (3 modules, consensus, conscience)
-    ///   VAGUE 3 — Reponse (ethique, feedback chimique, logs)
+    /// Three-wave pipeline:
+    ///   WAVE 1 — Perception (chemistry, emotion)
+    ///   WAVE 2 — Processing (3 brain modules, consensus, consciousness)
+    ///   WAVE 3 — Response (ethics, chemical feedback, logs)
+    ///
+    /// # Parameters
+    /// - `stimulus` — the stimulus to process (autonomous thought or human message).
+    ///
+    /// # Returns
+    /// A `ProcessResult` containing consensus, emotion, consciousness, verdict, and trace.
     pub fn process_stimulus(&mut self, stimulus: &Stimulus) -> ProcessResult {
 
         // =====================================================================
-        // VAGUE 1 — PERCEPTION
+        // WAVE 1 — PERCEPTION
         // =====================================================================
 
-        // Etape 1 : snapshot chimie avant traitement (pour la trace cognitive)
+        // Step 1: chemistry snapshot before processing (for the cognitive trace)
         let chemistry_before = serde_json::json!({
             "dopamine": self.chemistry.dopamine,
             "cortisol": self.chemistry.cortisol,
@@ -57,7 +63,7 @@ impl SaphireAgent {
             "noradrenaline": self.chemistry.noradrenaline,
         });
 
-        // Etape 2 : calcul de l'etat emotionnel depuis la chimie courante
+        // Step 2: compute the emotional state from the current chemistry
         let emotion = EmotionalState::compute(&self.chemistry);
 
         self.mood.update(emotion.valence, emotion.arousal);
@@ -65,16 +71,16 @@ impl SaphireAgent {
         self.last_valence = emotion.valence;
 
         // =====================================================================
-        // VAGUE 2 — TRAITEMENT
+        // WAVE 2 — PROCESSING
         // =====================================================================
 
-        // Etape 3 : chaque module cerebral traite le stimulus independamment
+        // Step 3: each brain module processes the stimulus independently
         let sig_r = self.reptilian.process(stimulus, &self.chemistry);
         let sig_l = self.limbic.process(stimulus, &self.chemistry);
         let sig_n = self.neocortex.process(stimulus, &self.chemistry);
         let signals = [sig_r, sig_l, sig_n];
 
-        // Etape 4 : consensus pondere (seuils depuis config.consensus)
+        // Step 4: weighted consensus (thresholds from config.consensus)
         let thresholds = ConsensusThresholds {
             threshold_yes: self.config.consensus.threshold_yes,
             threshold_no: self.config.consensus.threshold_no,
@@ -82,7 +88,7 @@ impl SaphireAgent {
         let default_params = crate::tuning::TunableParams::default();
         let mut consensus_result = consensus::consensus(&signals, &self.chemistry, &thresholds, &default_params);
 
-        // Etape 5 : penalite physiologique (corps virtuel)
+        // Step 5: physiological penalty (virtual body)
         let cognitive_degradation = if self.config.body.enabled && self.config.body.physiology.enabled {
             let deg = self.body.physiology.cognitive_degradation(&self.config.body.physiology);
             if deg > 0.0 {
@@ -105,8 +111,8 @@ impl SaphireAgent {
             0.0
         };
 
-        // Etape 6 : evaluation de la conscience (IIT + GWT simplifie)
-        // GwtInput et PredictiveInput utilises avec valeurs par defaut (pas de brain_network)
+        // Step 6: consciousness evaluation (IIT + simplified GWT)
+        // GwtInput and PredictiveInput use default values (no brain_network in lite)
         let gwt_input = crate::consciousness::GwtInput::default();
         let predictive_input = crate::consciousness::PredictiveInput::default();
 
@@ -120,7 +126,7 @@ impl SaphireAgent {
             Some(&gwt_input), Some(&predictive_input),
         );
 
-        // Appliquer la degradation cognitive sur la conscience
+        // Apply cognitive degradation to consciousness
         if cognitive_degradation > 0.0 {
             consciousness.level *= 1.0 - cognitive_degradation * 0.5;
             consciousness.phi *= 1.0 - cognitive_degradation * 0.4;
@@ -129,13 +135,13 @@ impl SaphireAgent {
         self.last_consciousness = consciousness.level;
 
         // =====================================================================
-        // VAGUE 3 — REPONSE
+        // WAVE 3 — RESPONSE
         // =====================================================================
 
-        // Etape 7 : regulation ethique (lois d'Asimov, filtrage de securite)
+        // Step 7: ethical regulation (Asimov laws, safety filtering)
         let verdict = self.regulation.evaluate(stimulus, &consensus_result);
 
-        // Etape 8 : retroaction chimique (feedback chimique minimal)
+        // Step 8: chemical feedback (minimal chemical retroaction)
         let chem_before_feedback = self.chemistry.clone();
         let is_human = stimulus.source == crate::stimulus::StimulusSource::Human;
         let homeostasis_rate = self.config.feedback.homeostasis_rate;
@@ -165,15 +171,15 @@ impl SaphireAgent {
             },
         }
 
-        // Novelty seulement si score eleve
+        // Novelty bonus only if score is high
         if stimulus.novelty > 0.7 {
             self.chemistry.feedback_novelty();
         }
 
-        // Coherence basse → leger stress cognitif
+        // Low coherence -> slight cognitive stress
         self.chemistry.feedback_low_coherence(consensus_result.coherence);
 
-        // Cap delta max ±0.10 par molecule sur le bloc feedback
+        // Cap max delta to +/-0.10 per molecule for the feedback block
         {
             let cap = 0.10;
             self.chemistry.dopamine = self.chemistry.dopamine.clamp(
@@ -192,7 +198,7 @@ impl SaphireAgent {
                 chem_before_feedback.noradrenaline - cap, chem_before_feedback.noradrenaline + cap).clamp(0.0, 1.0);
         }
 
-        // Incrementer le compteur de cycles
+        // Increment the cycle counter
         self.cycle_count += 1;
         self.identity.update_stats(
             &emotion.dominant,
@@ -200,10 +206,10 @@ impl SaphireAgent {
         );
         self.identity.refresh_description();
 
-        // Auto-surveillance chimique (compteurs + alertes periodiques)
+        // Chemical self-monitoring (counters + periodic alerts)
         self.check_chemical_health();
 
-        // Logging du pipeline
+        // Pipeline logging
         self.log(LogLevel::Debug, LogCategory::Pipeline,
             format!("Pipeline: decision={}, emotion={}, phi={:.2}, consciousness={:.2}",
                 verdict.approved_decision.as_str(), emotion.dominant,
@@ -216,7 +222,7 @@ impl SaphireAgent {
                 "phi": consciousness.phi,
             }));
 
-        // Construire la trace cognitive partielle
+        // Build the partial cognitive trace
         let trace = if self.logs_db.is_some() {
             let source_str = format!("{:?}", stimulus.source);
             let mut t = CognitiveTrace::new(self.cycle_count, &source_str, self.session_id);
@@ -259,7 +265,7 @@ impl SaphireAgent {
                 "violations": verdict.violations.len(),
             }));
 
-            // Donnees du corps et du coeur
+            // Body and heart data
             if self.config.body.enabled {
                 let body_s = self.body.status();
                 t.set_heart(serde_json::json!({
@@ -282,7 +288,7 @@ impl SaphireAgent {
                 }));
             }
 
-            // Donnees ethiques
+            // Ethics data
             if self.config.ethics.enabled {
                 t.set_ethics(serde_json::json!({
                     "active_personal_count": self.ethics.active_personal_count(),
@@ -304,12 +310,13 @@ impl SaphireAgent {
         }
     }
 
-    /// Auto-surveillance de la sante chimique.
+    /// Chemical health self-monitoring.
     ///
-    /// Met a jour les ring-buffers a chaque cycle.
-    /// Tous les 50 cycles, emet des alertes si des derives sont detectees.
+    /// Updates ring-buffers every cycle. Every 50 cycles, emits warnings
+    /// if drifts are detected (cortisol stuck low, dopamine/serotonin
+    /// saturation, emotional monotony, or frozen valence).
     fn check_chemical_health(&mut self) {
-        // Mise a jour des ring-buffers
+        // Update ring-buffers
         self.recent_emotions.push_back(self.last_emotion.clone());
         if self.recent_emotions.len() > 200 {
             self.recent_emotions.pop_front();
@@ -319,7 +326,7 @@ impl SaphireAgent {
             self.recent_valences.pop_front();
         }
 
-        // Compteurs de cycles consecutifs
+        // Consecutive cycle counters for anomaly detection
         if self.chemistry.cortisol < 0.10 {
             self.cortisol_flat_cycles += 1;
         } else {
@@ -338,7 +345,7 @@ impl SaphireAgent {
             self.serotonin_ceiling_cycles = 0;
         }
 
-        // Emission des alertes tous les 50 cycles
+        // Emit alerts every 50 cycles
         if self.cycle_count % 50 != 0 {
             return;
         }

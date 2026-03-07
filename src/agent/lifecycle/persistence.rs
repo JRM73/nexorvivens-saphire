@@ -1,6 +1,7 @@
 // =============================================================================
-// lifecycle/persistence.rs — Persistance (version lite, vide)
+// lifecycle/persistence.rs — Persistence (lite version, empty)
 // =============================================================================
-
-// Les orchestrateurs avances (reves, desirs, lecons, blessures) ne sont pas
-// inclus dans la version lite. Ce fichier est conserve comme placeholder.
+//
+// Advanced orchestrators (dreams, desires, lessons, wounds) are not included
+// in the lite version. This file is kept as a placeholder for structural
+// compatibility with the full version's module layout.

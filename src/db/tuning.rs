@@ -1,11 +1,23 @@
 // =============================================================================
-// db/tuning.rs — Auto-tuning et bandit UCB1
+// db/tuning.rs — Auto-tuning and UCB1 bandit
+//
+// Purpose: Persistence for the agent's auto-tuning system:
+//   - Tuning parameters: current and best parameter sets with scores,
+//     stored as a singleton (id=1) with upsert semantics
+//   - UCB1 bandit arms: each arm represents an autonomous thought type;
+//     tracks pull count and total reward for UCB1 exploration/exploitation
 // =============================================================================
 
 use super::{SaphireDb, DbError};
 
 impl SaphireDb {
-    /// Sauvegarde les parametres d'auto-tuning (upsert singleton, id=1).
+    /// Saves the auto-tuning parameters (upsert singleton, id=1).
+    ///
+    /// # Parameters
+    /// - `params_json`: current parameter set as JSON
+    /// - `best_params_json`: best parameter set found so far as JSON
+    /// - `best_score`: best score achieved
+    /// - `tuning_count`: number of tuning iterations performed
     pub async fn save_tuning_params(
         &self,
         params_json: &serde_json::Value,
@@ -24,7 +36,10 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Charge les parametres d'auto-tuning depuis la base de donnees.
+    /// Loads the auto-tuning parameters from the database.
+    ///
+    /// # Returns
+    /// Optional tuple of (params_json, best_params_json, best_score, tuning_count)
     pub async fn load_tuning_params(&self) -> Result<Option<(serde_json::Value, serde_json::Value, f32, i32)>, DbError> {
         let client = self.pool.get().await?;
         let result = client.query_opt(
@@ -37,8 +52,11 @@ impl SaphireDb {
         }
     }
 
-    /// Sauvegarde les bras du bandit UCB1.
-    /// Chaque bras represente un type de pensee autonome.
+    /// Saves the UCB1 bandit arms.
+    /// Each arm represents an autonomous thought type.
+    ///
+    /// # Parameters
+    /// - `arms`: slice of tuples (arm_name, pull_count, total_reward)
     pub async fn save_bandit_arms(&self, arms: &[(String, u64, f64)]) -> Result<(), DbError> {
         let client = self.pool.get().await?;
         for (name, pulls, total_reward) in arms {
@@ -53,7 +71,10 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Charge les bras du bandit UCB1 depuis la base de donnees.
+    /// Loads the UCB1 bandit arms from the database.
+    ///
+    /// # Returns
+    /// A vector of tuples: (arm_name, pull_count, total_reward)
     pub async fn load_bandit_arms(&self) -> Result<Vec<(String, u64, f64)>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(

@@ -1,43 +1,52 @@
 // =============================================================================
-// db/vectors.rs — Stockage et recherche de vecteurs multi-sources
+// db/vectors.rs — Multi-source vector storage and search
 //
-// Role : Gere la table memory_vectors qui stocke les embeddings provenant
-// de differentes sources (reves, connexions neuronales, insights subconscients,
-// consolidation, eureka). Permet la recherche par similarite cosinus sur
-// l'ensemble des productions cognitives nocturnes et subconscientes.
+// Purpose: Manages the memory_vectors table which stores embeddings from
+// various sources (dreams, neural connections, subconscious insights,
+// consolidation, eureka moments). Enables cosine similarity search across
+// all nocturnal and subconscious cognitive productions. Also provides
+// a combined search across memories, memory_vectors, and memory_archives.
 // =============================================================================
 
 use super::{SaphireDb, DbError};
 
-/// Resultat d'une recherche de souvenirs subconscients par similarite.
+/// Result of a subconscious memory similarity search.
 pub struct SubconsciousVectorRecord {
+    /// Unique identifier of the memory vector
     pub id: i64,
+    /// Source type (e.g., "dream", "neural_connection", "subconscious_insight")
     pub source_type: String,
+    /// Associated textual content
     pub text_content: String,
+    /// Dominant emotion at creation time
     pub emotion: String,
+    /// Current strength of the vector [0.0 - 1.0]
     pub strength: f32,
+    /// Cosine similarity score against the query vector
     pub similarity: f64,
 }
 
-/// Source d'un vecteur memoire.
+/// Source of a memory vector.
 pub enum VectorSource {
-    /// Souvenir conscient (pensee, conversation)
+    /// Conscious memory (thought, conversation)
     Conscious,
-    /// Reve genere pendant le sommeil REM
+    /// Dream generated during REM sleep
     Dream,
-    /// Connexion neuronale decouverte pendant le sommeil profond
+    /// Neural connection discovered during deep sleep
     NeuralConnection,
-    /// Insight emerge du subconscient
+    /// Insight emerged from the subconscious
     SubconsciousInsight,
-    /// Consolidation memoire (tier 2 → tier 3)
+    /// Memory consolidation (tier 2 -> tier 3)
     Consolidation,
-    /// Eureka (insight spontane)
+    /// Eureka (spontaneous insight)
     Eureka,
-    /// Image mentale vivace persistee
+    /// Persisted vivid mental imagery
     MentalImagery,
 }
 
 impl VectorSource {
+    /// Returns the string representation of this vector source,
+    /// used as the source_type column value in the database.
     pub fn as_str(&self) -> &str {
         match self {
             VectorSource::Conscious => "conscious",
@@ -51,30 +60,33 @@ impl VectorSource {
     }
 }
 
-/// Nouveau vecteur memoire a inserer.
+/// A new memory vector to insert into the database.
 pub struct NewMemoryVector {
-    /// Embedding vectoriel (64 dimensions)
+    /// Vector embedding (64 dimensions)
     pub embedding: Vec<f32>,
-    /// Source du vecteur
+    /// Source of the vector
     pub source_type: VectorSource,
-    /// Contenu textuel associe
+    /// Associated textual content
     pub text_content: String,
-    /// Emotion dominante au moment de la creation
+    /// Dominant emotion at creation time
     pub emotion: String,
-    /// Force du vecteur (0.0 a 1.0)
+    /// Vector strength [0.0 - 1.0]
     pub strength: f32,
-    /// True si cree pendant le sommeil
+    /// True if created during sleep
     pub created_during_sleep: bool,
-    /// Phase de sommeil (si applicable)
+    /// Sleep phase (if applicable)
     pub sleep_phase: Option<String>,
-    /// Identifiant de reference vers la source (dream_journal.id, etc.)
+    /// Reference identifier to the source (dream_journal.id, etc.)
     pub source_ref_id: Option<i64>,
-    /// Metadonnees supplementaires en JSON
+    /// Additional metadata in JSON format
     pub metadata_json: serde_json::Value,
 }
 
 impl SaphireDb {
-    /// Stocke un vecteur memoire dans la table memory_vectors.
+    /// Stores a memory vector in the memory_vectors table.
+    ///
+    /// # Returns
+    /// The ID of the inserted memory vector
     pub async fn store_memory_vector(&self, vec: &NewMemoryVector) -> Result<i64, DbError> {
         let client = self.pool.get().await?;
         let embedding_vec = pgvector::Vector::from(vec.embedding.clone());
@@ -92,8 +104,18 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Recherche combinee dans memories (conscious) et memory_vectors (toutes sources).
-    /// Retourne les vecteurs les plus proches par similarite cosinus.
+    /// Combined search across memories (conscious), memory_vectors (all sources),
+    /// and memory_archives. Returns the closest vectors by cosine similarity.
+    /// Uses UNION ALL to merge results from all three tables.
+    ///
+    /// # Parameters
+    /// - `embedding`: query vector for similarity search
+    /// - `limit`: maximum number of results to return
+    /// - `threshold`: minimum similarity threshold [0.0 - 1.0]
+    ///
+    /// # Returns
+    /// JSON array of matched vectors with id, source_type, text_content, emotion,
+    /// strength, and similarity score
     pub async fn search_all_vectors(
         &self,
         embedding: &[f32],
@@ -143,7 +165,10 @@ impl SaphireDb {
         Ok(results)
     }
 
-    /// Statistiques des vecteurs memoire par source.
+    /// Statistics of memory vectors grouped by source type.
+    ///
+    /// # Returns
+    /// JSON object with total count and breakdown by source (count + average strength)
     pub async fn memory_vectors_stats(&self) -> Result<serde_json::Value, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -172,8 +197,13 @@ impl SaphireDb {
         }))
     }
 
-    /// Recherche de souvenirs subconscients par similarite cosinus.
-    /// Interroge uniquement memory_vectors (reves, insights, connexions, eureka, images mentales).
+    /// Searches for subconscious memories by cosine similarity.
+    /// Queries only memory_vectors (dreams, insights, connections, eureka, mental imagery).
+    ///
+    /// # Parameters
+    /// - `embedding`: query vector for similarity search
+    /// - `limit`: maximum number of results to return
+    /// - `threshold`: minimum similarity threshold [0.0 - 1.0]
     pub async fn search_subconscious_vectors(
         &self,
         embedding: &[f32],
@@ -207,7 +237,7 @@ impl SaphireDb {
         Ok(results)
     }
 
-    /// Nombre total de vecteurs memoire.
+    /// Total number of memory vectors.
     pub async fn memory_vectors_count(&self) -> Result<i64, DbError> {
         let client = self.pool.get().await?;
         let row = client.query_one("SELECT COUNT(*) FROM memory_vectors", &[]).await?;

@@ -1,11 +1,28 @@
 // =============================================================================
-// lifecycle/factory_reset.rs — Reset aux valeurs d'usine (version lite)
+// lifecycle/factory_reset.rs — Factory reset to default values (lite version)
+// =============================================================================
+//
+// This file implements factory reset functionality at various levels:
+// - ChemistryOnly: reset neurotransmitter levels and baselines
+// - ParametersOnly: reset all tunable parameters (chemistry + thresholds + LLM)
+// - IntuitionOnly: reset intuition and premonition modules
+// - PersonalEthicsOnly: deactivate all personal ethical principles
+// - FullReset: all of the above + clear episodic memories + reset cycle count
+//
+// Also provides `factory_diff()` to compare current state vs factory defaults.
 // =============================================================================
 
 use crate::logging::{LogLevel, LogCategory};
 use super::SaphireAgent;
 
 impl SaphireAgent {
+    /// Resets all neurotransmitter levels and baselines to factory defaults.
+    ///
+    /// # Parameters
+    /// - `factory` — the factory defaults loaded from configuration.
+    ///
+    /// # Returns
+    /// A vector of JSON values describing each parameter change (old -> new).
     pub(super) fn apply_chemistry_reset(&mut self, factory: &crate::factory::FactoryDefaults) -> Vec<serde_json::Value> {
         let baselines = factory.reset_chemistry();
         let labels = ["dopamine", "cortisol", "serotonin", "adrenaline",
@@ -41,6 +58,12 @@ impl SaphireAgent {
         changes
     }
 
+    /// Resets all tunable parameters to factory defaults, including chemistry,
+    /// homeostasis rate, consensus thresholds, temperature, max tokens, and
+    /// episodic decay rate.
+    ///
+    /// # Returns
+    /// A vector of JSON values describing each parameter change.
     pub(super) fn apply_parameters_reset(&mut self, factory: &crate::factory::FactoryDefaults) -> Vec<serde_json::Value> {
         let params = factory.reset_parameters();
         let mut changes = self.apply_chemistry_reset(factory);
@@ -78,6 +101,15 @@ impl SaphireAgent {
         changes
     }
 
+    /// Applies a factory reset at the specified level.
+    /// Broadcasts the result to WebSocket and logs the changes.
+    ///
+    /// # Parameters
+    /// - `level` — the reset level (ChemistryOnly, ParametersOnly, IntuitionOnly,
+    ///   PersonalEthicsOnly, FullReset, or others not available in lite).
+    ///
+    /// # Returns
+    /// A JSON value with `success`, `level`, and `changes` fields.
     pub async fn apply_factory_reset(&mut self, level: crate::factory::ResetLevel) -> serde_json::Value {
         use crate::factory::{FactoryDefaults, ResetLevel};
 
@@ -142,7 +174,7 @@ impl SaphireAgent {
                 self.last_consolidation_cycle = 0;
                 c
             }
-            // Niveaux non disponibles en version lite
+            // Levels not available in the lite version
             _ => {
                 vec![serde_json::json!({"param": "warning", "old": "N/A", "new": "Level not available in lite version"})]
             }
@@ -161,6 +193,12 @@ impl SaphireAgent {
         serde_json::json!({"success": true, "level": format!("{:?}", level), "changes": changes})
     }
 
+    /// Computes the differences between the current agent state and factory defaults.
+    ///
+    /// # Returns
+    /// A JSON value with `diffs` (array of parameter differences),
+    /// `total_params` (total number of compared parameters), and
+    /// `modified_count` (number of parameters that differ).
     pub fn factory_diff(&self) -> serde_json::Value {
         use crate::factory::FactoryDefaults;
 

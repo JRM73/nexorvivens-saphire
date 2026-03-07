@@ -1,24 +1,33 @@
 // =============================================================================
-// hormones/ — Stub minimal pour la version lite
+// hormones/ — Minimal stub for the lite edition
+// =============================================================================
 //
-// Seule la structure HormonalState est definie ici, utilisee par
-// body/physiology.rs pour le calcul des parametres vitaux.
-// Le systeme hormonal complet (recepteurs, cycles, interactions)
-// n'est pas porte dans la version lite.
+// Purpose: Only the HormonalState structure is defined here, used by
+//          body/physiology.rs for computing vital parameters.
+//          The full hormonal system (receptors, cycles, interactions)
+//          is not ported in the lite edition.
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 
-/// Etat hormonal simplifie — 8 hormones normalisees [0.0, 1.0].
+/// Simplified hormonal state — 8 hormones normalized to [0.0, 1.0].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HormonalState {
+    /// Cortisol (hormonal level, distinct from neurochemical cortisol)
     pub cortisol_h: f64,
+    /// Melatonin (sleep/wake cycle regulation)
     pub melatonin: f64,
+    /// Epinephrine (adrenaline, fight-or-flight)
     pub epinephrine: f64,
+    /// Testosterone (drive, assertiveness)
     pub testosterone: f64,
+    /// Estrogen (mood modulation, neuroprotection)
     pub estrogen: f64,
+    /// Oxytocin (hormonal level, social bonding)
     pub oxytocin_h: f64,
+    /// Insulin (energy regulation, glucose metabolism)
     pub insulin: f64,
+    /// Thyroid hormones (metabolic rate, energy levels)
     pub thyroid: f64,
 }
 

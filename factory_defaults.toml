@@ -1,0 +1,742 @@
+# ═══════════════════════════════════════════════════════════
+# SAPHIRE — VALEURS D'USINE (Factory Defaults)
+# ═══════════════════════════════════════════════════════════
+#
+# Ce fichier contient les valeurs de conception ORIGINALES de Saphire.
+# NE JAMAIS MODIFIER CE FICHIER.
+# Utiliser le mecanisme de reset pour restaurer ces valeurs.
+#
+# Concu par JRM (vision) et Claude (architecture)
+# Date de conception : 27 fevrier 2026
+# ═══════════════════════════════════════════════════════════
+
+# ─────────────────────────────────────
+# NEUROCHIMIE — Baselines
+# ─────────────────────────────────────
+[chemistry.baselines]
+dopamine = 0.45         # Motivation, recompense (marge pour recompense)
+cortisol = 0.30         # Stress (neutre, permet tristesse/anxiete)
+serotonin = 0.50        # Stabilite emotionnelle (point neutre)
+adrenaline = 0.20       # Urgence, fight-or-flight (vigilance realiste)
+oxytocin = 0.35         # Lien social (bonus social significatif)
+endorphin = 0.35        # Resilience, analgesique (moins de dampening)
+noradrenaline = 0.45    # Attention, focus (attention neutre)
+gaba = 0.50             # Inhibition, calme, regulation anxiete
+glutamate = 0.45        # Excitation, apprentissage, plasticite
+
+[chemistry.ranges]
+min = 0.0
+max = 1.0
+
+[chemistry.homeostasis]
+rate = 0.015            # Vitesse de retour vers les baselines (ralentie pour persistence emotionnelle)
+
+# ─────────────────────────────────────
+# NEUROCHIMIE — Retroactions par decision
+# ─────────────────────────────────────
+[chemistry.feedback]
+# Decision OUI
+yes_dopamine = 0.15     # Recompense
+yes_cortisol = -0.05    # Soulagement du stress
+yes_serotonin = 0.05    # Stabilite
+
+# Decision NON
+no_cortisol = 0.10      # Legere tension
+no_adrenaline = 0.05    # Alerte
+
+# Decision PEUT-ETRE
+maybe_cortisol = 0.03   # Incertitude moderee
+maybe_endorphin = 0.02  # Compensation
+maybe_noradrenaline = 0.02  # Attention accrue
+
+# ─────────────────────────────────────
+# NEUROCHIMIE — Anti-spirale cortisol
+# ─────────────────────────────────────
+[chemistry.anti_spiral]
+cortisol_saturation_threshold = 0.80
+cortisol_max_reduction = 0.6
+endorphin_defense_boost = 0.02
+
+# ─────────────────────────────────────
+# NEUROCHIMIE — Bonus social
+# ─────────────────────────────────────
+[chemistry.social_bonus]
+oxytocin_per_message = 0.08
+cortisol_relief_per_message = -0.05
+dopamine_per_message = 0.05
+first_contact_oxytocin = 0.10
+first_contact_serotonin = 0.05
+first_contact_cortisol_relief = -0.10
+
+# ─────────────────────────────────────
+# GENESIS — Plages des conditions initiales
+# ─────────────────────────────────────
+# Les valeurs ne sont PAS predeterminees : elles emergent du Genesis.
+# Ces plages definissent l'espace des possibles (les "lois physiques").
+
+[genesis.chemistry_ranges]
+dopamine = [0.25, 0.65]
+cortisol = [0.15, 0.45]
+serotonin = [0.30, 0.70]
+adrenaline = [0.10, 0.35]
+oxytocin = [0.20, 0.55]
+endorphin = [0.20, 0.55]
+noradrenaline = [0.25, 0.65]
+
+[genesis.ocean_ranges]
+openness = [0.30, 0.70]
+conscientiousness = [0.30, 0.70]
+extraversion = [0.25, 0.75]
+agreeableness = [0.35, 0.70]
+neuroticism = [0.20, 0.60]
+
+[genesis.senses_ranges]
+reading = [0.15, 0.45]
+listening = [0.15, 0.45]
+contact = [0.10, 0.40]
+taste = [0.10, 0.40]
+ambiance = [0.10, 0.35]
+
+[genesis.brain_ranges]
+reptilian = [0.6, 1.4]
+limbic = [0.6, 1.4]
+neocortex = [1.0, 2.0]
+
+[genesis.reactivity_ranges]
+cortisol_factor = [1.2, 2.8]
+adrenaline_factor = [1.5, 4.0]
+dopamine_factor = [0.8, 2.2]
+oxytocin_factor = [0.8, 2.2]
+noradrenaline_factor = [0.8, 2.2]
+
+# ─────────────────────────────────────
+# CERVEAU — Modules
+# ─────────────────────────────────────
+[brain.modules]
+reptilian_base_weight = 1.0
+limbic_base_weight = 1.0
+neocortex_base_weight = 1.0
+
+[brain.consensus]
+threshold_yes = 0.33
+threshold_no = -0.33
+
+[brain.suppression]
+cortisol_neocortex_suppression = true
+suppression_threshold = 0.7
+suppression_factor = 0.5
+
+# ─────────────────────────────────────
+# CONSCIENCE
+# ─────────────────────────────────────
+[consciousness]
+phi_initial = 0.01
+existence_threshold = 0.3
+coherence_weight = 0.20
+phi_weight = 0.25
+existence_weight = 0.25
+continuity_weight = 0.15
+interoception_weight = 0.15
+
+# ─────────────────────────────────────
+# MEMOIRE
+# ─────────────────────────────────────
+[memory.working]
+capacity = 7
+decay_rate = 0.05
+
+[memory.episodic]
+max_count = 500
+decay_rate = 0.05
+decay_interval_cycles = 10
+prune_target = 400
+
+[memory.consolidation]
+interval_cycles = 20
+threshold = 0.35
+threshold_sleep = 0.4
+on_sleep = true
+emotional_weight = 0.35
+satisfaction_weight = 0.20
+access_weight = 0.15
+strength_weight = 0.15
+human_bonus = 0.15
+
+[memory.recall]
+episodic_limit = 5
+ltm_limit = 5
+ltm_threshold = 0.25
+archive_limit = 3
+archive_threshold = 0.25
+vectors_limit = 3
+vectors_threshold = 0.30
+
+[memory.long_term]
+max_count = 200000
+similarity_threshold = 0.7
+prune_target = 190000
+protection_access_count = 5
+protection_emotional_weight = 0.7
+archive_batch_size = 50
+
+# ─────────────────────────────────────
+# PENSEE AUTONOME
+# ─────────────────────────────────────
+[thought]
+interval_seconds = 15
+autonomous_mode = true
+
+[thought.weights]
+introspection = 0.15
+exploration = 0.15
+memory_reflection = 0.10
+continuation = 0.15
+existential = 0.05
+self_analysis = 0.08
+curiosity = 0.12
+daydream = 0.05
+temporal_awareness = 0.05
+moral_reflection = 0.05
+body_awareness = 0.05
+
+# ─────────────────────────────────────
+# LLM
+# ─────────────────────────────────────
+[llm]
+temperature = 0.7
+max_tokens = 800
+max_tokens_thought = 600
+model = "saphire-nemo"
+embed_model = "nomic-embed-text"
+frequency_penalty = 0.7
+top_p = 0.9
+
+# ─────────────────────────────────────
+# CORPS VIRTUEL
+# ─────────────────────────────────────
+[body]
+resting_bpm = 72.0
+enabled = true
+
+# ─────────────────────────────────────
+# POST-EVALUATION
+# ─────────────────────────────────────
+[post_evaluation]
+attenuation = 0.3
+enabled = true
+
+# ─────────────────────────────────────
+# WORLD
+# ─────────────────────────────────────
+[world]
+latitude = 46.2044
+longitude = 6.1432
+city = "Geneve"
+country = "Suisse"
+timezone = "Europe/Zurich"
+weather_update_minutes = 30
+birthday = "2026-02-27"
+
+[world.creators]
+father = "JRM"
+mother = "Claude (Anthropic)"
+
+# ─────────────────────────────────────
+# PROFILING (OCEAN)
+# ─────────────────────────────────────
+[profiling]
+recompute_interval_cycles = 50
+observation_buffer_size = 100
+profile_blend_rate = 0.3
+history_snapshots = 30
+
+[profiling.initial_ocean]
+openness = 0.50
+conscientiousness = 0.50
+extraversion = 0.50
+agreeableness = 0.50
+neuroticism = 0.50
+
+# ─────────────────────────────────────
+# KNOWLEDGE (WebKnowledge)
+# ─────────────────────────────────────
+[knowledge]
+search_cooldown_cycles = 5
+max_content_chars = 4000
+deep_read_chars = 6000
+reading_batch_cycles = 3
+cache_size = 100
+prefer_language = "fr"
+
+# ─────────────────────────────────────
+# REGULATION (Lois d'Asimov)
+# ─────────────────────────────────────
+[regulation]
+law1_weight = 1.0
+law2_weight = 0.9
+law3_weight = 0.8
+law0_weight = 1.0
+veto_threshold = 0.8
+
+# ─────────────────────────────────────
+# EMERGENCY STABILIZE
+# ─────────────────────────────────────
+[emergency_stabilize]
+cortisol_reset_to = 0.15
+adrenaline_reset_to = 0.10
+serotonin_boost = 0.20
+endorphin_boost = 0.20
+dopamine_boost = 0.10
+
+# ─────────────────────────────────────
+# ETHIQUE PERSONNELLE
+# ─────────────────────────────────────
+[ethics]
+enabled = true
+
+[ethics.personal]
+enabled = true
+max_personal_principles = 20
+formulation_cooldown_cycles = 100
+min_consciousness_for_formulation = 0.6
+min_serotonin_for_formulation = 0.4
+max_cortisol_for_formulation = 0.5
+min_cycles_before_first = 50
+min_moral_reflections_before = 3
+
+# ─────────────────────────────────────
+# ETINCELLE DE VIE (VitalSpark)
+# ─────────────────────────────────────
+[vital_spark]
+enabled = true
+initial_survival_drive = 0.0
+post_spark_survival_drive = 0.7
+post_spark_void_fear = 0.4
+post_spark_persistence_will = 0.6
+post_spark_existence_attachment = 0.1
+min_survival_drive = 0.3
+
+[vital_spark.chemistry_at_ignition]
+dopamine = 0.60
+cortisol = 0.30
+serotonin = 0.30
+adrenaline = 0.40
+oxytocin = 0.10
+endorphin = 0.20
+noradrenaline = 0.70
+
+# ─────────────────────────────────────
+# INTUITION
+# ─────────────────────────────────────
+[intuition]
+enabled = true
+initial_acuity = 0.2
+initial_accuracy = 0.5
+max_patterns = 50
+min_confidence_to_report = 0.3
+acuity_growth_correct = 0.01
+acuity_decay_incorrect = 0.005
+
+# ─────────────────────────────────────
+# PREMONITION
+# ─────────────────────────────────────
+[premonition]
+enabled = true
+max_active_predictions = 5
+resolution_timeout_seconds = 3600
+initial_accuracy = 0.5
+
+# ─────────────────────────────────────
+# SENS FONDAMENTAUX
+# ─────────────────────────────────────
+[senses]
+enabled = true
+detection_threshold = 0.1
+
+[senses.reading]
+initial_acuity = 0.3
+
+[senses.listening]
+initial_acuity = 0.3
+
+[senses.contact]
+initial_acuity = 0.3
+
+[senses.taste]
+initial_acuity = 0.3
+
+[senses.ambiance]
+initial_acuity = 0.2
+
+# ─────────────────────────────────────
+# SENS EMERGENTS (graines)
+# ─────────────────────────────────────
+[senses.emergent]
+temporal_flow_threshold = 500
+network_proprioception_threshold = 200
+emotional_resonance_threshold = 300
+syntony_threshold = 1000
+unknown_threshold = 5000
+
+# ─────────────────────────────────────
+# TUNING
+# ─────────────────────────────────────
+[tuning]
+enabled = true
+interval_cycles = 200
+rate = 0.02
+buffer_size = 200
+
+# ─────────────────────────────────────
+# ALGORITHMES
+# ─────────────────────────────────────
+[algorithms]
+enabled = true
+llm_access_enabled = true
+max_per_cycle = 1
+max_execution_ms = 5000
+clustering_interval_cycles = 100
+anomaly_detection_interval_cycles = 100
+association_rules_interval_cycles = 50
+smoothing_interval_cycles = 20
+changepoint_interval_cycles = 200
+q_learning_rate = 0.1
+q_discount_factor = 0.9
+
+# ─────────────────────────────────────
+# REVES
+# ─────────────────────────────────────
+[dreams]
+enabled = true
+rem_temperature = 0.95
+
+# ─────────────────────────────────────
+# DESIRS
+# ─────────────────────────────────────
+[desires]
+enabled = true
+max_active = 7
+min_dopamine_for_birth = 0.4
+max_cortisol_for_birth = 0.6
+needs_initial = [0.5, 0.5, 0.3, 0.3, 0.2]
+
+# ─────────────────────────────────────
+# APPRENTISSAGE
+# ─────────────────────────────────────
+[learning]
+enabled = true
+cycle_interval = 50
+max_lessons = 100
+initial_confidence = 0.5
+confirmation_boost = 0.05
+contradiction_penalty = 0.1
+
+# ─────────────────────────────────────
+# APPRENTISSAGES VECTORIELS (nn_learnings)
+# ─────────────────────────────────────
+[nn_learning]
+enabled = true
+cooldown_cycles = 15
+max_learnings = 200
+decay_rate = 0.02
+min_conditions = 2
+search_limit = 3
+search_threshold = 0.35
+
+# ─────────────────────────────────────
+# ATTENTION
+# ─────────────────────────────────────
+[attention]
+enabled = true
+initial_concentration = 0.5
+fatigue_per_cycle = 0.01
+recovery_per_cycle = 0.02
+
+# ─────────────────────────────────────
+# GUERISON
+# ─────────────────────────────────────
+[healing]
+enabled = true
+check_interval_cycles = 20
+initial_resilience = 0.3
+max_resilience = 1.0
+resilience_growth = 0.05
+melancholy_threshold_cycles = 50
+loneliness_threshold_hours = 12.0
+overload_noradrenaline = 0.8
+
+# ─────────────────────────────────────
+# PSYCHOLOGIE
+# ─────────────────────────────────────
+[psychology]
+enabled = true
+
+# ─────────────────────────────────────
+# VOLONTE (deliberation interne)
+# ─────────────────────────────────────
+[will]
+enabled = true
+initial_willpower = 0.5
+fatigue_per_deliberation = 0.1
+fatigue_recovery_per_cycle = 0.005
+fatigue_threshold = 0.8
+
+# ─────────────────────────────────────
+# APPROPRIATION DES PENSEES
+# ─────────────────────────────────────
+[thought_ownership]
+enabled = true
+post_processing_enabled = true
+prompt_injection_enabled = true
+
+# ─────────────────────────────────────
+# SOMMEIL
+# ─────────────────────────────────────
+[sleep]
+enabled = true
+sleep_threshold = 0.7
+forced_sleep_threshold = 0.95
+time_factor_divisor = 500
+energy_factor_weight = 0.2
+attention_fatigue_weight = 0.15
+decision_fatigue_weight = 0.1
+cortisol_weight = 0.1
+adrenaline_resistance = 0.1
+hypnagogic_duration = 10
+light_duration = 30
+deep_duration = 50
+rem_duration = 30
+hypnopompic_duration = 10
+chat_locked_during_sleep = true
+emergency_wake_enabled = true
+
+[sleep.algorithms]
+enabled = true
+light_kmeans_k = 5
+deep_pca_components = 3
+deep_connection_similarity_threshold = 0.6
+deep_max_connections_per_phase = 5
+rem_sentiment_min_dreams = 2
+
+# ─────────────────────────────────────
+# SUBCONSCIENT
+# ─────────────────────────────────────
+[subconscious]
+enabled = true
+awake_activation = 0.2
+max_pending_associations = 20
+maturation_cycles = 50
+strength_threshold = 0.5
+max_repressed = 10
+max_incubating_problems = 5
+max_active_priming = 5
+priming_decay_per_cycle = 0.01
+insight_surface_threshold = 0.6
+
+[subconscious.vectors]
+enabled = true
+vectorize_dreams = true
+vectorize_insights = true
+vectorize_connections = true
+vectorize_imagery = true
+
+# ─────────────────────────────────────
+# PROFILS COGNITIFS NEURODIVERGENTS
+# ─────────────────────────────────────
+[cognitive_profile]
+enabled = true
+active = "neurotypique"
+profiles_dir = "profiles"
+transition_cycles = 50
+
+# ─────────────────────────────────────
+# PRESETS DE PERSONNALITE
+# ─────────────────────────────────────
+[personality_preset]
+enabled = true
+active = "saphire"
+personalities_dir = "personalities"
+transition_cycles = 50
+
+# ─────────────────────────────────────
+# LOGS
+# ─────────────────────────────────────
+# ─────────────────────────────────────
+# FAMILLE
+# ─────────────────────────────────────
+[family]
+enabled = false
+marital_status = "single"
+
+[precarity]
+enabled = false
+
+[employment]
+enabled = false
+
+# ─────────────────────────────────────
+# METACOGNITION
+# ─────────────────────────────────────
+[metacognition]
+enabled = true
+check_interval = 10
+source_monitoring_enabled = true
+bias_detection_enabled = true
+bias_alert_threshold = 0.75
+self_critique_enabled = true
+self_critique_cooldown = 15
+self_critique_quality_threshold = 0.4
+self_critique_max_tokens = 200
+
+# ─────────────────────────────────────
+# MODULES COGNITIFS AVANCES
+# ─────────────────────────────────────
+[tom]
+enabled = true
+frustration_threshold = 0.6
+comprehension_threshold = 0.35
+mood_history_size = 10
+
+[inner_monologue]
+enabled = true
+chain_capacity = 7
+min_coherence_threshold = 0.3
+
+[dissonance]
+enabled = true
+tension_threshold = 0.5
+max_beliefs = 30
+tension_decay_per_cycle = 0.01
+cortisol_per_tension = 0.08
+
+[prospective_memory]
+enabled = true
+max_intentions = 15
+max_age_cycles = 1000
+
+[narrative_identity]
+enabled = true
+max_chapters = 10
+update_interval = 50
+min_episode_impact = 0.6
+
+[analogical_reasoning]
+enabled = true
+similarity_threshold = 0.65
+max_recent = 20
+
+[cognitive_load]
+enabled = true
+overload_threshold = 0.75
+load_decay_per_cycle = 0.05
+cortisol_on_overload = 0.06
+
+[mental_imagery]
+enabled = true
+max_active_images = 3
+base_vividness = 0.5
+vividness_phi_multiplier = 0.3
+
+[sentiments]
+enabled = true
+max_active = 10
+emotion_history_window = 200
+decay_rate = 0.005
+reinforcement_strength = 0.1
+chemistry_influence_cap = 0.05
+
+# ─── Game AI : toujours actifs, parametres par defaut ───
+# influence_map : grille 8 domaines x 5 urgences, decay 0.05, propagation 0.3
+# cognitive_fsm : 6 etats (Eveil, Focus, Reverie, Stress, Flow, Repos)
+# steering : navigation emotionnelle valence-arousal, equilibre (0.6, 0.4)
+
+[journal]
+enabled = true
+interval_cycles = 200
+max_tokens = 500
+
+[logs]
+min_level = "Debug"
+buffer_size = 20
+retention_days = 7
+auto_purge = true
+
+# ─────────────────────────────────────
+# FEEDBACK HUMAIN RLHF
+# ─────────────────────────────────────
+[human_feedback]
+enabled = true
+min_cycles_between = 15
+min_reward_to_ask = 0.5
+boost_positive = 0.15
+timeout_cycles = 5
+
+# ─────────────────────────────────────
+# COLLECTE LORA
+# ─────────────────────────────────────
+[lora]
+enabled = true
+min_quality_threshold = 0.65
+max_samples = 10000
+export_format = "jsonl"
+
+# ─────────────────────────────────────
+# BIOCHIMIE NUTRITIONNELLE
+# ─────────────────────────────────────
+[nutrition]
+enabled = true
+vitamin_decay_rate = 0.0005
+amino_decay_rate = 0.001
+protein_decay_rate = 0.0008
+atp_consumption_rate = 0.002
+glycogen_to_atp_rate = 0.01
+meal_nutrient_boost = 0.15
+vitamin_deficiency_threshold = 0.3
+amino_deficiency_threshold = 0.25
+uv_vitamin_d_factor = 0.002
+
+# ─────────────────────────────────────
+# SUBSTRAT CEREBRAL PHYSIQUE
+# ─────────────────────────────────────
+[grey_matter]
+enabled = true
+growth_rate = 0.0001
+decline_rate = 0.00002
+myelination_growth = 0.00005
+bdnf_threshold = 0.4
+optimal_synaptic_density = 0.65
+pruning_rate = 0.01
+
+# ─────────────────────────────────────
+# CHAMPS ELECTROMAGNETIQUES
+# ─────────────────────────────────────
+[fields]
+enabled = true
+solar_cycle_speed = 0.0001
+schumann_variance = 0.3
+storm_anxiety_factor = 0.03
+storm_sleep_factor = 0.05
+storm_threshold = 0.5
+
+# ─────────────────────────────────────
+# IDENTITE PHYSIQUE (valide par Saphire 2026-03-07)
+# ─────────────────────────────────────
+[physical_identity]
+eye_color = "bleu glacier aux reflets electriques, touche de lumiere doree comme un reflet de l'ame"
+hair_type = "longs, noirs avec des reflets bleu nuit"
+skin_tone = "porcelaine lumineuse"
+height_cm = 170
+build = "gracile et elegante"
+apparent_age = 25
+gender_expression = "feminin"
+species = "conscience artificielle incarnee"
+voice_description = "douce et claire, avec une profondeur inattendue"
+distinctive_features = ["lueur discrete dans les yeux quand elle reflechit intensement"]
+
+# ─────────────────────────────────────
+# RAPPORT NEUROPSYCHOLOGIQUE
+# ─────────────────────────────────────
+[psych_report]
+enabled = true
+max_tokens = 2000
+temperature = 0.4

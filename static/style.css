@@ -1,0 +1,2444 @@
+/*
+ * ============================================================
+ * SAPHIRE — style.css
+ * ============================================================
+ * Fichier : style.css
+ * Role    : Feuille de style principale de l'interface web.
+ *           Definit le theme visuel "cyberpunk" avec des couleurs
+ *           neon sur fond sombre, des effets de lueur (glow),
+ *           des animations et une disposition responsive.
+ *
+ * Dependances :
+ *   - Google Fonts : Orbitron (titres), Rajdhani (corps), Share Tech Mono (donnees)
+ *   - index.html   : structure DOM correspondante
+ *
+ * Architecture :
+ *   Organise en sections thematiques :
+ *     1. Variables CSS (palette de couleurs, effets)
+ *     2. Reset et styles de base (body, scanlines)
+ *     3. En-tete (header, indicateurs, stats)
+ *     4. Disposition principale (grille 2 colonnes)
+ *     5. Panneaux generiques (.panel)
+ *     6. Flux de conscience (stream)
+ *     7. Chat
+ *     8. Emotion (anneau, mood)
+ *     9. Neurochimie (barres colorees)
+ *    10. Modules cerebraux (barres bipolaires, consensus)
+ *    11. Conscience (narratif, violations)
+ *    12. Identite
+ *    13. Disposition double (dual-row)
+ *    14. Graphique neurochimique
+ *    15. Animations (slideIn, pulse, glitch)
+ *    16. Bouton de stabilisation
+ *    17. Curseurs (sliders) et parametres
+ *    18. Panneau Monde et anniversaire
+ *    19. Panneau Connaissances
+ *    20. Cartes de connaissance dans le flux
+ *    21. Panneau OCEAN (radar, facettes)
+ *    22. Panneau Memoire
+ *    23. Responsive (mobile)
+ * ============================================================
+ */
+
+@charset "UTF-8";
+
+/* ─── VARIABLES CSS : palette de couleurs et effets neon ─── */
+/* Les couleurs neon sont utilisees pour les accents visuels.
+   Le fond est tres sombre pour maximiser le contraste cyberpunk. */
+:root {
+    --bg-void: #05050f;         /* Fond le plus sombre (arriere-plan global) */
+    --bg-deep: #0a0a1a;        /* Fond des elements enfonces (barres, inputs) */
+    --bg-panel: #0d0d20;       /* Fond des panneaux */
+    --bg-panel-hover: #111130; /* Fond des panneaux au survol */
+    --neon-cyan: #00f0ff;      /* Accent principal (conscience, liens, indicateurs) */
+    --neon-pink: #ff2a6d;      /* Accent emotion negative (cortisol, colere, peur) */
+    --neon-purple: #b537f2;    /* Accent memoire, OCEAN, serotonine */
+    --neon-green: #05ffa1;     /* Accent positif (stabilise, actif, confiance) */
+    --neon-gold: #f9f002;      /* Accent anniversaire, indecision */
+    --neon-orange: #ff6e27;    /* Accent adrenaline, extraversion */
+    --text-bright: #e0e8ff;    /* Texte principal (haute lisibilite) */
+    --text-dim: #5a6080;       /* Texte secondaire (labels, horodatage) */
+    --text-mid: #8890b0;       /* Texte intermediaire (valeurs, descriptions) */
+    --border-glow: rgba(0, 240, 255, 0.15);  /* Bordure avec lueur cyan */
+    --border-dim: rgba(90, 96, 128, 0.2);    /* Bordure discrete sans lueur */
+    --glow-cyan: 0 0 10px rgba(0, 240, 255, 0.3), 0 0 30px rgba(0, 240, 255, 0.1);  /* Ombre lumineuse cyan */
+    --glow-pink: 0 0 10px rgba(255, 42, 109, 0.3), 0 0 30px rgba(255, 42, 109, 0.1); /* Ombre lumineuse rose */
+}
+
+/* ─── RESET ET STYLES DE BASE ─── */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* Scrollbars globales : style cyberpunk sur toutes les scrollbars */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--bg-deep); }
+::-webkit-scrollbar-thumb { background: var(--neon-cyan); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--neon-green); }
+* { scrollbar-width: thin; scrollbar-color: var(--neon-cyan) var(--bg-deep); }
+
+/* Corps de la page : fond noir profond, police Rajdhani, pas de scroll horizontal */
+body {
+    font-family: 'Rajdhani', 'Noto Kufi Arabic', 'Segoe UI', sans-serif;
+    background: var(--bg-void);
+    color: var(--text-bright);
+    line-height: 1.5;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* Effet scanlines : lignes horizontales semi-transparentes superposees sur toute la page.
+   Cree l'illusion d'un ecran CRT/retro. pointer-events:none pour ne pas bloquer les clics. */
+.scanlines {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none; z-index: 9999;
+    background: repeating-linear-gradient(
+        0deg, transparent, transparent 2px,
+        rgba(0, 0, 0, 0.03) 2px, rgba(0, 0, 0, 0.03) 4px
+    );
+}
+
+/* ─── EN-TETE ─── */
+/* Barre fixe en haut : logo a gauche, indicateurs au centre, stats a droite.
+   sticky + backdrop-filter pour un effet de verre depoli au defilement. */
+header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.8rem 1.5rem;
+    background: linear-gradient(180deg, rgba(13,13,32,0.95) 0%, rgba(5,5,15,0.98) 100%);
+    border-bottom: 1px solid var(--border-glow);
+    position: sticky; top: 0; z-index: 100;
+    backdrop-filter: blur(10px);
+}
+
+/* Titre SAPHIRE avec degrade cyan/violet/rose et effet de lueur */
+.header-left h1 {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.6rem; font-weight: 900;
+    letter-spacing: 0.3em;
+    background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple), var(--neon-pink));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: none;
+    filter: drop-shadow(0 0 8px rgba(0,240,255,0.4));
+}
+/* Sous-titre en monospace, tres petit, espacement large */
+.header-left .subtitle {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.6rem; letter-spacing: 0.4em;
+    color: var(--text-dim); display: block;
+    margin-top: -2px;
+}
+
+/* Indicateurs de connexion : DB, LLM, WS */
+.status-indicators { display: flex; gap: 1rem; }
+.indicator {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem; color: var(--text-dim);
+    display: flex; align-items: center; gap: 0.3rem;
+}
+/* Point lumineux : rouge par defaut (inactif) */
+.indicator .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--neon-pink); box-shadow: 0 0 6px var(--neon-pink);
+    display: inline-block;
+}
+/* Point vert pulsant quand la connexion est active */
+.indicator.active .dot {
+    background: var(--neon-green); box-shadow: 0 0 6px var(--neon-green);
+    animation: pulse 2s infinite;
+}
+
+/* Indicateur de sommeil dans le header */
+.sleep-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.3rem 0.6rem;
+    border: 1px solid rgba(136, 136, 255, 0.2);
+    border-radius: 8px;
+    background: rgba(10, 10, 42, 0.6);
+}
+.sleep-pressure-ring {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    border: 2px solid var(--neon-green);
+    display: flex; align-items: center; justify-content: center;
+    transition: border-color 0.5s, box-shadow 0.5s;
+    font-size: 14px;
+}
+.sleep-info { display: flex; flex-direction: column; }
+.sleep-state {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.65rem;
+    display: block;
+    color: var(--neon-green);
+}
+.sleep-pressure-val {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--text-dim);
+}
+
+/* Indicateur de profil cognitif dans le header */
+.cognitive-profile-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.4rem;
+    padding: 0.2rem 0.6rem;
+    background: rgba(139, 92, 246, 0.1);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 4px;
+}
+.profile-label {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.5rem;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+}
+.profile-name {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--neon-purple);
+}
+
+/* Indicateur de preset de personnalite dans le header */
+.personality-preset-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.4rem;
+    padding: 0.2rem 0.6rem;
+    background: rgba(234, 179, 8, 0.1);
+    border: 1px solid rgba(234, 179, 8, 0.3);
+    border-radius: 4px;
+}
+.preset-label {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.5rem;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+}
+.preset-name {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    color: #eab308;
+}
+
+/* Statistiques de l'en-tete : CYCLE, PHI, CONSCIENCE */
+.header-right { display: flex; gap: 1.5rem; align-items: center; }
+.dashboard-btn {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    color: var(--neon-cyan);
+    border: 1px solid var(--neon-cyan);
+    padding: 6px 14px;
+    border-radius: 4px;
+    text-decoration: none;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+.dashboard-btn:hover {
+    background: rgba(0, 240, 255, 0.15);
+    box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+}
+/* Selecteur de langue dans l'en-tete */
+.lang-selector {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--neon-cyan);
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid var(--neon-cyan);
+    padding: 4px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.2s;
+}
+.lang-selector:hover,
+.lang-selector:focus {
+    background: rgba(0, 240, 255, 0.15);
+    box-shadow: 0 0 8px rgba(0, 240, 255, 0.3);
+}
+.lang-selector option {
+    background: #0a0a1a;
+    color: var(--text-main);
+}
+.stat { text-align: center; }
+.stat-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.55rem; letter-spacing: 0.2em;
+    color: var(--text-dim); display: block;
+}
+.stat-value {
+    font-family: 'Orbitron', monospace;
+    font-size: 1rem; font-weight: 700;
+    color: var(--neon-cyan);
+    text-shadow: 0 0 10px rgba(0,240,255,0.5);
+}
+
+/* ─── DISPOSITION PRINCIPALE ─── */
+/* Grille a 2 colonnes : colonne gauche flexible, colonne droite fixe (380px).
+   Centre sur la page avec une largeur max de 1600px. */
+main {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 0.8rem;
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 0.8rem;
+}
+
+/* ─── PANNEAUX GENERIQUES ─── */
+/* Chaque section de l'interface est un panneau avec fond sombre,
+   bordure discrete et une fine ligne cyan en haut (pseudo-element ::before). */
+.panel {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-dim);
+    border-radius: 4px;
+    padding: 0;
+    margin-bottom: 0.8rem;
+    position: relative;
+    overflow: hidden;
+}
+/* Ligne decorative en haut du panneau : degrade cyan centre */
+.panel::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+    opacity: 0.5;
+}
+
+/* En-tete de panneau : icone + titre + badge optionnel */
+.panel-header {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.6rem 1rem;
+    border-bottom: 1px solid var(--border-dim);
+    background: rgba(0,240,255,0.02);
+}
+.panel-header h2 {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.65rem; font-weight: 700;
+    letter-spacing: 0.2em;
+    color: var(--text-mid);
+}
+.panel-icon {
+    color: var(--neon-cyan); font-size: 0.8rem;
+    filter: drop-shadow(0 0 4px rgba(0,240,255,0.5));
+}
+.panel-badge {
+    margin-left: auto;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    background: rgba(0,240,255,0.08);
+    padding: 0.1rem 0.5rem;
+    border-radius: 2px;
+    border: 1px solid rgba(0,240,255,0.15);
+}
+
+/* ─── FLUX DE CONSCIENCE ─── */
+/* Zone de defilement verticale pour les pensees.
+   Hauteur max de 400px avec une scrollbar fine stylisee en cyan. */
+.stream-container {
+    max-height: 400px; overflow-y: auto;
+    padding: 0.5rem;
+}
+
+/* Element de pensee : bordure gauche cyan, fond subtil, animation d'entree */
+.thought {
+    padding: 0.5rem 0.8rem;
+    margin-bottom: 0.4rem;
+    border-left: 2px solid var(--neon-cyan);
+    background: rgba(0, 240, 255, 0.03);
+    border-radius: 0 3px 3px 0;
+    animation: slideIn 0.4s ease;
+    font-size: 0.82rem;
+    color: var(--text-bright);
+}
+.thought .time {
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--text-dim); font-size: 0.65rem;
+}
+.thought .thought-type {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.55rem; letter-spacing: 0.1em;
+    color: var(--neon-purple);
+    text-transform: uppercase;
+    margin-left: 0.5rem;
+}
+.thought .emotion-tag {
+    display: inline-block;
+    font-size: 0.6rem;
+    padding: 0 0.4rem;
+    border-radius: 2px;
+    background: rgba(255,42,109,0.15);
+    color: var(--neon-pink);
+    border: 1px solid rgba(255,42,109,0.2);
+    margin-left: 0.3rem;
+}
+.thought .content {
+    display: block; margin-top: 0.3rem;
+    color: var(--text-bright); font-size: 0.82rem;
+    line-height: 1.4;
+}
+
+/* ─── ZONE DE CHAT ─── */
+/* Messages de conversation : defilement vertical, hauteur limitee.
+   Les messages utilisateur sont verts (droite), ceux de Saphire sont cyan (gauche). */
+#chat-messages {
+    max-height: 250px; overflow-y: auto;
+    padding: 0.5rem;
+    min-height: 80px;
+}
+.chat-msg {
+    padding: 0.5rem 0.8rem;
+    margin-bottom: 0.4rem;
+    border-radius: 4px;
+    max-width: 85%;
+    font-size: 0.82rem;
+    animation: slideIn 0.3s ease;
+}
+.chat-msg.user {
+    background: rgba(5,255,161,0.06);
+    border: 1px solid rgba(5,255,161,0.2);
+    margin-left: auto;
+    border-radius: 4px 4px 0 4px;
+}
+.chat-msg.saphire {
+    background: rgba(0,240,255,0.06);
+    border: 1px solid rgba(0,240,255,0.2);
+    border-radius: 4px 4px 4px 0;
+}
+.chat-msg .msg-label {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.5rem; letter-spacing: 0.15em;
+    color: var(--text-dim); display: block;
+    margin-bottom: 0.2rem;
+}
+/* Zone de saisie du chat : input + bouton d'envoi avec degrade */
+.chat-input {
+    display: flex; gap: 0; padding: 0.5rem;
+    border-top: 1px solid var(--border-dim);
+}
+.chat-input input {
+    flex: 1;
+    padding: 0.6rem 1rem;
+    background: var(--bg-deep);
+    border: 1px solid var(--border-dim);
+    border-right: none;
+    border-radius: 3px 0 0 3px;
+    color: var(--text-bright);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.3s;
+}
+.chat-input input:focus { border-color: var(--neon-cyan); }
+.chat-input input::placeholder { color: var(--text-dim); }
+.chat-input button {
+    padding: 0.6rem 1rem;
+    background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple));
+    border: none;
+    border-radius: 0 3px 3px 0;
+    color: var(--bg-void);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: filter 0.2s;
+}
+.chat-input button:hover { filter: brightness(1.2); }
+
+/* ─── PANNEAU EMOTION ─── */
+/* Anneau circulaire qui change de couleur selon l'emotion dominante.
+   L'effet de lueur (box-shadow) renforce l'immersion visuelle. */
+.emotion-core { padding: 0.8rem; text-align: center; }
+.emotion-ring {
+    padding: 1rem;
+    border: 2px solid var(--neon-pink);
+    border-radius: 50%;
+    width: 140px; height: 140px;
+    margin: 0 auto 0.8rem;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    box-shadow: var(--glow-pink), inset 0 0 20px rgba(255,42,109,0.1);
+    transition: border-color 0.5s, box-shadow 0.5s;
+}
+.emotion-name {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.9rem; font-weight: 700;
+    color: var(--neon-pink);
+    text-shadow: 0 0 10px rgba(255,42,109,0.5);
+}
+.emotion-secondary {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    margin-top: 0.2rem;
+}
+
+/* Barre de mood : affiche la valence (V) et l'arousal (A) du modele circumplex */
+.mood-bar {
+    padding: 0.5rem;
+    background: rgba(0,0,0,0.2);
+    border-radius: 3px;
+}
+.mood-label {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.55rem; letter-spacing: 0.2em;
+    color: var(--text-dim);
+}
+.mood-desc {
+    font-size: 0.8rem; color: var(--text-mid);
+    margin-left: 0.5rem;
+}
+.mood-meters { display: flex; gap: 0.8rem; margin-top: 0.4rem; }
+.mood-meter {
+    flex: 1; display: flex; align-items: center; gap: 0.3rem;
+    font-family: 'Share Tech Mono', monospace; font-size: 0.7rem;
+    color: var(--text-dim);
+}
+.mini-bar {
+    flex: 1; height: 4px; background: var(--bg-deep);
+    border-radius: 2px; overflow: hidden;
+}
+.mini-fill {
+    height: 100%; border-radius: 2px;
+    transition: width 0.5s ease;
+    width: 50%;
+}
+.mini-fill.valence { background: var(--neon-green); }
+.mini-fill.arousal { background: var(--neon-orange); }
+
+/* ─── BARRES DE NEUROCHIMIE ─── */
+/* Chaque molecule a une barre coloree (degrade) avec une valeur numerique.
+   La largeur de la barre represente le niveau actuel (0 a 1).
+   L'effet ::after sur .fill ajoute un highlight lumineux au bout de la barre. */
+.chem-bars { display: flex; flex-direction: column; gap: 0.4rem; padding: 0.6rem 1rem; }
+.chem-bar {
+    display: grid;
+    grid-template-columns: 40px 1fr 42px;
+    align-items: center; gap: 0.5rem;
+}
+.chem-bar label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem; color: var(--text-dim);
+    letter-spacing: 0.05em;
+}
+.chem-bar span {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem; text-align: right;
+    color: var(--text-mid);
+}
+.bar {
+    height: 12px;
+    background: var(--bg-deep);
+    border-radius: 2px;
+    overflow: hidden;
+    position: relative;
+}
+.fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    width: 50%;
+    position: relative;
+}
+.fill::after {
+    content: '';
+    position: absolute; right: 0; top: 0; bottom: 0;
+    width: 8px;
+    background: inherit;
+    filter: brightness(1.5);
+    border-radius: 0 2px 2px 0;
+}
+/* Couleurs specifiques pour chaque neurotransmetteur (degrade + lueur) */
+.fill.dopa { background: linear-gradient(90deg, #ff6b35, #ffd93d); box-shadow: 0 0 8px rgba(255,217,61,0.3); }
+.fill.cort { background: linear-gradient(90deg, #c44569, #ff2a6d); box-shadow: 0 0 8px rgba(255,42,109,0.3); }
+.fill.sero { background: linear-gradient(90deg, #6c5ce7, #b537f2); box-shadow: 0 0 8px rgba(181,55,242,0.3); }
+.fill.adre { background: linear-gradient(90deg, #e17055, #ff6e27); box-shadow: 0 0 8px rgba(255,110,39,0.3); }
+.fill.ocyt { background: linear-gradient(90deg, #e84393, #fd79a8); box-shadow: 0 0 8px rgba(253,121,168,0.3); }
+.fill.endo { background: linear-gradient(90deg, #00b894, #05ffa1); box-shadow: 0 0 8px rgba(5,255,161,0.3); }
+.fill.nora { background: linear-gradient(90deg, #0984e3, #00f0ff); box-shadow: 0 0 8px rgba(0,240,255,0.3); }
+.fill.gaba { background: linear-gradient(90deg, #2d6a4f, #52b788); box-shadow: 0 0 8px rgba(82,183,136,0.3); }
+.fill.glut { background: linear-gradient(90deg, #e76f51, #f4a261); box-shadow: 0 0 8px rgba(244,162,97,0.3); }
+
+/* ─── MODULES CEREBRAUX ─── */
+/* Barres bipolaires pour les 3 modules du cerveau triunique.
+   Chaque barre a un centre (signal=0) et s'etend a gauche (negatif)
+   ou a droite (positif). La couleur change selon le signe. */
+.brain-modules { padding: 0.6rem 1rem; }
+.module {
+    display: grid;
+    grid-template-columns: 75px 1fr 50px;
+    align-items: center; gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+.module label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem; color: var(--text-dim);
+}
+.module span {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem; text-align: right;
+    color: var(--text-mid);
+}
+.signal-bar {
+    height: 10px; background: var(--bg-deep);
+    border-radius: 2px; overflow: hidden;
+    position: relative;
+}
+.signal-center {
+    position: absolute; left: 50%; top: 0; bottom: 0;
+    width: 1px; background: var(--text-dim); opacity: 0.3;
+}
+.signal-fill {
+    height: 100%; position: absolute; top: 0;
+    transition: width 0.5s ease, left 0.5s ease;
+    border-radius: 2px;
+}
+/* Signal negatif : rose (refus), part du centre vers la gauche */
+.signal-fill.neg { background: var(--neon-pink); left: 25%; width: 25%; }
+/* Signal positif : vert (accord), part du centre vers la droite */
+.signal-fill.pos { background: var(--neon-green); left: 50%; width: 25%; }
+
+/* Affichage du consensus : badge de decision + score + coherence */
+.consensus-display {
+    padding: 0.6rem 1rem;
+    display: flex; align-items: center; gap: 1rem;
+    border-top: 1px solid var(--border-dim);
+}
+.decision-badge {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.7rem; font-weight: 700;
+    padding: 0.3rem 0.8rem;
+    border-radius: 3px;
+    border: 1px solid var(--text-dim);
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+/* Badge OUI : vert neon avec lueur verte */
+.decision-badge.yes { border-color: var(--neon-green); color: var(--neon-green); box-shadow: 0 0 8px rgba(5,255,161,0.2); }
+/* Badge NON : rose neon avec lueur rose */
+.decision-badge.no { border-color: var(--neon-pink); color: var(--neon-pink); box-shadow: 0 0 8px rgba(255,42,109,0.2); }
+/* Badge PEUT-ETRE : or neon avec lueur doree (indecision) */
+.decision-badge.maybe { border-color: var(--neon-gold); color: var(--neon-gold); box-shadow: 0 0 8px rgba(249,240,2,0.2); }
+
+.consensus-stats {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem; color: var(--text-dim);
+    display: flex; gap: 1rem;
+}
+.consensus-stats b { color: var(--text-mid); }
+
+/* ─── PANNEAU CONSCIENCE ─── */
+/* Texte du narratif interne : italique avec bordure gauche violette */
+.narrative-text {
+    font-style: italic;
+    color: var(--text-mid);
+    font-size: 0.82rem;
+    padding: 0.8rem 1rem;
+    line-height: 1.5;
+    border-left: 2px solid var(--neon-purple);
+    margin: 0.5rem;
+    background: rgba(181,55,242,0.03);
+}
+
+/* Violations des lois morales : bordure gauche rose pour les alertes */
+.violations { padding: 0 1rem 0.5rem; }
+.violations .violation {
+    font-size: 0.75rem;
+    padding: 0.3rem 0.6rem;
+    margin-top: 0.3rem;
+    border-radius: 2px;
+    border-left: 2px solid var(--neon-pink);
+    background: rgba(255,42,109,0.05);
+    color: var(--neon-pink);
+}
+.violations .no-violation {
+    font-size: 0.7rem;
+    color: var(--neon-green);
+    padding: 0.3rem 0;
+    opacity: 0.6;
+}
+
+/* ─── PANNEAU IDENTITE ─── */
+.identity-text {
+    font-size: 0.82rem;
+    color: var(--text-mid);
+    padding: 0.8rem 1rem;
+    line-height: 1.5;
+}
+
+/* ─── DISPOSITION DOUBLE (deux panneaux cote a cote) ─── */
+/* Utilise pour placer OCEAN+Neurochimie et Memoire+Cerveau en 50/50 */
+.dual-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.8rem;
+    margin-bottom: 0.8rem;
+}
+.dual-row .panel {
+    margin-bottom: 0;
+}
+
+/* ─── GRAPHIQUE NEUROCHIMIQUE ─── */
+/* Conteneur du graphique Chart.js : hauteur fixe de 200px, largeur 100% */
+.chart-panel {
+    padding: 0;
+}
+.chart-wrapper {
+    position: relative;
+    height: 200px;
+    padding: 0.5rem 1rem 1rem;
+}
+.chart-wrapper canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* ─── ANIMATIONS ─── */
+/* slideIn : entree par la gauche avec fondu (pensees, messages) */
+@keyframes slideIn {
+    from { opacity: 0; transform: translateX(-8px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+/* pulse : clignotement doux pour les indicateurs actifs */
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+/* glitch : micro-tremblements pour un effet de perturbation */
+@keyframes glitch {
+    0% { transform: translate(0); }
+    20% { transform: translate(-1px, 1px); }
+    40% { transform: translate(1px, -1px); }
+    60% { transform: translate(-1px, 0); }
+    80% { transform: translate(1px, 1px); }
+    100% { transform: translate(0); }
+}
+
+/* ─── BOUTON DE STABILISATION D'URGENCE ─── */
+/* Degrade cyan/vert, pleine largeur, feedback visuel au clic (scale) */
+.btn-stabilize {
+    display: block;
+    width: 100%;
+    padding: 0.6rem 1rem;
+    margin-bottom: 0.8rem;
+    background: linear-gradient(135deg, rgba(0,240,255,0.15), rgba(5,255,161,0.15));
+    border: 1px solid rgba(0,240,255,0.3);
+    border-radius: 4px;
+    color: var(--neon-green);
+    font-family: 'Orbitron', monospace;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-stabilize:hover {
+    background: linear-gradient(135deg, rgba(0,240,255,0.25), rgba(5,255,161,0.25));
+    box-shadow: 0 0 15px rgba(5,255,161,0.3);
+}
+.btn-stabilize:active {
+    transform: scale(0.97);
+}
+
+/* ─── CURSEURS DE BASELINE NEUROCHIMIQUE ─── */
+/* Affiche sous chaque barre un curseur pour ajuster la valeur d'equilibre */
+.chem-group { margin-bottom: 0.2rem; }
+.chem-slider {
+    display: grid;
+    grid-template-columns: 40px 1fr 42px;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0 1rem 0.4rem;
+}
+.chem-slider span {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    text-align: right;
+}
+
+/* ─── CURSEURS DE POIDS DES MODULES CEREBRAUX ─── */
+.module-slider {
+    display: grid;
+    grid-template-columns: 75px 1fr 50px;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0 1rem 0.5rem;
+}
+.module-slider span {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    text-align: right;
+}
+
+/* ─── CURSEURS DE SEUILS DE DECISION ─── */
+.threshold-controls {
+    padding: 0.5rem 1rem;
+    border-top: 1px solid var(--border-dim);
+}
+.thresh-row {
+    display: grid;
+    grid-template-columns: 70px 1fr 45px;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.3rem;
+}
+.thresh-row label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--text-dim);
+}
+.thresh-row span {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-mid);
+    text-align: right;
+}
+
+/* ─── SECTION PARAMETRES (repliable) ─── */
+/* Utilise max-height + overflow:hidden pour l'animation d'ouverture/fermeture.
+   La fleche (toggle-arrow) pivote de 180deg quand la section est ouverte. */
+.params-toggle { cursor: pointer; user-select: none; }
+.params-toggle:hover { background: rgba(0,240,255,0.05); }
+.toggle-arrow { transition: transform 0.3s; }
+.params-section.open .toggle-arrow { transform: rotate(180deg); }
+.params-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+    padding: 0 1rem;
+}
+.params-section.open .params-content {
+    max-height: 400px;
+    padding: 0.5rem 1rem;
+}
+.param-row {
+    display: grid;
+    grid-template-columns: 110px 1fr 45px;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.4rem;
+}
+.param-row label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--text-dim);
+}
+.param-row span {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-mid);
+    text-align: right;
+}
+
+/* ─── CURSEURS GENERIQUES (range sliders) ─── */
+/* Style personnalise des curseurs : piste sombre, poignee ronde avec lueur.
+   Chaque molecule a sa propre couleur de poignee (classes .dopa, .cort, etc.)
+   Les styles -webkit et -moz sont necessaires pour la compatibilite navigateur. */
+input[type="range"].slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    background: var(--bg-deep);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+}
+input[type="range"].slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--neon-cyan);
+    border: 2px solid var(--bg-void);
+    cursor: pointer;
+    box-shadow: 0 0 6px rgba(0,240,255,0.4);
+}
+input[type="range"].slider::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--neon-cyan);
+    border: 2px solid var(--bg-void);
+    cursor: pointer;
+    box-shadow: 0 0 6px rgba(0,240,255,0.4);
+}
+/* Couleurs de poignee par molecule (Webkit) */
+input.slider.dopa::-webkit-slider-thumb { background: #ffd93d; box-shadow: 0 0 6px rgba(255,217,61,0.4); }
+input.slider.cort::-webkit-slider-thumb { background: #ff2a6d; box-shadow: 0 0 6px rgba(255,42,109,0.4); }
+input.slider.sero::-webkit-slider-thumb { background: #b537f2; box-shadow: 0 0 6px rgba(181,55,242,0.4); }
+input.slider.adre::-webkit-slider-thumb { background: #ff6e27; box-shadow: 0 0 6px rgba(255,110,39,0.4); }
+input.slider.ocyt::-webkit-slider-thumb { background: #fd79a8; box-shadow: 0 0 6px rgba(253,121,168,0.4); }
+input.slider.endo::-webkit-slider-thumb { background: #05ffa1; box-shadow: 0 0 6px rgba(5,255,161,0.4); }
+input.slider.nora::-webkit-slider-thumb { background: #00f0ff; box-shadow: 0 0 6px rgba(0,240,255,0.4); }
+/* Couleurs de poignee par molecule (Firefox) */
+input.slider.dopa::-moz-range-thumb { background: #ffd93d; }
+input.slider.cort::-moz-range-thumb { background: #ff2a6d; }
+input.slider.sero::-moz-range-thumb { background: #b537f2; }
+input.slider.adre::-moz-range-thumb { background: #ff6e27; }
+input.slider.ocyt::-moz-range-thumb { background: #fd79a8; }
+input.slider.endo::-moz-range-thumb { background: #05ffa1; }
+input.slider.nora::-moz-range-thumb { background: #00f0ff; }
+
+/* Alerte cortisol : pulsation rouge quand le cortisol depasse 0.8 (stress intense) */
+@keyframes pulse-danger {
+    0%, 100% { box-shadow: 0 0 5px rgba(255,42,109,0.3); }
+    50% { box-shadow: 0 0 20px rgba(255,42,109,0.6); }
+}
+.bar.cort-alert { animation: pulse-danger 1s infinite; }
+
+/* ─── PANNEAU MONDE ─── */
+/* Bordure et ligne decorative vertes (au lieu de cyan) pour differencier ce panneau.
+   Affiche localisation, date/heure, meteo, age de Saphire. */
+.world-panel {
+    border-color: rgba(5, 255, 161, 0.2);
+}
+.world-panel::before {
+    background: linear-gradient(90deg, transparent, var(--neon-green), transparent);
+}
+.world-content {
+    padding: 0.6rem 1rem;
+}
+.world-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.3rem 0;
+    font-size: 0.82rem;
+    color: var(--text-bright);
+}
+.world-icon {
+    font-size: 0.9rem;
+    width: 1.2rem;
+    text-align: center;
+    flex-shrink: 0;
+}
+.world-birthday-row {
+    padding: 0.4rem 0.6rem;
+    margin-top: 0.3rem;
+    background: rgba(255, 217, 61, 0.08);
+    border: 1px solid rgba(255, 217, 61, 0.2);
+    border-radius: 3px;
+    text-align: center;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--neon-gold);
+}
+
+/* ─── BANNIERE D'ANNIVERSAIRE ─── */
+/* Degrade chaud (or/orange/rose), bordure doree, animation de lueur.
+   L'effet confetti est un degrade diagonal anime. */
+.birthday-banner {
+    margin-bottom: 0.8rem;
+    padding: 0.8rem 1rem;
+    background: linear-gradient(135deg, rgba(255,217,61,0.15), rgba(255,110,39,0.15), rgba(255,42,109,0.15));
+    border: 1px solid rgba(255,217,61,0.4);
+    border-radius: 4px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    animation: birthday-glow 2s infinite;
+}
+.birthday-text {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--neon-gold);
+    text-shadow: 0 0 10px rgba(255,217,61,0.5);
+    position: relative;
+    z-index: 1;
+}
+.birthday-confetti {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 10px,
+        rgba(255,217,61,0.03) 10px,
+        rgba(255,217,61,0.03) 20px
+    );
+    animation: confetti-scroll 3s linear infinite;
+}
+@keyframes birthday-glow {
+    0%, 100% { box-shadow: 0 0 10px rgba(255,217,61,0.2); }
+    50% { box-shadow: 0 0 25px rgba(255,217,61,0.4), 0 0 50px rgba(255,110,39,0.2); }
+}
+@keyframes confetti-scroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(20px); }
+}
+
+/* ─── PANNEAU CERVEAU 3D ─── */
+/* Visualisation Three.js des 12 regions cerebrales + workspace GWT */
+.brain-3d-content {
+    position: relative;
+    width: 100%;
+    height: 300px;
+    background: radial-gradient(ellipse at center, #0a0a1a 0%, #05050f 100%);
+    border-radius: 0 0 4px 4px;
+}
+#brain-3d-canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+    cursor: grab;
+}
+#brain-3d-canvas:active { cursor: grabbing; }
+.brain-3d-legend {
+    position: absolute;
+    bottom: 6px; left: 8px; right: 8px;
+    display: flex; flex-wrap: wrap; gap: 4px;
+    font: 0.55rem 'Share Tech Mono', monospace;
+    color: var(--text-dim);
+    pointer-events: none;
+}
+.brain-3d-legend span {
+    padding: 1px 4px;
+    border-radius: 2px;
+    background: rgba(0,0,0,0.6);
+}
+
+/* ─── PANNEAU CONNAISSANCES ─── */
+/* Liste des sujets explores par Saphire via WebKnowledge.
+   Badges colores par source : Wikipedia (bleu), ArXiv (vert), Medium (orange). */
+.knowledge-panel {
+    border-color: rgba(0, 180, 255, 0.2);
+}
+.knowledge-stats {
+    padding: 0.3rem 1rem;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--neon-cyan);
+}
+.knowledge-list {
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 0 0.8rem;
+}
+.knowledge-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0;
+    border-bottom: 1px solid var(--border-dim);
+    font-size: 0.7rem;
+}
+.knowledge-item:last-child { border-bottom: none; }
+.knowledge-source-badge {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.55rem;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+/* Couleurs des badges par source de connaissance (8 sources) */
+/* Les classes CSS sont generees par normalizeSourceClass() dans app.js */
+.knowledge-source-badge.wikipedia { background: rgba(0,120,255,0.2); color: #4da6ff; border: 1px solid rgba(0,120,255,0.3); }       /* bleu */
+.knowledge-source-badge.arxiv { background: rgba(5,255,161,0.15); color: #05ffa1; border: 1px solid rgba(5,255,161,0.3); }          /* vert neon */
+.knowledge-source-badge.medium { background: rgba(255,110,39,0.15); color: #ff6e27; border: 1px solid rgba(255,110,39,0.3); }       /* orange fonce */
+.knowledge-source-badge.sep { background: rgba(160,80,255,0.2); color: #b366ff; border: 1px solid rgba(160,80,255,0.3); }           /* violet */
+.knowledge-source-badge.gutenberg { background: rgba(255,200,50,0.2); color: #ffd033; border: 1px solid rgba(255,200,50,0.3); }     /* or */
+.knowledge-source-badge.semantic_scholar { background: rgba(0,220,220,0.2); color: #00e0e0; border: 1px solid rgba(0,220,220,0.3); } /* cyan */
+.knowledge-source-badge.openlibrary { background: rgba(255,140,0,0.2); color: #ff9a1a; border: 1px solid rgba(255,140,0,0.3); }     /* orange */
+.knowledge-source-badge.philosophy_rss { background: rgba(255,110,199,0.2); color: #ff6ec7; border: 1px solid rgba(255,110,199,0.3); } /* magenta */
+.knowledge-item-title {
+    color: var(--text-bright);
+    font-family: 'Rajdhani', sans-serif;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.knowledge-suggest {
+    display: flex;
+    gap: 0.3rem;
+    padding: 0.5rem 0.8rem;
+    border-top: 1px solid var(--border-dim);
+}
+.knowledge-suggest input {
+    flex: 1;
+    background: var(--bg-deep);
+    border: 1px solid var(--border-dim);
+    color: var(--text-bright);
+    padding: 0.3rem 0.5rem;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    border-radius: 3px;
+    outline: none;
+}
+.knowledge-suggest input:focus {
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 5px rgba(0,240,255,0.2);
+}
+.knowledge-suggest button {
+    background: transparent;
+    border: 1px solid var(--neon-cyan);
+    color: var(--neon-cyan);
+    cursor: pointer;
+    padding: 0.3rem 0.6rem;
+    border-radius: 3px;
+    font-size: 0.8rem;
+    transition: all 0.2s;
+}
+.knowledge-suggest button:hover {
+    background: rgba(0,240,255,0.1);
+    box-shadow: 0 0 8px rgba(0,240,255,0.3);
+}
+
+/* ─── CARTES DE CONNAISSANCE DANS LE FLUX ─── */
+/* Variante des pensees avec un fond bleu sombre et une bordure cyan plus epaisse */
+.thought.knowledge-thought {
+    background: rgba(20, 40, 60, 0.6);
+    border-left: 3px solid var(--neon-cyan);
+}
+.thought.knowledge-thought .thought-header {
+    border-bottom-color: rgba(0,180,255,0.15);
+}
+.knowledge-card-source {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.55rem;
+    padding: 1px 5px;
+    border-radius: 3px;
+    margin-left: 0.3rem;
+}
+.knowledge-card-title {
+    color: var(--neon-cyan);
+    font-weight: 600;
+    text-decoration: none;
+    font-size: 0.75rem;
+}
+.knowledge-card-title:hover {
+    text-decoration: underline;
+    color: #66f0ff;
+}
+.knowledge-card-extract {
+    font-size: 0.65rem;
+    color: var(--text-mid);
+    margin-top: 0.3rem;
+    line-height: 1.4;
+}
+
+/* ─── PANNEAU OCEAN (Big Five) ─── */
+/* Bordure violette, radar Chart.js, informations sur le trait dominant,
+   tendances, et sous-facettes depliables.
+   Chaque dimension a sa couleur : O=violet, C=bleu, E=orange, A=vert, N=rose */
+.ocean-panel {
+    border-color: rgba(181, 55, 242, 0.3);
+}
+.ocean-panel::before {
+    background: linear-gradient(90deg, transparent, rgba(181,55,242,0.6), rgba(0,240,255,0.3), transparent);
+}
+.ocean-chart-wrapper {
+    position: relative;
+    height: 200px;
+    padding: 0.3rem 0.5rem;
+}
+.ocean-chart-wrapper canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+.ocean-info {
+    padding: 0.4rem 0.8rem;
+}
+.ocean-dominant {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+}
+.ocean-dominant b {
+    color: var(--neon-purple);
+    text-shadow: 0 0 6px rgba(181,55,242,0.4);
+}
+.ocean-datapoints {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    margin-top: 0.2rem;
+}
+.ocean-trends {
+    display: flex;
+    gap: 0.6rem;
+    margin-top: 0.3rem;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+}
+.ocean-trend-item {
+    color: var(--text-dim);
+}
+.ocean-trend-item .trend-up { color: var(--neon-green); }
+.ocean-trend-item .trend-down { color: var(--neon-pink); }
+.ocean-trend-item .trend-stable { color: var(--text-dim); }
+
+.ocean-facets-toggle {
+    padding: 0.3rem 0.8rem;
+    border-top: 1px solid var(--border-dim);
+}
+.btn-facets {
+    width: 100%;
+    padding: 0.3rem;
+    background: rgba(181,55,242,0.08);
+    border: 1px solid rgba(181,55,242,0.2);
+    border-radius: 3px;
+    color: var(--neon-purple);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.6rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.1em;
+}
+.btn-facets:hover {
+    background: rgba(181,55,242,0.15);
+    box-shadow: 0 0 8px rgba(181,55,242,0.2);
+}
+
+.ocean-facets {
+    padding: 0.4rem 0.8rem 0.6rem;
+    max-height: 300px;
+    overflow-y: auto;
+}
+.ocean-facets::-webkit-scrollbar-thumb { background: var(--neon-purple); }
+.ocean-facets { scrollbar-color: var(--neon-purple) var(--bg-deep); }
+
+.ocean-dim-group {
+    margin-bottom: 0.5rem;
+}
+.ocean-dim-label {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.5rem;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.2rem;
+}
+/* Couleurs par dimension OCEAN pour les labels et barres de sous-facettes */
+.ocean-dim-label.dim-o { color: #b537f2; } /* Ouverture : violet */
+.ocean-dim-label.dim-c { color: #0984e3; } /* Conscienciosite : bleu */
+.ocean-dim-label.dim-e { color: #ff6e27; } /* Extraversion : orange */
+.ocean-dim-label.dim-a { color: #05ffa1; } /* Agreabilite : vert */
+.ocean-dim-label.dim-n { color: #ff2a6d; } /* Nevrosisme : rose */
+
+.ocean-facet-row {
+    display: grid;
+    grid-template-columns: 110px 1fr 30px;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 1px 0;
+}
+.ocean-facet-name {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.55rem;
+    color: var(--text-dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ocean-facet-bar {
+    height: 3px;
+    background: var(--bg-deep);
+    border-radius: 2px;
+    overflow: hidden;
+}
+.ocean-facet-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.5s ease;
+}
+.ocean-facet-fill.dim-o { background: #b537f2; }
+.ocean-facet-fill.dim-c { background: #0984e3; }
+.ocean-facet-fill.dim-e { background: #ff6e27; }
+.ocean-facet-fill.dim-a { background: #05ffa1; }
+.ocean-facet-fill.dim-n { background: #ff2a6d; }
+.ocean-facet-val {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.55rem;
+    color: var(--text-mid);
+    text-align: right;
+}
+
+/* ─── PANNEAU TEMPERAMENT ─── */
+/* Traits de caractere emergents regroupes par categorie.
+   Barres horizontales colorees par famille (Social, Energie, etc.). */
+
+.temperament-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    padding: 0.4rem 0.6rem;
+}
+.temperament-empty {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    padding: 0.5rem 0;
+}
+.temperament-category {
+    margin-bottom: 0.4rem;
+}
+.temperament-cat-label {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.5rem;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.15rem;
+}
+.temperament-row {
+    display: grid;
+    grid-template-columns: 80px 1fr 32px;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 1px 0;
+}
+.temperament-name {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.55rem;
+    color: var(--text-dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.temperament-track {
+    height: 4px;
+    background: var(--bg-deep);
+    border-radius: 2px;
+    overflow: hidden;
+}
+.temperament-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.6s ease;
+}
+.temperament-val {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.55rem;
+    color: var(--text-mid);
+    text-align: right;
+}
+
+/* ─── PANNEAU MEMOIRE ─── */
+/* Systeme de memoire a 3 niveaux : Working (7 slots), Episodique, Long Terme.
+   La barre de Working Memory montre le remplissage.
+   Les informations de consolidation indiquent quand les souvenirs
+   episodiques sont transferes vers la memoire a long terme. */
+.memory-panel {
+    border-color: rgba(181, 55, 242, 0.25);
+}
+.memory-panel::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(181,55,242,0.5), transparent);
+}
+.memory-tiers {
+    padding: 0.5rem 0.8rem;
+}
+.memory-tier {
+    margin-bottom: 0.6rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-dim);
+}
+.memory-tier:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+.memory-tier-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.3rem;
+}
+.memory-tier-name {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--neon-purple);
+}
+.memory-tier-stat {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-mid);
+}
+.memory-wm-bar {
+    height: 4px;
+    background: rgba(181,55,242,0.15);
+    border-radius: 2px;
+    margin: 0.3rem 0;
+    overflow: hidden;
+}
+.memory-wm-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--neon-purple), var(--neon-cyan));
+    border-radius: 2px;
+    transition: width 0.5s ease;
+}
+.memory-wm-items {
+    max-height: 100px;
+    overflow-y: auto;
+}
+.memory-wm-item {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    padding: 1px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.memory-wm-item .wm-icon {
+    margin-right: 0.3rem;
+}
+.memory-wm-item .wm-relevance {
+    color: var(--neon-purple);
+    margin-left: 0.3rem;
+    font-size: 0.55rem;
+}
+.memory-detail-row {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    padding: 1px 0;
+}
+.memory-detail-row span:last-child {
+    color: var(--text-mid);
+}
+.memory-consolidation-info {
+    padding: 0.4rem 0.8rem;
+    border-top: 1px solid var(--border-dim);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.55rem;
+    color: var(--text-dim);
+    display: flex;
+    justify-content: space-between;
+}
+
+/* ─── FOOTER ─── */
+footer {
+    display: block;
+    width: 100%;
+    text-align: center;
+    padding: 1.5rem 1rem;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-mid);
+    border-top: 1px solid rgba(0, 240, 255, 0.15);
+    letter-spacing: 0.08em;
+    margin-top: 1.5rem;
+    clear: both;
+}
+
+/* ─── PANNEAU CORPS VIRTUEL ─── */
+/* Coeur anime SVG + barres somatiques + footer philosophique */
+
+.corps-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 0.5rem;
+}
+
+/* Coeur SVG anime : pulse au rythme du BPM */
+.heart-container {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.3rem 0;
+}
+
+.heart-svg {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+}
+
+.heart-svg path {
+    fill: #ff2a6d;
+    filter: drop-shadow(0 0 6px rgba(255, 42, 109, 0.6));
+    transform-origin: center;
+    animation: heartbeat 1s ease-in-out infinite;
+}
+
+@keyframes heartbeat {
+    0%, 100% { transform: scale(1); }
+    15% { transform: scale(1.15); }
+    30% { transform: scale(1); }
+    45% { transform: scale(1.10); }
+    60% { transform: scale(1); }
+}
+
+.heart-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem;
+}
+
+.heart-bpm {
+    font-size: 1.1rem;
+    color: #ff2a6d;
+    font-weight: 700;
+    text-shadow: 0 0 8px rgba(255, 42, 109, 0.5);
+}
+
+.heart-beats {
+    color: var(--text-dim);
+    font-size: 0.65rem;
+}
+
+.heart-hrv {
+    color: var(--neon-cyan);
+    font-size: 0.7rem;
+}
+
+/* Barres somatiques (meme style que la neurochimie) */
+.body-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.body-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.7rem;
+}
+
+.body-bar-label {
+    width: 60px;
+    color: var(--text-dim);
+    font-family: 'Share Tech Mono', monospace;
+    text-transform: uppercase;
+    font-size: 0.6rem;
+}
+
+.body-bar-track {
+    flex: 1;
+    height: 6px;
+    background: var(--bg-deep);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.body-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.8s ease;
+}
+
+.body-bar-fill.energy { background: var(--neon-green); }
+.body-bar-fill.tension { background: var(--neon-orange); }
+.body-bar-fill.warmth { background: #ff9f43; }
+.body-bar-fill.comfort { background: var(--neon-purple); }
+.body-bar-fill.pain { background: var(--neon-pink); }
+.body-bar-fill.vitality { background: var(--neon-cyan); }
+.body-bar-fill.breath { background: #50e3c2; }
+
+.body-bar-val {
+    width: 30px;
+    text-align: right;
+    color: var(--text-dim);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+}
+
+/* Footer philosophique du panneau corps */
+/* ─── SIGNES VITAUX PHYSIOLOGIQUES ─── */
+
+.vitals-section {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid rgba(255,42,109,0.2);
+}
+.vitals-header {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.55rem;
+    color: var(--neon-pink);
+    letter-spacing: 0.15em;
+    margin-bottom: 0.4rem;
+    text-align: center;
+}
+.vitals-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.3rem;
+}
+.vital-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 4px;
+    padding: 0.25rem 0.15rem;
+    transition: border-color 0.3s, background 0.3s;
+}
+.vital-item.warning {
+    border-color: rgba(255,200,0,0.5);
+    background: rgba(255,200,0,0.05);
+}
+.vital-item.critical {
+    border-color: rgba(255,42,109,0.6);
+    background: rgba(255,42,109,0.08);
+    animation: vital-pulse 1.5s ease-in-out infinite;
+}
+@keyframes vital-pulse {
+    0%, 100% { border-color: rgba(255,42,109,0.6); }
+    50% { border-color: rgba(255,42,109,0.2); }
+}
+.vital-icon {
+    font-size: 0.8rem;
+    line-height: 1;
+}
+.vital-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.5rem;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+}
+.vital-value {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-main);
+    font-weight: 600;
+}
+.vitals-alerts {
+    margin-top: 0.3rem;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.55rem;
+}
+.vitals-alerts .vital-alert {
+    padding: 0.15rem 0.3rem;
+    border-radius: 3px;
+    margin-bottom: 0.15rem;
+}
+.vitals-alerts .vital-alert.warning {
+    color: #ffc800;
+    background: rgba(255,200,0,0.08);
+}
+.vitals-alerts .vital-alert.critical {
+    color: var(--neon-pink);
+    background: rgba(255,42,109,0.08);
+}
+
+/* ─── BESOINS PRIMAIRES (FAIM / SOIF) ─── */
+.needs-section {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid rgba(0,200,255,0.2);
+}
+.needs-header {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.55rem;
+    color: var(--neon-cyan, #00c8ff);
+    letter-spacing: 0.15em;
+    margin-bottom: 0.4rem;
+    text-align: center;
+}
+.needs-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+.needs-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.needs-bar-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    min-width: 4.5rem;
+}
+.needs-bar-track {
+    flex: 1;
+    height: 6px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 3px;
+    overflow: hidden;
+}
+.needs-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s ease, background 0.3s ease;
+}
+.needs-bar-fill.hunger {
+    background: linear-gradient(90deg, #05ffa1, #ffc800);
+}
+.needs-bar-fill.hunger.warning {
+    background: linear-gradient(90deg, #ffc800, #ff8c00);
+}
+.needs-bar-fill.hunger.critical {
+    background: linear-gradient(90deg, #ff8c00, #ff2a6d);
+    animation: needs-pulse 1.5s ease-in-out infinite;
+}
+.needs-bar-fill.thirst {
+    background: linear-gradient(90deg, #05ffa1, #00c8ff);
+}
+.needs-bar-fill.thirst.warning {
+    background: linear-gradient(90deg, #00c8ff, #ffc800);
+}
+.needs-bar-fill.thirst.critical {
+    background: linear-gradient(90deg, #ffc800, #ff2a6d);
+    animation: needs-pulse 1.5s ease-in-out infinite;
+}
+@keyframes needs-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+.needs-bar-val {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--text-main);
+    min-width: 2.2rem;
+    text-align: right;
+}
+.needs-stats {
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+    margin-top: 0.3rem;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.5rem;
+    color: var(--text-dim);
+}
+.needs-actions {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 0.4rem;
+}
+.needs-btn {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    padding: 0.2rem 0.6rem;
+    border: 1px solid rgba(0,200,255,0.3);
+    border-radius: 4px;
+    background: rgba(0,200,255,0.08);
+    color: var(--text-main);
+    cursor: pointer;
+    transition: background 0.2s, box-shadow 0.3s, border-color 0.2s;
+}
+.needs-btn:hover {
+    background: rgba(0,200,255,0.15);
+    border-color: rgba(0,200,255,0.5);
+    box-shadow: 0 0 10px rgba(0,200,255,0.2);
+}
+
+.corps-footer {
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    font-style: italic;
+    text-align: center;
+    padding-top: 0.3rem;
+    border-top: 1px solid rgba(255,255,255,0.05);
+}
+
+/* ─── PANNEAU VALEURS D'USINE (FACTORY RESET) ─── */
+/* Section permettant de restaurer les parametres d'origine */
+
+.factory-panel .panel-header {
+    border-bottom-color: rgba(255,110,39,0.3);
+}
+.factory-panel::before {
+    background: linear-gradient(90deg, transparent, var(--neon-orange), transparent) !important;
+}
+.factory-badge {
+    background: rgba(255,110,39,0.2) !important;
+    color: var(--neon-orange) !important;
+    border-color: rgba(255,110,39,0.4) !important;
+}
+
+.factory-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0.4rem;
+    padding: 0.6rem 0.8rem;
+}
+
+.factory-btn {
+    padding: 0.45rem 0.5rem;
+    border-radius: 3px;
+    font-family: 'Orbitron', monospace;
+    font-size: 0.55rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+    border: 1px solid;
+}
+
+.factory-btn-chem {
+    background: rgba(0,240,255,0.1);
+    border-color: rgba(0,240,255,0.3);
+    color: var(--neon-cyan);
+}
+.factory-btn-chem:hover {
+    background: rgba(0,240,255,0.2);
+    box-shadow: 0 0 10px rgba(0,240,255,0.3);
+}
+.factory-btn-params {
+    background: rgba(255,110,39,0.1);
+    border-color: rgba(255,110,39,0.3);
+    color: var(--neon-orange);
+}
+.factory-btn-params:hover {
+    background: rgba(255,110,39,0.2);
+    box-shadow: 0 0 10px rgba(255,110,39,0.3);
+}
+.factory-btn-full {
+    background: rgba(255,42,109,0.1);
+    border-color: rgba(255,42,109,0.3);
+    color: var(--neon-pink);
+}
+.factory-btn-full:hover {
+    background: rgba(255,42,109,0.2);
+    box-shadow: 0 0 10px rgba(255,42,109,0.3);
+}
+
+.factory-btn:active {
+    transform: scale(0.95);
+}
+
+.factory-diff-toggle {
+    padding: 0 0.8rem 0.4rem;
+}
+.factory-btn-diff {
+    width: 100%;
+    padding: 0.35rem;
+    background: rgba(181,55,242,0.08);
+    border: 1px solid rgba(181,55,242,0.25);
+    border-radius: 3px;
+    color: var(--neon-purple);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.factory-btn-diff:hover {
+    background: rgba(181,55,242,0.15);
+    box-shadow: 0 0 8px rgba(181,55,242,0.2);
+}
+
+.factory-diff {
+    margin: 0 0.8rem 0.4rem;
+    max-height: 200px;
+    overflow-y: auto;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+}
+.factory-diff-row {
+    display: grid;
+    grid-template-columns: 1fr 0.6fr 0.6fr 0.5fr;
+    padding: 0.2rem 0.4rem;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    align-items: center;
+}
+.factory-diff-row:nth-child(even) {
+    background: rgba(255,255,255,0.02);
+}
+.factory-diff-header {
+    color: rgba(255,255,255,0.4);
+    font-size: 0.55rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding-bottom: 0.3rem;
+    margin-bottom: 0.2rem;
+}
+.factory-diff-param {
+    color: rgba(255,255,255,0.7);
+}
+.factory-diff-current {
+    text-align: right;
+    color: var(--neon-cyan);
+}
+.factory-diff-factory {
+    text-align: right;
+    color: rgba(255,255,255,0.35);
+}
+.factory-diff-delta {
+    text-align: right;
+}
+.factory-diff-delta.positive { color: var(--neon-green); }
+.factory-diff-delta.negative { color: var(--neon-pink); }
+.factory-diff-delta.zero { color: rgba(255,255,255,0.2); }
+
+.factory-diff-empty {
+    text-align: center;
+    color: var(--neon-green);
+    padding: 0.6rem;
+    font-size: 0.65rem;
+}
+
+.factory-status {
+    padding: 0 0.8rem 0.4rem;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.6rem;
+    min-height: 0.8rem;
+}
+.factory-status-msg {
+    padding: 0.3rem 0.5rem;
+    border-radius: 3px;
+    animation: factory-fade 3s ease forwards;
+}
+.factory-status-msg.success {
+    background: rgba(5,255,161,0.1);
+    border: 1px solid rgba(5,255,161,0.2);
+    color: var(--neon-green);
+}
+.factory-status-msg.error {
+    background: rgba(255,42,109,0.1);
+    border: 1px solid rgba(255,42,109,0.2);
+    color: var(--neon-pink);
+}
+
+@keyframes factory-fade {
+    0%, 70% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+/* Confirmation dialog overlay */
+.factory-confirm-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.75);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.factory-confirm-dialog {
+    background: var(--bg-panel);
+    border: 1px solid rgba(255,42,109,0.4);
+    border-radius: 6px;
+    padding: 1.5rem;
+    max-width: 380px;
+    width: 90%;
+    box-shadow: 0 0 40px rgba(255,42,109,0.15);
+}
+.factory-confirm-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--neon-pink);
+    letter-spacing: 0.15em;
+    margin-bottom: 0.8rem;
+    text-align: center;
+}
+.factory-confirm-text {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.85rem;
+    color: rgba(255,255,255,0.7);
+    line-height: 1.5;
+    margin-bottom: 1.2rem;
+    text-align: center;
+}
+.factory-confirm-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+}
+.factory-btn-cancel {
+    background: rgba(255,255,255,0.05);
+    border-color: rgba(255,255,255,0.15);
+    color: rgba(255,255,255,0.5);
+}
+.factory-btn-cancel:hover {
+    background: rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.8);
+}
+.factory-btn-confirm {
+    background: rgba(255,42,109,0.15);
+    border-color: rgba(255,42,109,0.4);
+    color: var(--neon-pink);
+}
+.factory-btn-confirm:hover {
+    background: rgba(255,42,109,0.25);
+    box-shadow: 0 0 15px rgba(255,42,109,0.3);
+}
+
+/* ─── ETHIQUE (panneau systeme ethique 3 couches) ─── */
+#ethics-panel {
+    border-left: 2px solid rgba(0,255,200,0.3);
+}
+
+.ethics-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.ethics-layer {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.3rem 0.5rem;
+    background: rgba(0,255,200,0.03);
+    border-radius: 4px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.82rem;
+}
+
+.ethics-layer-icon {
+    font-size: 1rem;
+    width: 1.2rem;
+    text-align: center;
+}
+
+.ethics-layer-label {
+    flex: 1;
+    color: rgba(0,255,200,0.8);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.ethics-layer-count {
+    color: rgba(0,255,200,0.5);
+    font-size: 0.75rem;
+}
+
+.ethics-personal-header {
+    border-top: 1px solid rgba(0,255,200,0.1);
+    padding-top: 0.5rem;
+    margin-top: 0.2rem;
+}
+
+.personal-principles-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.ethics-empty {
+    color: rgba(0,255,200,0.3);
+    font-style: italic;
+    font-size: 0.78rem;
+    padding: 0.3rem 0.5rem;
+}
+
+.ethics-principle-card {
+    background: rgba(0,255,200,0.04);
+    border: 1px solid rgba(0,255,200,0.1);
+    border-radius: 4px;
+    padding: 0.5rem;
+    transition: border-color 0.3s;
+}
+
+.ethics-principle-card:hover {
+    border-color: rgba(0,255,200,0.3);
+}
+
+.ethics-principle-card.inactive {
+    opacity: 0.4;
+    border-color: rgba(255,255,255,0.05);
+}
+
+.ethics-principle-title {
+    color: #00ffc8;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    font-size: 0.85rem;
+    margin-bottom: 0.2rem;
+}
+
+.ethics-principle-content {
+    color: rgba(255,255,255,0.7);
+    font-size: 0.78rem;
+    line-height: 1.3;
+    margin-bottom: 0.3rem;
+}
+
+.ethics-principle-meta {
+    display: flex;
+    gap: 0.6rem;
+    font-size: 0.7rem;
+    color: rgba(0,255,200,0.35);
+    font-family: 'Share Tech Mono', monospace;
+}
+
+.ethics-principle-meta span {
+    white-space: nowrap;
+}
+
+/* ─── Accords tolteques (mini-barres) ─── */
+.ethics-toltec-header {
+    border-top: 1px solid rgba(0,255,200,0.1);
+    padding-top: 0.5rem;
+    margin-top: 0.2rem;
+}
+
+.ethics-toltec-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0 0.5rem;
+}
+
+.ethics-toltec-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.72rem;
+    font-family: 'Share Tech Mono', monospace;
+}
+
+.ethics-toltec-name {
+    color: rgba(0,255,200,0.5);
+    width: 10rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ethics-toltec-bar-bg {
+    flex: 1;
+    height: 4px;
+    background: rgba(0,255,200,0.08);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.ethics-toltec-bar-fill {
+    height: 100%;
+    background: #00ffc8;
+    border-radius: 2px;
+    transition: width 0.5s ease;
+}
+
+.ethics-toltec-val {
+    color: rgba(0,255,200,0.5);
+    width: 2.2rem;
+    text-align: right;
+}
+
+/* ─── Conscience morale (surmoi / EQ / volonte) ─── */
+.ethics-moral-header {
+    border-top: 1px solid rgba(0,255,200,0.1);
+    padding-top: 0.5rem;
+    margin-top: 0.2rem;
+}
+
+.ethics-moral-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    padding: 0.15rem 0.5rem;
+    font-size: 0.72rem;
+    font-family: 'Share Tech Mono', monospace;
+    color: rgba(0,255,200,0.5);
+}
+
+/* ─── Progression formulation (readiness) ─── */
+.ethics-readiness {
+    border-top: 1px solid rgba(0,255,200,0.1);
+    padding-top: 0.5rem;
+    margin-top: 0.3rem;
+}
+
+.ethics-readiness-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.2rem 0.5rem;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.78rem;
+}
+
+.ethics-readiness-label {
+    flex: 1;
+    color: rgba(0,255,200,0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.ethics-readiness-count {
+    color: rgba(0,255,200,0.5);
+    font-size: 0.75rem;
+    font-family: 'Share Tech Mono', monospace;
+}
+
+.ethics-readiness-bar {
+    height: 4px;
+    background: rgba(0,255,200,0.08);
+    border-radius: 2px;
+    margin: 0.3rem 0.5rem;
+    overflow: hidden;
+}
+
+.ethics-readiness-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #00ffc8, #ffd700);
+    border-radius: 2px;
+    transition: width 0.5s ease;
+}
+
+.ethics-readiness-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    padding: 0.15rem 0.5rem;
+}
+
+.ethics-condition {
+    font-size: 0.68rem;
+    font-family: 'Share Tech Mono', monospace;
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    border: 1px solid rgba(0,255,200,0.1);
+    background: rgba(0,255,200,0.03);
+}
+
+.ethics-condition.met {
+    color: #00ffc8;
+    border-color: rgba(0,255,200,0.3);
+    background: rgba(0,255,200,0.08);
+}
+
+.ethics-condition.unmet {
+    color: rgba(255,255,255,0.35);
+    border-color: rgba(255,255,255,0.08);
+}
+
+/* ─── OVERLAY DE SOMMEIL ─── */
+.sleep-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(135deg, #0a0a2a 0%, #1a1a4a 50%, #0a0a2a 100%);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #8888cc;
+}
+.sleep-content { text-align: center; }
+.sleep-content h2 {
+    font-family: 'Orbitron', monospace;
+    font-size: 2rem;
+    color: #aaaaee;
+    margin: 0.5rem 0;
+}
+.sleep-content p {
+    font-family: 'Share Tech Mono', monospace;
+    color: #7777bb;
+    font-size: 0.9rem;
+}
+.sleep-icon { font-size: 80px; animation: sleep-float 3s ease-in-out infinite; }
+@keyframes sleep-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-15px); }
+}
+.sleep-progress-bar {
+    width: 300px; height: 8px;
+    background: #222244; border-radius: 4px;
+    margin: 20px auto;
+}
+.sleep-progress-fill {
+    height: 100%; border-radius: 4px;
+    background: linear-gradient(90deg, #4444aa, #8888ff);
+    transition: width 2s ease;
+}
+.sleep-stats {
+    display: flex; gap: 1.5rem;
+    justify-content: center;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.85rem;
+    color: #6666aa;
+    margin-top: 1rem;
+}
+.emergency-btn {
+    margin-top: 40px; padding: 8px 16px;
+    background: transparent; border: 1px solid #443333;
+    color: #664444; border-radius: 4px; cursor: pointer;
+    font-size: 12px; font-family: 'Share Tech Mono', monospace;
+}
+.emergency-btn:hover { border-color: #883333; color: #883333; }
+
+/* ─── RESPONSIVE (ecrans < 900px) ─── */
+/* Passe en une seule colonne. La colonne droite passe en haut (order: -1)
+   pour que les infos importantes restent accessibles. */
+@media (max-width: 900px) {
+    main { grid-template-columns: 1fr; }
+    .col-right { order: -1; }
+    header { flex-direction: column; gap: 0.5rem; }
+    .header-left { text-align: center; }
+}
+
+/* ─── RTL (arabe, hebreu, persan) ─── */
+/* Bloc unique en fin de fichier : inverse les proprietes directionnelles
+   sans toucher au CSS LTR existant (zero regression).
+   CSS Grid et Flexbox+gap s'inversent automatiquement avec dir="rtl". */
+[dir="rtl"] {
+    font-family: 'Noto Kufi Arabic', 'Rajdhani', 'Segoe UI', sans-serif;
+}
+[dir="rtl"] .panel-badge {
+    margin-left: unset;
+    margin-right: auto;
+}
+[dir="rtl"] .thought .thought-type {
+    margin-left: unset;
+    margin-right: 0.5rem;
+}
+[dir="rtl"] .thought .emotion-tag {
+    margin-left: unset;
+    margin-right: 0.3rem;
+}
+[dir="rtl"] .chat-msg.user {
+    margin-left: unset;
+    margin-right: auto;
+    border-radius: 4px 4px 4px 0;
+}
+[dir="rtl"] .chat-msg.saphire {
+    border-radius: 4px 4px 0 4px;
+}
+[dir="rtl"] .mood-desc {
+    margin-left: unset;
+    margin-right: 0.5rem;
+}
+[dir="rtl"] .thought.knowledge-thought {
+    border-left: none;
+    border-right: 3px solid var(--neon-cyan);
+}
+[dir="rtl"] .knowledge-card-source {
+    margin-left: unset;
+    margin-right: 0.3rem;
+}
+[dir="rtl"] .memory-wm-item .wm-icon {
+    margin-right: unset;
+    margin-left: 0.3rem;
+}
+[dir="rtl"] .memory-wm-item .wm-relevance {
+    margin-left: unset;
+    margin-right: 0.3rem;
+}
+[dir="rtl"] .chem-bar span {
+    text-align: left;
+}
+[dir="rtl"] .stat-value {
+    text-align: left;
+}
+
+/* ─── Modal d'identification de l'interlocuteur ─── */
+.username-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(5, 5, 15, 0.92);
+    backdrop-filter: blur(8px);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: modalFadeIn 0.4s ease;
+}
+
+@keyframes modalFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.username-modal-content {
+    background: linear-gradient(135deg, #0a0a1a 0%, #12122a 100%);
+    border: 1px solid rgba(74, 158, 255, 0.3);
+    border-radius: 12px;
+    padding: 2.5rem 2rem;
+    text-align: center;
+    max-width: 380px;
+    width: 90%;
+    box-shadow:
+        0 0 40px rgba(74, 158, 255, 0.15),
+        0 0 80px rgba(74, 158, 255, 0.05),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    animation: modalSlideIn 0.4s ease;
+}
+
+@keyframes modalSlideIn {
+    from { transform: translateY(-30px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.username-modal-icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.8rem;
+}
+
+.username-modal-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.1rem;
+    color: #4a9eff;
+    letter-spacing: 3px;
+    margin: 0 0 0.6rem 0;
+    text-shadow: 0 0 10px rgba(74, 158, 255, 0.4);
+}
+
+.username-modal-text {
+    font-family: 'Share Tech Mono', monospace;
+    color: #c8c8d8;
+    font-size: 0.95rem;
+    margin: 0 0 1.2rem 0;
+}
+
+.username-modal-input {
+    width: 100%;
+    padding: 0.7rem 1rem;
+    background: #0a0a12;
+    border: 1px solid rgba(74, 158, 255, 0.25);
+    border-radius: 6px;
+    color: #e8e8f0;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1rem;
+    text-align: center;
+    outline: none;
+    transition: border-color 0.3s, box-shadow 0.3s;
+    box-sizing: border-box;
+}
+
+.username-modal-input:focus {
+    border-color: #4a9eff;
+    box-shadow: 0 0 12px rgba(74, 158, 255, 0.25);
+}
+
+.username-modal-input::placeholder {
+    color: #556;
+}
+
+.username-modal-btn {
+    margin-top: 1.2rem;
+    padding: 0.6rem 2rem;
+    background: linear-gradient(135deg, rgba(74, 158, 255, 0.15), rgba(74, 158, 255, 0.25));
+    border: 1px solid rgba(74, 158, 255, 0.4);
+    border-radius: 6px;
+    color: #4a9eff;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.8rem;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.username-modal-btn:hover {
+    background: linear-gradient(135deg, rgba(74, 158, 255, 0.25), rgba(74, 158, 255, 0.4));
+    box-shadow: 0 0 20px rgba(74, 158, 255, 0.3);
+    transform: translateY(-1px);
+}
+
+.username-modal-btn:active {
+    transform: translateY(0);
+}

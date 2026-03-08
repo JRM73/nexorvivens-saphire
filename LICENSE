@@ -49,13 +49,13 @@ Subject to the terms of this License, the Licensor grants You a worldwide,
 royalty-free, non-exclusive license to:
 
   a) Use the Software for any purpose, including Commercial Use, provided
-     You comply with the conditions in Sections 2 through 5.
+     You comply with the conditions in Sections 2 through 6.
 
   b) Study, modify, and adapt the Software.
 
   c) Distribute copies of the Software and Derivative Works, in source or
      binary form, provided You comply with the conditions in Sections 2
-     through 5.
+     through 6.
 
 2. COPYLEFT — SOURCE CODE DISCLOSURE
 
@@ -75,7 +75,27 @@ royalty-free, non-exclusive license to:
      not include the operating system, compiler, or general-purpose tools
      used to build it.
 
-3. COMMERCIAL LICENSING EXCEPTION
+3. EXTENDED DISCLOSURE FOR LARGE ENTERPRISES
+
+  a) Any commercial entity whose consolidated annual revenue exceeds
+     10 million CHF (Swiss Francs) and that integrates all or part of
+     the Software into a product or service, must publish the complete
+     source code of all components that directly interact with the
+     Software, including but not limited to: integration layers,
+     adapters, extensions, wrappers, and service interfaces.
+
+  b) This obligation extends to subsidiaries, affiliates, and any
+     entity under common control with the integrating organization.
+
+  c) The source code required under this section must be made publicly
+     available under this same License within 90 days of the first
+     commercial deployment or distribution.
+
+  d) Failure to comply with this section constitutes a material breach
+     of this License and triggers immediate termination of rights under
+     Section 8(a).
+
+4. COMMERCIAL LICENSING EXCEPTION
 
   Organizations wishing to use the Software or Derivative Works under terms
   other than this License (including proprietary use without source
@@ -83,7 +103,7 @@ royalty-free, non-exclusive license to:
 
   Contact: web@lesidees.net
 
-4. ATTRIBUTION
+5. ATTRIBUTION
 
   a) You must retain all copyright notices, license notices, and attribution
      statements in all copies and Derivative Works.
@@ -98,7 +118,7 @@ royalty-free, non-exclusive license to:
      name to endorse or promote Derivative Works without prior written
      permission from the Licensor.
 
-5. ETHICAL USE CLAUSE
+6. ETHICAL USE CLAUSE
 
   The Software is designed to explore autonomous cognition, emergent
   consciousness, and ethical self-regulation. You agree not to use the
@@ -120,7 +140,7 @@ royalty-free, non-exclusive license to:
   Violation of this clause terminates your rights under this License
   immediately.
 
-6. NO WARRANTY
+7. NO WARRANTY
 
   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
   OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -130,7 +150,7 @@ royalty-free, non-exclusive license to:
   IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
   SOFTWARE.
 
-7. TERMINATION
+8. TERMINATION
 
   a) Your rights under this License terminate automatically if You fail to
      comply with any of its terms. Upon termination, You must cease all
@@ -141,7 +161,7 @@ royalty-free, non-exclusive license to:
      rights are reinstated retroactively, provided it is your first
      violation.
 
-8. MISCELLANEOUS
+9. MISCELLANEOUS
 
   a) If any provision of this License is found to be unenforceable, it
      shall be reformed to the minimum extent necessary, and the remaining

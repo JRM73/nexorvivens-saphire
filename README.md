@@ -420,6 +420,6 @@ This project is licensed under the **Nexorvivens Affero General License (NAGL) v
 - Free to use, study, modify, and distribute
 - Derivative works and network deployments must open their source under NAGL
 - Ethical use clause: no autonomous weapons, no deceptive impersonation, no rights-violating surveillance
-- Commercial/proprietary licensing available — contact malice.mystere@gmail.com
+- Commercial/proprietary licensing available — contact web@lesidees.net
 
 See [LICENSE](LICENSE) for the full text.

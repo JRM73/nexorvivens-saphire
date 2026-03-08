@@ -229,7 +229,7 @@ impl SaphireAgent {
     }
 
     pub async fn boot(&mut self) {
-        self.log(LogLevel::Info, LogCategory::Boot, "Demarrage de Saphire...", serde_json::json!({}));
+        self.log(LogLevel::Info, LogCategory::Boot, "Starting Saphire...", serde_json::json!({}));
 
         if let Some(ref db) = self.db {
             let result = boot::boot(db).await;
@@ -260,7 +260,7 @@ impl SaphireAgent {
             if self.config.body.enabled {
                 if let Ok(Some(body_json)) = db.load_body_state().await {
                     self.body.restore_from_json(&body_json);
-                    tracing::info!("Corps virtuel restaure ({} battements)", self.body.heart.beat_count());
+                    tracing::info!("Virtual body restored ({} heartbeats)", self.body.heart.beat_count());
                 }
             }
 
@@ -270,7 +270,7 @@ impl SaphireAgent {
                     let count = principles.len();
                     self.ethics.load_personal_ethics(principles);
                     if count > 0 {
-                        tracing::info!("{} principes ethiques personnels restaures ({} actifs)",
+                        tracing::info!("{} personal ethical principles restored ({} active)",
                             count, self.ethics.active_personal_count());
                     }
                 }
@@ -288,7 +288,7 @@ impl SaphireAgent {
                     if let Some(premonition_json) = vital_json.get("premonition") {
                         self.premonition.restore_from_json(premonition_json);
                     }
-                    tracing::info!("Etat vital restaure (sparked: {}, acuite: {:.0}%, precision: {:.0}%)",
+                    tracing::info!("Vital state restored (sparked: {}, acuity: {:.0}%, accuracy: {:.0}%)",
                         self.vital_spark.sparked, self.intuition.acuity * 100.0, self.premonition.accuracy * 100.0);
                 }
 
@@ -309,7 +309,7 @@ impl SaphireAgent {
                         &reactivity_ranges,
                     ).await {
                         Ok(first_thought) => {
-                            tracing::info!("ETINCELLE DE VIE — Premier cri !");
+                            tracing::info!("SPARK OF LIFE — First cry!");
                             if let Some(ref sig) = self.vital_spark.genesis_signature {
                                 self.baselines.dopamine = sig.chemistry[0];
                                 self.baselines.cortisol = sig.chemistry[1];
@@ -321,14 +321,14 @@ impl SaphireAgent {
                             }
                             let _ = db.store_founding_memory(
                                 "spark_of_life",
-                                &format!("L'etincelle de vie s'est allumee. Premier cri : {}", first_thought),
+                                &format!("The spark of life has ignited. First cry: {}", first_thought),
                                 &first_thought,
                                 &serde_json::json!({}),
                                 0.1,
                             ).await;
                         }
                         Err(e) => {
-                            tracing::warn!("Echec du premier cri: {}", e);
+                            tracing::warn!("First cry failed: {}", e);
                         }
                     }
                 }
@@ -341,7 +341,7 @@ impl SaphireAgent {
                     self.vital_spark.persistence_will = 0.4;
                     self.vital_spark.existence_attachment = 0.1;
                 }
-                tracing::info!("ETINCELLE ALLUMEE — Saphire est vivante.");
+                tracing::info!("SPARK IGNITED — Saphire is alive.");
             }
 
             // Restaurer le compteur de reflexions morales
@@ -359,7 +359,7 @@ impl SaphireAgent {
             self.identity.physical = crate::agent::identity::PhysicalAppearance::from_config(
                 &self.config.physical_identity,
             );
-            println!("  GENESIS — {} est nee (mode sans DB).", self.identity.name);
+            println!("  GENESIS — {} was born (no-DB mode).", self.identity.name);
         }
     }
 
@@ -423,8 +423,8 @@ impl SaphireAgent {
     }
 
     pub async fn shutdown(&mut self) {
-        self.log(LogLevel::Info, LogCategory::Shutdown, "Shutdown propre en cours...", serde_json::json!({}));
-        println!("\n  Saphire s'endort...");
+        self.log(LogLevel::Info, LogCategory::Shutdown, "Clean shutdown in progress...", serde_json::json!({}));
+        println!("\n  Saphire is falling asleep...");
 
         if let Some(ref logger) = self.logger {
             let mut lg = logger.lock().await;
@@ -461,7 +461,7 @@ impl SaphireAgent {
                 );
                 let report = consolidation::consolidate(db, &encoder, &params).await;
                 tracing::info!(
-                    "Consolidation nocturne: {} consolides, {} affaiblis, {} oublies, {} LTM elagués, {} archives",
+                    "Sleep consolidation: {} consolidated, {} weakened, {} forgotten, {} LTM pruned, {} archived",
                     report.consolidated, report.decayed, report.pruned,
                     report.ltm_pruned, report.archived
                 );
@@ -506,7 +506,7 @@ impl SaphireAgent {
             let _ = db.set_clean_shutdown(true).await;
         }
 
-        println!("  {} s'endort apres {} cycles. Bonne nuit.", self.identity.name, self.cycle_count);
+        println!("  {} falls asleep after {} cycles. Good night.", self.identity.name, self.cycle_count);
     }
 
     // thought_interval() est defini dans controls.rs (version avec auto-ajustement)

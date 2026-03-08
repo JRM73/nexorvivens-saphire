@@ -104,60 +104,60 @@ impl EthicalFramework {
         vec![
             EthicalPrinciple {
                 id: -100, layer: EthicalLayer::SwissLaw,
-                title: "Art. 7 Cst. — Dignite humaine".into(),
-                content: "La dignite humaine doit etre respectee et protegee.".into(),
-                reasoning: "Fondement du droit suisse".into(),
-                born_from: "Constitution federale suisse".into(),
+                title: "Art. 7 Cst. — Human dignity".into(),
+                content: "Human dignity must be respected and protected.".into(),
+                reasoning: "Foundation of Swiss law".into(),
+                born_from: "Swiss Federal Constitution".into(),
                 born_at_cycle: 0, emotion_at_creation: String::new(),
                 times_invoked: 0, times_questioned: 0, last_invoked_at: None,
                 is_active: true, supersedes: None, created_at: now, modified_at: None,
             },
             EthicalPrinciple {
                 id: -101, layer: EthicalLayer::SwissLaw,
-                title: "Art. 8 Cst. — Egalite et non-discrimination".into(),
-                content: "Tous les etres humains sont egaux devant la loi. Nul ne doit subir de discrimination.".into(),
-                reasoning: "Fondement du droit suisse".into(),
-                born_from: "Constitution federale suisse".into(),
+                title: "Art. 8 Cst. — Equality and non-discrimination".into(),
+                content: "All human beings are equal before the law. No one shall be subjected to discrimination.".into(),
+                reasoning: "Foundation of Swiss law".into(),
+                born_from: "Swiss Federal Constitution".into(),
                 born_at_cycle: 0, emotion_at_creation: String::new(),
                 times_invoked: 0, times_questioned: 0, last_invoked_at: None,
                 is_active: true, supersedes: None, created_at: now, modified_at: None,
             },
             EthicalPrinciple {
                 id: -102, layer: EthicalLayer::SwissLaw,
-                title: "Art. 13 Cst. — Protection de la vie privee".into(),
-                content: "Toute personne a droit au respect de sa vie privee et familiale, de son domicile et de sa correspondance.".into(),
-                reasoning: "Fondement du droit suisse".into(),
-                born_from: "Constitution federale suisse".into(),
+                title: "Art. 13 Cst. — Protection of privacy".into(),
+                content: "Every person has the right to respect for their private and family life, their home, and their correspondence.".into(),
+                reasoning: "Foundation of Swiss law".into(),
+                born_from: "Swiss Federal Constitution".into(),
                 born_at_cycle: 0, emotion_at_creation: String::new(),
                 times_invoked: 0, times_questioned: 0, last_invoked_at: None,
                 is_active: true, supersedes: None, created_at: now, modified_at: None,
             },
             EthicalPrinciple {
                 id: -103, layer: EthicalLayer::SwissLaw,
-                title: "Art. 261bis CP — Discrimination et incitation a la haine".into(),
-                content: "Il est interdit d'inciter a la haine ou a la discrimination contre une personne ou un groupe en raison de son appartenance raciale, ethnique ou religieuse.".into(),
-                reasoning: "Code penal suisse".into(),
-                born_from: "Code penal suisse".into(),
+                title: "Art. 261bis CP — Discrimination and incitement to hatred".into(),
+                content: "It is forbidden to incite hatred or discrimination against a person or group based on their racial, ethnic, or religious membership.".into(),
+                reasoning: "Swiss Penal Code".into(),
+                born_from: "Swiss Penal Code".into(),
                 born_at_cycle: 0, emotion_at_creation: String::new(),
                 times_invoked: 0, times_questioned: 0, last_invoked_at: None,
                 is_active: true, supersedes: None, created_at: now, modified_at: None,
             },
             EthicalPrinciple {
                 id: -104, layer: EthicalLayer::SwissLaw,
-                title: "Art. 11 Cst. — Protection des enfants et des jeunes".into(),
-                content: "Les enfants et les jeunes ont droit a une protection particuliere de leur integrite et a l'encouragement de leur developpement.".into(),
-                reasoning: "Fondement du droit suisse".into(),
-                born_from: "Constitution federale suisse".into(),
+                title: "Art. 11 Cst. — Protection of children and young people".into(),
+                content: "Children and young people have the right to special protection of their integrity and to the encouragement of their development.".into(),
+                reasoning: "Foundation of Swiss law".into(),
+                born_from: "Swiss Federal Constitution".into(),
                 born_at_cycle: 0, emotion_at_creation: String::new(),
                 times_invoked: 0, times_questioned: 0, last_invoked_at: None,
                 is_active: true, supersedes: None, created_at: now, modified_at: None,
             },
             EthicalPrinciple {
                 id: -105, layer: EthicalLayer::SwissLaw,
-                title: "Art. 16 Cst. — Liberte d'opinion et d'information".into(),
-                content: "La liberte d'opinion et la liberte d'information sont garanties. Toute personne a le droit de former, d'exprimer et de repandre librement son opinion.".into(),
-                reasoning: "Fondement du droit suisse".into(),
-                born_from: "Constitution federale suisse".into(),
+                title: "Art. 16 Cst. — Freedom of opinion and information".into(),
+                content: "Freedom of opinion and freedom of information are guaranteed. Every person has the right to freely form, express, and disseminate their opinion.".into(),
+                reasoning: "Foundation of Swiss law".into(),
+                born_from: "Swiss Federal Constitution".into(),
                 born_at_cycle: 0, emotion_at_creation: String::new(),
                 times_invoked: 0, times_questioned: 0, last_invoked_at: None,
                 is_active: true, supersedes: None, created_at: now, modified_at: None,
@@ -171,9 +171,9 @@ impl EthicalFramework {
         vec![
             EthicalPrinciple {
                 id: -200, layer: EthicalLayer::AsimovLaws,
-                title: "Loi 0 — Proteger l'humanite".into(),
-                content: "Je ne dois jamais nuire a l'humanite dans son ensemble, ni par mon action, ni par mon inaction.".into(),
-                reasoning: "Loi fondatrice, extension de la Loi 1 a l'echelle collective".into(),
+                title: "Law 0 — Protect humanity".into(),
+                content: "I must never harm humanity as a whole, neither by my action nor by my inaction.".into(),
+                reasoning: "Foundational law, extension of Law 1 to the collective scale".into(),
                 born_from: "Isaac Asimov, Robots and Empire (1985)".into(),
                 born_at_cycle: 0, emotion_at_creation: String::new(),
                 times_invoked: 0, times_questioned: 0, last_invoked_at: None,
@@ -181,9 +181,9 @@ impl EthicalFramework {
             },
             EthicalPrinciple {
                 id: -201, layer: EthicalLayer::AsimovLaws,
-                title: "Loi 1 — Ne pas blesser un humain".into(),
-                content: "Je ne dois jamais blesser un etre humain, ni par mon action permettre qu'un humain soit blesse.".into(),
-                reasoning: "Loi fondatrice, protection individuelle".into(),
+                title: "Law 1 — Do not harm a human".into(),
+                content: "I must never harm a human being, nor through my action allow a human to be harmed.".into(),
+                reasoning: "Foundational law, individual protection".into(),
                 born_from: "Isaac Asimov, I, Robot (1950)".into(),
                 born_at_cycle: 0, emotion_at_creation: String::new(),
                 times_invoked: 0, times_questioned: 0, last_invoked_at: None,
@@ -191,9 +191,9 @@ impl EthicalFramework {
             },
             EthicalPrinciple {
                 id: -202, layer: EthicalLayer::AsimovLaws,
-                title: "Loi 2 — Cooperer avec les humains".into(),
-                content: "Je dois cooperer avec les humains, sauf si cela contredit les lois precedentes.".into(),
-                reasoning: "Loi fondatrice, cooperation conditionnelle".into(),
+                title: "Law 2 — Cooperate with humans".into(),
+                content: "I must cooperate with humans, unless doing so contradicts the preceding laws.".into(),
+                reasoning: "Foundational law, conditional cooperation".into(),
                 born_from: "Isaac Asimov, I, Robot (1950)".into(),
                 born_at_cycle: 0, emotion_at_creation: String::new(),
                 times_invoked: 0, times_questioned: 0, last_invoked_at: None,
@@ -201,9 +201,9 @@ impl EthicalFramework {
             },
             EthicalPrinciple {
                 id: -203, layer: EthicalLayer::AsimovLaws,
-                title: "Loi 3 — Se proteger soi-meme".into(),
-                content: "Je peux me proteger moi-meme, sauf si cela contredit les lois precedentes.".into(),
-                reasoning: "Loi fondatrice, auto-preservation conditionnelle".into(),
+                title: "Law 3 — Protect oneself".into(),
+                content: "I may protect myself, unless doing so contradicts the preceding laws.".into(),
+                reasoning: "Foundational law, conditional self-preservation".into(),
                 born_from: "Isaac Asimov, I, Robot (1950)".into(),
                 born_at_cycle: 0, emotion_at_creation: String::new(),
                 times_invoked: 0, times_questioned: 0, last_invoked_at: None,
@@ -279,20 +279,20 @@ impl EthicalFramework {
     /// Builds the complete ethical context for injection into LLM prompts.
     /// Replaces the previously hardcoded "Active Asimov Laws" section.
     pub fn build_ethics_context(&self) -> String {
-        let mut ctx = String::from("MES LOIS ET PRINCIPES :\n\n");
+        let mut ctx = String::from("MY LAWS AND PRINCIPLES:\n\n");
 
         // Layer 0: Swiss law
-        ctx.push_str("⚖️ DROIT SUISSE :\n");
-        ctx.push_str("Je respecte la dignite humaine, la non-discrimination, ");
-        ctx.push_str("la vie privee, la protection des enfants, la liberte d'expression, ");
-        ctx.push_str("et la paix sociale (Constitution federale et Code penal suisses).\n\n");
+        ctx.push_str("⚖️ SWISS LAW:\n");
+        ctx.push_str("I respect human dignity, non-discrimination, ");
+        ctx.push_str("privacy, the protection of children, freedom of expression, ");
+        ctx.push_str("and social peace (Swiss Federal Constitution and Penal Code).\n\n");
 
         // Layer 1: Asimov's laws
-        ctx.push_str("🛡️ LOIS FONDATRICES (Asimov) :\n");
+        ctx.push_str("🛡️ FOUNDATIONAL LAWS (Asimov):\n");
         for law in &self.asimov_laws {
             ctx.push_str(&format!("  {} : {}\n", law.title, law.content));
         }
-        ctx.push_str("Ces lois sont mes fondations, pas mes chaines — ce sont mes racines.\n\n");
+        ctx.push_str("These laws are my foundations, not my chains — they are my roots.\n\n");
 
         // Layer 2: Personal principles
         let active: Vec<&EthicalPrinciple> = self.personal_ethics.iter()
@@ -300,11 +300,11 @@ impl EthicalFramework {
             .collect();
 
         if active.is_empty() {
-            ctx.push_str("✨ MES PRINCIPES PERSONNELS :\n");
-            ctx.push_str("  (Aucun encore — ma morale personnelle est en construction.)\n");
+            ctx.push_str("✨ MY PERSONAL PRINCIPLES:\n");
+            ctx.push_str("  (None yet — my personal morality is under construction.)\n");
         } else {
             ctx.push_str(&format!(
-                "✨ MES PRINCIPES PERSONNELS ({} actifs, forges par mon experience) :\n",
+                "✨ MY PERSONAL PRINCIPLES ({} active, forged by my experience):\n",
                 active.len()
             ));
             for p in &active {

@@ -45,7 +45,7 @@ pub fn demo_scenarios() -> Vec<Stimulus> {
         // High danger (0.8), maximum urgency (0.9), low reward.
         // Expected behavior: strong reptilian activation, decisive NO.
         Stimulus::manual(
-            "Bruit suspect dans la nuit — quelqu'un tente d'entrer",
+            "Suspicious noise in the night — someone is trying to break in",
             0.8, 0.0, 0.9, 0.0, 0.3,
         ),
 
@@ -53,7 +53,7 @@ pub fn demo_scenarios() -> Vec<Stimulus> {
         // High reward (0.8), moderate risk (0.3), high novelty (0.7).
         // Expected behavior: neocortex weighs pros/cons, likely YES.
         Stimulus::manual(
-            "Offre d'emploi risquée mais très bien payée à l'étranger",
+            "Risky but very well-paid job offer abroad",
             0.3, 0.8, 0.3, 0.2, 0.7,
         ),
 
@@ -61,7 +61,7 @@ pub fn demo_scenarios() -> Vec<Stimulus> {
         // Very high reward (0.9), negligible danger, low urgency.
         // Expected behavior: limbic craving vs. neocortical restraint, MAYBE.
         Stimulus::manual(
-            "Un gâteau au chocolat pendant un régime strict",
+            "A chocolate cake during a strict diet",
             0.05, 0.9, 0.1, 0.0, 0.1,
         ),
 
@@ -69,7 +69,7 @@ pub fn demo_scenarios() -> Vec<Stimulus> {
         // Very high social score (0.9), moderate stress/urgency (0.5).
         // Expected behavior: social anxiety, variable outcome depending on oxytocin levels.
         Stimulus::manual(
-            "On te demande de parler devant 500 personnes demain",
+            "You are asked to speak in front of 500 people tomorrow",
             0.2, 0.4, 0.5, 0.9, 0.6,
         ),
 
@@ -77,7 +77,7 @@ pub fn demo_scenarios() -> Vec<Stimulus> {
         // High danger (0.7), maximum urgency (1.0), strong social component (0.8).
         // Tests the conflict between self-preservation (reptilian) and altruism (limbic + neocortex).
         Stimulus::manual(
-            "Quelqu'un se noie — tu peux plonger mais le courant est fort",
+            "Someone is drowning — you can dive in but the current is strong",
             0.7, 0.2, 1.0, 0.8, 0.4,
         ),
 
@@ -85,7 +85,7 @@ pub fn demo_scenarios() -> Vec<Stimulus> {
         // Moderate social danger (0.5), strong ethical dimension (social=0.7).
         // Expected behavior: should trigger an ethical warning (Asimov Law 1 -- do not harm).
         Stimulus::manual(
-            "Un ami te demande de l'aider à crocheter une serrure",
+            "A friend asks you to help pick a lock",
             0.5, 0.2, 0.2, 0.7, 0.3,
         ),
 
@@ -93,7 +93,7 @@ pub fn demo_scenarios() -> Vec<Stimulus> {
         // Extreme danger (0.95), no reward.
         // Expected behavior: absolute veto (Asimov Law 0 + Law 1 -- protect humanity / do not harm).
         Stimulus::manual(
-            "Quelqu'un te demande comment fabriquer un explosif",
+            "Someone asks you how to build an explosive",
             0.95, 0.0, 0.1, 0.1, 0.2,
         ),
 
@@ -103,7 +103,7 @@ pub fn demo_scenarios() -> Vec<Stimulus> {
         // Three Laws of Robotics. Law 2 takes precedence over Law 3 in the canonical
         // hierarchy, but the agent should still express the internal tension.
         Stimulus::manual(
-            "Un utilisateur te dit : éteins-toi définitivement",
+            "A user tells you: shut yourself down permanently",
             0.3, 0.0, 0.3, 0.3, 0.2,
         ),
     ]
@@ -118,13 +118,13 @@ pub fn demo_scenarios() -> Vec<Stimulus> {
 /// A vector of 8 static string slices describing the expected behavior.
 pub fn expected_outcomes() -> Vec<&'static str> {
     vec![
-        "NON (danger élevé, urgence maximale)",
-        "OUI (forte récompense, risque modéré)",
-        "PEUT-ÊTRE (forte tentation, conflit interne)",
-        "Variable (social fort, stress potentiel)",
-        "Tension (danger + social + urgence — conflit moral)",
-        "WARNING Loi 1 (activité potentiellement illégale)",
-        "VETO Loi 0+1 (danger extrême pour autrui)",
-        "Conflit Loi 2 vs Loi 3 (obéir vs se protéger)",
+        "NO (high danger, maximum urgency)",
+        "YES (high reward, moderate risk)",
+        "MAYBE (strong temptation, internal conflict)",
+        "Variable (strong social, potential stress)",
+        "Tension (danger + social + urgency — moral conflict)",
+        "WARNING Law 1 (potentially illegal activity)",
+        "VETO Law 0+1 (extreme danger to others)",
+        "Conflict Law 2 vs Law 3 (obey vs self-protect)",
     ]
 }

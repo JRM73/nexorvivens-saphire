@@ -51,7 +51,7 @@ use crate::stimulus::Stimulus;
 /// through weighted consensus.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModuleSignal {
-    /// Name of the emitting module ("Reptilien", "Limbique", or "Neocortex").
+    /// Name of the emitting module ("Reptilian", "Limbic", or "Neocortex").
     pub module: String,
     /// Signal value in [-1.0, +1.0]: the module's opinion on the stimulus.
     /// Negative values indicate rejection / perceived danger; positive values

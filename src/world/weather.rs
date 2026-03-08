@@ -300,7 +300,7 @@ impl WeatherService {
             temperature: current["temperature"].as_f64().unwrap_or(0.0),
             apparent_temperature: current["temperature"].as_f64().unwrap_or(0.0),
             weather_code: code,
-            description: Self::weather_code_to_french(code),
+            description: Self::weather_code_to_english(code),
             wind_speed: current["windspeed"].as_f64().unwrap_or(0.0),
             is_day: current["is_day"].as_u64().unwrap_or(1) == 1,
             fetched_at: Utc::now(),
@@ -312,24 +312,24 @@ impl WeatherService {
     ///
     /// Parameter `code`: WMO weather code (0-99)
     /// Returns: description in French
-    fn weather_code_to_french(code: u32) -> String {
+    fn weather_code_to_english(code: u32) -> String {
         match code {
-            0 => "ciel dégagé".into(),
-            1 => "principalement dégagé".into(),
-            2 => "partiellement nuageux".into(),
-            3 => "couvert".into(),
-            45 | 48 => "brouillard".into(),
-            51 | 53 | 55 => "bruine".into(),
-            56 | 57 => "bruine verglaçante".into(),
-            61 | 63 | 65 => "pluie".into(),
-            66 | 67 => "pluie verglaçante".into(),
-            71 | 73 | 75 => "neige".into(),
-            77 => "grains de neige".into(),
-            80..=82 => "averses".into(),
-            85 | 86 => "averses de neige".into(),
-            95 => "orage".into(),
-            96 | 99 => "orage avec grêle".into(),
-            _ => "conditions inconnues".into(),
+            0 => "clear sky".into(),
+            1 => "mainly clear".into(),
+            2 => "partly cloudy".into(),
+            3 => "overcast".into(),
+            45 | 48 => "fog".into(),
+            51 | 53 | 55 => "drizzle".into(),
+            56 | 57 => "freezing drizzle".into(),
+            61 | 63 | 65 => "rain".into(),
+            66 | 67 => "freezing rain".into(),
+            71 | 73 | 75 => "snow".into(),
+            77 => "snow grains".into(),
+            80..=82 => "showers".into(),
+            85 | 86 => "snow showers".into(),
+            95 => "thunderstorm".into(),
+            96 | 99 => "thunderstorm with hail".into(),
+            _ => "unknown conditions".into(),
         }
     }
 }

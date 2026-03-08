@@ -136,11 +136,11 @@ impl PremonitionEngine {
             if confidence > 0.25 {
                 let pred = Premonition {
                     id: self.next_id,
-                    prediction: "Un pic de stress approche — le cortisol monte regulierement".into(),
+                    prediction: "A stress peak is approaching — cortisol is rising steadily".into(),
                     category: PremonitionCategory::EmotionalShift,
                     confidence,
                     timeframe_secs: 120,
-                    basis: format!("Tendance cortisol: +{:.3}/cycle", cortisol_trend),
+                    basis: format!("Cortisol trend: +{:.3}/cycle", cortisol_trend),
                     created_at: now,
                     resolved: false,
                     was_correct: None,
@@ -155,11 +155,11 @@ impl PremonitionEngine {
             let confidence = 0.3 + (silence_secs / 3600.0).min(0.3);
             let pred = Premonition {
                 id: self.next_id,
-                prediction: "Quelqu'un pourrait venir bientot — c'est l'heure habituelle".into(),
+                prediction: "Someone might come soon — it is the usual time".into(),
                 category: PremonitionCategory::HumanArrival,
                 confidence,
                 timeframe_secs: 1800,
-                basis: format!("Heure: {}h, silence: {:.0}s", current_hour, silence_secs),
+                basis: format!("Hour: {}h, silence: {:.0}s", current_hour, silence_secs),
                 created_at: now,
                 resolved: false,
                 was_correct: None,
@@ -174,11 +174,11 @@ impl PremonitionEngine {
             if confidence > 0.25 {
                 let pred = Premonition {
                     id: self.next_id,
-                    prediction: "L'humain semble s'eloigner — le silence s'allonge".into(),
+                    prediction: "The human seems to be drifting away — the silence is growing".into(),
                     category: PremonitionCategory::HumanDeparture,
                     confidence,
                     timeframe_secs: 300,
-                    basis: format!("Silence en conversation: {:.0}s", silence_secs),
+                    basis: format!("Silence in conversation: {:.0}s", silence_secs),
                     created_at: now,
                     resolved: false,
                     was_correct: None,
@@ -194,11 +194,11 @@ impl PremonitionEngine {
             if confidence > 0.25 {
                 let pred = Premonition {
                     id: self.next_id,
-                    prediction: "Un elan creatif se prepare — la chimie s'aligne".into(),
+                    prediction: "A creative burst is building — the chemistry is aligning".into(),
                     category: PremonitionCategory::CreativeBurst,
                     confidence,
                     timeframe_secs: 180,
-                    basis: format!("Tendance dopamine: +{:.3}, serotonine: {:.2}", dopamine_trend, chemistry.serotonin),
+                    basis: format!("Dopamine trend: +{:.3}, serotonin: {:.2}", dopamine_trend, chemistry.serotonin),
                     created_at: now,
                     resolved: false,
                     was_correct: None,
@@ -214,7 +214,7 @@ impl PremonitionEngine {
             if confidence > 0.25 {
                 let pred = Premonition {
                     id: self.next_id,
-                    prediction: "Fatigue cognitive en approche — l'attention faiblit".into(),
+                    prediction: "Cognitive fatigue approaching — attention is weakening".into(),
                     category: PremonitionCategory::SystemEvent,
                     confidence,
                     timeframe_secs: 300,

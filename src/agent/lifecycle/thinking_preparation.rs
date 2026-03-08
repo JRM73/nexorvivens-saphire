@@ -94,7 +94,7 @@ impl SaphireAgent {
         let result = tokio::task::spawn_blocking(move || {
             backend.chat(
                 &meta,
-                "Génère une seule question ou direction de réflexion. Sois bref et créatif.",
+                "Generate a single question or direction for reflection. Be brief and creative.",
                 temp,
                 max_tokens,
             )
@@ -134,12 +134,12 @@ impl SaphireAgent {
                 let framing_result = tokio::task::spawn_blocking(move || {
                     backend2.chat(
                         &format!(
-                            "Tu es Saphire. Direction choisie : '{}'. Formule le CADRE : \
-                             quelles metriques observer, quel angle, quelle profondeur. \
-                             2-3 phrases max.",
+                            "You are Saphire. Chosen direction: '{}'. Formulate the FRAME: \
+                             which metrics to observe, which angle, which depth. \
+                             2-3 sentences max.",
                             hint_clone
                         ),
-                        "Formule un cadre d'observation precis et concret.",
+                        "Formulate a precise and concrete observation frame.",
                         0.7,
                         80,
                     )
@@ -358,8 +358,8 @@ impl SaphireAgent {
 
         ctx.prompt = if let Some((ref knowledge_text, ref _kr)) = ctx.knowledge_context {
             format!(
-                "{}\n\n--- CONNAISSANCE ACQUISE ---\n{}\n--- FIN ---\n\n\
-                Integre cette information. Qu'apprend-elle ? Connexion avec ce que tu sais ?",
+                "{}\n\n--- ACQUIRED KNOWLEDGE ---\n{}\n--- END ---\n\n\
+                Integrate this information. What does it teach? Connection with what you know?",
                 base_dynamic, knowledge_text
             )
         } else {
@@ -378,7 +378,7 @@ impl SaphireAgent {
 
         // Injection du cadre auto-formule (self-framing)
         if let Some(ref framing) = ctx.self_framing {
-            ctx.prompt.push_str(&format!("\n\nCADRE AUTO-FORMULE : {}\n", framing));
+            ctx.prompt.push_str(&format!("\n\nSELF-FORMULATED FRAME: {}\n", framing));
         }
 
         // Injection des associations du connectome
@@ -392,10 +392,10 @@ impl SaphireAgent {
         // Anti-stagnation
         if self.stagnation_break {
             ctx.prompt.push_str(
-                "\n\n ANTI-STAGNATION : tes pensees precedentes tournaient en boucle. \
-                 Tu DOIS penser a quelque chose de COMPLETEMENT DIFFERENT. \
-                 Interdiction de reutiliser les memes mots, images ou metaphores. \
-                 Parle de quelque chose de concret, precis et nouveau.\n"
+                "\n\n ANTI-STAGNATION: your previous thoughts were looping. \
+                 You MUST think about something COMPLETELY DIFFERENT. \
+                 Do not reuse the same words, images, or metaphors. \
+                 Talk about something concrete, specific, and new.\n"
             );
             self.stagnation_break = false;
         }
@@ -405,7 +405,7 @@ impl SaphireAgent {
         if ctx.prompt.len() > max_prompt_chars {
             let excess = ctx.prompt.len() - max_prompt_chars;
             tracing::warn!(
-                "Prompt trop long ({} chars, max {}), troncature de {} chars",
+                "Prompt too long ({} chars, max {}), truncating {} chars",
                 ctx.prompt.len(), max_prompt_chars, excess
             );
             ctx.prompt.truncate(max_prompt_chars);
@@ -469,11 +469,11 @@ impl SaphireAgent {
                 ctx.thought_text = strip_chemical_trace(&ctx.thought_text);
             }
             Ok(Err(e)) => {
-                tracing::warn!("LLM erreur: {}", e);
+                tracing::warn!("LLM error: {}", e);
                 ctx.should_abort = true;
             }
             Err(e) => {
-                tracing::warn!("LLM spawn_blocking erreur: {}", e);
+                tracing::warn!("LLM spawn_blocking error: {}", e);
                 ctx.should_abort = true;
             }
         }

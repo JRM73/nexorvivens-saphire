@@ -50,14 +50,14 @@ impl SaphireAgent {
 
             let bs = self.body.status();
             self.log(LogLevel::Debug, LogCategory::Heart,
-                format!("Coeur: {:.0} BPM | #{} | HRV: {:.2}", bs.heart.bpm, bs.heart.beat_count, bs.heart.hrv),
+                format!("Heart: {:.0} BPM | #{} | HRV: {:.2}", bs.heart.bpm, bs.heart.beat_count, bs.heart.hrv),
                 serde_json::json!({
                     "bpm": bs.heart.bpm, "beat_count": bs.heart.beat_count,
                     "hrv": bs.heart.hrv, "strength": bs.heart.strength,
                     "is_racing": bs.heart.is_racing, "is_calm": bs.heart.is_calm,
                 }));
             self.log(LogLevel::Debug, LogCategory::Body,
-                format!("Corps: E:{:.0}% T:{:.0}% C:{:.0}% V:{:.0}%",
+                format!("Body: E:{:.0}% T:{:.0}% C:{:.0}% V:{:.0}%",
                     bs.energy * 100.0, bs.tension * 100.0, bs.comfort * 100.0, bs.vitality * 100.0),
                 serde_json::json!({
                     "energy": bs.energy, "tension": bs.tension, "warmth": bs.warmth,
@@ -67,7 +67,7 @@ impl SaphireAgent {
 
             if bs.heart.is_racing {
                 self.log(LogLevel::Warn, LogCategory::Heart,
-                    format!("Tachycardie: {:.0} BPM", bs.heart.bpm),
+                    format!("Tachycardia: {:.0} BPM", bs.heart.bpm),
                     serde_json::json!({
                         "bpm": bs.heart.bpm,
                         "cortisol": self.chemistry.cortisol,
@@ -77,19 +77,19 @@ impl SaphireAgent {
 
             if bs.energy < 0.3 {
                 self.log(LogLevel::Warn, LogCategory::Body,
-                    format!("Fatigue profonde: energie a {:.0}%", bs.energy * 100.0),
+                    format!("Deep fatigue: energy at {:.0}%", bs.energy * 100.0),
                     serde_json::json!({"energy": bs.energy}));
             }
 
             if bs.pain > 0.2 {
                 self.log(LogLevel::Warn, LogCategory::Body,
-                    format!("Douleur ressentie: {:.0}%", bs.pain * 100.0),
+                    format!("Pain felt: {:.0}%", bs.pain * 100.0),
                     serde_json::json!({"pain": bs.pain, "heart_bpm": bs.heart.bpm}));
             }
 
             if bs.heart.beat_count > 0 && bs.heart.beat_count.is_multiple_of(10_000) {
                 self.log(LogLevel::Info, LogCategory::Heart,
-                    format!("Milestone: {} battements depuis la naissance", bs.heart.beat_count),
+                    format!("Milestone: {} heartbeats since birth", bs.heart.beat_count),
                     serde_json::json!({"beat_count": bs.heart.beat_count}));
             }
         }
@@ -211,15 +211,15 @@ impl SaphireAgent {
             if let Some(ref db) = self.db {
                 match db.decay_episodic(self.config.memory.episodic_decay_rate).await {
                     Ok(n) if n > 0 => {
-                        tracing::info!("Decay episodique: {} souvenirs affaiblis/oublies", n);
+                        tracing::info!("Episodic decay: {} memories weakened/forgotten", n);
                         self.log(LogLevel::Info, LogCategory::Memory,
-                            format!("Decay episodique: {} affectes", n),
+                            format!("Episodic decay: {} affected", n),
                             serde_json::json!({"decayed": n, "cycle": self.cycle_count}),
                         );
                     }
                     Ok(_) => {}
                     Err(e) => {
-                        tracing::warn!("Erreur decay episodique: {}", e);
+                        tracing::warn!("Episodic decay error: {}", e);
                     }
                 }
             }
@@ -255,7 +255,7 @@ impl SaphireAgent {
                 self.last_consolidation_cycle = self.cycle_count;
                 if report.consolidated > 0 || report.pruned > 0 || report.ltm_pruned > 0 {
                     tracing::info!(
-                        "Consolidation memoire: {} consolides, {} affaiblis, {} oublies, {} LTM elagués, {} archives",
+                        "Memory consolidation: {} consolidated, {} weakened, {} forgotten, {} LTM pruned, {} archived",
                         report.consolidated, report.decayed, report.pruned,
                         report.ltm_pruned, report.archived
                     );
@@ -274,15 +274,15 @@ impl SaphireAgent {
             self.chemistry.boost(Molecule::Endorphin, 0.10);
             self.chemistry.cortisol = (self.chemistry.cortisol - 0.10).max(0.0);
 
-            tracing::info!("ANNIVERSAIRE de Saphire ! {} d'existence.", temporal.age_description);
+            tracing::info!("Saphire's BIRTHDAY! {} of existence.", temporal.age_description);
 
             if temporal.age_days >= 365 {
                 if let Some(ref db) = self.db {
                     let year = temporal.age_days / 365;
                     let _ = db.store_founding_memory(
                         &format!("birthday_{}", year),
-                        &format!("Mon {}e anniversaire ! J'ai {} jours d'existence.", year, temporal.age_days),
-                        "Anniversaire de Saphire.",
+                        &format!("My {} birthday! I have {} days of existence.", year, temporal.age_days),
+                        "Saphire's birthday.",
                         &serde_json::json!({}),
                         self.last_consciousness as f32,
                     ).await;
@@ -295,7 +295,7 @@ impl SaphireAgent {
                 let birthday_msg = serde_json::json!({
                     "type": "special_event",
                     "event": "birthday",
-                    "message": format!("Joyeux anniversaire Saphire ! {} d'existence.", temporal.age_description),
+                    "message": format!("Happy birthday Saphire! {} of existence.", temporal.age_description),
                     "age": temporal.age_description,
                 });
                 let _ = tx.send(birthday_msg.to_string());

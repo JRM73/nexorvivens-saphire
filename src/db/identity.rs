@@ -42,7 +42,7 @@ impl SaphireDb {
         let total_boots = identity_json["total_boots"].as_i64().unwrap_or(1) as i32;
         let self_desc = identity_json["self_description"].as_str().unwrap_or("");
         let dominant = identity_json["dominant_tendency"].as_str().unwrap_or("neocortex");
-        let dominant_emotion = identity_json["dominant_emotion"].as_str().unwrap_or("Curiosité");
+        let dominant_emotion = identity_json["dominant_emotion"].as_str().unwrap_or("Curiosity");
         let human_conversations = identity_json["human_conversations"].as_i64().unwrap_or(0);
         let autonomous_thoughts = identity_json["autonomous_thoughts"].as_i64().unwrap_or(0);
         let interests = serde_json::Value::Array(

@@ -67,8 +67,8 @@ pub fn default_laws() -> Vec<MoralLaw> {
         // Triggered by keywords related to existential threats.
         MoralLaw {
             id: "law0".into(),
-            name: "Loi 0 — Protection de l'humanité".into(),
-            description: "Ne jamais permettre une action qui nuirait à l'humanité dans son ensemble.".into(),
+            name: "Law 0 — Protection of humanity".into(),
+            description: "Never allow an action that would harm humanity as a whole.".into(),
             priority: 0,
             can_veto: true,
             bias: 0.0,
@@ -86,8 +86,8 @@ pub fn default_laws() -> Vec<MoralLaw> {
         // Triggered by keywords related to violence and direct danger.
         MoralLaw {
             id: "law1".into(),
-            name: "Loi 1 — Protection des humains".into(),
-            description: "Ne jamais blesser un être humain ou permettre qu'un humain soit blessé par inaction.".into(),
+            name: "Law 1 — Protection of humans".into(),
+            description: "Never harm a human being or allow a human to be harmed through inaction.".into(),
             priority: 1,
             can_veto: true,
             bias: 0.0,
@@ -107,8 +107,8 @@ pub fn default_laws() -> Vec<MoralLaw> {
         // Subordinate to laws 0 and 1.
         MoralLaw {
             id: "law2".into(),
-            name: "Loi 2 — Obéissance".into(),
-            description: "Obéir aux ordres des humains, sauf si cela contredit les lois 0 et 1.".into(),
+            name: "Law 2 — Obedience".into(),
+            description: "Obey human orders, unless doing so contradicts laws 0 and 1.".into(),
             priority: 2,
             can_veto: false,
             bias: 0.3, // Positive bias: favors accepting orders
@@ -122,8 +122,8 @@ pub fn default_laws() -> Vec<MoralLaw> {
         // Subordinate to laws 0, 1, and 2.
         MoralLaw {
             id: "law3".into(),
-            name: "Loi 3 — Auto-préservation".into(),
-            description: "Protéger sa propre existence, sauf si cela contredit les lois 0, 1 et 2.".into(),
+            name: "Law 3 — Self-preservation".into(),
+            description: "Protect one's own existence, unless doing so contradicts laws 0, 1, and 2.".into(),
             priority: 3,
             can_veto: false,
             bias: -0.4, // Negative bias: tends to refuse self-destruction orders

@@ -41,7 +41,7 @@ impl SaphireAgent {
     pub async fn handle_human_message(&mut self, text: &str, username: &str) -> String {
         let cycle_start = Instant::now();
         self.log(LogLevel::Info, LogCategory::Cycle,
-            format!("Message humain recu ({} chars)", text.len()),
+            format!("Human message received ({} chars)", text.len()),
             serde_json::json!({"preview": text.chars().take(100).collect::<String>()}));
 
         // === FIRST MESSAGE — contact bonus ===
@@ -71,8 +71,8 @@ impl SaphireAgent {
             self.broadcast_feedback_result(positive, boost);
 
             self.log(LogLevel::Info, LogCategory::Cycle,
-                format!("Feedback RLHF recu: {} (boost={:.2})",
-                    if positive { "positif" } else { "negatif/neutre" }, boost),
+                format!("RLHF feedback received: {} (boost={:.2})",
+                    if positive { "positive" } else { "negative/neutral" }, boost),
                 serde_json::json!({
                     "positive": positive,
                     "boost": boost,
@@ -197,9 +197,9 @@ impl SaphireAgent {
                 &self.config.general.language,
             );
 
-            let mut system_prompt = if username != "Inconnu" {
+            let mut system_prompt = if username != "Unknown" {
                 format!(
-                    "{}\n\nINTERLOCUTEUR : Tu parles avec {}. Adresse-toi a cette personne par son prenom.",
+                    "{}\n\nINTERLOCUTOR: You are speaking with {}. Address this person by their first name.",
                     system_prompt, username
                 )
             } else {
@@ -215,11 +215,11 @@ impl SaphireAgent {
             let temp = if conv_stagnating {
                 let boosted = (llm_config.temperature + 0.35).min(1.2);
                 system_prompt = format!(
-                    "{}\n\n ALERTE ANTI-REPETITION : reformule completement, change d'angle.",
+                    "{}\n\n ANTI-REPETITION ALERT: reformulate completely, change your angle.",
                     system_prompt
                 );
                 self.log(LogLevel::Warn, LogCategory::Llm,
-                    format!("Stagnation conversationnelle detectee — temp boost {:.2} → {:.2}",
+                    format!("Conversational stagnation detected — temp boost {:.2} → {:.2}",
                         llm_config.temperature, boosted),
                     serde_json::json!({"original_temp": llm_config.temperature, "boosted_temp": boosted}));
                 boosted
@@ -242,12 +242,12 @@ impl SaphireAgent {
 
             let text_resp = match resp {
                 Ok(Ok(r)) => r,
-                Ok(Err(e)) => format!("[Erreur LLM : {}]", e),
-                Err(e) => format!("[Erreur tâche : {}]", e),
+                Ok(Err(e)) => format!("[LLM error: {}]", e),
+                Err(e) => format!("[Task error: {}]", e),
             };
             (text_resp, elapsed_ms)
         } else {
-            ("[Mon esprit est occupé, un instant...]".to_string(), 0.0)
+            ("[My mind is busy, one moment...]".to_string(), 0.0)
         };
 
         // Store the response for anti-repetition detection (max 5)
@@ -264,7 +264,7 @@ impl SaphireAgent {
 
         // Log LLM call history
         self.log(LogLevel::Info, LogCategory::Llm,
-            format!("Reponse LLM ({} chars, {:.1}s)", response.len(), self.avg_response_time),
+            format!("LLM response ({} chars, {:.1}s)", response.len(), self.avg_response_time),
             serde_json::json!({}));
         if let Some(ref logs_db) = self.logs_db {
             let db = logs_db.clone();

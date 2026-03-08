@@ -122,7 +122,7 @@ impl SaphireAgent {
                 }
                 if !echoes.is_empty() {
                     self.log(LogLevel::Debug, LogCategory::Memory,
-                        format!("Echo memoriel: {} souvenir(s) resonne(nt) avec la pensee (sim: {:.2})",
+                        format!("Memory echo: {} memory(ies) resonate(s) with the thought (sim: {:.2})",
                             echoes.len(), echoes[0].similarity),
                         serde_json::json!({
                             "echo_count": echoes.len(),
@@ -171,12 +171,12 @@ impl SaphireAgent {
         if is_stagnating || is_semantic_stag {
             if is_semantic_stag && !is_stagnating {
                 tracing::warn!(
-                    "Stagnation SEMANTIQUE detectee (similarite cosinus={:.2}) — purge pensees recentes",
+                    "SEMANTIC stagnation detected (cosine similarity={:.2}) — purging recent thoughts",
                     semantic_sim
                 );
             } else {
                 tracing::warn!(
-                    "Stagnation persistante ({} mots obsessionnels: {:?}, sim={:.2}) — purge pensees recentes",
+                    "Persistent stagnation ({} obsessional words: {:?}, sim={:.2}) — purging recent thoughts",
                     obsessional_words.len(), &obsessional_words[..obsessional_words.len().min(5)], semantic_sim
                 );
             }
@@ -214,7 +214,7 @@ impl SaphireAgent {
             if self.cycle_count.saturating_sub(fb.asked_at_cycle) >= self.config.human_feedback.timeout_cycles {
                 self.feedback_pending = None;
                 self.log(LogLevel::Debug, LogCategory::Cycle,
-                    "Feedback RLHF timeout — pas de reponse humaine",
+                    "RLHF feedback timeout — no human response",
                     serde_json::json!({}));
             }
         }
@@ -228,7 +228,7 @@ impl SaphireAgent {
         let clean_text = strip_chemical_trace(&ctx.thought_text);
         let summary: String = clean_text.chars().take(120).collect();
         let question = format!(
-            "Je viens de penser que {}... Qu'en penses-tu ?",
+            "I just thought that {}... What do you think?",
             summary.trim_end_matches('.')
         );
 
@@ -248,7 +248,7 @@ impl SaphireAgent {
         self.cycles_since_last_feedback = 0;
 
         self.log(LogLevel::Info, LogCategory::Cycle,
-            "Feedback RLHF demande a l'humain",
+            "RLHF feedback requested from human",
             serde_json::json!({
                 "reward": ctx.reward,
                 "thought_type": format!("{:?}", ctx.thought_type),
@@ -286,7 +286,7 @@ impl SaphireAgent {
             let _ = db.prune_lora_samples(self.config.lora.max_samples).await;
 
             self.log(LogLevel::Debug, LogCategory::Cycle,
-                format!("LoRA sample collecte (quality={:.2})", quality),
+                format!("LoRA sample collected (quality={:.2})", quality),
                 serde_json::json!({"quality": quality, "reward": ctx.reward}));
         }
     }

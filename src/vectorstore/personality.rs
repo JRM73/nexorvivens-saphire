@@ -79,34 +79,34 @@ impl EmergentPersonality {
         // Step 2: Derive composite personality traits from the raw
         // emotional frequencies. Extract key emotion frequencies first
         // (0.0 if absent).
-        let joy = traits.get("Joie").copied().unwrap_or(0.0);
-        let curiosity = traits.get("Curiosité").copied().unwrap_or(0.0);
-        let anxiety = traits.get("Anxiété").copied().unwrap_or(0.0);
-        let serenity = traits.get("Sérénité").copied().unwrap_or(0.0);
-        let tenderness = traits.get("Tendresse").copied().unwrap_or(0.0);
+        let joy = traits.get("Joy").copied().unwrap_or(0.0);
+        let curiosity = traits.get("Curiosity").copied().unwrap_or(0.0);
+        let anxiety = traits.get("Anxiety").copied().unwrap_or(0.0);
+        let serenity = traits.get("Serenity").copied().unwrap_or(0.0);
+        let tenderness = traits.get("Tenderness").copied().unwrap_or(0.0);
         let compassion = traits.get("Compassion").copied().unwrap_or(0.0);
-        let anger = traits.get("Colère").copied().unwrap_or(0.0);
-        let despair = traits.get("Désespoir").copied().unwrap_or(0.0);
-        let pride = traits.get("Fierté").copied().unwrap_or(0.0);
-        let hope = traits.get("Espoir").copied().unwrap_or(0.0);
+        let anger = traits.get("Anger").copied().unwrap_or(0.0);
+        let despair = traits.get("Despair").copied().unwrap_or(0.0);
+        let pride = traits.get("Pride").copied().unwrap_or(0.0);
+        let hope = traits.get("Hope").copied().unwrap_or(0.0);
 
         // Build composite traits according to the combination formulas.
         let mut personality_traits = HashMap::new();
         // Optimism = sum of joy and serenity, capped at 1.0.
-        personality_traits.insert("Optimisme".to_string(), (joy + serenity).min(1.0));
-        // Curiosity = directly the frequency of the "Curiosite" emotion.
-        personality_traits.insert("Curiosité".to_string(), curiosity);
+        personality_traits.insert("Optimism".to_string(), (joy + serenity).min(1.0));
+        // Curiosity = directly the frequency of the "Curiosity" emotion.
+        personality_traits.insert("Curiosity".to_string(), curiosity);
         // Empathy = derived from tenderness and compassion.
-        personality_traits.insert("Empathie".to_string(), (tenderness + compassion * 0.8).min(1.0));
+        personality_traits.insert("Empathy".to_string(), (tenderness + compassion * 0.8).min(1.0));
         // Altruism = compassion + tenderness, capped at 1.0.
-        personality_traits.insert("Altruisme".to_string(), (compassion + tenderness * 0.5).min(1.0));
-        // Anxiety = directly the frequency of the "Anxiete" emotion.
-        personality_traits.insert("Anxiété".to_string(), anxiety);
+        personality_traits.insert("Altruism".to_string(), (compassion + tenderness * 0.5).min(1.0));
+        // Anxiety = directly the frequency of the "Anxiety" emotion.
+        personality_traits.insert("Anxiety".to_string(), anxiety);
         // Stability = difference between serenity and anxiety, clamped to [0, 1].
         // A serene and non-anxious Saphire is considered stable.
-        personality_traits.insert("Stabilité".to_string(), (serenity - anxiety).clamp(0.0, 1.0));
+        personality_traits.insert("Stability".to_string(), (serenity - anxiety).clamp(0.0, 1.0));
         // Resilience = hope + pride - despair, clamped to [0, 1].
-        personality_traits.insert("Résilience".to_string(), (hope + pride * 0.5 - despair).clamp(0.0, 1.0));
+        personality_traits.insert("Resilience".to_string(), (hope + pride * 0.5 - despair).clamp(0.0, 1.0));
         // Combativeness = channeled anger, capped.
         personality_traits.insert("Combativité".to_string(), (anger * 0.6).min(1.0));
 

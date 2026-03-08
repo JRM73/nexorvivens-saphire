@@ -42,7 +42,7 @@ pub struct NeocortexModule;
 impl BrainModule for NeocortexModule {
     /// Returns the name of this module: "Neocortex".
     fn name(&self) -> &str {
-        "Néocortex"
+        "Neocortex"
     }
 
     /// Processes a stimulus from a rational perspective (cost/benefit
@@ -109,17 +109,17 @@ impl BrainModule for NeocortexModule {
 
         // Detailed reasoning including the current mental clarity state
         let reasoning = format!(
-            "Analyse rationnelle (clarté={:.2}) : bénéfice={:.2}, risque={:.2}, social={:.2}. {}",
+            "Rational analysis (clarity={:.2}): benefit={:.2}, risk={:.2}, social={:.2}. {}",
             clarity,
             stimulus.reward,
             stimulus.danger,
             stimulus.social,
             if clarity < 0.5 {
-                "⚠ Clarté mentale dégradée par le stress."
+                "⚠ Mental clarity degraded by stress."
             } else if clarity > 1.0 {
-                "Focus élevé, analyse optimale."
+                "High focus, optimal analysis."
             } else {
-                "Clarté mentale normale."
+                "Normal mental clarity."
             }
         );
 

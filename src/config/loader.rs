@@ -20,12 +20,12 @@ impl SaphireConfig {
     /// The fully resolved `SaphireConfig`, or a human-readable error string.
     pub fn load(path: &str) -> Result<Self, String> {
         if !Path::new(path).exists() {
-            tracing::info!("Pas de fichier config '{}', utilisation des valeurs par défaut.", path);
+            tracing::info!("No config file '{}', using default values.", path);
             return Ok(Self::default());
         }
 
         let content = std::fs::read_to_string(path)
-            .map_err(|e| format!("Lecture config: {}", e))?;
+            .map_err(|e| format!("Read config: {}", e))?;
 
         let mut config: SaphireConfig = toml::from_str(&content)
             .map_err(|e| format!("Parse config: {}", e))?;

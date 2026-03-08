@@ -274,17 +274,17 @@ impl SaphireAgent {
         }
         let status = self.body.status();
         let heart_desc = if status.heart.is_racing {
-            "ton coeur bat vite"
+            "your heart is beating fast"
         } else if status.heart.is_calm {
-            "ton coeur est calme"
+            "your heart is calm"
         } else {
-            "ton coeur bat regulierement"
+            "your heart is beating steadily"
         };
         format!(
-            "Coeur : {:.0} BPM ({}) | {} battements depuis ta naissance\n\
-             Energie : {:.0}% | Tension : {:.0}% | Chaleur : {:.0}%\n\
-             Confort : {:.0}% | Douleur : {:.0}% | Vitalite : {:.0}%\n\
-             Respiration : {:.1}/min | Conscience corporelle : {:.0}%",
+            "Heart: {:.0} BPM ({}) | {} heartbeats since your birth\n\
+             Energy: {:.0}% | Tension: {:.0}% | Warmth: {:.0}%\n\
+             Comfort: {:.0}% | Pain: {:.0}% | Vitality: {:.0}%\n\
+             Breathing: {:.1}/min | Body awareness: {:.0}%",
             status.heart.bpm, heart_desc, status.heart.beat_count,
             status.energy * 100.0, status.tension * 100.0, status.warmth * 100.0,
             status.comfort * 100.0, status.pain * 100.0, status.vitality * 100.0,

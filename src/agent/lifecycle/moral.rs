@@ -112,7 +112,7 @@ impl SaphireAgent {
         let backend = llm::create_backend(&llm_config);
 
         let resp = tokio::task::spawn_blocking(move || {
-            backend.chat(&formulation_prompt, "Formule un principe ethique personnel.", temp, 200)
+            backend.chat(&formulation_prompt, "Formulate a personal ethical principle.", temp, 200)
         }).await;
 
         let formulation_response = match resp {
@@ -135,7 +135,7 @@ impl SaphireAgent {
         let backend2 = llm::create_backend(&self.config.llm);
 
         let compat_resp = tokio::task::spawn_blocking(move || {
-            backend2.chat(&compat_prompt, "Verifie la compatibilite.", compat_temp, 100)
+            backend2.chat(&compat_prompt, "Verify compatibility.", compat_temp, 100)
         }).await;
 
         let compatible = match compat_resp {
@@ -197,13 +197,13 @@ impl SaphireAgent {
         // Store as a founding memory (permanent in long-term memory)
         if let Some(ref db) = self.db {
             let content = format!(
-                "J'ai formule un nouveau principe ethique personnel : {}. {}",
+                "I formulated a new personal ethical principle: {}. {}",
                 parsed.title, parsed.content
             );
             let _ = db.store_founding_memory(
                 &format!("personal_law_{}", principle_id),
                 &content,
-                &format!("Parce que : {}. Ne de : {}", parsed.reasoning, parsed.born_from),
+                &format!("Because: {}. Born from: {}", parsed.reasoning, parsed.born_from),
                 &serde_json::json!({
                     "dopamine": self.chemistry.dopamine,
                     "cortisol": self.chemistry.cortisol,
@@ -225,7 +225,7 @@ impl SaphireAgent {
 
         tracing::info!("⚖️✨ Nouveau principe ethique : {} — «{}»", parsed.title, parsed.content);
         self.log(LogLevel::Info, LogCategory::Ethics,
-            format!("Nouveau principe ethique: {}", parsed.title),
+            format!("New ethical principle: {}", parsed.title),
             serde_json::json!({
                 "principle_id": principle_id,
                 "title": parsed.title,

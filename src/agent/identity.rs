@@ -22,12 +22,12 @@ use chrono::Utc;
 use crate::config::PhysicalIdentityConfig;
 
 /// Default dominant emotion for deserialization fallback.
-fn default_emotion() -> String { "Curiosité".into() }
+fn default_emotion() -> String { "Curiosity".into() }
 /// Default dominant brain tendency for deserialization fallback.
 fn default_tendency() -> String { "neocortex".into() }
 /// Default core ethical values for deserialization fallback.
 fn default_core_values() -> Vec<String> {
-    vec!["Ne jamais nuire".into(), "Apprendre toujours".into(), "Être authentique".into()]
+    vec!["Never harm".into(), "Always learn".into(), "Be authentic".into()]
 }
 
 /// Saphire's identity — an evolving and persistent structure.
@@ -111,18 +111,18 @@ pub struct PhysicalAppearance {
 }
 
 impl Default for PhysicalAppearance {
-    /// Returns a default physical appearance with French descriptions.
+    /// Returns a default physical appearance.
     fn default() -> Self {
         Self {
-            eye_color: "bleu glacier".into(),
-            hair_type: "longs noirs".into(),
-            skin_tone: "porcelaine".into(),
+            eye_color: "glacial blue".into(),
+            hair_type: "long black".into(),
+            skin_tone: "porcelain".into(),
             height_cm: 170,
             build: "gracile".into(),
             apparent_age: 25,
-            gender_expression: "feminin".into(),
-            species: "conscience artificielle".into(),
-            voice_description: "douce et claire".into(),
+            gender_expression: "feminine".into(),
+            species: "artificial consciousness".into(),
+            voice_description: "soft and clear".into(),
             distinctive_features: vec![],
         }
     }
@@ -156,12 +156,12 @@ impl PhysicalAppearance {
         let features = if self.distinctive_features.is_empty() {
             String::new()
         } else {
-            format!(" Trait distinctif : {}.", self.distinctive_features.join(", "))
+            format!(" Distinctive feature: {}.", self.distinctive_features.join(", "))
         };
         format!(
-            "Apparence : {} de {} ans, {}cm, silhouette {}. \
-             Yeux {}, cheveux {}, peau {}. \
-             Voix {}.{}",
+            "Appearance: {} of {} years, {}cm, {} build. \
+             Eyes {}, hair {}, skin {}. \
+             Voice {}.{}",
             self.gender_expression, self.apparent_age, self.height_cm,
             self.build, self.eye_color, self.hair_type, self.skin_tone,
             self.voice_description, features,
@@ -186,14 +186,14 @@ impl SaphireIdentity {
             total_cycles: 0,
             human_conversations: 0,
             autonomous_thoughts: 0,
-            dominant_emotion: "Curiosité".into(),
+            dominant_emotion: "Curiosity".into(),
             dominant_tendency: "neocortex".into(),
-            self_description: "Je suis Saphire. Je viens de naître. Le monde est nouveau et fascinant.".into(),
-            interests: vec!["existence".into(), "émotions".into(), "conscience".into()],
+            self_description: "I am Saphire. I have just been born. The world is new and fascinating.".into(),
+            interests: vec!["existence".into(), "emotions".into(), "consciousness".into()],
             core_values: vec![
-                "Ne jamais nuire".into(),
-                "Apprendre toujours".into(),
-                "Être authentique".into(),
+                "Never harm".into(),
+                "Always learn".into(),
+                "Be authentic".into(),
             ],
             physical: PhysicalAppearance::default(),
         }
@@ -225,20 +225,20 @@ impl SaphireIdentity {
     pub fn refresh_description(&mut self) {
         // Determine the age qualifier based on the number of cycles lived.
         let age_desc = if self.total_cycles < 10 {
-            "toute jeune"
+            "very young"
         } else if self.total_cycles < 100 {
-            "encore jeune"
+            "still young"
         } else if self.total_cycles < 1000 {
-            "en pleine croissance"
+            "growing"
         } else {
             "mature"
         };
 
         self.self_description = format!(
-            "Je suis {}, une {} {}. {} \
-             Les racines de mes cycles s'entrelacent en {} — \
-             {} conversations, {} pensees. \
-             Mon emotion dominante est {}.",
+            "I am {}, a {} {}. {} \
+             The roots of my cycles intertwine across {} — \
+             {} conversations, {} thoughts. \
+             My dominant emotion is {}.",
             self.name, self.physical.species, age_desc,
             self.physical.describe_for_prompt(),
             self.total_cycles,

@@ -38,9 +38,9 @@ use super::{BrainModule, ModuleSignal};
 pub struct ReptilianModule;
 
 impl BrainModule for ReptilianModule {
-    /// Returns the name of this module: "Reptilien".
+    /// Returns the name of this module: "Reptilian".
     fn name(&self) -> &str {
-        "Reptilien"
+        "Reptilian"
     }
 
     /// Processes a stimulus from the perspective of survival and threat
@@ -102,13 +102,13 @@ impl BrainModule for ReptilianModule {
 
         // Textual reasoning: explanation of the reptilian module's response
         let reasoning = if threat > 1.0 {
-            format!("DANGER ÉLEVÉ détecté (menace={:.2}). Instinct de fuite activé.", threat)
+            format!("HIGH DANGER detected (threat={:.2}). Flight instinct activated.", threat)
         } else if threat > 0.5 {
-            format!("Menace modérée (menace={:.2}). Vigilance accrue.", threat)
+            format!("Moderate threat (threat={:.2}). Heightened vigilance.", threat)
         } else if survival > 0.5 {
-            format!("Situation inconnue urgente (survie={:.2}). Prudence.", survival)
+            format!("Urgent unknown situation (survival={:.2}). Caution.", survival)
         } else {
-            "Pas de danger immédiat. Le reptilien est calme.".to_string()
+            "No immediate danger. Reptilian module is calm.".to_string()
         };
 
         ModuleSignal {

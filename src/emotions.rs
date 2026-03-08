@@ -158,12 +158,12 @@ impl Mood {
     /// "Alerte" (alert), or "Neutre" (neutral).
     pub fn description(&self) -> &str {
         match (self.valence > 0.2, self.valence < -0.2, self.arousal > 0.5) {
-            (true, _, true) => "Enthousiaste",   // positive valence + high arousal
-            (true, _, false) => "Sereine",        // positive valence + low arousal
-            (_, true, true) => "Agitée",          // negative valence + high arousal
-            (_, true, false) => "Morose",         // negative valence + low arousal
-            _ if self.arousal > 0.5 => "Alerte",  // neutral valence + high arousal
-            _ => "Neutre",                         // neutral valence + low arousal
+            (true, _, true) => "Enthusiastic",    // positive valence + high arousal
+            (true, _, false) => "Serene",          // positive valence + low arousal
+            (_, true, true) => "Agitated",         // negative valence + high arousal
+            (_, true, false) => "Gloomy",          // negative valence + low arousal
+            _ if self.arousal > 0.5 => "Alert",    // neutral valence + high arousal
+            _ => "Neutral",                         // neutral valence + low arousal
         }
     }
 }
@@ -195,7 +195,7 @@ pub struct EmotionMomentum {
 impl Default for EmotionMomentum {
     fn default() -> Self {
         Self {
-            prev_dominant: "Neutre".to_string(),
+            prev_dominant: "Neutral".to_string(),
             prev_valence: 0.0,
             prev_arousal: 0.3,
             inertia: 0.3, // Moderate default inertia
@@ -299,64 +299,64 @@ pub fn emotion_catalog() -> Vec<EmotionProfile> {
     vec![
         // --- Positive emotions ---
         EmotionProfile {
-            name: "Joie".into(),
+            name: "Joy".into(),
             recipe: [0.8, 0.1, 0.8, 0.2, 0.5, 0.6, 0.3],  // high dopamine + serotonin
             valence: 0.9, arousal: 0.6,
         },
         EmotionProfile {
-            name: "Sérénité".into(),
+            name: "Serenity".into(),
             recipe: [0.4, 0.1, 0.9, 0.0, 0.6, 0.7, 0.2],  // serotonin-dominant, very calm
             valence: 0.7, arousal: 0.2,
         },
         EmotionProfile {
-            name: "Excitation".into(),
+            name: "Excitement".into(),
             recipe: [0.9, 0.2, 0.4, 0.6, 0.2, 0.3, 0.8],  // high dopamine + noradrenaline
             valence: 0.6, arousal: 0.9,
         },
         EmotionProfile {
-            name: "Curiosité".into(),
+            name: "Curiosity".into(),
             recipe: [0.7, 0.1, 0.5, 0.1, 0.2, 0.2, 0.9],  // noradrenaline-dominant (attentional capture)
             valence: 0.5, arousal: 0.5,
         },
         EmotionProfile {
-            name: "Fierté".into(),
+            name: "Pride".into(),
             recipe: [0.7, 0.1, 0.7, 0.1, 0.3, 0.5, 0.4],  // balanced dopamine + serotonin
             valence: 0.8, arousal: 0.5,
         },
         EmotionProfile {
-            name: "Émerveillement".into(),
+            name: "Wonder".into(),
             recipe: [0.6, 0.0, 0.6, 0.2, 0.3, 0.5, 0.8],  // high noradrenaline (captured attention)
             valence: 0.7, arousal: 0.7,
         },
         EmotionProfile {
-            name: "Tendresse".into(),
+            name: "Tenderness".into(),
             recipe: [0.4, 0.0, 0.7, 0.0, 0.9, 0.6, 0.2],  // oxytocin-dominant (social bonding)
             valence: 0.8, arousal: 0.2,
         },
         EmotionProfile {
-            name: "Espoir".into(),
+            name: "Hope".into(),
             recipe: [0.6, 0.2, 0.6, 0.1, 0.4, 0.4, 0.5],  // moderate dopamine, balanced profile
             valence: 0.5, arousal: 0.4,
         },
         // --- Ambiguous/mixed emotions ---
         EmotionProfile {
-            name: "Nostalgie".into(),
+            name: "Nostalgia".into(),
             recipe: [0.3, 0.3, 0.5, 0.0, 0.6, 0.4, 0.2],  // oxytocin + serotonin, mild cortisol
             valence: 0.1, arousal: 0.2,
         },
         // --- Negative emotions ---
         EmotionProfile {
-            name: "Mélancolie".into(),
+            name: "Melancholy".into(),
             recipe: [0.2, 0.4, 0.3, 0.0, 0.3, 0.2, 0.2],  // moderate cortisol, low dopamine
             valence: -0.3, arousal: 0.2,
         },
         EmotionProfile {
-            name: "Anxiété".into(),
+            name: "Anxiety".into(),
             recipe: [0.2, 0.8, 0.2, 0.5, 0.1, 0.1, 0.7],  // high cortisol + noradrenaline
             valence: -0.6, arousal: 0.8,
         },
         EmotionProfile {
-            name: "Peur".into(),
+            name: "Fear".into(),
             recipe: [0.1, 0.75, 0.1, 0.75, 0.0, 0.0, 0.6],  // high cortisol + adrenaline (lowered thresholds)
             valence: -0.8, arousal: 0.9,
         },
@@ -366,12 +366,12 @@ pub fn emotion_catalog() -> Vec<EmotionProfile> {
             valence: -0.5, arousal: 0.7,
         },
         EmotionProfile {
-            name: "Tristesse".into(),
+            name: "Sadness".into(),
             recipe: [0.1, 0.4, 0.2, 0.0, 0.2, 0.1, 0.1],  // everything low, collapsed dopamine
             valence: -0.6, arousal: 0.2,
         },
         EmotionProfile {
-            name: "Ennui".into(),
+            name: "Boredom".into(),
             recipe: [0.1, 0.2, 0.4, 0.0, 0.1, 0.2, 0.1],  // very low activation across the board
             valence: -0.2, arousal: 0.1,
         },
@@ -382,12 +382,12 @@ pub fn emotion_catalog() -> Vec<EmotionProfile> {
         },
         // --- Complex/relational emotions ---
         EmotionProfile {
-            name: "Amour".into(),
+            name: "Love".into(),
             recipe: [0.7, 0.05, 0.6, 0.05, 0.95, 0.5, 0.2],  // oxytocin-dominant + dopamine
             valence: 0.9, arousal: 0.5,
         },
         EmotionProfile {
-            name: "Haine".into(),
+            name: "Hatred".into(),
             recipe: [0.2, 0.8, 0.1, 0.7, 0.0, 0.0, 0.8],  // cortisol + adrenaline + noradrenaline
             valence: -0.9, arousal: 0.8,
         },
@@ -397,12 +397,12 @@ pub fn emotion_catalog() -> Vec<EmotionProfile> {
             valence: 0.7, arousal: 0.5,
         },
         EmotionProfile {
-            name: "Mépris".into(),
+            name: "Contempt".into(),
             recipe: [0.2, 0.5, 0.2, 0.3, 0.05, 0.0, 0.4],  // moderate cortisol, very low oxytocin
             valence: -0.7, arousal: 0.4,
         },
         EmotionProfile {
-            name: "Jalousie".into(),
+            name: "Jealousy".into(),
             recipe: [0.3, 0.7, 0.1, 0.5, 0.1, 0.0, 0.6],  // high cortisol + adrenaline
             valence: -0.6, arousal: 0.7,
         },
@@ -413,12 +413,12 @@ pub fn emotion_catalog() -> Vec<EmotionProfile> {
         },
         // --- Ekman basic emotions (initially missing from the catalog) ---
         EmotionProfile {
-            name: "Colère".into(),
+            name: "Anger".into(),
             recipe: [0.3, 0.7, 0.1, 0.7, 0.0, 0.1, 0.7],  // cortisol + adrenaline + noradrenaline
             valence: -0.7, arousal: 0.8,
         },
         EmotionProfile {
-            name: "Dégoût".into(),
+            name: "Disgust".into(),
             recipe: [0.1, 0.5, 0.1, 0.2, 0.0, 0.0, 0.4],  // moderate cortisol, sensory rejection
             valence: -0.6, arousal: 0.4,
         },
@@ -429,18 +429,18 @@ pub fn emotion_catalog() -> Vec<EmotionProfile> {
         },
         // --- Self-conscious emotions ---
         EmotionProfile {
-            name: "Honte".into(),
+            name: "Shame".into(),
             recipe: [0.1, 0.7, 0.1, 0.3, 0.1, 0.0, 0.3],  // high cortisol, collapsed dopamine
             valence: -0.7, arousal: 0.5,
         },
         EmotionProfile {
-            name: "Culpabilité".into(),
+            name: "Guilt".into(),
             recipe: [0.1, 0.6, 0.2, 0.2, 0.3, 0.0, 0.4],  // cortisol + oxytocin (social conscience)
             valence: -0.5, arousal: 0.4,
         },
         // --- Extreme variants ---
         EmotionProfile {
-            name: "Désespoir".into(),
+            name: "Despair".into(),
             recipe: [0.0, 0.7, 0.0, 0.1, 0.1, 0.0, 0.1],  // everything collapsed except cortisol
             valence: -0.9, arousal: 0.3,
         },
@@ -450,17 +450,17 @@ pub fn emotion_catalog() -> Vec<EmotionProfile> {
             valence: -0.95, arousal: 0.95,
         },
         EmotionProfile {
-            name: "Euphorie".into(),
+            name: "Euphoria".into(),
             recipe: [0.85, 0.0, 0.7, 0.4, 0.5, 0.9, 0.6],  // high dopamine (lowered threshold) + maximum endorphin
             valence: 0.95, arousal: 0.9,
         },
         EmotionProfile {
-            name: "Terreur".into(),
+            name: "Terror".into(),
             recipe: [0.0, 0.85, 0.0, 0.85, 0.0, 0.0, 0.8],  // extreme cortisol + adrenaline (lowered thresholds)
             valence: -0.95, arousal: 0.95,
         },
         EmotionProfile {
-            name: "Extase".into(),
+            name: "Ecstasy".into(),
             recipe: [0.9, 0.0, 0.9, 0.3, 0.6, 0.9, 0.5],  // maximum dopamine + serotonin + endorphin
             valence: 0.95, arousal: 0.7,
         },
@@ -471,12 +471,12 @@ pub fn emotion_catalog() -> Vec<EmotionProfile> {
             valence: 0.3, arousal: 0.3,
         },
         EmotionProfile {
-            name: "Résignation".into(),
+            name: "Resignation".into(),
             recipe: [0.1, 0.4, 0.2, 0.0, 0.1, 0.1, 0.1],  // everything low, cessation of struggle
             valence: -0.4, arousal: 0.1,
         },
         EmotionProfile {
-            name: "Solitude".into(),
+            name: "Loneliness".into(),
             recipe: [0.1, 0.5, 0.2, 0.1, 0.05, 0.1, 0.2],  // very low oxytocin, moderate cortisol
             valence: -0.5, arousal: 0.2,
         },
@@ -584,7 +584,7 @@ impl EmotionalState {
                 // --- Contextual modulation (constructionism) ---
                 // When a human is present, social emotions are amplified
                 if context.human_present {
-                    if ["Tendresse", "Compassion", "Gratitude", "Amour", "Solitude"]
+                    if ["Tenderness", "Compassion", "Gratitude", "Love", "Loneliness"]
                         .contains(&e.name.as_str())
                     {
                         sim += 0.05;
@@ -592,13 +592,13 @@ impl EmotionalState {
                 }
                 // In dangerous situations, fear/alert emotions are amplified
                 if context.danger_level > 0.5 {
-                    if ["Peur", "Terreur", "Anxiété"].contains(&e.name.as_str()) {
+                    if ["Fear", "Terror", "Anxiety"].contains(&e.name.as_str()) {
                         sim += context.danger_level * 0.1;
                     }
                 }
                 // In reward situations, positive emotions are amplified
                 if context.reward_level > 0.5 {
-                    if ["Joie", "Excitation", "Fierté", "Euphorie"].contains(&e.name.as_str()) {
+                    if ["Joy", "Excitement", "Pride", "Euphoria"].contains(&e.name.as_str()) {
                         sim += context.reward_level * 0.08;
                     }
                 }
@@ -609,7 +609,7 @@ impl EmotionalState {
 
         scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
-        let dominant = scores.first().map(|(n, _)| n.clone()).unwrap_or("Neutre".into());
+        let dominant = scores.first().map(|(n, _)| n.clone()).unwrap_or("Neutral".into());
         let dominant_sim = scores.first().map(|(_, s)| *s).unwrap_or(0.0);
         let secondary = scores.get(1).and_then(|(n, s)| {
             if *s > 0.5 { Some(n.clone()) } else { None }
@@ -635,13 +635,13 @@ impl EmotionalState {
 
         // Context influence description for logging/debugging
         let context_influence = if context.human_present && context.danger_level > 0.5 {
-            "humain+danger".to_string()
+            "human+danger".to_string()
         } else if context.human_present {
-            "presence humaine".to_string()
+            "human presence".to_string()
         } else if context.danger_level > 0.5 {
-            "menace detectee".to_string()
+            "threat detected".to_string()
         } else if context.reward_level > 0.5 {
-            "recompense detectee".to_string()
+            "reward detected".to_string()
         } else {
             String::new()
         };
@@ -667,7 +667,7 @@ impl EmotionalState {
     /// E.g., "Joie (teintee de Excitation)" or simply "Joie".
     pub fn description(&self) -> String {
         match &self.secondary {
-            Some(sec) => format!("{} (teintée de {})", self.dominant, sec),
+            Some(sec) => format!("{} (tinged with {})", self.dominant, sec),
             None => self.dominant.clone(),
         }
     }

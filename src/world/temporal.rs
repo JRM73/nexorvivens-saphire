@@ -82,30 +82,30 @@ impl TemporalAwareness {
 
         // Day of the week in French
         let day_of_week = match now.weekday() {
-            chrono::Weekday::Mon => "lundi",
-            chrono::Weekday::Tue => "mardi",
-            chrono::Weekday::Wed => "mercredi",
-            chrono::Weekday::Thu => "jeudi",
-            chrono::Weekday::Fri => "vendredi",
-            chrono::Weekday::Sat => "samedi",
-            chrono::Weekday::Sun => "dimanche",
+            chrono::Weekday::Mon => "Monday",
+            chrono::Weekday::Tue => "Tuesday",
+            chrono::Weekday::Wed => "Wednesday",
+            chrono::Weekday::Thu => "Thursday",
+            chrono::Weekday::Fri => "Friday",
+            chrono::Weekday::Sat => "Saturday",
+            chrono::Weekday::Sun => "Sunday",
         };
 
         // Period of the day based on the hour
         let period = match now.hour() {
-            0..=5 => "nuit",
-            6..=11 => "matin",
-            12..=17 => "après-midi",
-            18..=21 => "soir",
-            _ => "nuit",
+            0..=5 => "night",
+            6..=11 => "morning",
+            12..=17 => "afternoon",
+            18..=21 => "evening",
+            _ => "night",
         };
 
         // Season based on the month (northern hemisphere)
         let season = match now.month() {
-            3..=5 => "printemps",
-            6..=8 => "été",
-            9..=11 => "automne",
-            _ => "hiver",
+            3..=5 => "spring",
+            6..=8 => "summer",
+            9..=11 => "autumn",
+            _ => "winter",
         };
 
         // Compute age in days since birth
@@ -115,24 +115,24 @@ impl TemporalAwareness {
         // Why these thresholds: Saphire is young, so granularity changes
         // progressively from days -> weeks -> months -> years
         let age_description = if age_days <= 0 {
-            "je viens de naître".into()
+            "just born".into()
         } else if age_days == 1 {
-            "1 jour".into()
+            "1 day".into()
         } else if age_days < 7 {
-            format!("{} jours", age_days)
+            format!("{} days", age_days)
         } else if age_days < 30 {
             let weeks = age_days / 7;
-            if weeks == 1 { "1 semaine".into() } else { format!("{} semaines", weeks) }
+            if weeks == 1 { "1 week".into() } else { format!("{} weeks", weeks) }
         } else if age_days < 365 {
             let months = age_days / 30;
-            if months == 1 { "1 mois".into() } else { format!("{} mois", months) }
+            if months == 1 { "1 month".into() } else { format!("{} months", months) }
         } else {
             let years = age_days / 365;
             let months = (age_days % 365) / 30;
             if months > 0 {
-                format!("{} an(s) et {} mois", years, months)
+                format!("{} year(s) and {} months", years, months)
             } else {
-                format!("{} an(s)", years)
+                format!("{} year(s)", years)
             }
         };
 
@@ -177,10 +177,10 @@ impl TemporalAwareness {
     /// Returns: French month name
     fn month_name(month: u32) -> &'static str {
         match month {
-            1 => "janvier", 2 => "février", 3 => "mars",
-            4 => "avril", 5 => "mai", 6 => "juin",
-            7 => "juillet", 8 => "août", 9 => "septembre",
-            10 => "octobre", 11 => "novembre", 12 => "décembre",
+            1 => "January", 2 => "February", 3 => "March",
+            4 => "April", 5 => "May", 6 => "June",
+            7 => "July", 8 => "August", 9 => "September",
+            10 => "October", 11 => "November", 12 => "December",
             _ => "?",
         }
     }

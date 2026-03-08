@@ -40,9 +40,9 @@ use super::{BrainModule, ModuleSignal};
 pub struct LimbicModule;
 
 impl BrainModule for LimbicModule {
-    /// Returns the name of this module: "Limbique".
+    /// Returns the name of this module: "Limbic".
     fn name(&self) -> &str {
-        "Limbique"
+        "Limbic"
     }
 
     /// Processes a stimulus from an emotional perspective.
@@ -108,18 +108,18 @@ impl BrainModule for LimbicModule {
         // components (those exceeding their respective thresholds).
         let parts: Vec<String> = [
             if amygdala.abs() > 0.2 {
-                Some(format!("Amygdale réactive ({:.2})", amygdala))
+                Some(format!("Reactive amygdala ({:.2})", amygdala))
             } else { None },
             if reward > 0.3 {
-                Some(format!("Récompense attirante ({:.2})", reward))
+                Some(format!("Attractive reward ({:.2})", reward))
             } else { None },
             if social > 0.2 {
-                Some(format!("Lien social ressenti ({:.2})", social))
+                Some(format!("Social bond felt ({:.2})", social))
             } else { None },
         ].into_iter().flatten().collect();
 
         let reasoning = if parts.is_empty() {
-            "Le limbique est neutre — pas de forte émotion.".to_string()
+            "Limbic system is neutral — no strong emotion.".to_string()
         } else {
             parts.join(". ") + "."
         };

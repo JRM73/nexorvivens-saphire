@@ -54,15 +54,15 @@ pub enum Decision {
 }
 
 impl Decision {
-    /// Converts the decision to a French-language string.
+    /// Converts the decision to a human-readable string.
     ///
     /// # Returns
-    /// "Oui" (Yes), "Non" (No), or "Peut-etre" (Maybe).
+    /// "Yes", "No", or "Maybe".
     pub fn as_str(&self) -> &str {
         match self {
-            Decision::Yes => "Oui",
-            Decision::No => "Non",
-            Decision::Maybe => "Peut-être",
+            Decision::Yes => "Yes",
+            Decision::No => "No",
+            Decision::Maybe => "Maybe",
         }
     }
 
@@ -276,8 +276,8 @@ mod tests {
         let chem = NeuroChemicalState::default();
         let params = TunableParams::default();
         let signals = [
-            ModuleSignal { module: "Reptilien".into(), signal: 0.5, confidence: 0.8, reasoning: "".into() },
-            ModuleSignal { module: "Limbique".into(), signal: 0.6, confidence: 0.7, reasoning: "".into() },
+            ModuleSignal { module: "Reptilian".into(), signal: 0.5, confidence: 0.8, reasoning: "".into() },
+            ModuleSignal { module: "Limbic".into(), signal: 0.6, confidence: 0.7, reasoning: "".into() },
             ModuleSignal { module: "Neocortex".into(), signal: 0.8, confidence: 0.9, reasoning: "".into() },
         ];
         let thresholds = ConsensusThresholds::default();

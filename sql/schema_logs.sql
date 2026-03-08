@@ -1,12 +1,12 @@
 -- ============================================================
 -- SAPHIRE — schema_logs.sql
 -- ============================================================
--- Schema de la base de donnees de logs separee.
--- 4 tables : system_logs, cognitive_traces, llm_history, metric_snapshots.
+-- Schema for the separate logs database.
+-- 4 tables: system_logs, cognitive_traces, llm_history, metric_snapshots.
 -- ============================================================
 
--- ── Logs systeme ──
--- Journal centralise de tous les evenements de Saphire.
+-- ── System logs ──
+-- Centralized log of all Saphire events.
 CREATE TABLE IF NOT EXISTS system_logs (
     id BIGSERIAL PRIMARY KEY,
     timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -23,9 +23,9 @@ CREATE INDEX IF NOT EXISTS idx_logs_level ON system_logs(level);
 CREATE INDEX IF NOT EXISTS idx_logs_category ON system_logs(category);
 CREATE INDEX IF NOT EXISTS idx_logs_cycle ON system_logs(cycle);
 
--- ── Traces cognitives ──
--- Trace complete d'un cycle cognitif : NLP, brain, consensus, chimie,
--- emotion, conscience, regulation, LLM, memoire.
+-- ── Cognitive traces ──
+-- Complete trace of a cognitive cycle: NLP, brain, consensus, chemistry,
+-- emotion, consciousness, regulation, LLM, memory.
 CREATE TABLE IF NOT EXISTS cognitive_traces (
     id BIGSERIAL PRIMARY KEY,
     cycle BIGINT NOT NULL,
@@ -53,8 +53,8 @@ CREATE INDEX IF NOT EXISTS idx_traces_cycle ON cognitive_traces(cycle DESC);
 CREATE INDEX IF NOT EXISTS idx_traces_timestamp ON cognitive_traces(timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_traces_source ON cognitive_traces(source_type);
 
--- ── Historique LLM ──
--- Chaque requete/reponse au LLM avec timings et metadonnees.
+-- ── LLM history ──
+-- Each LLM request/response with timings and metadata.
 CREATE TABLE IF NOT EXISTS llm_history (
     id BIGSERIAL PRIMARY KEY,
     timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -77,8 +77,8 @@ CREATE INDEX IF NOT EXISTS idx_llm_timestamp ON llm_history(timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_llm_cycle ON llm_history(cycle);
 CREATE INDEX IF NOT EXISTS idx_llm_type ON llm_history(request_type);
 
--- ── Snapshots metriques ──
--- Un snapshot par cycle avec toutes les metriques cles.
+-- ── Metric snapshots ──
+-- One snapshot per cycle with all key metrics.
 CREATE TABLE IF NOT EXISTS metric_snapshots (
     id BIGSERIAL PRIMARY KEY,
     timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -120,7 +120,7 @@ CREATE TABLE IF NOT EXISTS metric_snapshots (
 CREATE INDEX IF NOT EXISTS idx_metrics_timestamp ON metric_snapshots(timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_metrics_cycle ON metric_snapshots(cycle);
 
--- Migration : ajouter les colonnes heart/body si elles n'existent pas
+-- Migration: add heart/body columns if they don't exist
 DO $$ BEGIN
     -- cognitive_traces
     ALTER TABLE cognitive_traces ADD COLUMN IF NOT EXISTS heart_data JSONB DEFAULT '{}';
@@ -147,7 +147,7 @@ DO $$ BEGIN
     ALTER TABLE cognitive_traces ADD COLUMN IF NOT EXISTS premonition_data JSONB DEFAULT '{}';
     -- senses (Sensorium)
     ALTER TABLE cognitive_traces ADD COLUMN IF NOT EXISTS senses_data JSONB DEFAULT '{}';
-    -- metric_snapshots enrichi (vital, intuition, premonition, senses, knowledge)
+    -- enriched metric_snapshots (vital, intuition, premonition, senses, knowledge)
     ALTER TABLE metric_snapshots ADD COLUMN IF NOT EXISTS survival_drive REAL DEFAULT 0.0;
     ALTER TABLE metric_snapshots ADD COLUMN IF NOT EXISTS existence_attachment REAL DEFAULT 0.0;
     ALTER TABLE metric_snapshots ADD COLUMN IF NOT EXISTS intuition_acuity REAL DEFAULT 0.0;
@@ -161,13 +161,13 @@ DO $$ BEGIN
     ALTER TABLE metric_snapshots ADD COLUMN IF NOT EXISTS contact_warmth REAL DEFAULT 0.0;
     ALTER TABLE metric_snapshots ADD COLUMN IF NOT EXISTS emergent_senses_germinated INTEGER DEFAULT 0;
     ALTER TABLE metric_snapshots ADD COLUMN IF NOT EXISTS knowledge_sources_used JSONB DEFAULT '{}';
-    -- Orchestrateurs : colonnes traces cognitives
+    -- Orchestrators: cognitive traces columns
     ALTER TABLE cognitive_traces ADD COLUMN IF NOT EXISTS attention_data JSONB DEFAULT '{}';
     ALTER TABLE cognitive_traces ADD COLUMN IF NOT EXISTS algorithm_data JSONB DEFAULT '{}';
     ALTER TABLE cognitive_traces ADD COLUMN IF NOT EXISTS desire_data JSONB DEFAULT '{}';
     ALTER TABLE cognitive_traces ADD COLUMN IF NOT EXISTS learning_data JSONB DEFAULT '{}';
     ALTER TABLE cognitive_traces ADD COLUMN IF NOT EXISTS healing_data JSONB DEFAULT '{}';
-    -- Orchestrateurs : colonnes metric_snapshots
+    -- Orchestrators: metric_snapshots columns
     ALTER TABLE metric_snapshots ADD COLUMN IF NOT EXISTS attention_focus TEXT DEFAULT '';
     ALTER TABLE metric_snapshots ADD COLUMN IF NOT EXISTS attention_depth REAL DEFAULT 0.0;
     ALTER TABLE metric_snapshots ADD COLUMN IF NOT EXISTS attention_fatigue REAL DEFAULT 0.0;
@@ -190,9 +190,9 @@ DO $$ BEGIN
     ALTER TABLE metric_snapshots ADD COLUMN IF NOT EXISTS dreams_total INTEGER DEFAULT 0;
     ALTER TABLE metric_snapshots ADD COLUMN IF NOT EXISTS dreams_insights_total INTEGER DEFAULT 0;
     ALTER TABLE metric_snapshots ADD COLUMN IF NOT EXISTS last_dream_type TEXT DEFAULT '';
-    -- Psychologie : colonnes traces cognitives
+    -- Psychology: cognitive traces columns
     ALTER TABLE cognitive_traces ADD COLUMN IF NOT EXISTS psychology_data JSONB DEFAULT '{}';
-    -- Psychologie : colonnes metric_snapshots
+    -- Psychology: metric_snapshots columns
     ALTER TABLE metric_snapshots ADD COLUMN IF NOT EXISTS psyche_id_drive REAL DEFAULT 0.0;
     ALTER TABLE metric_snapshots ADD COLUMN IF NOT EXISTS psyche_id_frustration REAL DEFAULT 0.0;
     ALTER TABLE metric_snapshots ADD COLUMN IF NOT EXISTS psyche_ego_strength REAL DEFAULT 0.0;
@@ -218,25 +218,25 @@ DO $$ BEGIN
     ALTER TABLE metric_snapshots ADD COLUMN IF NOT EXISTS in_flow BOOLEAN DEFAULT FALSE;
     ALTER TABLE metric_snapshots ADD COLUMN IF NOT EXISTS flow_intensity REAL DEFAULT 0.0;
     ALTER TABLE metric_snapshots ADD COLUMN IF NOT EXISTS flow_total_cycles BIGINT DEFAULT 0;
-    -- Colonnes supplementaires psychologie
+    -- Additional psychology columns
     ALTER TABLE metric_snapshots ADD COLUMN IF NOT EXISTS psyche_defense TEXT DEFAULT '';
     ALTER TABLE metric_snapshots ADD COLUMN IF NOT EXISTS maslow_priority_need TEXT DEFAULT '';
     ALTER TABLE metric_snapshots ADD COLUMN IF NOT EXISTS toltec_invocations BIGINT DEFAULT 0;
     ALTER TABLE metric_snapshots ADD COLUMN IF NOT EXISTS toltec_violations BIGINT DEFAULT 0;
     ALTER TABLE metric_snapshots ADD COLUMN IF NOT EXISTS shadow_leaking BOOLEAN DEFAULT FALSE;
-    -- Volonte : colonnes cognitive_traces
+    -- Willpower: cognitive traces columns
     ALTER TABLE cognitive_traces ADD COLUMN IF NOT EXISTS will_data JSONB DEFAULT '{}';
-    -- Apprentissages vectoriels (nn_learning)
+    -- NN vector learnings
     ALTER TABLE metric_snapshots ADD COLUMN IF NOT EXISTS nn_learnings_count INTEGER DEFAULT 0;
     ALTER TABLE cognitive_traces ADD COLUMN IF NOT EXISTS nn_learning_data JSONB DEFAULT '{}';
-    -- Volonte : colonnes metric_snapshots
+    -- Willpower: metric_snapshots columns
     ALTER TABLE metric_snapshots ADD COLUMN IF NOT EXISTS willpower REAL DEFAULT 0.5;
     ALTER TABLE metric_snapshots ADD COLUMN IF NOT EXISTS decision_fatigue REAL DEFAULT 0.0;
     ALTER TABLE metric_snapshots ADD COLUMN IF NOT EXISTS total_deliberations BIGINT DEFAULT 0;
     ALTER TABLE metric_snapshots ADD COLUMN IF NOT EXISTS proud_decisions BIGINT DEFAULT 0;
     ALTER TABLE metric_snapshots ADD COLUMN IF NOT EXISTS regretted_decisions BIGINT DEFAULT 0;
     ALTER TABLE metric_snapshots ADD COLUMN IF NOT EXISTS deliberation_this_cycle BOOLEAN DEFAULT FALSE;
-    -- Sommeil et subconscient : traces cognitives
+    -- Sleep and subconscious: cognitive traces
     ALTER TABLE cognitive_traces ADD COLUMN IF NOT EXISTS is_sleeping BOOLEAN DEFAULT FALSE;
     ALTER TABLE cognitive_traces ADD COLUMN IF NOT EXISTS sleep_phase TEXT;
     ALTER TABLE cognitive_traces ADD COLUMN IF NOT EXISTS sleep_progress REAL;
@@ -244,7 +244,7 @@ DO $$ BEGIN
     ALTER TABLE cognitive_traces ADD COLUMN IF NOT EXISTS subconscious_insight TEXT;
     ALTER TABLE cognitive_traces ADD COLUMN IF NOT EXISTS subconscious_priming TEXT;
     ALTER TABLE cognitive_traces ADD COLUMN IF NOT EXISTS inner_monologue TEXT;
-    -- Sommeil et subconscient : snapshots metriques
+    -- Sleep and subconscious: metric snapshots
     ALTER TABLE metric_snapshots ADD COLUMN IF NOT EXISTS is_sleeping BOOLEAN DEFAULT FALSE;
     ALTER TABLE metric_snapshots ADD COLUMN IF NOT EXISTS sleep_phase TEXT;
     ALTER TABLE metric_snapshots ADD COLUMN IF NOT EXISTS sleep_pressure REAL;
@@ -255,7 +255,7 @@ DO $$ BEGIN
     ALTER TABLE metric_snapshots ADD COLUMN IF NOT EXISTS incubating_problems INTEGER DEFAULT 0;
     ALTER TABLE metric_snapshots ADD COLUMN IF NOT EXISTS neural_connections_total BIGINT DEFAULT 0;
 
-    -- GABA et Glutamate (2 molecules manquantes pour chimie complete 9D)
+    -- GABA and Glutamate (2 missing molecules for complete 9D chemistry)
     ALTER TABLE metric_snapshots ADD COLUMN IF NOT EXISTS gaba REAL DEFAULT 0.5;
     ALTER TABLE metric_snapshots ADD COLUMN IF NOT EXISTS glutamate REAL DEFAULT 0.45;
 END $$;

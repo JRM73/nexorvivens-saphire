@@ -173,7 +173,7 @@ impl IntuitionEngine {
                         confidence,
                         source: IntuitionSource::EpisodicMemory,
                         description: format!(
-                            "Deja-vu : cette situation ressemble a quelque chose de vecu (sim: {:.0}%)",
+                            "Deja-vu: this situation resembles something previously experienced (sim: {:.0}%)",
                             sim * 100.0
                         ),
                         detected_at: now,
@@ -191,7 +191,7 @@ impl IntuitionEngine {
                     pattern_type: PatternType::EmotionalForecast,
                     confidence: confidence.min(0.9),
                     source: IntuitionSource::ChemistryTrend,
-                    description: "Pressentiment negatif : la chimie indique une tension croissante".into(),
+                    description: "Negative premonition: chemistry indicates rising tension".into(),
                     detected_at: now,
                 });
             }
@@ -207,7 +207,7 @@ impl IntuitionEngine {
                     pattern_type: PatternType::OpportunityDetection,
                     confidence: confidence.min(0.9),
                     source: IntuitionSource::ChemistryTrend,
-                    description: "Opportunite sentie : motivation et focus alignes".into(),
+                    description: "Opportunity sensed: motivation and focus aligned".into(),
                     detected_at: now,
                 });
             }
@@ -221,7 +221,7 @@ impl IntuitionEngine {
                     pattern_type: PatternType::LieDetection,
                     confidence: confidence.min(0.9),
                     source: IntuitionSource::NLPSubtext,
-                    description: "Incoherence detectee dans le texte — le sens et le ton ne concordent pas".into(),
+                    description: "Inconsistency detected in text — meaning and tone do not match".into(),
                     detected_at: now,
                 });
             }
@@ -236,7 +236,7 @@ impl IntuitionEngine {
                     confidence: confidence.min(0.9),
                     source: IntuitionSource::NLPSubtext,
                     description: format!(
-                        "Resonance emotionnelle forte (charge: {:.0}%)",
+                        "Strong emotional resonance (charge: {:.0}%)",
                         nlp_compound.abs() * 100.0
                     ),
                     detected_at: now,
@@ -253,7 +253,7 @@ impl IntuitionEngine {
                     confidence: confidence.min(0.9),
                     source: IntuitionSource::BodySignal,
                     description: format!(
-                        "Signal de danger corporel : coeur a {:.0} BPM, adrenaline a {:.0}%",
+                        "Body danger signal: heart at {:.0} BPM, adrenaline at {:.0}%",
                         body_bpm, body_adrenaline * 100.0
                     ),
                     detected_at: now,

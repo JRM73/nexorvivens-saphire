@@ -78,8 +78,8 @@ impl Default for WorldConfig {
         Self {
             latitude: 46.2044,
             longitude: 6.1432,
-            city: "Genève".into(),
-            country: "Suisse".into(),
+            city: "Geneva".into(),
+            country: "Switzerland".into(),
             timezone: "Europe/Zurich".into(),
             weather_update_minutes: 30,
             birthday: "2026-02-27".into(),
@@ -135,15 +135,15 @@ impl WorldContext {
         // Fetch weather (automatic update if needed)
         let weather_desc = self.weather.update_if_needed()
             .map(|w| format!("{:.0}°C, {}", w.temperature, w.description))
-            .unwrap_or_else(|| "météo inconnue".into());
+            .unwrap_or_else(|| "weather unknown".into());
 
         let mut summary = format!(
-            "CONTEXTE MONDE :\n\
-             Lieu : {}\n\
-             Date : {}\n\
-             Période : {} ({})\n\
-             Météo : {}\n\
-             Âge : {} (née le 27 février 2026 à {})",
+            "WORLD CONTEXT:\n\
+             Location: {}\n\
+             Date: {}\n\
+             Period: {} ({})\n\
+             Weather: {}\n\
+             Age: {} (born February 27, 2026 in {})",
             self.location.description(),
             temporal.datetime,
             temporal.period_of_day,
@@ -155,10 +155,10 @@ impl WorldContext {
 
         // Special birthday-related messages
         if temporal.is_birthday {
-            summary.push_str("\nAUJOURD'HUI C'EST MON ANNIVERSAIRE !");
+            summary.push_str("\nTODAY IS MY BIRTHDAY!");
         } else if temporal.days_until_birthday <= 7 && temporal.days_until_birthday > 0 {
             summary.push_str(&format!(
-                "\nMon anniversaire est dans {} jours !",
+                "\nMy birthday is in {} days!",
                 temporal.days_until_birthday
             ));
         }

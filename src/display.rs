@@ -74,7 +74,7 @@ pub fn display_cycle(
     // Section 3: Module weights -- R=Reptilian, L=Limbic, N=Neocortex.
     // These weights are dynamically adjusted based on context (e.g., high danger
     // increases the reptilian weight).
-    println!("  ⚖️  Poids : R={:.2} L={:.2} N={:.2}",
+    println!("  ⚖️  Weights: R={:.2} L={:.2} N={:.2}",
         result.consensus.weights[0], result.consensus.weights[1], result.consensus.weights[2]);
 
     // Section 4: Final consensus decision with an appropriate status icon.
@@ -83,14 +83,14 @@ pub fn display_cycle(
         crate::consensus::Decision::No => "❌",
         crate::consensus::Decision::Maybe => "🤔",
     };
-    println!("  {} Décision : {} (score={:.3}, cohérence={:.2})",
+    println!("  {} Decision: {} (score={:.3}, coherence={:.2})",
         decision_icon, result.consensus.decision.as_str(),
         result.consensus.score, result.consensus.coherence);
 
     // Section 5: Ethical regulation results -- veto flag and individual violations.
     // Violations are tagged with severity: Veto (hard block), Warning, or Info.
     if result.verdict.was_vetoed {
-        println!("  🚫 VETO par régulation !");
+        println!("  🚫 VETO by regulation!");
     }
     for v in &result.verdict.violations {
         let icon = match v.severity {
@@ -103,7 +103,7 @@ pub fn display_cycle(
 
     // Section 6: Emergent emotion -- the emotion whose VAD prototype vector
     // has the highest cosine similarity to the current neurochemical state.
-    println!("  💜 Émotion : {} (similarité={:.2})",
+    println!("  💜 Emotion: {} (similarity={:.2})",
         result.emotion.description(), result.emotion.dominant_similarity);
 
     // Section 7: Mood in VAD space -- v=valence (pleasant/unpleasant),
@@ -122,7 +122,7 @@ pub fn display_cycle(
     // Theory, Tononi 2004) -- higher values indicate greater information
     // integration across the cognitive system. The inner narrative is the
     // agent's current stream of consciousness (truncated for display).
-    println!("  🔮 Conscience : {:.2} (phi={:.2}) — {}",
+    println!("  🔮 Consciousness: {:.2} (phi={:.2}) — {}",
         result.consciousness.level, result.consciousness.phi,
         truncate(&result.consciousness.inner_narrative, 50));
 

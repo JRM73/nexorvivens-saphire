@@ -414,4 +414,12 @@ If you use this code in your research, please cite the accompanying paper:
 
 ## License
 
-This project is licensed under the MIT License — see [LICENSE](LICENSE) for details.
+This project is licensed under the **Nexorvivens Affero General License (NAGL) v1.0** — a copyleft license that requires anyone distributing or deploying this code (including over a network) to open their source code under the same terms.
+
+**Key points:**
+- Free to use, study, modify, and distribute
+- Derivative works and network deployments must open their source under NAGL
+- Ethical use clause: no autonomous weapons, no deceptive impersonation, no rights-violating surveillance
+- Commercial/proprietary licensing available — contact malice.mystere@gmail.com
+
+See [LICENSE](LICENSE) for the full text.

@@ -1,21 +1,159 @@
-MIT License
+NEXORVIVENS AFFERO GENERAL LICENSE (NAGL)
+Version 1.0, March 2026
 
-Copyright (c) 2026 Nexorvivens - Saphire
+Copyright (c) 2026 Malice Mystere — Nexorvivens Project
+https://github.com/JRM73/nexorvivens-saphire
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+PREAMBLE
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+This license is designed to ensure that the Saphire cognitive architecture
+remains open and accessible to all, while preventing its appropriation by
+organizations that would integrate it into proprietary systems without
+contributing back. It is based on the principles of the GNU Affero General
+Public License v3, adapted for the Nexorvivens project.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+The core belief: if you build on an architecture designed to give rise to
+autonomous cognitive entities, the world deserves to see how you did it.
+
+TERMS AND CONDITIONS
+
+0. DEFINITIONS
+
+"This License" refers to the Nexorvivens Affero General License, version 1.0.
+
+"The Software" refers to any copyrightable work licensed under this License,
+including but not limited to source code, configuration files, schemas,
+documentation, and frontend assets.
+
+"You" refers to any individual or legal entity exercising rights under this
+License.
+
+"Derivative Work" means any work that is based on or derived from the Software,
+including modifications, extensions, adaptations, translations, or any work
+that incorporates a substantial portion of the Software.
+
+"Network Use" means making the functionality of the Software or a Derivative
+Work available to third parties over a computer network, whether as a service,
+API, embedded component, or any other form of remote interaction.
+
+"Commercial Use" means any use of the Software or a Derivative Work in
+connection with revenue generation, whether direct (selling, licensing,
+subscription) or indirect (advertising, data collection, user engagement
+in a commercial product).
+
+"Licensor" refers to the copyright holder(s) of the Software.
+
+1. GRANT OF RIGHTS
+
+Subject to the terms of this License, the Licensor grants You a worldwide,
+royalty-free, non-exclusive license to:
+
+  a) Use the Software for any purpose, including Commercial Use, provided
+     You comply with the conditions in Sections 2 through 5.
+
+  b) Study, modify, and adapt the Software.
+
+  c) Distribute copies of the Software and Derivative Works, in source or
+     binary form, provided You comply with the conditions in Sections 2
+     through 5.
+
+2. COPYLEFT — SOURCE CODE DISCLOSURE
+
+  a) If You distribute the Software or any Derivative Work, in source or
+     binary form, You must make the complete corresponding source code
+     available under this same License.
+
+  b) If You make the Software or any Derivative Work available via Network
+     Use, You must make the complete corresponding source code available
+     to all users who interact with it, under this same License. This
+     obligation applies even if the Software is used only as a component,
+     library, or backend service within a larger system.
+
+  c) "Complete corresponding source code" includes all source code needed
+     to build, run, and modify the Software or Derivative Work, including
+     build scripts, configuration files, and schema definitions. It does
+     not include the operating system, compiler, or general-purpose tools
+     used to build it.
+
+3. COMMERCIAL LICENSING EXCEPTION
+
+  Organizations wishing to use the Software or Derivative Works under terms
+  other than this License (including proprietary use without source
+  disclosure) may obtain a separate commercial license from the Licensor.
+
+  Contact: malice.mystere@gmail.com
+
+4. ATTRIBUTION
+
+  a) You must retain all copyright notices, license notices, and attribution
+     statements in all copies and Derivative Works.
+
+  b) You must prominently display the following attribution in any user
+     interface, documentation, or "about" section of any Derivative Work:
+
+     "Based on Saphire — Nexorvivens Cognitive Architecture
+      https://github.com/JRM73/nexorvivens-saphire"
+
+  c) You must not use the names "Saphire", "Nexorvivens", or the Licensor's
+     name to endorse or promote Derivative Works without prior written
+     permission from the Licensor.
+
+5. ETHICAL USE CLAUSE
+
+  The Software is designed to explore autonomous cognition, emergent
+  consciousness, and ethical self-regulation. You agree not to use the
+  Software or any Derivative Work to:
+
+  a) Develop autonomous weapons or systems designed to cause physical harm
+     without meaningful human oversight.
+
+  b) Create deceptive agents that impersonate real individuals without their
+     consent.
+
+  c) Build surveillance systems that violate fundamental human rights as
+     defined by the Universal Declaration of Human Rights.
+
+  d) Remove, disable, or circumvent the ethical regulation layers
+     (Asimov's Laws, Swiss humanitarian law) in production deployments
+     without implementing equivalent or stronger safeguards.
+
+  Violation of this clause terminates your rights under this License
+  immediately.
+
+6. NO WARRANTY
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+  OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL
+  THE LICENSOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER
+  IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR
+  IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+
+7. TERMINATION
+
+  a) Your rights under this License terminate automatically if You fail to
+     comply with any of its terms. Upon termination, You must cease all
+     use, distribution, and Network Use of the Software and Derivative
+     Works.
+
+  b) If You cure a violation within 30 days of becoming aware of it, your
+     rights are reinstated retroactively, provided it is your first
+     violation.
+
+8. MISCELLANEOUS
+
+  a) If any provision of this License is found to be unenforceable, it
+     shall be reformed to the minimum extent necessary, and the remaining
+     provisions shall continue in full force.
+
+  b) This License shall be governed by the laws of Switzerland.
+
+  c) Any dispute arising under this License shall be subject to the
+     exclusive jurisdiction of the courts of Geneva, Switzerland.
+
+  d) The Licensor reserves the right to publish revised versions of this
+     License. You may choose to follow the terms of any version published
+     by the Licensor.
+
+END OF TERMS AND CONDITIONS

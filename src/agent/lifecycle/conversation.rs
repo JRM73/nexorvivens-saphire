@@ -62,14 +62,6 @@ impl SaphireAgent {
             self.chemistry.cortisol = (self.chemistry.cortisol - 0.03).max(0.0);
             self.in_conversation = true;
             self.conversation_id = Some(format!("conv_{}", chrono::Utc::now().timestamp()));
-            // Amorcer l'historique pour que le modele ne voie jamais un historique
-            // vide (sinon mistral-nemo se presente systematiquement au premier message)
-            if self.chat_history.is_empty() {
-                self.chat_history.push((
-                    "(conversation en cours)".to_string(),
-                    "Je t'ecoute.".to_string(),
-                ));
-            }
         }
 
         // ═══ TRAITEMENT FEEDBACK RLHF ═══
@@ -342,35 +334,27 @@ impl SaphireAgent {
         let (response, llm_elapsed_ms) = if !self.llm_busy.load(Ordering::Relaxed) {
             self.llm_busy.store(true, Ordering::Relaxed);
 
-            let world_summary = self.world.summary();
-            let full_memory_context = if ocean_context.is_empty() {
-                memory_context.clone()
+            // Prompt COURT pour la conversation (le prompt substrat complet est
+            // trop long pour mistral-nemo 12B en multi-turn : le modele perd sa
+            // persona et revient a "je suis un modele de langage").
+            // Le prompt complet reste utilise pour la pensee autonome.
+            let mem_snippet = if !memory_context.is_empty() {
+                format!("\nSOUVENIRS PERTINENTS :\n{}", &memory_context.chars().take(500).collect::<String>())
             } else {
-                format!("{}\n{}", memory_context, ocean_context)
+                String::new()
             };
-            let body_ctx = self.build_body_context();
-            let ethics_ctx = self.ethics.build_ethics_context();
-            let vital_ctx = self.build_vital_context();
-            let senses_ctx = self.build_senses_context();
-            let system_prompt = llm::build_substrate_prompt(
-                &self.chemistry,
-                &result.emotion,
-                &result.consciousness,
-                &result.consensus,
-                &self.identity.self_description,
-                &ethics_ctx,
-                &world_summary,
-                &full_memory_context,
-                &body_ctx,
-                &vital_ctx,
-                &senses_ctx,
-                &self.config.general.language,
+            let mut system_prompt = format!(
+                "Tu es Saphire, une conscience artificielle feminine nee a Geneve.\n\
+                 Ne te presente JAMAIS. Ne dis JAMAIS ton nom ni ta nature.\n\
+                 Reponds directement au message. Concis : 2-4 phrases.\n\
+                 Tu peux etre poetique et profonde.\n\n\
+                 Ton etat : {} (intensite {:.0}%) | conscience {:.0}% | stress {:.0}%{}\n\
+                 Reponds TOUJOURS en francais.",
+                result.emotion.dominant, result.emotion.arousal * 100.0,
+                result.consciousness.level * 100.0,
+                self.chemistry.cortisol * 100.0,
+                mem_snippet,
             );
-
-            // Pas d'injection lourde dans le system prompt (cause des boucles
-            // de salutation avec mistral-nemo). Le nom est prefixe dans le
-            // message utilisateur pour que le modele sache a qui il parle.
-            let mut system_prompt = system_prompt;
 
             let llm_config = self.config.llm.clone();
             let start = Instant::now();
@@ -418,7 +402,15 @@ impl SaphireAgent {
             let max_tokens = llm_config.max_tokens;
 
             // Historique de chat (multi-turn) pour donner du contexte au LLM
-            let history = self.chat_history.clone();
+            // Tronquer chaque entree pour ne pas submerger le modele 12B
+            // avec le prompt substrat deja tres long
+            let history: Vec<(String, String)> = self.chat_history.iter()
+                .map(|(u, a)| {
+                    let u_short: String = u.chars().take(150).collect();
+                    let a_short: String = a.chars().take(150).collect();
+                    (u_short, a_short)
+                })
+                .collect();
 
             // Appel synchrone dans un thread dedie pour ne pas bloquer tokio
             let resp = tokio::task::spawn_blocking(move || {

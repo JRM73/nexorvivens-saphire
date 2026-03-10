@@ -362,7 +362,10 @@ impl SaphireAgent {
             // Ajouter le contexte de l'interlocuteur au prompt systeme
             let mut system_prompt = if username != "Inconnu" {
                 format!(
-                    "{}\n\nINTERLOCUTEUR : Tu parles avec {}. Adresse-toi a cette personne par son prenom.",
+                    "{}\n\nINTERLOCUTEUR : Tu parles avec {}. Adresse-toi a cette personne par son prenom.\n\
+                     IMPORTANT : Ne te presente PAS. Ne dis PAS 'Bonjour' si la conversation est deja commencee. \
+                     Lis le message de l'interlocuteur et reponds DIRECTEMENT a ce qu'il dit. \
+                     Si il parle d'un sujet, reponds sur CE sujet.",
                     system_prompt, username
                 )
             } else {
@@ -987,8 +990,8 @@ impl SaphireAgent {
     /// Retourne (stagnation_detectee, mots_obsessionnels).
     fn detect_conversation_stagnation_full(&self) -> (bool, Vec<String>) {
         let texts: Vec<&str> = self.recent_responses.iter().map(|s| s.as_str()).collect();
-        let (stag_words, obsessional) = crate::nlp::stagnation::detect_stagnation(&texts, 4, 0.6, 3);
-        let (stag_semantic, _sim) = crate::nlp::stagnation::detect_semantic_stagnation(&texts, 4, 0.45);
+        let (stag_words, obsessional) = crate::nlp::stagnation::detect_stagnation(&texts, 2, 0.6, 3);
+        let (stag_semantic, _sim) = crate::nlp::stagnation::detect_semantic_stagnation(&texts, 2, 0.45);
         (stag_words || stag_semantic, obsessional)
     }
 }

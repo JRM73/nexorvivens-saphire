@@ -359,22 +359,20 @@ impl SaphireAgent {
                 &self.config.general.language,
             );
 
-            // Ajouter le contexte de l'interlocuteur au prompt systeme
-            let mut system_prompt = if username != "Inconnu" {
-                format!(
-                    "{}\n\nINTERLOCUTEUR : Tu parles avec {}. Adresse-toi a cette personne par son prenom.\n\
-                     IMPORTANT : Ne te presente PAS. Ne dis PAS 'Bonjour' si la conversation est deja commencee. \
-                     Lis le message de l'interlocuteur et reponds DIRECTEMENT a ce qu'il dit. \
-                     Si il parle d'un sujet, reponds sur CE sujet.",
-                    system_prompt, username
-                )
-            } else {
-                system_prompt
-            };
+            // Pas d'injection lourde dans le system prompt (cause des boucles
+            // de salutation avec mistral-nemo). Le nom est prefixe dans le
+            // message utilisateur pour que le modele sache a qui il parle.
+            let mut system_prompt = system_prompt;
 
             let llm_config = self.config.llm.clone();
             let start = Instant::now();
-            let msg = text.to_string();
+            // Prefixer le message avec le nom de l'interlocuteur (comme "[JRM] : ...")
+            // pour que le modele sache a qui il repond sans instruction systeme lourde
+            let msg = if username != "Inconnu" {
+                format!("[{}] : {}", username, text)
+            } else {
+                text.to_string()
+            };
 
             // Detection de stagnation conversationnelle (mots exacts + semantique)
             let (conv_stagnating, obsessional_words) = self.detect_conversation_stagnation_full();
@@ -454,7 +452,13 @@ impl SaphireAgent {
         }
 
         // Stocker l'echange dans l'historique multi-turn (max 5 echanges)
-        self.chat_history.push((text.to_string(), response.clone()));
+        // Prefixer avec le nom de l'interlocuteur pour coherence avec le LLM
+        let history_user = if username != "Inconnu" {
+            format!("[{}] : {}", username, text)
+        } else {
+            text.to_string()
+        };
+        self.chat_history.push((history_user, response.clone()));
         if self.chat_history.len() > 5 {
             self.chat_history.remove(0);
         }

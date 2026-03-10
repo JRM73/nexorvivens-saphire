@@ -26,3 +26,14 @@ docs/
 
 # Environment (secrets)
 .env
+
+# Backup directories
+src.bak/
+static/static/
+
+# TLS certificates
+nginx/*.key
+nginx/*.crt
+
+# Logs
+logs/

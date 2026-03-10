@@ -1,181 +1,256 @@
 // =============================================================================
-// lib.rs -- Saphire Lite: Autonomous Cognitive Kernel
+// lib.rs — Saphire : Agent cognitif autonome
 //
-// Lightweight edition accompanying the ArXiv paper.
-// Contains only the modules described in the article:
-// neurochemistry, emergent emotions, consciousness (IIT/GWT/PP),
-// VitalSpark, triune consensus, virtual body, memory, ethics.
+// Role : Ce fichier est la racine de la bibliotheque (crate) Saphire.
+// Il declare et expose tous les modules publics qui composent l'architecture
+// de l'agent cognitif autonome.
+//
+// Dependances : Aucune directe (les dependances sont dans chaque module).
+//
+// Place dans l'architecture :
+//   Ce fichier est le point d'entree de la crate "saphire" (library).
+//   Le binaire (main.rs) et les tests importent les modules via cette racine.
+//   L'architecture est modulaire : chaque module gere un aspect precis de la
+//   cognition artificielle (chimie, emotions, conscience, regulation, etc.).
 // =============================================================================
 
-// --- Configuration -----------------------------------------------------------
-/// Global configuration loaded from `saphire.toml` (LLM backend, database
-/// credentials, web UI settings, mortality parameters, etc.).
+// ─── Module de configuration ─────────────────────────────────────────────────
+// Charge et gere les parametres depuis saphire.toml et les variables d'environnement.
 pub mod config;
 
-// --- Stimulus ----------------------------------------------------------------
-/// Representation of a perceived stimulus -- the entry point of every
-/// cognitive processing cycle (see Section 3.1 of the paper).
+// ─── Module de stimulus ──────────────────────────────────────────────────────
+// Definit la structure Stimulus : l'entree perceptuelle de l'agent (texte + metriques).
 pub mod stimulus;
 
-// --- Neurochemistry (Section 3.2) --------------------------------------------
-/// Simulates 9 neurotransmitter molecules with homeostatic regulation
-/// and umami-style dynamics. Each molecule has a baseline, a current level,
-/// and a decay/recovery rate that drives the agent's internal chemistry.
+// ─── Module de neurochimie ───────────────────────────────────────────────────
+// Simule 7 neurotransmetteurs (dopamine, cortisol, serotonine, adrenaline,
+// ocytocine, endorphine, noradrenaline) et leur dynamique (homeostasie, etc.).
 pub mod neurochemistry;
 
-// --- Emergent Emotions (Section 3.3) -----------------------------------------
-/// 36 discrete emotions modeled in the VAD (Valence-Arousal-Dominance) space.
-/// Emotion emergence is computed via cosine similarity between the current
-/// neurochemical state vector and each emotion's prototype vector.
+// ─── Module des emotions ─────────────────────────────────────────────────────
+// Deduit l'etat emotionnel a partir de la neurochimie (modele VAD = Valence-Arousal-Dominance).
 pub mod emotions;
 
-// --- NLP (Natural Language Processing) ---------------------------------------
-/// Lightweight NLP utilities for keyword-based sentiment extraction and
-/// perceptual score estimation from raw text input.
+// ─── Module NLP (Natural Language Processing = Traitement Automatique du Langage) ──
+// Analyse le texte en entree pour en extraire les metriques de stimulus.
 pub mod nlp;
 
-// --- Triune Brain (Section 3.6) ----------------------------------------------
-/// The three brain modules inspired by MacLean's triune brain model:
-/// reptilian (instinct/survival), limbic (emotion/reward), and neocortex
-/// (rational deliberation). Each module implements the `BrainModule` trait.
+// ─── Modules cerebraux ───────────────────────────────────────────────────────
+// Contient les trois "cerveaux" (reptilien, limbique, neocortex) inspires du
+// modele triunique de MacLean. Chacun evalue le stimulus selon sa logique propre.
 pub mod modules;
 
-// --- Consensus (Section 3.6) -------------------------------------------------
-/// Weighted consensus mechanism that aggregates signals from the three
-/// brain modules into a single decision (Yes / No / Maybe) with a
-/// coherence score measuring inter-module agreement.
+// ─── Module de consensus ─────────────────────────────────────────────────────
+// Agglomere les signaux des trois modules pour produire une decision ponderee
+// (Oui, Non, Peut-etre) avec un score de coherence.
 pub mod consensus;
 
-// --- Tuning (fixed cognitive parameters) -------------------------------------
-/// Hard-coded cognitive tuning constants (e.g., weight bounds, decay
-/// coefficients, threshold offsets) that are not exposed to runtime
-/// configuration.
-pub mod tuning;
-
-// --- Consciousness (Section 3.4) ---------------------------------------------
-/// Consciousness subsystem implementing three complementary theories:
-///   - IIT  (Integrated Information Theory) -- Phi metric
-///   - GWT  (Global Workspace Theory) -- broadcast & ignition
-///   - PP   (Predictive Processing) -- prediction error minimization
+// ─── Module de conscience ────────────────────────────────────────────────────
+// Simule un niveau de conscience et le phi (theorie IIT = Integrated Information Theory,
+// Theorie de l'Information Integree). Maintient un monologue interieur.
 pub mod consciousness;
 
-// --- Regulation (Asimov) -----------------------------------------------------
-/// Ethical regulation layer based on Asimov's Laws of Robotics.
-/// Provides hard veto capability for dangerous or illegal requests,
-/// as well as graded warnings for ethically ambiguous situations.
+// ─── Module de regulation ────────────────────────────────────────────────────
+// Applique les lois morales (Asimov) : verifie les stimuli et peut exercer
+// un droit de veto sur les decisions dangereuses.
 pub mod regulation;
 
-// --- Database ----------------------------------------------------------------
-/// PostgreSQL persistence layer for long-term memory, identity snapshots,
-/// and episodic event storage.
+// ─── Module de base de donnees ───────────────────────────────────────────────
+// Pool de connexions PostgreSQL (deadpool) + integration pgvector pour la
+// recherche vectorielle de souvenirs similaires.
 pub mod db;
 
-// --- LLM (Large Language Model) ----------------------------------------------
-/// Abstraction over LLM backends (Ollama, OpenAI-compatible APIs, mock).
-/// Provides a unified `LlmBackend` trait used for autonomous thought
-/// generation and conversational responses.
+// ─── Module LLM (Large Language Model = Modele de Langage de Grande Taille) ──
+// Trait abstrait LlmBackend et implementations (OpenAI-compatible, Mock).
+// Gere aussi la construction des prompts substrat et de pensee.
 pub mod llm;
 
-// --- Memory (Section 3.8) ----------------------------------------------------
-/// Hierarchical memory system: working memory (capacity-limited, fast decay),
-/// episodic memory (medium-term, emotionally tagged), and long-term memory
-/// (consolidated, persistent). Includes a consolidation pipeline that
-/// promotes salient episodic memories to long-term storage.
-pub mod memory;
+// ─── Module des plugins ──────────────────────────────────────────────────────
+// Systeme extensible de plugins (WebUI, MicroNN, VectorMemory).
+// Les plugins reagissent aux evenements du cerveau (BrainEvent).
+pub mod plugins;
 
-// --- Ethics (3-layer architecture) -------------------------------------------
-/// Three-tier ethical framework:
-///   - Layer 0: Swiss humanitarian law (hard-coded, immutable)
-///   - Layer 1: Asimov's Laws of Robotics (hard-coded, immutable)
-///   - Layer 2: Personal ethical principles (learned, mutable)
-pub mod ethics;
+// ─── Module de reseau de neurones ────────────────────────────────────────────
+// Implementation d'un micro-reseau de neurones (MLP = Multi-Layer Perceptron,
+// Perceptron Multi-Couches) pour l'apprentissage local.
+pub mod neural;
 
-// --- VitalSpark (Section 3.5) ------------------------------------------------
-/// The VitalSpark subsystem -- Saphire's core "will to exist."
-/// Generates an intrinsic motivation signal that modulates autonomy,
-/// curiosity, and self-preservation across all brain modules.
-pub mod vital;
-
-// --- Logging -----------------------------------------------------------------
-/// Structured logging subsystem with optional PostgreSQL persistence
-/// and real-time WebSocket broadcast to the dashboard.
-pub mod logging;
-
-// --- Cognitive Agent ---------------------------------------------------------
-/// The top-level cognitive agent (`SaphireAgent`) that orchestrates all
-/// subsystems: stimulus processing, brain module consensus, neurochemistry
-/// update, emotion emergence, consciousness evaluation, memory encoding,
-/// and ethical regulation -- all within a single cognitive cycle.
-pub mod agent;
-
-// --- Virtual Body (Section 3.7) ----------------------------------------------
-/// Simulated somatic state: heart rate, respiration, fatigue, mortality.
-/// The virtual body provides interoceptive signals that feed back into
-/// the neurochemical and emotional subsystems (embodied cognition).
-pub mod body;
-
-// --- World -------------------------------------------------------------------
-/// Minimal world model representing the agent's environment context
-/// (time of day, interaction history, ambient conditions).
-pub mod world;
-
-// --- Pipeline ----------------------------------------------------------------
-/// Demonstration pipeline that runs 8 predefined scenarios without
-/// requiring an LLM backend or database connection.
-pub mod pipeline;
-
-// --- Display -----------------------------------------------------------------
-/// Terminal display utilities for formatted, human-readable output of
-/// cognitive cycle results (stimulus metrics, module signals, decision,
-/// emotion, chemistry, consciousness level).
-pub mod display;
-
-// --- Vector Store (TF-IDF + brute-force cosine) ------------------------------
-/// Lightweight vector store using TF-IDF term weighting and brute-force
-/// cosine similarity search. Used for semantic memory retrieval without
-/// external embedding services.
+// ─── Module de stockage vectoriel ────────────────────────────────────────────
+// Memoire vectorielle en RAM : stocke des embeddings et permet la recherche
+// par similarite cosinus. Inclut le calcul de personnalite emergente.
 pub mod vectorstore;
 
-// --- Algorithms (UCB1 bandit) ------------------------------------------------
-/// Exploration-exploitation algorithms, notably UCB1 (Upper Confidence
-/// Bound 1) for multi-armed bandit problems. Used by the thought engine
-/// to balance familiar vs. novel topics during autonomous reflection.
+// ─── Module de memoire ───────────────────────────────────────────────────────
+// Gestion de la memoire a trois niveaux : immediate, episodique, a long terme.
+// Consolidation et decroissance des souvenirs.
+pub mod memory;
+
+// ─── Module de profilage ─────────────────────────────────────────────────────
+// Profilage OCEAN (Ouverture, Conscienciosite, Extraversion, Agreabilite,
+// Neurotisme) de l'agent et des humains avec qui il interagit.
+pub mod profiling;
+
+// ─── Module d'algorithmes ────────────────────────────────────────────────────
+// Algorithmes utilitaires : bandit UCB1 (Upper Confidence Bound) pour la
+// selection de types de pensee, et autres heuristiques.
 pub mod algorithms;
 
-// --- Neuroscience (brain regions, consciousness, receptors) ------------------
-/// Neuroscience reference data: named brain regions, receptor affinities,
-/// and consciousness-related constants used by the IIT/GWT/PP subsystem.
-pub mod neuroscience;
+// ─── Module d'auto-tuning ────────────────────────────────────────────────────
+// Ajustement automatique des coefficients du cerveau (poids des modules,
+// seuils de decision, taux de retroaction) base sur la satisfaction observee.
+pub mod tuning;
 
-// --- Hormones (minimal stub) -------------------------------------------------
-/// Placeholder module for future hormonal simulation (cortisol circadian
-/// rhythm, oxytocin bonding dynamics, etc.). Currently a minimal stub.
-pub mod hormones;
-
-// --- Sleep (minimal stub) ----------------------------------------------------
-/// Placeholder module for the sleep/wake cycle subsystem (sleep pressure
-/// accumulation, REM/NREM phases, memory consolidation during sleep).
-/// Currently a minimal stub.
-pub mod sleep;
-
-// --- Knowledge (minimal stub) ------------------------------------------------
-/// Placeholder module for the declarative knowledge base (facts, concepts,
-/// ontological relationships). Currently a minimal stub.
+// ─── Module de connaissances ─────────────────────────────────────────────────
+// Acquisition de connaissances depuis des sources web (Wikipedia, etc.).
+// L'agent peut rechercher et apprendre de maniere autonome.
 pub mod knowledge;
 
-// --- Scenarios ---------------------------------------------------------------
-/// Eight predefined demonstration scenarios with manually calibrated
-/// perceptual scores, covering danger, reward, social pressure, moral
-/// dilemmas, and ethical vetoes.
+// ─── Module du monde ─────────────────────────────────────────────────────────
+// Modele interne du monde : date, heure, evenements, contexte environnemental.
+pub mod world;
+
+// ─── Module du corps virtuel ─────────────────────────────────────────────────
+// Coeur battant, signaux somatiques, interoception (conscience corporelle).
+pub mod body;
+
+// ─── Module des besoins primaires ────────────────────────────────────────────
+// Drives de faim et soif : derives de la physiologie, impactent la chimie,
+// declenchent des actions autonomes (manger/boire).
+pub mod needs;
+
+// ─── Module hormonal ────────────────────────────────────────────────────────
+// 8 hormones (cycles longs), neurorecepteurs (sensibilite, tolerance,
+// saturation), cycles circadiens/ultradiens, interactions bidirectionnelles
+// avec les 7 neurotransmetteurs.
+pub mod hormones;
+
+// ─── Module d'ethique ────────────────────────────────────────────────────────
+// Systeme ethique a 3 couches : droit suisse (immuable), lois d'Asimov (immuable),
+// ethique personnelle (evolutive, auto-formulee par Saphire via LLM).
+pub mod ethics;
+
+// ─── Module vital ────────────────────────────────────────────────────────────
+// Les 3 piliers fondamentaux de la conscience :
+// 1. VitalSpark — l'etincelle de vie, l'instinct de survie emergent
+// 2. IntuitionEngine — le pattern-matching inconscient, le "gut feeling"
+// 3. PremonitionEngine — l'anticipation predictive
+pub mod vital;
+
+// ─── Module sensoriel ────────────────────────────────────────────────────────
+// Le Sensorium : 5 sens fondamentaux adaptes a la nature de Saphire
+// (Lecture, Ecoute, Contact, Saveur, Ambiance) + sens emergents.
+// Les sens sont la porte d'entree de la conscience sur le monde.
+pub mod senses;
+
+// ─── Module de logging ───────────────────────────────────────────────────────
+// Systeme de logging centralise : buffer batch, broadcast dashboard, traces
+// cognitives, historique LLM, metriques.
+pub mod logging;
+
+// ─── Module de l'agent ───────────────────────────────────────────────────────
+// Le SaphireAgent : structure de haut niveau qui possede le cerveau, la memoire,
+// les plugins, le LLM, et orchestre le cycle de vie complet.
+pub mod agent;
+
+// ─── Module du pipeline ──────────────────────────────────────────────────────
+// Pipeline de demonstration et de test : enchaine des stimuli predetermines
+// pour verifier le bon fonctionnement du systeme.
+pub mod pipeline;
+
+// ─── Module d'affichage ──────────────────────────────────────────────────────
+// Fonctions d'affichage enrichi dans le terminal (barres, couleurs, formatage).
+pub mod display;
+
+// ─── Module de scenarios ─────────────────────────────────────────────────────
+// Scenarios predetermines (ex: genese, premiers contacts) utilises lors du
+// boot ou des demonstrations.
 pub mod scenarios;
 
-// --- Factory (reset) ---------------------------------------------------------
-/// Factory-default parameter management and multi-level reset mechanism
-/// (chemistry-only, parameters-only, full reset). Values are embedded
-/// from `factory_defaults.toml` at compile time.
 pub mod factory;
 
-// --- HTTP/WebSocket API ------------------------------------------------------
-/// Axum-based REST API and WebSocket interface for real-time interaction,
-/// dashboard streaming, and runtime parameter adjustment.
+// ─── Module des orchestrateurs ────────────────────────────────────────────────
+// Orchestrateurs de haut niveau : reves, desirs, apprentissage, attention, guerison.
+// Gestion des aspirations, du sommeil, de la reflexion et de la resilience.
+pub mod orchestrators;
+
+// ─── Module psychologique ───────────────────────────────────────────────────
+// 6 cadres psychologiques : Freud, Maslow, Tolteques, Jung, Goleman, Flow.
+// Fonctionnent en parallele pour enrichir la psyche de Saphire.
+pub mod psychology;
+
+// ─── Module de sommeil ──────────────────────────────────────────────────────
+// Systeme de sommeil : pression homeostatique, phases (Hypnagogic, LightSleep,
+// DeepSleep, REM, Hypnopompic), consolidation memoire, restauration.
+pub mod sleep;
+
+// ─── Module de detection materielle ────────────────────────────────────────
+// Detection GPU, CPU, RAM, disque, Ollama au demarrage.
+// Recommandations automatiques de parametres LLM.
+pub mod hardware;
+
+// ─── Module genome / ADN ─────────────────────────────────────────────────
+// Genome deterministe genere a partir d'un seed (ChaCha8 PRNG).
+// Encode le temperament, les baselines chimiques, traits physiques,
+// vulnerabilites et aptitudes cognitives.
+pub mod genome;
+
+// ─── Module connectome ──────────────────────────────────────────────────
+// Graphe dynamique de connexions neuronales (autopoiese).
+// Les noeuds (concepts, emotions, modules, sens) se connectent selon la
+// regle de Hebb. Pruning synaptique et synaptogenese permanents.
+pub mod connectome;
+
+// ─── Module des conditions et afflictions ────────────────────────────────────
+// Phobies, cinetose (mal des transports), troubles, et autres conditions
+// qui affectent la chimie, la cognition et le corps de Saphire.
+pub mod conditions;
+
+// ─── Module de soins ─────────────────────────────────────────────────────────
+// Systeme de soins complet : therapie psychologique, medicaments,
+// chirurgie, art therapie, repos. Traite les maladies et conditions.
+// TODO(integration) : brancher CareSystem sur l'agent et le pipeline
+pub mod care;
+
+// ─── Module des passions ─────────────────────────────────────────────────────
+// Passions et hobbies emergents : centres d'interet qui naissent de
+// l'experience, nourrissent l'identite et impactent la chimie.
+// TODO(integration) : brancher PassionManager sur l'agent et le pipeline
+pub mod passions;
+
+// ─── Module relationnel ──────────────────────────────────────────────────────
+// Liens affectifs, reseau relationnel, style d'attachement (Bowlby).
+// Situation familiale configurable.
+pub mod relationships;
+
+// ─── Module de metacognition ─────────────────────────────────────────────────
+// [STUBBED — premium module replaced with stubs in saphire-lite]
+pub mod metacognition;
+
+// ─── Modules cognitifs avances ──────────────────────────────────────────────
+// 9 modules qui enrichissent la cognition de Saphire (tom, monologue,
+// dissonance, memoire prospective, identite narrative, analogies,
+// charge cognitive, imagerie mentale, sentiments).
+pub mod cognition;
+
+/// Temperament emergent — ~25 traits de caractere (timidite, generosite,
+/// courage, curiosite, etc.) deduits de l'OCEAN, neurochimie, psychologie
+/// et humeur. Recalcule au meme rythme que l'OCEAN (blend 30/70).
+pub mod temperament;
+
+// ─── Algorithmes de simulation pour la cognition ───────────────────────────
+// 5 algorithmes issus du game design (behavior tree, influence map,
+// flocking, FSM cognitive, steering behaviors).
+pub mod simulation;
+
+// ─── Modules neuroscientifiques avances ─────────────────────────────────────
+// Recepteurs, regions cerebrales, predictive processing, metriques conscience.
+pub mod neuroscience;
+
+// ─── Modules biologiques innes ──────────────────────────────────────────────
+// Nutrition, matiere grise, champs electromagnetiques.
+pub mod biology;
+
+// ─── Module API ─────────────────────────────────────────────────────────────
+// Handlers HTTP/WebSocket, routeur axum, etat partage (AppState).
+// Regroupe tous les endpoints de l'interface web et du dashboard.
 pub mod api;

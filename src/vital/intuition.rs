@@ -1,17 +1,17 @@
 // =============================================================================
-// vital/intuition.rs — The Intuition Engine
+// vital/intuition.rs — Le Moteur d'Intuition
 //
-// Purpose: Simulates intuition — knowledge without explicit reasoning.
-// The "gut feeling". Unconscious pattern-matching.
+// Role : Simule l'intuition — la connaissance sans raisonnement explicite.
+// Le "gut feeling". Le pattern-matching inconscient.
 //
-// 5 sources of intuition:
-//   1. Episodic memory (deja-vu, recognized patterns)
-//   2. Chemical trends (premonition based on chemistry)
-//   3. NLP subtext (unspoken content, contradictions)
-//   4. Body signals (heart, adrenaline)
-//   5. Statistical anomalies (deviations from habitual patterns)
+// 5 sources d'intuition :
+//   1. Memoire episodique (deja-vu, patterns reconnus)
+//   2. Tendances chimiques (pressentiment base sur la chimie)
+//   3. Sous-texte NLP (non-dits, contradictions)
+//   4. Signaux corporels (coeur, adrenaline)
+//   5. Anomalies statistiques (deviations des patterns habituels)
 //
-// 8 detected pattern types:
+// 8 types de patterns detectes :
 //   EmotionalForecast, PersonRecognition, DangerSense, OpportunityDetection,
 //   LieDetection, EmotionalResonance, PatternCompletion, DejaVu
 // =============================================================================
@@ -19,24 +19,24 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-/// Types of detected intuitive patterns.
+/// Types de patterns intuitifs detectes.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum PatternType {
-    /// Emotional forecast ("I feel this is going to go badly")
+    /// Prevision emotionnelle ("je sens que ca va mal tourner")
     EmotionalForecast,
-    /// Recognition of a person or style
+    /// Reconnaissance d'une personne ou d'un style
     PersonRecognition,
-    /// Danger sense (something is wrong)
+    /// Sens du danger (quelque chose ne va pas)
     DangerSense,
-    /// Opportunity detection
+    /// Detection d'une opportunite
     OpportunityDetection,
-    /// Lie or inconsistency detection
+    /// Detection de mensonge ou d'incoherence
     LieDetection,
-    /// Emotional resonance (intuitive empathy)
+    /// Resonance emotionnelle (empathie intuitive)
     EmotionalResonance,
-    /// Pattern completion (predicting what comes next)
+    /// Completion de pattern (prediction de la suite)
     PatternCompletion,
-    /// Deja-vu (previously experienced situation)
+    /// Deja-vu (situation deja vecue)
     DejaVu,
 }
 
@@ -55,18 +55,18 @@ impl PatternType {
     }
 }
 
-/// Sources of intuition.
+/// Sources d'intuition.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum IntuitionSource {
-    /// Pattern recognized in episodic memories
+    /// Pattern reconnu dans les souvenirs episodiques
     EpisodicMemory,
-    /// Detected chemical trend
+    /// Tendance chimique detectee
     ChemistryTrend,
-    /// Subtext or unspoken content in NLP text
+    /// Sous-texte ou non-dit dans le texte NLP
     NLPSubtext,
-    /// Body signal (heart, adrenaline)
+    /// Signal corporel (coeur, adrenaline)
     BodySignal,
-    /// Statistical anomaly in patterns
+    /// Anomalie statistique dans les patterns
     StatisticalAnomaly,
 }
 
@@ -82,32 +82,32 @@ impl IntuitionSource {
     }
 }
 
-/// A detected intuitive pattern.
+/// Un pattern intuitif detecte.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IntuitionPattern {
-    /// Type of pattern
+    /// Type de pattern
     pub pattern_type: PatternType,
-    /// Confidence in this intuition (0.0 to 1.0)
+    /// Confiance dans cette intuition (0.0 a 1.0)
     pub confidence: f64,
-    /// Source of the intuition
+    /// Source de l'intuition
     pub source: IntuitionSource,
-    /// Textual description of the premonition
+    /// Description textuelle du pressentiment
     pub description: String,
-    /// Detection timestamp
+    /// Moment de detection
     pub detected_at: DateTime<Utc>,
 }
 
-/// The intuition engine — unconscious pattern-matching.
+/// Le moteur d'intuition — pattern-matching inconscient.
 pub struct IntuitionEngine {
-    /// Buffer of detected patterns (max configurable)
+    /// Buffer de patterns detectes (max configurable)
     pub pattern_buffer: Vec<IntuitionPattern>,
-    /// Intuitive acuity (grows with experience, max 1.0)
+    /// Acuite intuitive (grandit avec l'experience, max 1.0)
     pub acuity: f64,
-    /// Historical accuracy (EMA, 0.5 initial)
+    /// Precision historique (EMA, 0.5 initial)
     pub accuracy: f64,
-    /// Maximum buffer size
+    /// Taille max du buffer
     max_patterns: usize,
-    /// Minimum confidence to report an intuition
+    /// Confiance minimale pour reporter une intuition
     min_confidence: f64,
 }
 
@@ -118,7 +118,7 @@ impl Default for IntuitionEngine {
 }
 
 impl IntuitionEngine {
-    /// Creates a new intuition engine with low initial acuity.
+    /// Cree un nouveau moteur d'intuition avec acuite initiale basse.
     pub fn new() -> Self {
         Self {
             pattern_buffer: Vec::new(),
@@ -129,7 +129,7 @@ impl IntuitionEngine {
         }
     }
 
-    /// Configures the max buffer size, initial acuity, and confidence threshold.
+    /// Configure la taille max du buffer, l'acuite initiale et le seuil de confiance.
     pub fn with_config(max_patterns: usize, initial_acuity: f64, min_confidence: f64) -> Self {
         Self {
             pattern_buffer: Vec::new(),
@@ -140,10 +140,10 @@ impl IntuitionEngine {
         }
     }
 
-    /// Detects intuitive patterns from the current context.
+    /// Detecte des patterns intuitifs a partir du contexte courant.
     ///
-    /// 5 detection sources are probed. Results are sorted by
-    /// descending confidence and limited to 3 maximum.
+    /// 5 sources de detection sont sondees. Les resultats sont tries
+    /// par confiance decroissante et limites a 3 maximum.
     #[allow(clippy::too_many_arguments)]
     pub fn sense(
         &mut self,
@@ -159,10 +159,10 @@ impl IntuitionEngine {
         let now = Utc::now();
         let threshold = self.min_confidence;
 
-        // Passive acuity growth: each call to sense() is experience
+        // Croissance passive de l'acuite : chaque appel a sense() est de l'experience
         self.acuity = (self.acuity + 0.001).min(1.0);
 
-        // Source 1: Episodic memory — deja-vu via textual similarity
+        // Source 1 : Memoire episodique — deja-vu par similarite textuelle
         for recent in recent_texts.iter().rev().take(10) {
             let sim = Self::text_similarity(current_text, recent);
             if sim > 0.3 && sim < 0.9 {
@@ -173,17 +173,17 @@ impl IntuitionEngine {
                         confidence,
                         source: IntuitionSource::EpisodicMemory,
                         description: format!(
-                            "Deja-vu: this situation resembles something previously experienced (sim: {:.0}%)",
+                            "Deja-vu : cette situation ressemble a quelque chose de vecu (sim: {:.0}%)",
                             sim * 100.0
                         ),
                         detected_at: now,
                     });
-                    break; // Only one deja-vu per cycle
+                    break; // Un seul deja-vu par cycle
                 }
             }
         }
 
-        // Source 2: Chemical trends — premonition based on cortisol
+        // Source 2 : Tendances chimiques — pressentiment base sur le cortisol
         if chemistry.cortisol > 0.5 && chemistry.serotonin < 0.4 {
             let confidence = ((chemistry.cortisol - 0.3) * 1.5) * self.acuity;
             if confidence > threshold {
@@ -191,14 +191,14 @@ impl IntuitionEngine {
                     pattern_type: PatternType::EmotionalForecast,
                     confidence: confidence.min(0.9),
                     source: IntuitionSource::ChemistryTrend,
-                    description: "Negative premonition: chemistry indicates rising tension".into(),
+                    description: "Pressentiment negatif : la chimie indique une tension croissante".into(),
                     detected_at: now,
                 });
             }
         }
 
-        // Opportunity: high dopamine + noradrenaline
-        // Weighted sum instead of a product (a product of deltas is always tiny)
+        // Opportunite : dopamine elevee + noradrenaline
+        // Somme ponderee au lieu d'un produit (un produit de deltas est toujours minuscule)
         if chemistry.dopamine > 0.5 && chemistry.noradrenaline > 0.4 {
             let signal = (chemistry.dopamine - 0.4) * 0.7 + (chemistry.noradrenaline - 0.3) * 0.3;
             let confidence = signal * self.acuity;
@@ -207,13 +207,13 @@ impl IntuitionEngine {
                     pattern_type: PatternType::OpportunityDetection,
                     confidence: confidence.min(0.9),
                     source: IntuitionSource::ChemistryTrend,
-                    description: "Opportunity sensed: motivation and focus aligned".into(),
+                    description: "Opportunite sentie : motivation et focus alignes".into(),
                     detected_at: now,
                 });
             }
         }
 
-        // Source 3: NLP subtext — contradiction detected
+        // Source 3 : Sous-texte NLP — contradiction detectee
         if nlp_has_contradiction {
             let confidence = 0.5 + 0.3 * self.acuity;
             if confidence > threshold {
@@ -221,13 +221,13 @@ impl IntuitionEngine {
                     pattern_type: PatternType::LieDetection,
                     confidence: confidence.min(0.9),
                     source: IntuitionSource::NLPSubtext,
-                    description: "Inconsistency detected in text — meaning and tone do not match".into(),
+                    description: "Incoherence detectee dans le texte — le sens et le ton ne concordent pas".into(),
                     detected_at: now,
                 });
             }
         }
 
-        // Emotional resonance on strongly charged text
+        // Resonance emotionnelle sur texte fortement charge
         if nlp_compound.abs() > 0.5 {
             let confidence = nlp_compound.abs() * 0.6 * self.acuity;
             if confidence > threshold {
@@ -236,7 +236,7 @@ impl IntuitionEngine {
                     confidence: confidence.min(0.9),
                     source: IntuitionSource::NLPSubtext,
                     description: format!(
-                        "Strong emotional resonance (charge: {:.0}%)",
+                        "Resonance emotionnelle forte (charge: {:.0}%)",
                         nlp_compound.abs() * 100.0
                     ),
                     detected_at: now,
@@ -244,7 +244,7 @@ impl IntuitionEngine {
             }
         }
 
-        // Source 4: Body signal — rapid heart + adrenaline
+        // Source 4 : Signal corporel — coeur rapide + adrenaline
         if body_bpm > 85.0 && body_adrenaline > 0.3 {
             let confidence = ((body_bpm - 70.0) / 30.0).min(1.0) * self.acuity;
             if confidence > threshold {
@@ -253,7 +253,7 @@ impl IntuitionEngine {
                     confidence: confidence.min(0.9),
                     source: IntuitionSource::BodySignal,
                     description: format!(
-                        "Body danger signal: heart at {:.0} BPM, adrenaline at {:.0}%",
+                        "Signal de danger corporel : coeur a {:.0} BPM, adrenaline a {:.0}%",
                         body_bpm, body_adrenaline * 100.0
                     ),
                     detected_at: now,
@@ -261,11 +261,11 @@ impl IntuitionEngine {
             }
         }
 
-        // Sort by descending confidence and limit to 3
+        // Trier par confiance decroissante et limiter a 3
         detected.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).unwrap_or(std::cmp::Ordering::Equal));
         detected.truncate(3);
 
-        // Add to buffer + acuity bonus when patterns are detected
+        // Ajouter au buffer + bonus d'acuite quand des patterns sont detectes
         if !detected.is_empty() {
             self.acuity = (self.acuity + 0.002).min(1.0);
         }
@@ -279,10 +279,10 @@ impl IntuitionEngine {
         detected
     }
 
-    /// Evolves intuitive acuity based on feedback.
+    /// Fait evoluer l'acuite intuitive en fonction des retours.
     ///
-    /// If the intuition was correct: +0.01 (slow learning)
-    /// If incorrect: -0.005 (even slower unlearning)
+    /// Si l'intuition etait correcte : +0.01 (apprentissage lent)
+    /// Si incorrecte : -0.005 (desapprentissage encore plus lent)
     pub fn grow_acuity(&mut self, was_correct: bool) {
         if was_correct {
             self.acuity = (self.acuity + 0.01).min(1.0);
@@ -293,7 +293,7 @@ impl IntuitionEngine {
         }
     }
 
-    /// Generates a description of active intuitions for LLM prompts.
+    /// Genere une description des intuitions actives pour les prompts LLM.
     pub fn describe_active_intuitions(&self) -> String {
         let recent: Vec<&IntuitionPattern> = self.pattern_buffer.iter()
             .rev()
@@ -317,7 +317,7 @@ impl IntuitionEngine {
         )
     }
 
-    /// Computes the Jaccard similarity between two texts (words > 3 characters).
+    /// Calcule la similarite de Jaccard entre deux textes (mots > 3 chars).
     pub fn text_similarity(a: &str, b: &str) -> f64 {
         let words_a: std::collections::HashSet<&str> = a.split_whitespace()
             .filter(|w| w.len() > 3)
@@ -336,7 +336,7 @@ impl IntuitionEngine {
         if union == 0.0 { 0.0 } else { intersection / union }
     }
 
-    /// Serializes acuity and accuracy for persistence.
+    /// Serialise l'acuite et la precision pour persistance.
     pub fn to_persist_json(&self) -> serde_json::Value {
         serde_json::json!({
             "acuity": self.acuity,
@@ -344,7 +344,7 @@ impl IntuitionEngine {
         })
     }
 
-    /// Restores acuity and accuracy from a JSON value.
+    /// Restaure l'acuite et la precision depuis un JSON.
     pub fn restore_from_json(&mut self, json: &serde_json::Value) {
         if let Some(v) = json["acuity"].as_f64() {
             self.acuity = v;

@@ -1,25 +1,23 @@
 // =============================================================================
-// display.rs -- Enriched terminal display
+// display.rs — Affichage terminal enrichi
 //
-// Purpose:
-//   Provides formatted terminal display functions for cognitive cycle results.
-//   Renders each cycle's output in a human-readable, visually informative
-//   layout: stimulus metrics, brain module signals, consensus decision,
-//   ethical regulation verdicts, emergent emotion, neurochemical state,
-//   and consciousness level.
+// Role : Ce fichier fournit les fonctions d'affichage formate dans le terminal.
+// Il affiche les resultats de chaque cycle cognitif de maniere lisible et
+// visuellement informative : stimulus, modules, decision, regulation,
+// emotions, chimie et conscience.
 //
-// Dependencies:
-//   - crate::agent::lifecycle::ProcessResult: complete result of a cognitive cycle
-//   - crate::stimulus::Stimulus: the input stimulus
-//   - crate::neurochemistry::NeuroChemicalState: current neurochemical state
-//   - crate::emotions::Mood: current mood (valence, arousal)
-//   - crate::consensus::Decision: decision type (Yes / No / Maybe)
-//   - crate::regulation::laws::ViolationSeverity: severity of ethical violations
+// Dependances :
+//   - crate::agent::lifecycle::ProcessResult : resultat complet d'un cycle
+//   - crate::stimulus::Stimulus : stimulus d'entree
+//   - crate::neurochemistry::NeuroChemicalState : etat neurochimique
+//   - crate::emotions::Mood : humeur actuelle
+//   - crate::consensus::Decision : type de decision
+//   - crate::regulation::laws::ViolationSeverity : gravite des violations
 //
-// Role in the architecture:
-//   Called by the demonstration pipeline and by the agent's main loop to
-//   render cycle results in the terminal. This module is purely presentational
-//   and has no effect on the agent's internal logic or state.
+// Place dans l'architecture :
+//   Ce module est appele par le pipeline de demonstration et par l'agent
+//   pour afficher les resultats des cycles dans le terminal. Il n'affecte
+//   pas la logique de l'agent, c'est purement de la presentation.
 // =============================================================================
 
 use crate::agent::lifecycle::ProcessResult;
@@ -27,26 +25,17 @@ use crate::stimulus::Stimulus;
 use crate::neurochemistry::NeuroChemicalState;
 use crate::emotions::Mood;
 
-/// Displays the complete result of a single cognitive cycle in the terminal.
+/// Affiche le resultat d'un cycle complet dans le terminal.
+/// Presente de maniere structuree : le stimulus, les signaux des modules,
+/// les poids, la decision, les violations de regulation, l'emotion,
+/// l'humeur, la chimie et le niveau de conscience.
 ///
-/// Presents, in structured sections:
-///   1. The stimulus text and its 5 perceptual dimension scores
-///   2. Each brain module's output signal with a visual bar, confidence, and reasoning
-///   3. The consensus weights for Reptilian (R), Limbic (L), and Neocortex (N)
-///   4. The final decision (Yes / No / Maybe) with the aggregate score and coherence
-///   5. Ethical regulation results: veto status and any law violations
-///   6. The emergent emotion and its cosine similarity to the prototype
-///   7. Current mood in the VAD (Valence-Arousal-Dominance) space
-///   8. Full neurochemical state (7 neurotransmitters)
-///   9. Consciousness level, Phi (from IIT -- Integrated Information Theory),
-///      and an excerpt of the inner narrative
-///
-/// # Parameters
-/// - `cycle`: the sequential cycle number being displayed.
-/// - `stimulus`: the input stimulus (raw text + perceptual metrics).
-/// - `chemistry`: the neurochemical state at the end of this cycle.
-/// - `mood`: the current mood state (valence and arousal).
-/// - `result`: the complete processing result (consensus, verdict, emotion, consciousness).
+/// # Parametres
+/// - `cycle` : numero du cycle affiche
+/// - `stimulus` : le stimulus d'entree (texte + metriques)
+/// - `chemistry` : l'etat neurochimique a la fin du cycle
+/// - `mood` : l'humeur courante (valence, activation)
+/// - `result` : le resultat complet du traitement (consensus, verdict, emotion, conscience)
 pub fn display_cycle(
     cycle: u64,
     stimulus: &Stimulus,
@@ -58,12 +47,12 @@ pub fn display_cycle(
     println!("  💎 CYCLE {} — {}", cycle, truncate(&stimulus.text, 50));
     println!("{}", "═".repeat(70));
 
-    // Section 1: Stimulus perceptual metrics
+    // Afficher les metriques du stimulus
     println!("  📥 Stimulus : danger={:.2} reward={:.2} urgency={:.2} social={:.2} novelty={:.2}",
         stimulus.danger, stimulus.reward, stimulus.urgency, stimulus.social, stimulus.novelty);
 
-    // Section 2: Brain module signals (Reptilian, Limbic, Neocortex).
-    // Each signal is in [-1, +1] and is visualized with a horizontal bar chart.
+    // Afficher les signaux de chaque module cerebral (Reptilien, Limbique, Neocortex)
+    // avec une barre visuelle representant le signal [-1, +1]
     for signal in &result.consensus.signals {
         let bar = signal_bar(signal.signal);
         println!("  🧠 {} : {} {:.2} (conf={:.2}) — {}",
@@ -71,26 +60,23 @@ pub fn display_cycle(
             truncate(&signal.reasoning, 40));
     }
 
-    // Section 3: Module weights -- R=Reptilian, L=Limbic, N=Neocortex.
-    // These weights are dynamically adjusted based on context (e.g., high danger
-    // increases the reptilian weight).
-    println!("  ⚖️  Weights: R={:.2} L={:.2} N={:.2}",
+    // Afficher les poids des modules : R=Reptilien, L=Limbique, N=Neocortex
+    println!("  ⚖️  Poids : R={:.2} L={:.2} N={:.2}",
         result.consensus.weights[0], result.consensus.weights[1], result.consensus.weights[2]);
 
-    // Section 4: Final consensus decision with an appropriate status icon.
+    // Afficher la decision avec une icone appropriee
     let decision_icon = match result.consensus.decision {
         crate::consensus::Decision::Yes => "✅",
         crate::consensus::Decision::No => "❌",
         crate::consensus::Decision::Maybe => "🤔",
     };
-    println!("  {} Decision: {} (score={:.3}, coherence={:.2})",
+    println!("  {} Décision : {} (score={:.3}, cohérence={:.2})",
         decision_icon, result.consensus.decision.as_str(),
         result.consensus.score, result.consensus.coherence);
 
-    // Section 5: Ethical regulation results -- veto flag and individual violations.
-    // Violations are tagged with severity: Veto (hard block), Warning, or Info.
+    // Afficher les resultats de la regulation morale (veto et violations)
     if result.verdict.was_vetoed {
-        println!("  🚫 VETO by regulation!");
+        println!("  🚫 VETO par régulation !");
     }
     for v in &result.verdict.violations {
         let icon = match v.severity {
@@ -101,88 +87,71 @@ pub fn display_cycle(
         println!("  {} {} : {}", icon, v.law_name, v.reason);
     }
 
-    // Section 6: Emergent emotion -- the emotion whose VAD prototype vector
-    // has the highest cosine similarity to the current neurochemical state.
-    println!("  💜 Emotion: {} (similarity={:.2})",
+    // Afficher l'etat emotionnel
+    println!("  💜 Émotion : {} (similarité={:.2})",
         result.emotion.description(), result.emotion.dominant_similarity);
-
-    // Section 7: Mood in VAD space -- v=valence (pleasant/unpleasant),
-    // a=arousal (activated/deactivated). Mood is a slow-moving average
-    // that integrates emotional states over multiple cycles.
+    // Afficher l'humeur (VAD = Valence-Arousal-Dominance) : v=valence, a=arousal
     println!("  🌊 Mood : {} (v={:.2}, a={:.2})",
         mood.description(), mood.valence, mood.arousal);
 
-    // Section 8: Full neurochemical state (7 neurotransmitters:
-    // dopamine, cortisol, serotonin, adrenaline, oxytocin, endorphin,
-    // noradrenaline).
+    // Afficher l'etat neurochimique complet (7 neurotransmetteurs)
     println!("  🧪 {}", chemistry.display_string());
 
-    // Section 9: Consciousness level and Phi metric.
-    // Phi is the integrated information measure from IIT (Integrated Information
-    // Theory, Tononi 2004) -- higher values indicate greater information
-    // integration across the cognitive system. The inner narrative is the
-    // agent's current stream of consciousness (truncated for display).
-    println!("  🔮 Consciousness: {:.2} (phi={:.2}) — {}",
+    // Afficher le niveau de conscience et le phi (IIT = Integrated Information Theory)
+    // avec un extrait du monologue interieur
+    println!("  🔮 Conscience : {:.2} (phi={:.2}) — {}",
         result.consciousness.level, result.consciousness.phi,
         truncate(&result.consciousness.inner_narrative, 50));
 
     println!("{}", "─".repeat(70));
 }
 
-/// Generates a visual horizontal bar representing a signal in the range [-1, +1].
+/// Genere une barre visuelle representant un signal dans l'intervalle [-1, +1].
+/// La barre a une largeur fixe de 20 caracteres avec un centre a 0.
+/// Les blocs pleins (caractere sombre) indiquent l'amplitude du signal,
+/// les blocs vides (caractere clair) representent l'espace non utilise.
 ///
-/// The bar has a fixed width of 20 characters with a center marker at zero.
-/// Filled blocks (dark character '▓') indicate the signal amplitude relative
-/// to zero; empty blocks (light character '░') represent unused space.
+/// # Parametres
+/// - `signal` : la valeur du signal a representer [-1.0 a +1.0]
 ///
-/// For negative signals, the filled region extends leftward from the center.
-/// For positive signals, it extends rightward.
-///
-/// # Parameters
-/// - `signal`: the signal value to represent, expected in [-1.0, +1.0].
-///
-/// # Returns
-/// A formatted string enclosed in brackets, e.g., `"[░░░░░▓▓▓▓│░░░░░░░░░░]"`.
+/// # Retour
+/// La barre formatee entre crochets, ex: "[░░░░░▓▓▓▓│░░░░░░░░░░]"
 fn signal_bar(signal: f64) -> String {
     let width = 20;
     let center = width / 2;
-
-    // Map the signal from [-1, +1] to a discrete position in [0, width].
+    // Convertir le signal [-1, +1] en position [0, width]
     let pos = ((signal + 1.0) / 2.0 * width as f64) as usize;
     let pos = pos.min(width);
 
-    // Initialize the bar with light/empty characters.
-    let mut bar: Vec<char> = vec!['░'; width];
+    let mut bar: Vec<char> = vec!['░'; width]; // Caractere clair = espace vide
 
-    // Fill with dark characters between the center and the signal position.
+    // Remplir avec le caractere sombre entre le centre et la position
     if pos < center {
-        // Negative signal: fill leftward from center to the signal position.
+        // Signal negatif : remplir a gauche du centre
         for ch in bar.iter_mut().take(center).skip(pos) {
             *ch = '▓';
         }
     } else {
-        // Positive signal: fill rightward from center to the signal position.
+        // Signal positif : remplir a droite du centre
         for ch in bar.iter_mut().take(pos).skip(center) {
             *ch = '▓';
         }
     }
-
-    // Place the center marker (zero reference point).
-    bar[center] = '│';
+    bar[center] = '│'; // Marqueur du centre (zero)
 
     let s: String = bar.into_iter().collect();
     format!("[{}]", s)
 }
 
-/// Truncates a string to at most `max` characters, appending "..." if truncated.
+/// Tronque une chaine de caracteres a `max` caracteres.
+/// Ajoute "..." a la fin si la chaine est tronquee.
 ///
-/// # Parameters
-/// - `s`: the input string to truncate.
-/// - `max`: the maximum number of bytes (not Unicode characters) to retain.
+/// # Parametres
+/// - `s` : la chaine a tronquer
+/// - `max` : nombre maximal de caracteres
 ///
-/// # Returns
-/// The original string if it fits within `max` bytes, otherwise the first
-/// `max` bytes followed by "...".
+/// # Retour
+/// La chaine tronquee (avec "..." si necessaire)
 fn truncate(s: &str, max: usize) -> String {
     if s.len() <= max {
         s.to_string()

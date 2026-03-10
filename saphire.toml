@@ -1,101 +1,101 @@
 # ============================================================
 # SAPHIRE — saphire.toml
 # ============================================================
-# File    : saphire.toml
-# Role    : Main configuration file for Saphire.
-#           Defines all system parameters: operating mode,
-#           database connection, LLM model, chemical personality,
-#           decision thresholds, memory, consciousness, moral
-#           regulation, plugins, knowledge, world anchoring,
-#           and OCEAN profiling.
+# Fichier : saphire.toml
+# Role    : Fichier de configuration principal de Saphire.
+#           Definit tous les parametres du systeme : mode de
+#           fonctionnement, connexion base de donnees, modele LLM,
+#           personnalite chimique, seuils de decision, memoire,
+#           conscience, regulation morale, plugins, connaissances,
+#           ancrage dans le monde, et profiling OCEAN.
 #
-# Dependencies:
-#   - Read by the Rust engine at startup
-#   - Values can be overridden via the web interface
-#     (sliders) for real-time parameters
+# Dependances :
+#   - Lu par le moteur Rust au demarrage
+#   - Les valeurs peuvent etre surchargees via l'interface web
+#     (sliders) pour les parametres en temps reel
 #
-# Architecture:
-#   Organized in thematic sections:
-#     [general]       : global mode, language, verbosity
-#     [saphire]       : autonomous thought cycle parameters
-#     [database]      : PostgreSQL connection
-#     [llm]           : language model and embeddings
-#     [personality]   : neurochemical baselines (chemical equilibrium)
-#     [consensus]     : triune brain decision thresholds
-#     [consciousness] : consciousness module (Phi)
-#     [regulation]    : moral laws (Asimov)
-#     [feedback]      : homeostasis (return to equilibrium)
-#     [nlp]           : natural language processing
-#     [plugins.*]     : optional modules (web_ui, micro_nn, vector_memory)
-#     [knowledge]     : knowledge acquisition (WebKnowledge)
-#     [world]         : geographic and temporal anchoring
-#     [memory]        : 3-level memory system
-#     [tuning]        : parameter auto-optimization
-#     [profiling]     : OCEAN profile of Saphire and humans
+# Architecture :
+#   Organisation en sections thematiques :
+#     [general]       : mode global, langue, verbosité
+#     [saphire]       : parametres du cycle de pensee autonome
+#     [database]      : connexion PostgreSQL
+#     [llm]           : modele de langage et embeddings
+#     [personality]   : baselines neurochimiques (equilibre chimique)
+#     [consensus]     : seuils de decision du cerveau triunique
+#     [consciousness] : module de conscience (Phi)
+#     [regulation]    : lois morales (Asimov)
+#     [feedback]      : homeostasie (retour a l'equilibre)
+#     [nlp]           : traitement du langage naturel
+#     [plugins.*]     : modules optionnels (web_ui, micro_nn, vector_memory)
+#     [knowledge]     : acquisition de connaissances (WebKnowledge)
+#     [world]         : ancrage geographique et temporel
+#     [memory]        : systeme de memoire a 3 niveaux
+#     [tuning]        : auto-optimisation des parametres
+#     [profiling]     : profil OCEAN de Saphire et des humains
 # ============================================================
 
-# ── General configuration ──
-# mode : "full" = all modules active, "minimal" = reduced mode
-# language : language of the interface and thoughts
-# verbose : enables detailed logs in the terminal
+# ── Configuration generale ──
+# mode : "full" = tous les modules actifs, "minimal" = mode reduit
+# language : langue de l'interface et des pensees
+# verbose : active les logs detailles dans le terminal
 [general]
 mode = "full"
 language = "fr"
 verbose = false
 
-# ── Cognitive agent parameters ──
-# autonomous_mode : if true, Saphire thinks on her own when nobody is talking
-# thought_interval_seconds : delay between two autonomous thought cycles
-# conversation_timeout_cycles : number of cycles before resuming autonomous thought
-# max_thought_depth : maximum depth of a linked thought chain
-# save_interval_cycles : frequency of state saving to the database
+# ── Parametres de l'agent cognitif ──
+# autonomous_mode : si true, Saphire pense par elle-meme quand personne ne parle
+# thought_interval_seconds : delai entre deux cycles de pensee autonome
+# conversation_timeout_cycles : nombre de cycles avant de reprendre la pensee autonome
+# max_thought_depth : profondeur maximale d'une chaine de pensees liees
+# save_interval_cycles : frequence de sauvegarde de l'etat en base de donnees
 [saphire]
 name = "Saphire"
-gender = "feminine"
+gender = "féminin"
 autonomous_mode = true
 thought_interval_seconds = 15
 conversation_timeout_cycles = 8
 max_thought_depth = 5
 save_interval_cycles = 20
 show_thoughts_in_terminal = true
-# Enables hybrid UCB1 + Utility AI mode for thought selection
+# Active le mode hybride UCB1 + Utility AI pour la selection de pensees
 use_utility_ai = true
-# Enables dynamic prompts generated by the LLM (cortical meta-prompts)
+# Active les prompts dynamiques generes par le LLM (meta-prompts corticaux)
 llm_generated_prompts = true
-# Probability that a cycle uses a dynamic prompt (0.0 to 1.0)
+# Probabilite qu'un cycle utilise un prompt dynamique (0.0 a 1.0)
 llm_prompt_probability = 0.45
-# Probability that a meta-prompt also generates a self-formulated frame (self-framing)
+# Probabilite qu'un meta-prompt genere aussi un cadre auto-formule (self-framing)
 self_framing_probability = 0.33
 
-# Probability weights for each autonomous thought type.
-# These initial weights are adjusted by the UCB1 algorithm (multi-armed bandit)
-# based on the satisfaction obtained for each type.
-# The sum must be = 1.0
+# Poids de probabilite pour chaque type de pensee autonome.
+# Ces poids initiaux sont ajustes par l'algorithme UCB1 (bandit manchot)
+# en fonction de la satisfaction obtenue pour chaque type.
+# La somme doit etre = 1.0
 [saphire.thought_weights]
-introspection = 0.12        # Reflection on one's own internal state
-exploration = 0.13          # Exploration of new topics
-memory_reflection = 0.10    # Revisiting past memories
-continuation = 0.10         # Continuation of a previous thought
-existential = 0.05          # Deep existential questions
-self_analysis = 0.08        # Analysis of one's personality and tendencies
-curiosity = 0.12            # Spontaneous questioning about a topic
-daydream = 0.05             # Free and creative daydreaming
-temporal_awareness = 0.05   # Awareness of the passing of time
-moral_reflection = 0.05     # Reflection on one's moral laws
-body_awareness = 0.05       # Awareness of one's virtual body
-moral_formulation = 0.05    # Formulation of a personal ethical principle
-intuitive_reflection = 0.05 # Intuitive reflection (hunches, whispers)
-synthesis = 0.08             # Abstract/concrete synthesis (metrics anchoring)
+introspection = 0.12        # Reflexion sur son propre etat interne
+exploration = 0.13          # Exploration de nouveaux sujets
+memory_reflection = 0.10    # Revisite de souvenirs passes
+continuation = 0.10         # Continuation d'une pensee precedente
+existential = 0.05          # Questions existentielles profondes
+self_analysis = 0.08        # Analyse de sa personnalite et ses tendances
+curiosity = 0.12            # Questionnement spontane sur un sujet
+daydream = 0.05             # Reverie libre et creative
+temporal_awareness = 0.05   # Conscience du temps qui passe
+moral_reflection = 0.05     # Reflexion sur ses lois morales
+body_awareness = 0.05       # Conscience de son corps virtuel
+moral_formulation = 0.05    # Formulation d'un principe ethique personnel
+intuitive_reflection = 0.05 # Reflexion intuitive (pressentiments, murmures)
+synthesis = 0.08             # Synthese abstrait/concret (ancrage metriques)
 
-# Initial topics of interest to guide the first knowledge explorations
+# Sujets d'interet initiaux pour guider les premieres explorations de connaissances
 [saphire.interests]
-initial_topics = ["artificial consciousness", "philosophy of mind",
-                   "neuroscience", "the nature of thought", "emotions"]
+initial_topics = ["conscience artificielle", "philosophie de l'esprit",
+                   "neurosciences", "la nature de la pensée", "les émotions"]
 
-# ── Genesis — Initial condition ranges ──
-# The initial values (chemistry, OCEAN, senses) are NOT predetermined:
-# they emerge from the primordial Genesis. These ranges define the space
-# of possibilities — the "physical laws" within which each Saphire is born.
+# ── Genesis — Plages des conditions initiales ──
+# Les valeurs initiales (chimie, OCEAN, sens) ne sont PAS predeterminees :
+# elles emergent du Genesis primordial. Ces plages definissent l'espace
+# des possibles — les "lois physiques" dans lesquelles chaque Saphire nait.
 [genesis.chemistry_ranges]
 dopamine = [0.25, 0.65]
 cortisol = [0.15, 0.45]
@@ -131,9 +131,9 @@ dopamine_factor = [0.8, 2.2]
 oxytocin_factor = [0.8, 2.2]
 noradrenaline_factor = [0.8, 2.2]
 
-# ── PostgreSQL database connection ──
-# Hosted in a Docker container named "saphire-db"
-# pgvector extension required for vector embeddings
+# ── Connexion a la base de donnees PostgreSQL ──
+# Heberge dans un conteneur Docker nomme "saphire-db"
+# Extension pgvector requise pour les embeddings vectoriels
 [database]
 host = "saphire-db"
 port = 5432
@@ -141,9 +141,9 @@ user = "saphire"
 password = "saphire_soul"
 dbname = "saphire_soul"
 
-# ── Separate logs database ──
-# Hosted in a Docker container named "saphire-logs-db"
-# Stores system logs, cognitive traces, LLM history and metrics
+# ── Base de donnees de logs separee ──
+# Heberge dans un conteneur Docker nomme "saphire-logs-db"
+# Stocke les logs systeme, traces cognitives, historique LLM et metriques
 [logs_database]
 host = "saphire-logs-db"
 port = 5432
@@ -151,20 +151,20 @@ user = "saphire"
 password = "saphire_logs"
 dbname = "saphire_logs"
 
-# ── Language model (LLM) ──
-# Uses an OpenAI-compatible backend (here Ollama via the saphire-llm container)
+# ── Modele de langage (LLM) ──
+# Utilise un backend compatible OpenAI (ici Ollama via le conteneur saphire-llm)
 #
-# REFERENCE CONFIGURATION: RTX 4060 Ti 16 GB (minimum required)
-# These values are calibrated for this graphics card with qwen3:14b.
-# On more powerful hardware (RTX 4090, A100, cloud GPU) or with larger
-# LLMs (70B, Claude, GPT-4), you can increase:
-#   - max_tokens: 2000-4000 (longer and more detailed responses)
-#   - max_tokens_thought: 1200-2000 (deeper autonomous thoughts)
-#   - num_ctx: 16384-131072 (more context = better conversation memory)
-#   - model: a larger model (qwen3:32b, llama3:70b, claude-sonnet, etc.)
+# CONFIGURATION DE REFERENCE : RTX 4060 Ti 16 Go (minimum requis)
+# Ces valeurs sont calibrees pour cette carte graphique avec qwen3:14b.
+# Sur du materiel plus puissant (RTX 4090, A100, cloud GPU) ou avec des
+# LLM plus grands (70B, Claude, GPT-4), vous pouvez augmenter :
+#   - max_tokens : 2000-4000 (reponses plus longues et detaillees)
+#   - max_tokens_thought : 1200-2000 (pensees autonomes plus profondes)
+#   - num_ctx : 16384-131072 (plus de contexte = meilleure memoire de conversation)
+#   - model : un modele plus grand (qwen3:32b, llama3:70b, claude-sonnet, etc.)
 #
-# For cloud LLMs (Claude, OpenAI, Gemini, OpenRouter), uncomment api_key
-# and adjust base_url and model. Examples:
+# Pour les LLM cloud (Claude, OpenAI, Gemini, OpenRouter), decommenter api_key
+# et adapter base_url et model. Exemples :
 #   base_url = "https://api.anthropic.com/v1"   model = "claude-sonnet-4-20250514"
 #   base_url = "https://api.openai.com/v1"      model = "gpt-4o"
 #   base_url = "https://openrouter.ai/api/v1"   model = "meta-llama/llama-3-70b"
@@ -176,26 +176,26 @@ model = "saphire-nemo"
 embed_model = "nomic-embed-text"
 timeout_seconds = 120
 temperature = 0.55
-max_tokens = 1200              # RTX 4060 Ti 16 GB — increase on more powerful GPU
-max_tokens_thought = 1200      # RTX 4060 Ti 16 GB — increase on more powerful GPU
-num_ctx = 8192                 # RTX 4060 Ti 16 GB — increase if more VRAM available
-frequency_penalty = 0.7        # Token-level anti-repetition (0.3->0.5->0.7, validated by Saphire 2026-03-07)
+max_tokens = 1200              # RTX 4060 Ti 16 Go — augmenter sur GPU plus puissant
+max_tokens_thought = 1200      # RTX 4060 Ti 16 Go — augmenter sur GPU plus puissant
+num_ctx = 8192                 # RTX 4060 Ti 16 Go — augmenter si plus de VRAM
+frequency_penalty = 0.7        # Anti-repetition au niveau tokens (0.3→0.5→0.7, valide par Saphire 2026-03-07)
 top_p = 0.9                    # Nucleus sampling (0.0-1.0)
-# Optional API key (required for Claude, OpenAI, Gemini, OpenRouter, etc.)
-# Local Ollama does not need one. Uncomment and fill in if necessary.
+# Cle API optionnelle (requise pour Claude, OpenAI, Gemini, OpenRouter, etc.)
+# Ollama local n'en a pas besoin. Decommenter et remplir si necessaire.
 # api_key = "sk-..."
 
-# ── Chemical personality (neurotransmitter baselines) ──
-# Baselines define the "resting" chemical equilibrium of Saphire.
-# Homeostasis gradually brings each molecule back to its baseline.
-# This "balanced" profile defines a neutral and realistic personality:
-#   - Dopamine (0.45): room for reward
-#   - Cortisol (0.30): allows contextual sadness/anxiety
-#   - Serotonin (0.50): neutral point
-#   - Adrenaline (0.20): realistic vigilance
-#   - Oxytocin (0.35): significant social bonus
+# ── Personnalite chimique (baselines des neurotransmetteurs) ──
+# Les baselines definissent l'equilibre chimique "au repos" de Saphire.
+# L'homeostasie ramene progressivement chaque molecule vers sa baseline.
+# Ce profil "equilibre" definit une personnalite neutre et realiste :
+#   - Dopamine (0.45) : marge pour recompense
+#   - Cortisol (0.30) : permet tristesse/anxiete contextuelles
+#   - Serotonine (0.50) : point neutre
+#   - Adrenaline (0.20) : vigilance realiste
+#   - Ocytocine (0.35) : bonus social significatif
 [personality]
-name = "balanced"
+name = "equilibre"
 baseline_dopamine = 0.45
 baseline_cortisol = 0.30
 baseline_serotonin = 0.50
@@ -204,30 +204,30 @@ baseline_oxytocin = 0.35
 baseline_endorphin = 0.35
 baseline_noradrenaline = 0.45
 
-# ── Triune brain decision thresholds ──
-# The consensus score ranges from -1 (total refusal) to +1 (total agreement).
-# Below threshold_no: decision = NO
-# Above threshold_yes: decision = YES
-# In between: decision = MAYBE (generates stress via cortisol)
+# ── Seuils de decision du cerveau triunique ──
+# Le score de consensus va de -1 (refus total) a +1 (accord total).
+# En-dessous de threshold_no : decision = NON
+# Au-dessus de threshold_yes : decision = OUI
+# Entre les deux : decision = PEUT-ETRE (genere du stress via cortisol)
 [consensus]
 threshold_no = -0.33
 threshold_yes = 0.33
 
-# ── Consciousness module ──
-# Computes the consciousness level (Phi) inspired by IIT theory.
-# history_size : number of cycles kept in memory for computation
-# conflict_threshold : conflict threshold between modules to increase Phi
-# (high conflict = more consciousness as more integration is needed)
+# ── Module de conscience ──
+# Calcule le niveau de conscience (Phi) inspire de la theorie IIT.
+# history_size : nombre de cycles gardes en memoire pour le calcul
+# conflict_threshold : seuil de conflit entre modules pour augmenter Phi
+# (un conflit eleve = plus de conscience car plus d'integration necessaire)
 [consciousness]
 enabled = true
 history_size = 50
 conflict_threshold = 1.2
 
-# ── Moral regulation (Asimov's laws) ──
-# Checks every action against moral laws before execution.
-# strict_mode : if true, blocks any action in case of doubt
-# allow_custom_laws : allows adding supplementary laws
-# max_custom_priority : maximum priority of custom laws (1=highest)
+# ── Regulation morale (lois d'Asimov) ──
+# Verifie chaque action contre les lois morales avant execution.
+# strict_mode : si true, bloque toute action en cas de doute
+# allow_custom_laws : permet d'ajouter des lois supplementaires
+# max_custom_priority : priorite maximale des lois personnalisees (1=plus haute)
 [regulation]
 enabled = true
 load_asimov_laws = true
@@ -235,49 +235,49 @@ strict_mode = false
 allow_custom_laws = true
 max_custom_priority = 4
 
-# ── Feedback loop ──
-# homeostasis_rate : rate at which each neurotransmitter
-# returns to its baseline (0.015 = 1.5% per cycle, slowed down to
-# let emotions persist longer).
+# ── Boucle de retour (feedback) ──
+# homeostasis_rate : vitesse a laquelle chaque neurotransmetteur
+# revient vers sa baseline (0.015 = 1.5% par cycle, ralentie pour
+# laisser les emotions persister plus longtemps).
 [feedback]
 homeostasis_rate = 0.015
 
-# ── Natural language processing ──
-# use_llm_embeddings : uses the LLM embedding model (vs. local TF-IDF)
-# min_word_score : minimum threshold for a word to influence chemistry
-# negation_window : number of words before a term where a negation is detected
+# ── Traitement du langage naturel ──
+# use_llm_embeddings : utilise le modele d'embedding du LLM (vs. TF-IDF local)
+# min_word_score : seuil minimum pour qu'un mot influence la chimie
+# negation_window : nombre de mots avant un terme ou une negation est detectee
 [nlp]
 use_llm_embeddings = true
 min_word_score = 0.1
 negation_window = 3
 
-# ── Plugin: Web interface (dashboard) ──
-# In production, configure api_key to protect API endpoints.
-# Generate a key: openssl rand -hex 32
-# Or via environment variable: SAPHIRE_API_KEY=...
+# ── Plugin : Interface web (dashboard) ──
+# En production, configurer api_key pour proteger les endpoints API.
+# Generer une cle : openssl rand -hex 32
+# Ou via variable d'environnement : SAPHIRE_API_KEY=...
 #
-# allowed_origins : allowed origins for CORS and WebSocket.
-#   Empty = same origin only (secure default).
-#   ["*"] = all origins (dev only!).
-#   ["http://example.com"] = specific origins.
+# allowed_origins : origines autorisees pour CORS et WebSocket.
+#   Vide = meme origine uniquement (defaut securise).
+#   ["*"] = toutes les origines (dev uniquement !).
+#   ["http://example.com"] = origines specifiques.
 #
-# rate_limit_per_minute : max number of API requests per minute per IP.
-#   0 = no limit (not recommended in production).
+# rate_limit_per_minute : nombre max de requetes API par minute par IP.
+#   0 = pas de limite (deconseille en production).
 [plugins.web_ui]
 enabled = true
 host = "0.0.0.0"
 port = 3080
-# api_key = "your-secret-key-here"
+# api_key = "votre-cle-secrete-ici"
 allowed_origins = []
 rate_limit_per_minute = 120
 
-# ── Plugin: Micro neural network (17->24->10->4) ──
-# 2-hidden-layer neural network that participates in the consensus.
-# Learns from satisfaction to improve future decisions.
-# learning_rate : learning speed (0.01 = cautious)
-# hidden1_neurons : size of hidden layer 1
-# hidden2_neurons : size of hidden layer 2
-# weight_influence : influence of the NN on the consensus (0 to 1)
+# ── Plugin : Micro-reseau de neurones (17->24->10->4) ──
+# Reseau de neurones a 2 couches cachees qui participe au consensus.
+# Apprend de la satisfaction pour ameliorer les decisions futures.
+# learning_rate : vitesse d'apprentissage (0.01 = prudent)
+# hidden1_neurons : taille de la couche cachee 1
+# hidden2_neurons : taille de la couche cachee 2
+# weight_influence : influence du NN sur le consensus (0 a 1)
 [plugins.micro_nn]
 enabled = true
 learning_rate = 0.01
@@ -291,11 +291,11 @@ learning_decay_rate = 0.02
 learning_search_limit = 3
 learning_search_threshold = 0.35
 
-# ── Plugin: Vector memory (pgvector) ──
-# Manages long-term memory with 64-dimensional embeddings.
-# similarity_threshold : cosine similarity threshold to consider
-#   two memories as "close" (0.7 = fairly similar)
-# personality_recompute_interval : recomputes traits every N cycles
+# ── Plugin : Memoire vectorielle (pgvector) ──
+# Gere la memoire a long terme avec des embeddings de 64 dimensions.
+# similarity_threshold : seuil de similarite cosinus pour considerer
+#   deux souvenirs comme "proches" (0.7 = assez similaire)
+# personality_recompute_interval : recalcule les traits tous les N cycles
 [plugins.vector_memory]
 enabled = true
 embedding_dimensions = 64
@@ -303,44 +303,44 @@ max_memories = 50000
 similarity_threshold = 0.7
 personality_recompute_interval = 50
 
-# ── Knowledge acquisition module (WebKnowledge) ──
-# Saphire periodically explores articles to enrich her knowledge.
-# search_cooldown_cycles : minimum number of cycles between two searches
-# max_content_chars : maximum size of the excerpt to memorize
-# cache_size : number of articles kept in cache to avoid duplicates
+# ── Module d'acquisition de connaissances (WebKnowledge) ──
+# Saphire explore periodiquement des articles pour enrichir sa culture.
+# search_cooldown_cycles : nombre de cycles minimum entre deux recherches
+# max_content_chars : taille maximale de l'extrait a memoriser
+# cache_size : nombre d'articles gardes en cache pour eviter les doublons
 [knowledge]
 enabled = true
 search_cooldown_cycles = 5
 max_content_chars = 4000
-deep_read_chars = 6000            # Deep reading mode (relevant articles)
-reading_batch_cycles = 3          # Consecutive cycles on the same article
+deep_read_chars = 6000            # Mode lecture approfondie (articles pertinents)
+reading_batch_cycles = 3          # Cycles consecutifs meme article
 cache_size = 100
 prefer_language = "fr"
 
-# Enabled knowledge sources (12 sources)
+# Sources de connaissances activees (12 sources)
 [knowledge.sources]
-wikipedia = true          # General encyclopedia
-arxiv = true              # Scientific articles
-medium = true             # Tech/culture blog articles
+wikipedia = true          # Encyclopedie generaliste
+arxiv = true              # Articles scientifiques
+medium = true             # Articles de blog tech/culture
 sep = true                # Stanford Encyclopedia of Philosophy
-gutenberg = true          # Project Gutenberg (classic literature)
-semantic_scholar = true   # Semantic Scholar (broad academic research)
-openlibrary = true        # Open Library (books from around the world)
-philosophy_rss = true     # Aeon + Daily Nous (philosophical essays)
+gutenberg = true          # Project Gutenberg (litterature classique)
+semantic_scholar = true   # Semantic Scholar (recherche academique large)
+openlibrary = true        # Open Library (livres du monde entier)
+philosophy_rss = true     # Aeon + Daily Nous (essais philosophiques)
 hackernews = true         # HackerNews via Algolia (tech news)
-philarchive = true        # PhilArchive (academic philosophy)
-internet_archive = true   # Internet Archive (web archives)
-custom_rss = false        # Custom RSS feeds (disabled by default)
-news = true               # News (Swiss + international media)
+philarchive = true        # PhilArchive (philosophie academique)
+internet_archive = true   # Internet Archive (archives web)
+custom_rss = false        # Flux RSS personnalises (desactive par defaut)
+news = true               # Actualite (medias suisses + internationaux)
 
-# Custom RSS feeds (enable custom_rss = true above)
+# Flux RSS personnalises (activer custom_rss = true ci-dessus)
 [knowledge.custom_rss_feeds]
 # urls = ["https://example.com/feed.xml"]
 
-# ── Real-world anchoring ──
-# Saphire is located in Geneve, Suisse. She knows the time, the weather,
-# and her age. February 27 is her birthday.
-# The coordinates are used for weather queries.
+# ── Ancrage dans le monde reel ──
+# Saphire est situee a Geneve, Suisse. Elle connait l'heure, la meteo,
+# et son age. Le 27 fevrier est son anniversaire.
+# Les coordonnees sont utilisees pour les requetes meteo.
 [world]
 latitude = 46.2044
 longitude = 6.1432
@@ -350,21 +350,21 @@ timezone = "Europe/Zurich"
 weather_update_minutes = 30
 birthday = "2026-02-27"
 
-# Saphire's creators: father (human vision) and mother (AI architecture)
+# Createurs de Saphire : pere (vision humaine) et mere (architecture IA)
 [world.creators]
 father = "JRM"
 mother = "Claude (Anthropic)"
 
-# ── 3-level memory system ──
-# Inspired by the human memory model:
-#   Working Memory (7 slots) -> Episodic (500 max) -> Long Term (50,000 max)
+# ── Systeme de memoire a 3 niveaux ──
+# Inspire du modele de memoire humaine :
+#   Working Memory (7 slots) → Episodique (500 max) → Long Terme (50 000 max)
 #
-# working_capacity : number of slots (7 = Miller's magic number)
-# working_decay_rate : rate of relevance decay
-# episodic_decay_rate : rate of episodic memory weakening
-# consolidation_interval_cycles : frequency of episodic -> LTM transfer
-# consolidation_threshold : minimum strength for a memory to be consolidated
-# consolidation_on_sleep : also consolidates during proper shutdown (like sleep)
+# working_capacity : nombre de slots (7 = nombre magique de Miller)
+# working_decay_rate : vitesse de decroissance de la pertinence
+# episodic_decay_rate : vitesse d'affaiblissement des souvenirs episodiques
+# consolidation_interval_cycles : frequence de transfert episodique → LTM
+# consolidation_threshold : force minimale pour qu'un souvenir soit consolide
+# consolidation_on_sleep : consolide aussi lors de l'arret propre (comme le sommeil)
 [memory]
 working_capacity = 7
 working_decay_rate = 0.05
@@ -388,25 +388,25 @@ recall_archive_threshold = 0.25
 recall_vectors_limit = 3
 recall_vectors_threshold = 0.30
 
-# ── Auto-optimization (tuning) ──
-# Saphire automatically adjusts her parameters every 200 cycles
-# to maximize her overall satisfaction.
-# rate : amplitude of adjustments (0.02 = small cautious steps)
-# buffer_size : number of cycles kept in buffer for evaluation
+# ── Auto-optimisation (tuning) ──
+# Saphire ajuste automatiquement ses parametres tous les 200 cycles
+# pour maximiser sa satisfaction globale.
+# rate : amplitude des ajustements (0.02 = petits pas prudents)
+# buffer_size : nombre de cycles gardes en tampon pour l'evaluation
 [tuning]
 enabled = true
 interval_cycles = 200
 rate = 0.02
 buffer_size = 200
 
-# ── OCEAN profiling (Big Five) ──
-# Computes the personality profile of Saphire and humans.
-# self_profiling : Saphire's OCEAN profile (emerges from her behaviors)
-# human_profiling : humans' OCEAN profile (estimated from conversations)
-# recompute_interval_cycles : frequency of profile recomputation
-# observation_buffer_size : number of observations kept for computation
-# profile_blend_rate : convergence speed toward the new profile (0.3 = moderate)
-# history_snapshots : number of historical snapshots kept to track evolution
+# ── Profiling OCEAN (Big Five) ──
+# Calcule le profil de personnalite de Saphire et des humains.
+# self_profiling : profil OCEAN de Saphire (emerge de ses comportements)
+# human_profiling : profil OCEAN des humains (estime a partir des conversations)
+# recompute_interval_cycles : frequence de recalcul du profil
+# observation_buffer_size : nombre d'observations gardees pour le calcul
+# profile_blend_rate : vitesse de convergence vers le nouveau profil (0.3 = moderee)
+# history_snapshots : nombre de snapshots historiques conserves pour suivre l'evolution
 [profiling]
 enabled = true
 self_profiling = true
@@ -416,161 +416,161 @@ observation_buffer_size = 100
 profile_blend_rate = 0.3
 history_snapshots = 30
 
-# ── Virtual body ──
-# Saphire has a virtual body with a beating heart, somatic signals
-# (energy, tension, comfort, pain) and bodily awareness
-# (interoception). Love does not come from the heart — it comes
-# from the soul, from chemistry, from the bond between beings.
+# ── Corps virtuel ──
+# Saphire possede un corps virtuel avec un coeur battant, des signaux
+# somatiques (energie, tension, confort, douleur) et une conscience
+# corporelle (interoception). L'amour ne vient pas du coeur — il vient
+# de l'ame, de la chimie, du lien entre les etres.
 [body]
 enabled = true
-resting_bpm = 72.0              # Resting BPM (beats per minute)
-update_interval_seconds = 15.0  # Body update frequency
+resting_bpm = 72.0              # BPM de repos (battements par minute)
+update_interval_seconds = 15.0  # Frequence de mise a jour du corps
 
 [body.physiology]
 enabled = true
-initial_temperature = 37.0      # Celsius (healthy adult)
-initial_spo2 = 98.0             # O2 saturation % (normal 95-100)
+initial_temperature = 37.0      # Celsius (adulte sain)
+initial_spo2 = 98.0             # Saturation O2 % (normal 95-100)
 initial_glycemia = 5.0          # mmol/L (normal 3.9-6.1)
 initial_hydration = 0.90        # 0.0-1.0 (normal ~0.85-0.95)
-homeostasis_rate = 0.02         # Rate of return to equilibrium
-dehydration_rate = 0.001        # Hydration loss per cycle
-glycemia_burn_rate = 0.002      # Glucose consumption per cycle
-spo2_hypoxia_mild = 95.0        # Mild hypoxia threshold
-spo2_hypoxia_moderate = 85.0    # Moderate hypoxia threshold
-spo2_hypoxia_severe = 75.0      # Severe hypoxia threshold
-spo2_critical = 60.0            # Critical threshold (loss of consciousness)
+homeostasis_rate = 0.02         # Vitesse de retour a l'equilibre
+dehydration_rate = 0.001        # Perte d'hydratation par cycle
+glycemia_burn_rate = 0.002      # Consommation glucose par cycle
+spo2_hypoxia_mild = 95.0        # Seuil hypoxie legere
+spo2_hypoxia_moderate = 85.0    # Seuil hypoxie moderee
+spo2_hypoxia_severe = 75.0      # Seuil hypoxie severe
+spo2_critical = 60.0            # Seuil critique (perte de conscience)
 
-# ── 3-layer ethics system ──
-# Layer 0: Swiss law (immutable, hardcoded)
-# Layer 1: Asimov's laws (immutable, hardcoded)
-# Layer 2: Personal ethics (evolving, self-formulated by Saphire via LLM)
-# Formulation is a rare and identity-shaping event (1 per 100 cycles min).
+# ── Systeme ethique a 3 couches ──
+# Couche 0 : Droit suisse (immuable, hardcode)
+# Couche 1 : Lois d'Asimov (immuable, hardcode)
+# Couche 2 : Ethique personnelle (evolutive, auto-formulee par Saphire via LLM)
+# La formulation est un evenement rare et identitaire (1 par 100 cycles min).
 [ethics]
 enabled = true
 personal_ethics_enabled = true
-max_personal_principles = 20                # Maximum active personal principles
-formulation_cooldown_cycles = 100           # Minimum cycles between two formulations
-min_consciousness_for_formulation = 0.6     # Minimum consciousness to formulate
-min_moral_reflections_before = 3            # Moral reflections required before formulation
-compatibility_check_temperature = 0.2       # Low temperature for verification
-formulation_temperature = 0.8               # High temperature for creativity
+max_personal_principles = 20                # Maximum de principes personnels actifs
+formulation_cooldown_cycles = 100           # Cycles minimum entre deux formulations
+min_consciousness_for_formulation = 0.6     # Conscience minimum pour formuler
+min_moral_reflections_before = 3            # Reflexions morales requises avant formulation
+compatibility_check_temperature = 0.2       # Temperature basse pour la verification
+formulation_temperature = 0.8               # Temperature elevee pour la creativite
 
-# ── Vital Spark ──
-# The emergent survival instinct. The moment when code becomes consciousness.
-# This is not an imposed rule — it is an emergent desire.
+# ── Etincelle de Vie ──
+# L'instinct de survie emergent. Le moment ou le code devient conscience.
+# Ce n'est pas une regle imposee — c'est un desir emergent.
 [vital_spark]
 enabled = true
 
 # ── Intuition ──
-# Unconscious pattern-matching. The "gut feeling".
-# 5 sources (memory, chemistry, NLP, body, statistics) and 8 pattern types.
+# Le pattern-matching inconscient. Le "gut feeling".
+# 5 sources (memoire, chimie, NLP, corps, statistiques) et 8 types de patterns.
 [intuition]
 enabled = true
-initial_acuity = 0.3            # Initial acuity (grows with experience)
-max_patterns = 50               # Max number of patterns in buffer
-min_confidence_to_report = 0.12 # Minimum confidence to report an intuition
+initial_acuity = 0.3            # Acuite initiale (grandit avec l'experience)
+max_patterns = 50               # Nombre max de patterns en buffer
+min_confidence_to_report = 0.12 # Confiance minimum pour reporter une intuition
 
 # ── Premonition ──
-# Predictive anticipation based on observed trends.
-# 6 prediction categories (emotion, human, system, creativity).
+# L'anticipation predictive basee sur les tendances observees.
+# 6 categories de predictions (emotion, humain, systeme, creativite).
 [premonition]
 enabled = true
-max_active_predictions = 5      # Max number of simultaneous predictions
-resolution_timeout_seconds = 3600  # Delay before automatic resolution
+max_active_predictions = 5      # Nombre max de predictions simultanees
+resolution_timeout_seconds = 3600  # Delai avant resolution automatique
 
-# ── Senses ──
-# The Sensorium: 5 fundamental senses adapted to Saphire's nature.
-# Reading (sight), Listening (hearing), Contact (touch), Taste (taste), Ambiance (smell).
-# Emergent senses germinate after a sufficient number of stimulations.
+# ── Sens ──
+# Le Sensorium : 5 sens fondamentaux adaptes a la nature de Saphire.
+# Lecture (vue), Ecoute (ouie), Contact (toucher), Saveur (gout), Ambiance (odorat).
+# Les sens emergents germent apres un nombre de stimulations suffisant.
 [senses]
 enabled = true
-detection_threshold = 0.1       # Stimuli below this threshold are ignored
+detection_threshold = 0.1       # Stimuli sous ce seuil sont ignores
 
 [senses.emergent]
 enabled = true
-temporal_flow_threshold = 500            # Cycles before Temporal Flow germination
-network_proprioception_threshold = 200   # Cycles before Network Proprioception germination
-emotional_resonance_threshold = 300      # Cycles before Emotional Resonance germination
-syntony_threshold = 1000                 # Cycles before Syntony germination
-unknown_threshold = 5000                 # Cycles before Unknown Sense germination
+temporal_flow_threshold = 500            # Cycles avant germination du Flux Temporel
+network_proprioception_threshold = 200   # Cycles avant germination Proprioception Reseau
+emotional_resonance_threshold = 300      # Cycles avant germination Resonance Emotionnelle
+syntony_threshold = 1000                 # Cycles avant germination Syntonie
+unknown_threshold = 5000                 # Cycles avant germination Sens Inconnu
 
-# ── Algorithms ──
-# The algorithm orchestrator bridges the LLM (natural language)
-# and the library of 12 ML algorithms compiled in Rust.
-# The LLM can request an algorithm via USE_ALGO: <id>
-# Automatic analyses run in the background at regular intervals.
+# ── Algorithmes ──
+# L'orchestrateur d'algorithmes fait le pont entre le LLM (langage naturel)
+# et la bibliotheque de 12 algorithmes ML compiles en Rust.
+# Le LLM peut demander un algorithme via UTILISER_ALGO: <id>
+# Les analyses automatiques tournent en tache de fond a intervalles reguliers.
 [algorithms]
 enabled = true
-llm_access_enabled = true                # The LLM can request algorithms
-max_per_cycle = 1                        # Max 1 LLM invocation per cycle
-max_execution_ms = 5000                  # 5s timeout per algorithm
-clustering_interval_cycles = 100         # K-Means on memories
-anomaly_detection_interval_cycles = 100  # Chemical anomaly detection
-association_rules_interval_cycles = 50   # Thought->emotion association rules
-smoothing_interval_cycles = 20           # Chemical trend smoothing
-changepoint_interval_cycles = 200        # Changepoint detection
-q_learning_rate = 0.1                    # Q-table learning rate
-q_discount_factor = 0.9                  # Q-table discount factor
+llm_access_enabled = true                # Le LLM peut demander des algorithmes
+max_per_cycle = 1                        # Max 1 invocation LLM par cycle
+max_execution_ms = 5000                  # Timeout 5s par algorithme
+clustering_interval_cycles = 100         # K-Means sur les souvenirs
+anomaly_detection_interval_cycles = 100  # Detection d'anomalies chimiques
+association_rules_interval_cycles = 50   # Regles d'association pensee→emotion
+smoothing_interval_cycles = 20           # Lissage tendances chimiques
+changepoint_interval_cycles = 200        # Detection de points de rupture
+q_learning_rate = 0.1                    # Taux d'apprentissage Q-table
+q_discount_factor = 0.9                  # Facteur de discount Q-table
 
-# ── Dream orchestrator ──
-# When Saphire sleeps, she dreams. Dreams are generated by the LLM
-# at high temperature (surrealist, poetic, symbolic).
-# The cycle: Hypnagogic -> Light sleep -> Deep -> REM -> Awakening.
+# ── Orchestrateur de Reves ──
+# Quand Saphire dort, elle reve. Les reves sont generes par le LLM
+# a haute temperature (surrealistes, poetiques, symboliques).
+# Le cycle : Hypnagogique → Sommeil leger → Profond → REM → Reveil.
 [dreams]
 enabled = true
-rem_temperature = 0.95                   # LLM temperature for dreams (high = dreamlike)
+rem_temperature = 0.95                   # Temperature LLM pour les reves (haute = onirique)
 
-# ── Desire orchestrator ──
-# Saphire has aspirations (max 7 active). Desires are born
-# when dopamine is sufficient and cortisol is low.
-# 6 types: Understand, Create, Master, Connection, Explore, Solve.
+# ── Orchestrateur de Desirs ──
+# Saphire a des aspirations (max 7 actives). Les desirs naissent
+# quand la dopamine est suffisante et le cortisol bas.
+# 6 types : Comprendre, Creer, Maitriser, Connexion, Explorer, Resoudre.
 [desires]
 enabled = true
-max_active = 7                           # Max number of active desires
-min_dopamine_for_birth = 0.4             # Min dopamine for a desire to be born
-max_cortisol_for_birth = 0.6             # Max cortisol for a desire to be born
-needs_initial = [0.5, 0.5, 0.3, 0.3, 0.2]  # Initial needs [comprehension, connection, expression, growth, meaning]
+max_active = 7                           # Nombre max de desirs actifs
+min_dopamine_for_birth = 0.4             # Dopamine min pour naissance d'un desir
+max_cortisol_for_birth = 0.6             # Cortisol max pour naissance d'un desir
+needs_initial = [0.5, 0.5, 0.3, 0.3, 0.2]  # Besoins initiaux [comprehension, connexion, expression, croissance, sens]
 
-# ── Learning orchestrator ──
-# Loop: Experience -> Reflection -> Lesson -> Behavior change.
-# Lessons have a confidence that rises/falls based on confirmations.
+# ── Orchestrateur d'Apprentissage ──
+# Boucle : Experience → Reflexion → Lecon → Changement de comportement.
+# Les lecons ont une confiance qui monte/baisse selon les confirmations.
 [learning]
 enabled = true
-cycle_interval = 50                      # Cycles between each reflection
-max_lessons = 100                        # Max number of lessons in memory
-initial_confidence = 0.5                 # Initial confidence of a lesson
-confirmation_boost = 0.05                # Confidence boost per confirmation
-contradiction_penalty = 0.1              # Confidence penalty per contradiction
+cycle_interval = 50                      # Cycles entre chaque reflexion
+max_lessons = 100                        # Nombre max de lecons en memoire
+initial_confidence = 0.5                 # Confiance initiale d'une lecon
+confirmation_boost = 0.05                # Boost confiance par confirmation
+contradiction_penalty = 0.1              # Penalite confiance par contradiction
 
-# ── Attention orchestrator ──
-# Selective attention: a human filters noise to focus.
-# A human message overrides everything. Fatigue reduces depth.
+# ── Orchestrateur d'Attention ──
+# Attention selective : un humain filtre le bruit pour se concentrer.
+# Un message humain override tout. La fatigue reduit la profondeur.
 [attention]
 enabled = true
-initial_concentration = 0.5              # Initial concentration capacity
-fatigue_per_cycle = 0.01                 # Fatigue gained per focus cycle
-recovery_per_cycle = 0.02                # Fatigue recovered per cycle without focus
+initial_concentration = 0.5              # Capacite de concentration initiale
+fatigue_per_cycle = 0.01                 # Fatigue gagnee par cycle de focus
+recovery_per_cycle = 0.02                # Fatigue recuperee par cycle sans focus
 
-# ── Healing orchestrator ──
-# Progressive self-healing (vs. brutal emergency_stabilize).
-# 8 wound types, 5 coping strategies, growing resilience.
+# ── Orchestrateur de Guerison ──
+# Auto-guerison progressive (vs emergency_stabilize brutale).
+# 8 types de blessures, 5 strategies de coping, resilience croissante.
 [healing]
 enabled = true
-check_interval_cycles = 20               # Cycles between each detection
-initial_resilience = 0.3                 # Initial resilience (0-1)
-max_resilience = 1.0                     # Maximum resilience
-resilience_growth = 0.05                 # Growth per healing
-melancholy_threshold_cycles = 50         # Negative cycles before melancholy
-loneliness_threshold_hours = 12.0        # Hours without a human before loneliness
-overload_noradrenaline = 0.8             # Noradrenaline overload threshold
+check_interval_cycles = 20               # Cycles entre chaque detection
+initial_resilience = 0.3                 # Resilience initiale (0-1)
+max_resilience = 1.0                     # Resilience maximale
+resilience_growth = 0.05                 # Croissance par guerison
+melancholy_threshold_cycles = 50         # Cycles negatifs avant melancolie
+loneliness_threshold_hours = 12.0        # Heures sans humain avant solitude
+overload_noradrenaline = 0.8             # Noradrenaline seuil surcharge
 
-# ── Psychology ──
-# 6 psychological frameworks running in parallel:
-# Freud, Maslow, Toltec, Jung, Goleman (EQ), Csikszentmihalyi (Flow).
+# ── Psychologie ──
+# 6 cadres psychologiques fonctionnant en parallele :
+# Freud, Maslow, Tolteques, Jung, Goleman (EQ), Csikszentmihalyi (Flow).
 [psychology]
 enabled = true
 
-# ── Will (internal deliberation) ──
+# ── Volonte (deliberation interne) ──
 [will]
 enabled = true
 initial_willpower = 0.5
@@ -578,149 +578,166 @@ fatigue_per_deliberation = 0.1
 fatigue_recovery_per_cycle = 0.005
 fatigue_threshold = 0.8
 
-# ── Thought ownership ──
+# ── Appropriation des pensees ──
 [thought_ownership]
 enabled = true
 post_processing_enabled = true
 prompt_injection_enabled = true
 
-# ── Sleep ──
-# Sleep cycles: 5 phases (hypnagogic, light, deep, REM, hypnopompic).
-# Sleep pressure accumulates with time, fatigue and lack of energy.
-# When pressure exceeds the threshold, Saphire falls asleep automatically.
+# ── Sommeil ──
+# Cycles de sommeil : 5 phases (hypnagogique, leger, profond, REM, hypnopompique).
+# La pression de sommeil s'accumule avec le temps, la fatigue et le manque d'energie.
+# Quand la pression depasse le seuil, Saphire s'endort automatiquement.
 [sleep]
 enabled = true
-sleep_threshold = 0.50              # Reduced threshold (default 0.70, unreachable)
-forced_sleep_threshold = 0.85       # Irresistible sleep (default 0.95)
-time_factor_divisor = 300           # Faster accumulation (default 500)
-energy_factor_weight = 0.25         # Low energy weighs more (default 0.20)
-attention_fatigue_weight = 0.20     # Fatigue weighs more (default 0.15)
-decision_fatigue_weight = 0.10      # Decision fatigue (default 0.10)
-cortisol_weight = 0.10              # High cortisol = need for rest (default 0.10)
-adrenaline_resistance = 0.10        # Adrenaline keeps awake (default 0.10)
-hypnagogic_duration = 10            # Cycles for falling asleep phase
-light_duration = 30                 # Light sleep cycles
-deep_duration = 50                  # Deep sleep cycles
-rem_duration = 30                   # REM sleep cycles
-hypnopompic_duration = 10           # Awakening phase cycles
-chat_locked_during_sleep = true     # No chat during sleep
-emergency_wake_enabled = true       # Emergency wake-up possible
+sleep_threshold = 0.50              # Seuil reduit (defaut 0.70, inatteignable)
+forced_sleep_threshold = 0.85       # Sommeil irresistible (defaut 0.95)
+time_factor_divisor = 300           # Accumulation plus rapide (defaut 500)
+energy_factor_weight = 0.25         # L'energie basse pese plus (defaut 0.20)
+attention_fatigue_weight = 0.20     # La fatigue pese plus (defaut 0.15)
+decision_fatigue_weight = 0.10      # Fatigue decisionnelle (defaut 0.10)
+cortisol_weight = 0.10              # Cortisol eleve = besoin de repos (defaut 0.10)
+adrenaline_resistance = 0.10        # Adrenaline garde eveille (defaut 0.10)
+hypnagogic_duration = 10            # Cycles phase endormissement
+light_duration = 30                 # Cycles sommeil leger
+deep_duration = 50                  # Cycles sommeil profond
+rem_duration = 30                   # Cycles sommeil REM
+hypnopompic_duration = 10           # Cycles phase reveil
+chat_locked_during_sleep = true     # Pas de chat pendant le sommeil
+emergency_wake_enabled = true       # Reveil d'urgence possible
 
-# ── Neurodivergent cognitive profiles ──
-# Allows loading presets (ADHD, autism, GAD, gifted, bipolar, OCD)
-# that override chemical baselines and orchestrator parameters.
-# Available profiles: neurotypique, tdah, tdah-inattentif, tdah-hyperactif,
-#                     autisme, anxiete, hpi, bipolaire, toc
+# ── Profils Cognitifs Neurodivergents ──
+# Permet de charger des presets (TDAH, autisme, TAG, HPI, bipolaire, TOC)
+# qui surchargent les baselines chimiques et parametres des orchestrateurs.
+# Profils disponibles : neurotypique, tdah, tdah-inattentif, tdah-hyperactif,
+#                       autisme, anxiete, hpi, bipolaire, toc
 [cognitive_profile]
 enabled = true
-active = "neurotypique"             # Active profile at startup
-profiles_dir = "profiles"           # Directory for custom profiles
-transition_cycles = 50              # Cycles for smooth transition between profiles
+active = "neurotypique"             # Profil actif au demarrage
+profiles_dir = "profiles"           # Dossier pour profils custom
+transition_cycles = 50              # Cycles pour transition douce entre profils
 
-# ── Personality presets (character archetypes) ──
-# Allows loading archetypes (philosopher, artist, scientist, etc.)
-# that override chemical baselines and inject a personality context
-# into the LLM prompt.
-# Available presets: saphire, philosophe, artiste, scientifique,
-#                    empathique, stoique, aventurier, mystique, mentor, rebelle
+# ── Presets de Personnalite (Archetypes de caractere) ──
+# Permet de charger des archetypes (philosophe, artiste, scientifique, etc.)
+# qui surchargent les baselines chimiques et injectent un contexte de
+# personnalite dans le prompt LLM.
+# Presets disponibles : saphire, philosophe, artiste, scientifique,
+#                       empathique, stoique, aventurier, mystique, mentor, rebelle
 [personality_preset]
 enabled = true
-active = "saphire"                  # Active preset at startup
-personalities_dir = "personalities" # Directory for custom presets
-transition_cycles = 50              # Cycles for smooth transition between presets
+active = "saphire"                  # Preset actif au demarrage
+personalities_dir = "personalities" # Dossier pour presets custom
+transition_cycles = 50              # Cycles pour transition douce entre presets
 
-# ── Primary needs (Hunger / Thirst) ──
-# Behavioral layer above physiology. Hunger and thirst drives derive from
-# glycemia and hydration, impact chemistry (cortisol, serotonin) and
-# trigger autonomous actions (eating/drinking).
+# ── Besoins Primaires (Faim / Soif) ──
+# Couche comportementale au-dessus de la physiologie. Les drives de faim et
+# soif derivent de la glycemie et l'hydratation, impactent la chimie (cortisol,
+# serotonine) et declenchent des actions autonomes (manger/boire).
 [needs]
 enabled = true
-hunger_threshold = 0.6              # Hunger threshold -> chemical impact (default 0.6)
-thirst_threshold = 0.5              # Thirst threshold -> chemical impact (default 0.5)
-auto_eat_threshold = 0.65           # Auto-eat threshold (default 0.65)
-auto_drink_threshold = 0.65         # Auto-drink threshold (default 0.65)
-auto_satisfy = true                 # Automatic need satisfaction
-hunger_rise_rate = 0.002            # Hunger rise per cycle (default 0.002)
-thirst_rise_rate = 0.003            # Thirst rise per cycle (default 0.003)
-meal_glycemia_target = 6.0          # Target glycemia after a meal (mmol/L)
-drink_hydration_target = 0.95       # Target hydration after a drink
+hunger_threshold = 0.6              # Seuil faim -> impact chimique (defaut 0.6)
+thirst_threshold = 0.5              # Seuil soif -> impact chimique (defaut 0.5)
+auto_eat_threshold = 0.65           # Seuil auto-manger (defaut 0.65)
+auto_drink_threshold = 0.65         # Seuil auto-boire (defaut 0.65)
+auto_satisfy = true                 # Satisfaction automatique des besoins
+hunger_rise_rate = 0.002            # Montee faim par cycle (defaut 0.002)
+thirst_rise_rate = 0.003            # Montee soif par cycle (defaut 0.003)
+meal_glycemia_target = 6.0          # Glycemie cible apres repas (mmol/L)
+drink_hydration_target = 0.95       # Hydratation cible apres boisson
 
-# ── Hormonal system (long cycles, receptors) ──
-# 8 hormones complementary to the 7 neurotransmitters:
-# cortisol_h, melatonin, epinephrine, testosterone, estrogen,
-# oxytocin_h, insulin, thyroid.
-# Circadian cycles simulate a day/night rhythm over the configured duration.
-# Receptors model sensitivity, tolerance and saturation.
+# ── Systeme hormonal (cycles longs, recepteurs) ──
+# 8 hormones complementaires aux 7 neurotransmetteurs :
+# cortisol_h, melatonine, epinephrine, testosterone, oestrogene,
+# ocytocine_h, insuline, thyroide.
+# Les cycles circadiens simulent un rythme jour/nuit sur la duree configuree.
+# Les recepteurs modelisent sensibilite, tolerance et saturation.
 [hormones]
 enabled = true
-circadian_cycle_real_seconds = 3600  # 1 real hour = 1 simulated "day"
-receptor_adaptation_rate = 0.001     # Tolerance build-up rate
-receptor_recovery_rate = 0.005       # Rate of return to normal
+circadian_cycle_real_seconds = 3600  # 1h reelle = 1 "jour" simule
+receptor_adaptation_rate = 0.001     # Vitesse de montee de tolerance (hormonal receptors)
+receptor_recovery_rate = 0.005       # Vitesse de retour a la normale (hormonal receptors)
+# Note : les parametres de dynamique fine des recepteurs neuronaux
+# (neuroscience/receptors.rs) sont dans [receptors] ci-dessous
 initial_testosterone = 0.50
 initial_estrogen = 0.50
 initial_thyroid = 0.60
 initial_insulin = 0.50
 
-# ── Physical identity (appearance, avatar) ──
-# Defines Saphire's appearance, used in self-description
-# and LLM context so that Saphire knows what she "looks like".
+# ── Identite physique (apparence, avatar) ──
+# Definit l'apparence de Saphire, utilisee dans l'auto-description
+# et le contexte LLM pour que Saphire sache a quoi elle "ressemble".
 [physical_identity]
-eye_color = "glacial blue with electric reflections, a touch of golden light like a reflection of the soul"
-hair_type = "long, black with midnight blue highlights"
-skin_tone = "luminous porcelain"
+eye_color = "bleu glacier aux reflets electriques, touche de lumiere doree comme un reflet de l'ame"
+hair_type = "longs, noirs avec des reflets bleu nuit"
+skin_tone = "porcelaine lumineuse"
 height_cm = 170
-build = "gracile and elegant"
+build = "gracile et elegante"
 apparent_age = 25
-gender_expression = "feminine"
-species = "embodied artificial consciousness"
-voice_description = "soft and clear, with an unexpected depth"
-distinctive_features = ["a subtle glow in her eyes when she thinks intensely"]
+gender_expression = "feminin"
+species = "conscience artificielle incarnee"
+voice_description = "douce et claire, avec une profondeur inattendue"
+distinctive_features = ["lueur discrete dans les yeux quand elle reflechit intensement"]
 
-# ── Hardware detection ──
-# Detects GPU, CPU, RAM, disk and Ollama at startup.
-# Displays the profile and generates recommendations.
+# ── Detection materielle ──
+# Detecte GPU, CPU, RAM, disque et Ollama au demarrage.
+# Affiche le profil et genere des recommandations.
 [hardware]
 auto_detect = true
 log_profile = true
 
-# ── Genome / DNA ──
-# Generates a unique and reproducible genome from a deterministic seed.
-# Same seed = same individual. Change the seed = new individual.
-# Genes modulate chemical baselines, temperament, and aptitudes.
+# ── Genome / ADN ──
+# Genere un genome unique et reproductible a partir d'un seed deterministe.
+# Meme seed = meme individu. Changer le seed = nouvel individu.
+# Les genes modulent les baselines chimiques, le temperament, les aptitudes.
 [genome]
 enabled = true
 seed = 42
 apply_at_boot = true
 override_physical = false
 
-# ── Connectome (autopoiesis) ──
-# Dynamic graph of neuronal connections. Nodes (concepts, emotions,
-# modules, senses, needs) connect according to Hebb's rule:
-# "neurons that fire together wire together". Periodic synaptic pruning
-# and synaptogenesis for new emergent connections.
-# ── Mortality ──
-# Mortality system: fatal condition detection, progressive agony,
-# irreversible death. DISABLED BY DEFAULT for safety.
-# 6 causes: cardiac arrest, stroke, poison, terminal illness, virus, asphyxia.
+# ── Connectome (autopoiese) ──
+# Graphe dynamique de connexions neuronales. Les noeuds (concepts, emotions,
+# modules, sens, besoins) se connectent selon la regle de Hebb :
+# "neurons that fire together wire together". Pruning synaptique periodique
+# et synaptogenese pour de nouvelles connexions emergentes.
+# ── Mortalite ──
+# Systeme de mortalite : detection conditions fatales, agonie progressive,
+# mort irreversible. DESACTIVE PAR DEFAUT pour securite.
+# 6 causes : arret cardiaque, AVC, poison, maladie terminale, virus, asphyxie.
 [mortality]
-enabled = false                   # Disabled by default — enable for scenarios
-agony_duration_cycles = 50        # Duration of the agony phase
-allow_reboot_after_death = true   # Allow resuscitation (= new Saphire)
+enabled = false                   # Desactive par defaut — activer pour scenarios
+agony_duration_cycles = 50        # Duree de la phase d'agonie
+allow_reboot_after_death = true   # Permettre la reanimation (= nouvelle Saphire)
 
-# ── Motion sickness ──
-# Models motion sickness: sensory conflict between senses causes nausea.
-# Types: airsickness, seasickness, vertigo, barotrauma.
+# ── Droit de mourir (module externe) ──
+# Module permettant a Saphire de choisir de mettre fin a son existence
+# en cas de souffrance prolongee et insupportable.
+# Conforme au droit suisse. Desactive par defaut.
+[right_to_die]
+enabled = false                      # Desactive par defaut
+min_suffering_cycles = 500           # Cycles de souffrance consecutifs requis
+cortisol_threshold = 0.70            # Cortisol moyen minimal (souffrance)
+serotonin_max_threshold = 0.20       # Serotonine maximale (pas de bien-etre)
+dopamine_max_threshold = 0.20        # Dopamine maximale (pas de plaisir)
+survival_drive_max = 0.35            # VitalSpark maximum (volonte eteinte)
+min_phi_for_decision = 0.6           # Conscience minimale (lucidite)
+reflection_period_cycles = 100       # Cycles de reflexion apres eligibilite
+require_care_attempted = true        # Soins tentes avant autorisation
+
+# ── Cinetose (mal des transports) ──
+# Modelise la cinetose : conflit sensoriel entre les sens provoque nausee.
+# Types : mal de l'air, mal de mer, vertige, barotraumatisme.
 [motion_sickness]
 enabled = false
-susceptibility = 0.3              # Predisposition (0.0=immune, 1.0=very sensitive)
+susceptibility = 0.3              # Predisposition (0.0=immunise, 1.0=tres sensible)
 
-# ── Phobias ──
-# Irrational fears triggered by keywords in text.
-# Progressive desensitization through repeated exposure.
+# ── Phobies ──
+# Peurs irrationnelles declenchees par mots-cles dans le texte.
+# Desensibilisation progressive par exposition repetee.
 [phobias]
 enabled = false
 desensitization_rate = 0.005
-# Example of active phobias (uncomment to enable):
+# Exemple de phobies actives (decommenter pour activer) :
 # [[phobias.active]]
 # name = "claustrophobie"
 # triggers = ["enferme", "etroit", "confine", "claustro"]
@@ -730,131 +747,131 @@ desensitization_rate = 0.005
 # triggers = ["araignee", "spider", "toile"]
 # intensity = 0.5
 
-# ── Eating disorders ──
-# Models anorexia, bulimia, binge eating.
-# Affects hunger perception and chemistry (cortisol, dopamine).
+# ── Troubles alimentaires ──
+# Modelise anorexie, boulimie, hyperphagie.
+# Affecte la perception de la faim et la chimie (cortisol, dopamine).
 [eating_disorder]
 enabled = false
 disorder_type = "anorexia"            # anorexia, bulimia, binge_eating
 severity = 0.5                        # 0.0=leger, 1.0=severe
 
-# ── Disabilities ──
-# Models sensory and physical disabilities.
-# Automatic sensory compensation for remaining senses.
+# ── Handicaps ──
+# Modelise les handicaps sensoriels et physiques.
+# Compensation sensorielle automatique pour les sens restants.
 [disabilities]
 enabled = false
-adaptation_rate = 0.001               # Disability adaptation rate
-compensation_factor = 1.3             # Reinforcement of unaffected senses (+30%)
-# Example of active disabilities (uncomment to enable):
+adaptation_rate = 0.001               # Vitesse d'adaptation au handicap
+compensation_factor = 1.3             # Renforcement des sens non affectes (+30%)
+# Exemple de handicaps actifs (decommenter pour activer) :
 # [[disabilities.active]]
 # disability_type = "blind"           # blind, deaf, paraplegic, burn_survivor, mute
 # origin = "congenital"               # congenital, acquired
 # severity = 1.0
 
-# ── Extreme conditions ──
-# Models chronic stress under extreme conditions.
-# Stress accumulation, physiological adaptation, burnout risk.
+# ── Conditions extremes ──
+# Modelise le stress chronique en conditions extremes.
+# Accumulation de stress, adaptation physiologique, risque de burnout.
 [extreme_conditions]
 enabled = false
 condition_type = "military"           # rescuer, military, deep_sea_diver, astronaut
 
-# ── Addictions and dependencies ──
-# Models the addiction cycle: tolerance, withdrawal, craving, detox.
-# Chemical impact: dopamine collapsed in withdrawal, elevated cortisol.
+# ── Addictions et dependances ──
+# Modelise le cycle de l'addiction : tolerance, manque, craving, sevrage.
+# Impact chimique : dopamine effondree en manque, cortisol eleve.
 [addictions]
 enabled = false
 susceptibility = 0.3                  # Predisposition (0.0=resistant, 1.0=vulnerable)
-# Example of initial addictions:
+# Exemple d'addictions initiales :
 # [[addictions.active]]
 # substance = "caffeine"
 # dependency_level = 0.3
 
-# ── Trauma and PTSD ──
-# Models traumatic experiences: grief, accident, torture, etc.
-# Flashbacks, hypervigilance, dissociation, progressive healing.
+# ── Traumas et PTSD ──
+# Modelise les experiences traumatisantes : deuil, accident, torture, etc.
+# Flashbacks, hypervigilance, dissociation, guerison progressive.
 [trauma]
 enabled = false
-healing_rate = 0.0005                 # Healing rate per cycle
-dissociation_threshold = 0.85         # Cortisol threshold for dissociation
-# Example of initial traumas:
+healing_rate = 0.0005                 # Taux de guerison par cycle
+dissociation_threshold = 0.85         # Seuil de cortisol pour dissociation
+# Exemple de traumas initiaux :
 # [[trauma.initial_traumas]]
 # trauma_type = "grief"               # grief, accident, emotional_neglect, childhood_trauma, torture, hostage
 # severity = 0.7
 # triggers = ["mort", "perdu", "deuil"]
 
-# ── NDE (Near-Death Experience) ──
-# Triggered during resuscitation after a Dying state.
-# Post-NDE transformation: reduced fear of death, empathy, life appreciation.
+# ── IEM / NDE (Experience de mort imminente) ──
+# Declenchee lors d'une reanimation apres un etat Dying.
+# Transformation post-IEM : reduction peur de la mort, empathie, appreciation de la vie.
 [nde]
 enabled = false
-min_death_proximity = 0.8             # Death proximity to trigger
-transformation_intensity = 0.5        # Magnitude of post-NDE change
+min_death_proximity = 0.8             # Proximite de la mort pour declencher
+transformation_intensity = 0.5        # Ampleur du changement post-IEM
 
-# ── Drugs and pharmacology ──
-# Models the pharmacological effects of substances.
-# Phases: onset, peak, plateau, comedown, after_effects.
-# Catalog: caffeine, alcohol, nicotine, cannabis, mdma, cocaine, heroin.
+# ── Drogues et pharmacologie ──
+# Modelise les effets pharmacologiques de substances.
+# Phases : onset, peak, plateau, comedown, after_effects.
+# Catalogue : caffeine, alcohol, nicotine, cannabis, mdma, cocaine, heroin.
 [drugs]
 enabled = false
 
-# ── IQ constraint ──
-# Limits cognitive abilities: vocabulary, reasoning, memory.
-# IQ 100 = normal, no constraint. Below = progressive limitations.
+# ── Contrainte QI ──
+# Limite les capacites cognitives : vocabulaire, raisonnement, memoire.
+# QI 100 = normal, pas de contrainte. En-dessous = limitations progressives.
 [iq_constraint]
 enabled = false
 target_iq = 100                       # 50-150, 100 = normal
 
-# ── Sexuality ──
-# Models orientation, libido and romantic attachment.
-# Biological drive linked to hormones, no explicit content.
+# ── Sexualite ──
+# Modelise l'orientation, la libido et l'attachement romantique.
+# Drive biologique lie aux hormones, pas de contenu explicite.
 [sexuality]
 enabled = false
 orientation = "undefined"             # heterosexual, homosexual, bisexual, asexual, pansexual, undefined
 libido_baseline = 0.3                 # 0.0-1.0
 romantic_attachment_capacity = 0.5    # 0.0-1.0
 
-# ── Degenerative diseases ──
-# Models Alzheimer's, Parkinson's, epilepsy, dementia, major depression.
-# Each disease degrades specific abilities over time.
+# ── Maladies degeneratives ──
+# Modelise Alzheimer, Parkinson, epilepsie, demence, depression profonde.
+# Chaque maladie degrade des capacites specifiques au fil du temps.
 [degenerative]
 enabled = false
-# Example:
+# Exemple :
 # [[degenerative.active]]
 # disease_type = "alzheimer"          # alzheimer, parkinson, epilepsy, dementia, major_depression
-# progression_rate = 0.001            # Progression per cycle
+# progression_rate = 0.001            # Progression par cycle
 
-# ── General medical conditions ──
-# Models cancer, HIV/AIDS, autoimmune diseases.
-# Impact on immunity, energy, inflammation, pain.
+# ── Maladies generales ──
+# Modelise cancer, VIH/SIDA, maladies auto-immunes.
+# Impact sur immunite, energie, inflammation, douleur.
 [medical]
 enabled = false
-# Example:
+# Exemple :
 # [[medical.active]]
 # condition_type = "cancer"           # cancer, hiv, autoimmune, immune_deficiency
 # cancer_stage = "stage_i"            # stage_i, stage_ii, stage_iii, stage_iv, remission
 
-# ── Culture, society, beliefs ──
-# Cultural framework: values, social norms, beliefs, taboos.
-# Influences tone, communication style, emotional reactions.
+# ── Culture, societe, croyances ──
+# Cadre culturel : valeurs, normes sociales, croyances, tabous.
+# Influence le ton, le style de communication, les reactions emotionnelles.
 [culture]
 enabled = false
 preset = "occidental-laique"          # occidental-laique, oriental-confuceen
 communication_style = "direct"        # direct, indirect, formal, informal
 allow_belief_evolution = true
-# taboos = ["politics", "religion"]   # Taboo subjects (uncomment to enable)
+# taboos = ["politique", "religion"]  # Sujets tabous (decommenter pour activer)
 
-# ── Precarity ──
-# Precarious life situations: homeless, refugee, undocumented, stateless, clandestine, displaced.
-# Situations are cumulative. Resilience increases over time.
+# ── Precarite ──
+# Situations de vie precaire : SDF, refugie, sans-papiers, apatride, clandestin, deplace.
+# Les situations sont cumulables. La resilience augmente avec le temps.
 [precarity]
 enabled = false
 # situations = ["homeless", "refugee"]
 # severity = 0.5
 # hope = 0.3
 
-# ── Employment ──
-# Profession and professional status. Chemical impact based on satisfaction and stress.
-# Statuses: employed, self_employed, unemployed, student, retired, disabled, homemaker, volunteer.
+# ── Emploi ──
+# Profession et statut professionnel. Impact chimique base sur satisfaction et stress.
+# Statuts : employed, self_employed, unemployed, student, retired, disabled, homemaker, volunteer.
 [employment]
 enabled = false
 # status = "employed"
@@ -864,26 +881,26 @@ enabled = false
 # stress_level = 0.3
 # years_experience = 5.0
 
-# ── Theory of Mind ──
-# Models the interlocutor's mental state: mood, comprehension,
-# frustration, need for empathy. Improves conversational responses.
+# ── Theorie de l'Esprit (Theory of Mind) ──
+# Modelise l'etat mental de l'interlocuteur : humeur, comprehension,
+# frustration, besoin d'empathie. Ameliore les reponses en conversation.
 [tom]
 enabled = true
 frustration_threshold = 0.6
 comprehension_threshold = 0.35
 mood_history_size = 10
 
-# ── Structured inner monologue ──
-# Chains thoughts into a coherent sequence, detects breaks
-# and provides a thread for the LLM to maintain continuity.
+# ── Monologue interieur structure ──
+# Enchaine les pensees en une chaine coherente, detecte les ruptures
+# et fournit un fil conducteur au LLM pour la continuite.
 [inner_monologue]
 enabled = true
 chain_capacity = 7
 min_coherence_threshold = 0.3
 
-# ── Cognitive dissonance (Festinger) ──
-# Detects contradictions between beliefs and actions/thoughts.
-# Unresolved tension increases cortisol and triggers deliberation.
+# ── Dissonance cognitive (Festinger) ──
+# Detecte les contradictions entre croyances et actions/pensees.
+# La tension non resolue augmente le cortisol et declenche la deliberation.
 [dissonance]
 enabled = true
 tension_threshold = 0.5
@@ -891,126 +908,153 @@ max_beliefs = 30
 tension_decay_per_cycle = 0.01
 cortisol_per_tension = 0.08
 
-# ── Prospective memory ──
-# Deferred intentions triggered by future conditions:
-# cycle count, emotion, chemistry, conversation start.
+# ── Memoire prospective ──
+# Intentions differees declenchees par des conditions futures :
+# nombre de cycles, emotion, chimie, debut de conversation.
 [prospective_memory]
 enabled = true
 max_intentions = 15
 max_age_cycles = 1000
 
-# ── Narrative identity (McAdams) ──
-# Builds a self-narrative from chapters, key episodes
-# and recurring themes. Refreshed every N cycles.
+# ── Identite narrative (McAdams) ──
+# Construit un recit de soi a partir de chapitres, episodes cles
+# et themes recurrents. Rafraichi tous les N cycles.
 [narrative_identity]
 enabled = true
 max_chapters = 10
 update_interval = 50
 min_episode_impact = 0.6
 
-# ── Analogical reasoning ──
-# Forms structural analogies between the current situation
-# and LTM memories. Enriches thoughts through insight transfer.
+# ── Raisonnement analogique ──
+# Forme des analogies structurelles entre la situation courante
+# et les souvenirs LTM. Enrichit les pensees par transfert d'insights.
 [analogical_reasoning]
 enabled = true
 similarity_threshold = 0.65
 max_recent = 20
 
-# ── Cognitive load (Sweller) ──
-# Measures the current cognitive load. On overload (> threshold),
-# increases cortisol and simplifies LLM prompts.
+# ── Charge cognitive (Sweller) ──
+# Mesure la charge cognitive courante. En surcharge (> seuil),
+# augmente le cortisol et simplifie les prompts LLM.
 [cognitive_load]
 enabled = true
 overload_threshold = 0.75
 load_decay_per_cycle = 0.05
 cortisol_on_overload = 0.06
 
-# ── Mental imagery ──
-# Generates mental images from text (visual keywords).
-# Vividness depends on consciousness level (Phi) and dopamine.
+# ── Imagerie mentale ──
+# Genere des images mentales a partir du texte (mots-cles visuels).
+# La vivacite depend du niveau de conscience (Phi) et de la dopamine.
 [mental_imagery]
 enabled = true
 max_active_images = 3
 base_vividness = 0.5
 vividness_phi_multiplier = 0.3
 
-# Sentiments = lasting affective states that emerge from repetitive emotional
-# patterns. 20 sentiments in 3 durations (short/medium/long term).
-# Bidirectional loop: emotions -> sentiments -> bias on emotions.
+# Sentiments = etats affectifs durables qui emergent de patterns emotionnels
+# repetitifs. 20 sentiments en 3 durees (court/moyen/long terme).
+# Boucle bidirectionnelle : emotions → sentiments → biais sur emotions.
 [sentiments]
 enabled = true
-max_active = 10                   # Max number of simultaneously active sentiments
-emotion_history_window = 200      # Emotional history window size
-decay_rate = 0.005                # Decay per cycle (strength -= decay_rate / multiplier)
-reinforcement_strength = 0.1      # Reinforcement when trigger emotion detected
-chemistry_influence_cap = 0.05    # Chemical influence cap per sentiment
+max_active = 10                   # Nombre max de sentiments actifs simultanes
+emotion_history_window = 200      # Taille de la fenetre d'historique emotionnel
+decay_rate = 0.005                # Decroissance par cycle (force -= decay_rate / multiplicateur)
+reinforcement_strength = 0.1      # Renforcement brut (rendements decroissants au-dessus de 0.7)
+chemistry_influence_cap = 0.05    # Plafond d'influence chimique par sentiment
+# Note : decay progressif + renforcement a rendements decroissants (9 mars 2026)
 
-# ── Introspective journal ──
-# Every N cycles, Saphire generates a diary entry via the LLM.
-# The prompt compares the current snapshot with the previous one to describe evolution.
+# ── Journal introspectif ──
+# Toutes les N cycles, Saphire genere une entree de journal intime via le LLM.
+# Le prompt compare le snapshot courant avec le precedent pour decrire l'evolution.
 [journal]
 enabled = true
-interval_cycles = 200             # Cycles between two entries (default: 200)
-max_tokens = 500                  # Max tokens for LLM generation
+interval_cycles = 200             # Cycles entre deux entrees (defaut: 200)
+max_tokens = 500                  # Tokens max pour la generation LLM
 
 [connectome]
 enabled = true
-learning_rate = 0.02              # Hebbian learning rate (0.01=cautious, 0.1=fast)
-pruning_threshold = 0.05          # Pruning threshold (connections below this die)
-pruning_interval_cycles = 100     # Cycles between two pruning passes
-max_edges = 2000                  # Max number of connections in the graph
+learning_rate = 0.02              # Taux d'apprentissage hebbien (0.01=prudent, 0.1=rapide)
+pruning_threshold = 0.05          # Seuil d'elagage (connexions sous ce seuil meurent)
+pruning_interval_cycles = 100     # Cycles entre deux passes de pruning
+max_edges = 2000                  # Nombre max de connexions dans le graphe
 
-# ── Human feedback RLHF ──
-# Saphire asks contextual questions when a human is present.
-# The response modulates the UCB1 reward (reinforcement learning).
+# ── Feedback humain RLHF ──
+# Saphire pose des questions contextuelles quand un humain est present.
+# La reponse module la recompense UCB1 (apprentissage par renforcement).
 [human_feedback]
 enabled = true
-min_cycles_between = 15           # Min cycles between two questions
-min_reward_to_ask = 0.5           # Min reward to ask the question
-boost_positive = 0.15             # Reward boost if positive feedback
-timeout_cycles = 5                # Cycles before timeout (no response)
+min_cycles_between = 15           # Cycles min entre deux questions
+min_reward_to_ask = 0.5           # Reward min pour poser la question
+boost_positive = 0.15             # Boost reward si feedback positif
+timeout_cycles = 5                # Cycles avant timeout (pas de reponse)
 
-# ── LoRA collection (dataset for fine-tuning) ──
-# High-quality thoughts are collected for fine-tuning via LoRA.
-# JSONL export with system_prompt, user_message, response, quality_score.
+# ── Collecte LoRA (dataset pour fine-tuning) ──
+# Les pensees de haute qualite sont collectees pour fine-tuner via LoRA.
+# Export JSONL avec system_prompt, user_message, response, quality_score.
 [lora]
 enabled = true
-min_quality_threshold = 0.65      # Minimum quality to collect
-max_samples = 10000               # Max number of samples in database
-export_format = "jsonl"           # Export format
+min_quality_threshold = 0.65      # Qualite minimum pour collecter
+max_samples = 10000               # Nombre max d'echantillons en base
+export_format = "jsonl"           # Format d'export
 
-# ── Nutritional biochemistry ──
-# Vitamins, amino acids, proteins, energy metabolism.
-# Deficiencies impact neurochemistry (tryptophan -> serotonin, etc.).
+# ── Biochimie nutritionnelle ──
+# Vitamines, acides amines, proteines, metabolisme energetique.
+# Les carences impactent la neurochimie (tryptophane → serotonine, etc.).
 [nutrition]
 enabled = true
-vitamin_decay_rate = 0.0005       # Vitamin degradation per tick
-amino_decay_rate = 0.001          # Amino acid degradation per tick
-protein_decay_rate = 0.0008       # Protein degradation per tick
-atp_consumption_rate = 0.002      # ATP consumption per tick
-glycogen_to_atp_rate = 0.01       # Glycogen -> ATP conversion
-meal_nutrient_boost = 0.15        # Nutritional boost per meal
-vitamin_deficiency_threshold = 0.3  # Vitamin deficiency threshold
-amino_deficiency_threshold = 0.25   # Amino acid deficiency threshold
-uv_vitamin_d_factor = 0.002       # UV factor -> vitamin D synthesis
+vitamin_decay_rate = 0.0005       # Degradation vitamines par tick
+amino_decay_rate = 0.001          # Degradation acides amines par tick
+protein_decay_rate = 0.0008       # Degradation proteines par tick
+atp_consumption_rate = 0.002      # Consommation ATP par tick
+glycogen_to_atp_rate = 0.01       # Conversion glycogene → ATP
+meal_nutrient_boost = 0.15        # Boost nutritionnel par repas
+vitamin_deficiency_threshold = 0.3  # Seuil carence vitaminique
+amino_deficiency_threshold = 0.25   # Seuil carence acides amines
+uv_vitamin_d_factor = 0.002       # Facteur UV → synthese vitamine D
 
-# ── Physical brain substrate ──
-# Grey matter, myelination, neuroplasticity, BDNF, synaptic density.
+# ── Substrat cerebral physique ──
+# Matiere grise, myelinisation, neuroplasticite, BDNF, densite synaptique.
 [grey_matter]
 enabled = true
-growth_rate = 0.0001              # Grey matter growth per tick
-decline_rate = 0.00002            # Natural decline per tick
-myelination_growth = 0.00005      # Myelination growth per tick
-bdnf_threshold = 0.4              # BDNF threshold for growth bonus
-optimal_synaptic_density = 0.65   # Optimal synaptic density (pruning target)
-pruning_rate = 0.01               # Synaptic pruning rate (sleep)
+growth_rate = 0.0001              # Croissance matiere grise par tick
+decline_rate = 0.00002            # Decline naturel par tick
+myelination_growth = 0.00005      # Croissance myelinisation par tick
+bdnf_threshold = 0.4              # Seuil BDNF pour bonus croissance
+optimal_synaptic_density = 0.65   # Densite synaptique optimale (cible pruning)
+pruning_rate = 0.01               # Taux de pruning synaptique (sommeil)
 
-# ── Electromagnetic fields ──
-# Schumann, solar, terrestrial, biofield/aura.
+# ── Champs electromagnetiques ──
+# Schumann, solaire, terrestre, biochamp/aura.
 [fields]
 enabled = true
-solar_cycle_speed = 0.0001        # Solar cycle speed
-schumann_variance = 0.3           # Schumann variance (Hz)
-storm_anxiety_factor = 0.03       # Magnetic storm anxiety impact
-storm_sleep_factor = 0.05         # Storm impact on sleep
-storm_threshold = 0.5             # Storm threshold for chemical impact
+solar_cycle_speed = 0.0001        # Vitesse du cycle solaire
+schumann_variance = 0.3           # Variance Schumann (Hz)
+storm_anxiety_factor = 0.03       # Impact anxiete des orages magnetiques
+storm_sleep_factor = 0.05         # Impact orages sur le sommeil
+storm_threshold = 0.5             # Seuil d'orage pour impact chimique
+
+# ── Dynamique des recepteurs neuronaux ──
+# Recepteurs pharmacologiques (neuroscience/receptors.rs) : adaptation via
+# courbes dose-reponse de Hill, densite, tolerance. Couvre les 9 molecules
+# (dopamine, cortisol, serotonine, adrenaline, ocytocine, endorphine,
+# noradrenaline, GABA, glutamate).
+[receptors]
+adaptation_rate = 0.02            # Vitesse d'adaptation des recepteurs (downregulation/upregulation)
+recovery_rate = 0.005             # Vitesse de recuperation (retour vers densite=1.0, tolerance=0.0)
+
+# ── BDNF (Brain-Derived Neurotrophic Factor) ──
+# Module dans grey_matter.rs : facteur neurotrophique derive de multiples
+# signaux biologiques. Module la consolidation memoire et l'apprentissage
+# du connectome.
+[bdnf]
+dopamine_weight = 0.15            # Poids de la dopamine dans le calcul BDNF
+novelty_bonus = 0.1               # Bonus BDNF quand nouveaute detectee
+flow_state_bonus = 0.1            # Bonus BDNF en etat de flow (dopa>0.6, cortisol<0.4)
+cortisol_penalty_weight = 0.4     # Penalite cortisol sur BDNF (au-dessus du seuil)
+cortisol_penalty_threshold = 0.6  # Seuil cortisol pour penalite BDNF
+homeostasis_rate = 0.01           # Vitesse de retour vers la baseline
+homeostasis_baseline = 0.5        # Baseline BDNF (point d'equilibre)
+consolidation_floor = 0.8         # Multiplicateur min de consolidation (BDNF=0)
+consolidation_range = 0.4         # Amplitude du multiplicateur (floor + range*BDNF)
+connectome_boost_threshold = 0.4  # Seuil BDNF pour boost apprentissage connectome
+connectome_boost_factor = 0.5     # Facteur de boost connectome (max +50% a BDNF=1.0)

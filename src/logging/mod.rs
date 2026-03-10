@@ -1,21 +1,9 @@
 // =============================================================================
-// logging/mod.rs — Saphire's centralized logging system
-// =============================================================================
+// logging/mod.rs — Systeme de logging centralise de Saphire
 //
-// Purpose: Provides a structured logger that buffers log entries in memory,
-//          flushes them in batches to the logs database, and broadcasts each
-//          entry in real time via a broadcast channel to the WebSocket dashboard.
-//
-// Dependencies:
-//   - chrono: timestamps for each log entry
-//   - serde: serialization/deserialization of log entries
-//   - tokio::sync::broadcast: real-time log broadcasting to the dashboard
-//   - std::sync::Arc: shared ownership of the database and broadcast handles
-//
-// Architectural placement:
-//   Entry point of the logging module. SaphireLogger is used throughout the
-//   system to emit structured, categorized logs. Sub-modules `db` and `trace`
-//   handle PostgreSQL persistence and per-cycle cognitive trace recording.
+// Role : Fournit un logger structure qui bufferise les logs en memoire,
+// les flush en batch vers la base de logs, et les diffuse en temps reel
+// via un broadcast channel vers le WebSocket dashboard.
 // =============================================================================
 
 pub mod db;
@@ -26,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::broadcast;
 
-/// Log severity level.
+/// Niveau de severite d'un log.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum LogLevel {
     Debug,
@@ -37,7 +25,6 @@ pub enum LogLevel {
 }
 
 impl LogLevel {
-    /// Returns the severity level as a static string label.
     pub fn as_str(&self) -> &str {
         match self {
             LogLevel::Debug => "DEBUG",
@@ -55,8 +42,7 @@ impl std::fmt::Display for LogLevel {
     }
 }
 
-/// Functional category of a log entry.
-/// Each variant corresponds to a subsystem or module in Saphire's architecture.
+/// Categorie fonctionnelle d'un log.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum LogCategory {
     Boot,
@@ -120,7 +106,6 @@ pub enum LogCategory {
 }
 
 impl LogCategory {
-    /// Returns the category as a lowercase string label for database storage and display.
     pub fn as_str(&self) -> &str {
         match self {
             LogCategory::Boot => "boot",
@@ -191,48 +176,32 @@ impl std::fmt::Display for LogCategory {
     }
 }
 
-/// A single log entry.
+/// Une entree de log individuelle.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LogEntry {
-    /// UTC timestamp of when the log entry was created
     pub timestamp: DateTime<Utc>,
-    /// Severity level (Debug, Info, Warn, Error, Critical)
     pub level: LogLevel,
-    /// Functional category identifying the source subsystem
     pub category: LogCategory,
-    /// Human-readable log message
     pub message: String,
-    /// Additional structured data as a JSON value (empty object if none)
     pub details: serde_json::Value,
-    /// Cognitive cycle number during which this log was emitted
     pub cycle: u64,
-    /// Session identifier for grouping logs by runtime session
     pub session_id: i64,
 }
 
-/// Saphire's centralized logger.
+/// Logger centralise de Saphire.
 ///
-/// Buffers log entries (batches of 20) then flushes them to the LogsDb.
-/// Also broadcasts each log entry to the broadcast channel for the
-/// real-time WebSocket dashboard.
+/// Bufferise les logs (batch de 20) puis les flush vers la LogsDb.
+/// Diffuse aussi chaque log au broadcast channel pour le WebSocket dashboard.
 pub struct SaphireLogger {
-    /// In-memory buffer of pending log entries awaiting flush
     buffer: Vec<LogEntry>,
-    /// Maximum buffer size before triggering an automatic flush (default: 20)
     buffer_size: usize,
-    /// Optional handle to the PostgreSQL logs database for batch persistence
     logs_db: Option<Arc<db::LogsDb>>,
-    /// Optional broadcast sender for real-time dashboard streaming
     dashboard_tx: Option<Arc<broadcast::Sender<String>>>,
-    /// Current session identifier applied to all subsequent log entries
     session_id: i64,
 }
 
 impl SaphireLogger {
-    /// Creates a new logger instance.
-    ///
-    /// Parameter `logs_db`: optional handle to the PostgreSQL logs database
-    /// Parameter `dashboard_tx`: optional broadcast sender for real-time dashboard streaming
+    /// Cree un nouveau logger.
     pub fn new(
         logs_db: Option<Arc<db::LogsDb>>,
         dashboard_tx: Option<Arc<broadcast::Sender<String>>>,
@@ -246,12 +215,12 @@ impl SaphireLogger {
         }
     }
 
-    /// Sets the session identifier for all subsequent log entries.
+    /// Definit l'identifiant de session pour tous les logs subsequents.
     pub fn set_session_id(&mut self, id: i64) {
         self.session_id = id;
     }
 
-    /// Records a log entry. Buffers it for batch persistence and broadcasts it to the dashboard.
+    /// Enregistre un log. Le bufferise et le diffuse au dashboard.
     pub fn log(
         &mut self,
         level: LogLevel,
@@ -270,7 +239,7 @@ impl SaphireLogger {
             session_id: self.session_id,
         };
 
-        // Broadcast to the dashboard in real time
+        // Broadcast au dashboard en temps reel
         if let Some(ref tx) = self.dashboard_tx {
             let log_msg = serde_json::json!({
                 "type": "dashboard_log",
@@ -285,7 +254,7 @@ impl SaphireLogger {
             let _ = tx.send(log_msg.to_string());
         }
 
-        // Fallback to tracing crate for structured console output
+        // Fallback tracing
         match entry.level {
             LogLevel::Debug => tracing::debug!("[{}] {}", entry.category, entry.message),
             LogLevel::Info => tracing::info!("[{}] {}", entry.category, entry.message),
@@ -296,38 +265,34 @@ impl SaphireLogger {
 
         self.buffer.push(entry);
 
-        // Flush if the buffer is full
+        // Flush si le buffer est plein
         if self.buffer.len() >= self.buffer_size {
             self.schedule_flush();
         }
     }
 
-    /// Shorthand helper: logs at Info level with no extra details.
+    /// Helpers raccourcis
     pub fn info(&mut self, cat: LogCategory, msg: impl Into<String>, cycle: u64) {
         self.log(LogLevel::Info, cat, msg, serde_json::json!({}), cycle);
     }
 
-    /// Shorthand helper: logs at Warn level with no extra details.
     pub fn warn(&mut self, cat: LogCategory, msg: impl Into<String>, cycle: u64) {
         self.log(LogLevel::Warn, cat, msg, serde_json::json!({}), cycle);
     }
 
-    /// Shorthand helper: logs at Error level with no extra details.
     pub fn error(&mut self, cat: LogCategory, msg: impl Into<String>, cycle: u64) {
         self.log(LogLevel::Error, cat, msg, serde_json::json!({}), cycle);
     }
 
-    /// Shorthand helper: logs at Debug level with no extra details.
     pub fn debug(&mut self, cat: LogCategory, msg: impl Into<String>, cycle: u64) {
         self.log(LogLevel::Debug, cat, msg, serde_json::json!({}), cycle);
     }
 
-    /// Shorthand helper: logs at Critical level with no extra details.
     pub fn critical(&mut self, cat: LogCategory, msg: impl Into<String>, cycle: u64) {
         self.log(LogLevel::Critical, cat, msg, serde_json::json!({}), cycle);
     }
 
-    /// Schedules an asynchronous flush of the buffer to the database.
+    /// Planifie un flush asynchrone du buffer vers la DB.
     fn schedule_flush(&mut self) {
         if self.buffer.is_empty() {
             return;
@@ -340,13 +305,13 @@ impl SaphireLogger {
             let db = logs_db.clone();
             tokio::spawn(async move {
                 if let Err(e) = db.batch_insert_logs(&entries).await {
-                    tracing::error!("Flush logs to DB failed: {}", e);
+                    tracing::error!("Flush logs vers DB echoue: {}", e);
                 }
             });
         }
     }
 
-    /// Forces an immediate flush (called during shutdown).
+    /// Force un flush immediat (appele au shutdown).
     pub fn flush(&mut self) {
         self.schedule_flush();
     }

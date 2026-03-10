@@ -1,11 +1,8 @@
 // =============================================================================
-// api/body.rs — Virtual body and heart handlers
+// api/body.rs — Handlers corps virtuel et coeur
 //
-// This module exposes HTTP endpoints for the agent's virtual body simulation:
-// - Real-time body status and physiological vitals
-// - Heart details (BPM, beat count, HRV)
-// - Historical BPM/HRV and body metrics time series
-// - Heartbeat milestone tracking (1K, 10K, 100K, 1M, 10M beats)
+// Role : Endpoints pour le corps virtuel (statut, coeur, historique BPM/HRV,
+// historique corporel, milestones de battements cardiaques).
 // =============================================================================
 
 use std::collections::HashMap;
@@ -14,31 +11,21 @@ use axum::response::IntoResponse;
 
 use super::state::AppState;
 
-/// GET /api/body/status -- Returns the complete real-time body status.
-///
-/// Acquires the agent lock and serializes the full body status as JSON.
+/// GET /api/body/status — Etat complet du corps (temps reel).
 pub async fn api_body_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let status = agent.body_status();
     axum::Json(serde_json::json!(status))
 }
 
-/// GET /api/body/heart -- Returns heart details (BPM, beat count, HRV).
-///
-/// Acquires the agent lock and serializes the heart status as JSON.
+/// GET /api/body/heart — Details du coeur (BPM, beat_count, HRV).
 pub async fn api_body_heart(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let heart = agent.heart_status();
     axum::Json(serde_json::json!(heart))
 }
 
-/// GET /api/body/heart/history -- Returns historical BPM and HRV time-series data.
-///
-/// # Query parameters
-/// * `limit` (optional, default 200): maximum number of data points to return.
-///
-/// # Returns
-/// JSON `{"data": [...]}` on success, or `{"error": ...}` if the logs DB is unavailable.
+/// GET /api/body/heart/history — Historique BPM + HRV.
 pub async fn api_body_heart_history(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -54,13 +41,7 @@ pub async fn api_body_heart_history(
     }
 }
 
-/// GET /api/body/history -- Returns the complete body metrics history.
-///
-/// # Query parameters
-/// * `limit` (optional, default 200): maximum number of data points to return.
-///
-/// # Returns
-/// JSON `{"data": [...]}` on success, or `{"error": ...}` if the logs DB is unavailable.
+/// GET /api/body/history — Historique corporel complet.
 pub async fn api_body_history(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -76,23 +57,14 @@ pub async fn api_body_history(
     }
 }
 
-/// GET /api/body/vitals -- Returns detailed physiological data (vital signs, metabolism).
-///
-/// Extracts only the `vitals` subsection from the full body status.
+/// GET /api/body/vitals — Details physiologiques (parametres vitaux, metabolisme).
 pub async fn api_body_vitals(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let status = agent.body_status();
     axum::Json(serde_json::json!(status.vitals))
 }
 
-/// GET /api/body/milestones -- Returns heartbeat milestone tracking information.
-///
-/// Checks the current beat count against predefined thresholds (1K, 10K, 100K, 1M, 10M)
-/// and reports which milestones have been reached.
-///
-/// # Returns
-/// JSON `{"milestones": [...], "total_beats": N}` where each milestone entry contains
-/// `threshold`, `reached` (boolean), and `current` (beat count at time of query).
+/// GET /api/body/milestones — Milestones de battements cardiaques.
 pub async fn api_body_milestones(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let beat_count = agent.heart_status().beat_count;

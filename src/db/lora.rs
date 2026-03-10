@@ -1,50 +1,32 @@
 // =============================================================================
-// db/lora.rs — CRUD for the lora_training_data table
+// db/lora.rs — CRUD pour la table lora_training_data
 //
-// Purpose: Store high-quality thoughts to build a LoRA fine-tuning dataset.
-// Provides JSONL export for supervised training. Each sample includes the
-// system prompt, user message, response, thought type, quality score,
-// reward, optional human feedback, emotion, and consciousness level.
-// Pruning removes the lowest quality samples when the count exceeds a limit.
+// Role : Stocker les pensees de haute qualite pour constituer un dataset
+// de fine-tuning LoRA. Export JSONL pour entrainement supervisé.
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 use super::{SaphireDb, DbError};
 
-/// A LoRA training sample retrieved from the database.
+/// Echantillon LoRA recupere depuis la base.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LoraSample {
-    /// Unique identifier of the sample
     pub id: i64,
-    /// System prompt used for the generation
     pub system_prompt: String,
-    /// User message / input stimulus
     pub user_message: String,
-    /// Agent's response (the target output for fine-tuning)
     pub response: String,
-    /// Type of thought that produced this sample (e.g., "reflection", "conversation")
     pub thought_type: String,
-    /// Quality score assigned to this sample [0.0 - 1.0]
     pub quality_score: f32,
-    /// Reward signal from the reinforcement learning system
     pub reward: f32,
-    /// Optional human feedback (true = approved, false = rejected, None = not reviewed)
     pub human_feedback: Option<bool>,
-    /// Dominant emotion during generation
     pub emotion: Option<String>,
-    /// Consciousness level during generation [0.0 - 1.0]
     pub consciousness_level: Option<f32>,
-    /// Cycle number at which the sample was generated
     pub cycle: i64,
-    /// Timestamp of when the sample was created (UTC)
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
 impl SaphireDb {
-    /// Inserts a new LoRA sample into the database.
-    ///
-    /// # Returns
-    /// The ID of the inserted sample
+    /// Insere un nouvel echantillon LoRA dans la base.
     pub async fn store_lora_sample(
         &self,
         system_prompt: &str,
@@ -74,14 +56,14 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Total number of LoRA samples.
+    /// Nombre total d'echantillons LoRA.
     pub async fn count_lora_samples(&self) -> Result<i64, DbError> {
         let client = self.pool.get().await?;
         let row = client.query_one("SELECT COUNT(*) FROM lora_training_data", &[]).await?;
         Ok(row.get(0))
     }
 
-    /// Average quality score of LoRA samples.
+    /// Qualite moyenne des echantillons LoRA.
     pub async fn avg_lora_quality(&self) -> Result<f64, DbError> {
         let client = self.pool.get().await?;
         let row = client.query_one(
@@ -91,11 +73,7 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Exports the best LoRA samples (by descending quality).
-    ///
-    /// # Parameters
-    /// - `min_quality`: minimum quality score threshold
-    /// - `limit`: maximum number of samples to export
+    /// Exporte les meilleurs echantillons LoRA (par qualite decroissante).
     pub async fn export_lora_jsonl(
         &self,
         min_quality: f32,
@@ -129,8 +107,7 @@ impl SaphireDb {
         }).collect())
     }
 
-    /// Prunes the oldest/weakest LoRA samples when the count exceeds max_count.
-    /// Samples are removed in order of ascending quality score, then ascending creation date.
+    /// Elagage des echantillons LoRA les plus anciens/faibles quand on depasse max_count.
     pub async fn prune_lora_samples(&self, max_count: i64) -> Result<u64, DbError> {
         let client = self.pool.get().await?;
         let row = client.query_one("SELECT COUNT(*) FROM lora_training_data", &[]).await?;

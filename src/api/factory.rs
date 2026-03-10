@@ -1,11 +1,8 @@
 // =============================================================================
-// api/factory.rs — Factory defaults handlers
+// api/factory.rs — Handlers valeurs d'usine (factory defaults)
 //
-// This module exposes HTTP endpoints for managing factory default values:
-// - Retrieving all factory defaults as JSON.
-// - Computing the diff between current agent values and factory defaults.
-// - Applying a factory reset at various levels (chemistry only, parameters
-//   only, senses, intuition, personal ethics, psychology, or full reset).
+// Role : Endpoints pour consulter les valeurs d'usine, comparer les
+// differences avec les valeurs actuelles, et appliquer un reset.
 // =============================================================================
 
 use axum::extract::State;
@@ -13,10 +10,7 @@ use axum::response::IntoResponse;
 
 use super::state::AppState;
 
-/// GET /api/factory/defaults -- Returns all factory default values as JSON.
-///
-/// Loads the factory defaults from the embedded configuration and serializes them.
-/// No agent state is required; this is a stateless endpoint.
+/// GET /api/factory/defaults — Retourne toutes les valeurs d'usine en JSON.
 pub async fn api_factory_defaults() -> axum::Json<serde_json::Value> {
     match crate::factory::FactoryDefaults::load() {
         Ok(factory) => axum::Json(factory.as_json()),
@@ -24,10 +18,7 @@ pub async fn api_factory_defaults() -> axum::Json<serde_json::Value> {
     }
 }
 
-/// GET /api/factory/diff -- Returns the differences between current values and factory defaults.
-///
-/// Compares the agent's current configuration and neurochemistry against the
-/// factory defaults and returns only the fields that differ.
+/// GET /api/factory/diff — Differences entre valeurs actuelles et usine.
 pub async fn api_factory_diff(
     State(state): State<AppState>,
 ) -> impl IntoResponse {
@@ -35,20 +26,10 @@ pub async fn api_factory_diff(
     axum::Json(agent.factory_diff())
 }
 
-/// POST /api/factory/reset -- Applies a factory reset at the specified level.
-///
-/// # Request body
-/// JSON object with a `"level"` field specifying the reset scope:
-/// - `"chemistry_only"` / `"ChemistryOnly"`: reset neurochemistry only.
-/// - `"parameters_only"` / `"ParametersOnly"`: reset general parameters only.
-/// - `"senses_only"` / `"SensesOnly"`: reset sensory configuration only.
-/// - `"intuition_only"` / `"IntuitionOnly"`: reset intuition engine only.
-/// - `"personal_ethics_only"` / `"PersonalEthicsOnly"`: reset personal ethics only.
-/// - `"psychology_only"` / `"PsychologyOnly"`: reset psychology module only.
-/// - `"full_reset"` / `"FullReset"`: reset everything to factory defaults.
-///
-/// # Returns
-/// JSON result from `agent.apply_factory_reset()`, or an error for unknown levels.
+/// POST /api/factory/reset — Applique un reset aux valeurs d'usine.
+/// Body: { "level": "ChemistryOnly" | "ParametersOnly" | "SensesOnly" |
+///         "IntuitionOnly" | "PersonalEthicsOnly" | "PsychologyOnly" |
+///         "SleepOnly" | "BiologyReset" | "FullReset" }
 pub async fn api_factory_reset(
     State(state): State<AppState>,
     axum::Json(body): axum::Json<serde_json::Value>,
@@ -61,6 +42,8 @@ pub async fn api_factory_reset(
         "intuition_only" | "IntuitionOnly" => crate::factory::ResetLevel::IntuitionOnly,
         "personal_ethics_only" | "PersonalEthicsOnly" => crate::factory::ResetLevel::PersonalEthicsOnly,
         "psychology_only" | "PsychologyOnly" => crate::factory::ResetLevel::PsychologyOnly,
+        "sleep_only" | "SleepOnly" => crate::factory::ResetLevel::SleepOnly,
+        "biology_reset" | "BiologyReset" => crate::factory::ResetLevel::BiologyReset,
         "full_reset" | "FullReset" => crate::factory::ResetLevel::FullReset,
         _ => return axum::Json(serde_json::json!({"error": format!("Unknown level: {}", level_str)})),
     };

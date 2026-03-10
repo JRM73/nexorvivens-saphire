@@ -1,24 +1,12 @@
 // =============================================================================
-// db/ethics.rs — Personal ethics (layer 2)
-//
-// Purpose: CRUD operations for the agent's personal ethical principles.
-// Unlike hardcoded safety rules, these principles are emergent -- they are
-// discovered, refined, and sometimes deactivated through lived experience.
-// Each principle tracks its origin, invocation count, questioning count,
-// and active status. A full history of modifications is maintained in
-// the personal_ethics_history table for auditability.
+// db/ethics.rs — Ethique personnelle (couche 2)
 // =============================================================================
 
 use chrono::{DateTime, Utc};
 use super::{SaphireDb, DbError};
 
 impl SaphireDb {
-    /// Loads all personal ethical principles from the database.
-    ///
-    /// # Returns
-    /// A vector of tuples containing: (id, title, content, reasoning, born_from,
-    /// born_at_cycle, emotion_at_creation, times_invoked, times_questioned,
-    /// is_active, created_at)
+    /// Charge tous les principes ethiques personnels depuis la DB.
     pub async fn load_personal_ethics(&self) -> Result<Vec<(i64, String, String, String, String, i64, String, i64, i64, bool, DateTime<Utc>)>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -47,15 +35,7 @@ impl SaphireDb {
         Ok(results)
     }
 
-    /// Saves a new personal ethical principle. Returns the ID.
-    ///
-    /// # Parameters
-    /// - `title`: short title of the principle
-    /// - `content`: full content of the ethical principle
-    /// - `reasoning`: justification for adopting this principle
-    /// - `born_from`: the experience that gave rise to this principle
-    /// - `born_at_cycle`: the cycle number at which this principle was created
-    /// - `emotion_at_creation`: the dominant emotion when the principle was formed
+    /// Sauvegarde un nouveau principe ethique personnel. Retourne l'ID.
     pub async fn save_personal_principle(
         &self,
         title: &str,
@@ -74,16 +54,7 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Records an entry in the ethical modifications history.
-    ///
-    /// # Parameters
-    /// - `principle_id`: ID of the principle being modified
-    /// - `action`: type of modification (e.g., "created", "updated", "deactivated")
-    /// - `old_content`: previous content (None for creation)
-    /// - `new_content`: new content (None for deactivation)
-    /// - `reason_for_change`: explanation for why the change was made
-    /// - `emotion_at_change`: dominant emotion during the change
-    /// - `cycle`: cycle number at which the change occurred
+    /// Enregistre une entree dans l'historique des modifications ethiques.
     #[allow(clippy::too_many_arguments)]
     pub async fn save_ethics_history(
         &self,
@@ -104,8 +75,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Increments the invocation counter of an ethical principle.
-    /// Also updates the last_invoked_at timestamp.
+    /// Incremente le compteur d'invocations d'un principe ethique.
     pub async fn update_principle_invocation(&self, id: i64) -> Result<(), DbError> {
         let client = self.pool.get().await?;
         client.execute(
@@ -115,7 +85,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Updates the active/inactive status of an ethical principle.
+    /// Met a jour le statut actif/inactif d'un principe ethique.
     pub async fn update_principle_status(&self, id: i64, is_active: bool) -> Result<(), DbError> {
         let client = self.pool.get().await?;
         client.execute(

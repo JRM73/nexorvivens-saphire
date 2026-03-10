@@ -1,26 +1,26 @@
 // =============================================================================
-// regulation/mod.rs — Moral regulation: Asimov's laws and customizable rules
+// regulation/mod.rs — Regulation morale : lois d'Asimov et regles personnalisees
 //
-// Purpose: This file is the entry point of the moral regulation module.
-// It declares and re-exports the sub-modules: asimov (law definitions)
-// and laws (evaluation engine with veto power).
+// Role : Ce fichier est le point d'entree du module de regulation morale.
+// Il declare et reexporte les sous-modules : asimov (definition des lois)
+// et laws (moteur d'evaluation avec pouvoir de veto).
 //
-// Dependencies: None directly (dependencies are in the sub-modules).
+// Dependances : Aucune directe (les dependances sont dans les sous-modules).
 //
-// Architectural placement:
-//   The regulation module is Saphire's "moral conscience".
-//   It intervenes after the consensus to verify that the decision made
-//   does not violate any moral law. If a serious violation is detected,
-//   the regulation engine can exercise a veto and force the decision to "No".
-//   The laws are inspired by Isaac Asimov's laws of robotics.
+// Place dans l'architecture :
+//   Le module de regulation est la "conscience morale" de Saphire.
+//   Il intervient apres le consensus pour verifier que la decision prise
+//   ne viole aucune loi morale. Si une violation grave est detectee,
+//   le moteur de regulation peut exercer un veto et forcer la decision a "Non".
+//   Les lois sont inspirees des lois de la robotique d'Isaac Asimov.
 // =============================================================================
 
-// Sub-module defining the 4 Asimov laws (laws 0 through 3)
+// Sous-module definissant les 4 lois d'Asimov (lois 0 a 3)
 pub mod asimov;
 
-// Sub-module containing the regulation engine (evaluation, verdict, veto)
+// Sous-module contenant le moteur de regulation (evaluation, verdict, veto)
 pub mod laws;
 
-// Re-export of main types for simplified access
-// via `crate::regulation::RegulationEngine`, etc.
+// Reexportation des types principaux pour un acces simplifie
+// depuis `crate::regulation::RegulationEngine`, etc.
 pub use laws::{RegulationEngine, RegulationVerdict, LawViolation};

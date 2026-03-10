@@ -1,17 +1,10 @@
 // =============================================================================
-// api/metrics.rs — Metrics handlers (all /api/metrics/* endpoints)
+// api/metrics.rs — Handlers de metriques (tous les endpoints /api/metrics/*)
 //
-// This module exposes time-series metric endpoints for every monitored
-// subsystem of the agent. Each handler queries the LogsDb for historical
-// data points with a configurable `limit` parameter.
-//
-// Covered metric domains: neurochemistry, emotions, decisions, satisfaction,
-// LLM response times, OCEAN personality history, thought type distribution,
-// heart, body, vital instinct, intuition, premonition, ethics, senses,
-// sensory acuity, emergent senses, knowledge sources, attention, desires,
-// learning, healing, dreams, psyche (Freud), Maslow hierarchy, emotional
-// quotient (Goleman), flow state, shadow (Jung), neural network learnings,
-// and chemical health indicators.
+// Role : Endpoints pour toutes les metriques temporelles : chimie, emotions,
+// decisions, satisfaction, LLM, OCEAN, types de pensees, coeur, corps,
+// vital, intuition, premonition, ethique, sens, acuite, emergents,
+// connaissances, attention, desirs, apprentissage, guerison, reves.
 // =============================================================================
 
 use std::collections::HashMap;
@@ -20,10 +13,7 @@ use axum::response::IntoResponse;
 
 use super::state::AppState;
 
-/// GET /api/metrics/chemistry -- Neurochemistry time-series metrics.
-///
-/// # Query parameters
-/// * `limit` (optional, default 200): maximum number of data points.
+/// GET /api/metrics/chemistry — Metriques neurochimiques.
 pub async fn api_metrics_chemistry(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -39,10 +29,7 @@ pub async fn api_metrics_chemistry(
     }
 }
 
-/// GET /api/metrics/emotions -- Emotional state time-series metrics.
-///
-/// # Query parameters
-/// * `limit` (optional, default 200): maximum number of data points.
+/// GET /api/metrics/emotions — Metriques emotionnelles.
 pub async fn api_metrics_emotions(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -58,10 +45,7 @@ pub async fn api_metrics_emotions(
     }
 }
 
-/// GET /api/metrics/decisions -- Decision-making time-series metrics.
-///
-/// # Query parameters
-/// * `limit` (optional, default 200): maximum number of data points.
+/// GET /api/metrics/decisions — Metriques de decisions.
 pub async fn api_metrics_decisions(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -77,10 +61,7 @@ pub async fn api_metrics_decisions(
     }
 }
 
-/// GET /api/metrics/satisfaction -- Satisfaction time-series metrics.
-///
-/// # Query parameters
-/// * `limit` (optional, default 200): maximum number of data points.
+/// GET /api/metrics/satisfaction — Metriques de satisfaction.
 pub async fn api_metrics_satisfaction(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -96,10 +77,7 @@ pub async fn api_metrics_satisfaction(
     }
 }
 
-/// GET /api/metrics/llm -- LLM performance time-series metrics (response times, token counts).
-///
-/// # Query parameters
-/// * `limit` (optional, default 200): maximum number of data points.
+/// GET /api/metrics/llm — Metriques LLM (temps de reponse).
 pub async fn api_metrics_llm(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -115,9 +93,7 @@ pub async fn api_metrics_llm(
     }
 }
 
-/// GET /api/metrics/ocean_history -- OCEAN (Big Five) personality trait history.
-///
-/// Queries the main agent DB (not LogsDb) for historical OCEAN personality scores.
+/// GET /api/metrics/ocean_history — Historique OCEAN.
 pub async fn api_metrics_ocean_history(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     if let Some(ref db) = agent.db {
@@ -130,9 +106,7 @@ pub async fn api_metrics_ocean_history(State(state): State<AppState>) -> impl In
     }
 }
 
-/// GET /api/metrics/thought_types -- Distribution of thought types over recent cycles.
-///
-/// Returns the last 20 data points showing the breakdown of thought categories.
+/// GET /api/metrics/thought_types — Distribution des types de pensees.
 pub async fn api_metrics_thought_types(State(state): State<AppState>) -> impl IntoResponse {
     if let Some(ref logs_db) = state.logs_db {
         match logs_db.get_thought_type_distribution(20).await {
@@ -144,10 +118,7 @@ pub async fn api_metrics_thought_types(State(state): State<AppState>) -> impl In
     }
 }
 
-/// GET /api/metrics/heart -- Heart time-series metrics (BPM, HRV, beat count).
-///
-/// # Query parameters
-/// * `limit` (optional, default 200): maximum number of data points.
+/// GET /api/metrics/heart — Metriques cardiaques.
 pub async fn api_metrics_heart(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -163,10 +134,7 @@ pub async fn api_metrics_heart(
     }
 }
 
-/// GET /api/metrics/body -- Body simulation time-series metrics.
-///
-/// # Query parameters
-/// * `limit` (optional, default 200): maximum number of data points.
+/// GET /api/metrics/body — Metriques corporelles.
 pub async fn api_metrics_body(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -182,10 +150,7 @@ pub async fn api_metrics_body(
     }
 }
 
-/// GET /api/metrics/vital -- Vital instinct time-series metrics (survival drive, fear, etc.).
-///
-/// # Query parameters
-/// * `limit` (optional, default 200): maximum number of data points.
+/// GET /api/metrics/vital — Metriques d'instinct vital.
 pub async fn api_metrics_vital(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -201,10 +166,7 @@ pub async fn api_metrics_vital(
     }
 }
 
-/// GET /api/metrics/intuition -- Intuition engine time-series metrics (acuity, accuracy).
-///
-/// # Query parameters
-/// * `limit` (optional, default 200): maximum number of data points.
+/// GET /api/metrics/intuition — Metriques d'intuition.
 pub async fn api_metrics_intuition(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -220,10 +182,7 @@ pub async fn api_metrics_intuition(
     }
 }
 
-/// GET /api/metrics/premonition -- Premonition (prediction) time-series metrics.
-///
-/// # Query parameters
-/// * `limit` (optional, default 200): maximum number of data points.
+/// GET /api/metrics/premonition — Metriques de premonition.
 pub async fn api_metrics_premonition(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -239,10 +198,7 @@ pub async fn api_metrics_premonition(
     }
 }
 
-/// GET /api/metrics/ethics -- Personal ethics time-series metrics.
-///
-/// # Query parameters
-/// * `limit` (optional, default 200): maximum number of data points.
+/// GET /api/metrics/ethics — Metriques d'ethique personnelle.
 pub async fn api_metrics_ethics(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -258,10 +214,7 @@ pub async fn api_metrics_ethics(
     }
 }
 
-/// GET /api/metrics/senses -- Sensory system time-series metrics.
-///
-/// # Query parameters
-/// * `limit` (optional, default 200): maximum number of data points.
+/// GET /api/metrics/senses — Metriques sensorielles.
 pub async fn api_metrics_senses(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -277,10 +230,7 @@ pub async fn api_metrics_senses(
     }
 }
 
-/// GET /api/metrics/senses_acuity -- Sensory acuity time-series metrics.
-///
-/// # Query parameters
-/// * `limit` (optional, default 200): maximum number of data points.
+/// GET /api/metrics/senses_acuity — Metriques d'acuite sensorielle.
 pub async fn api_metrics_senses_acuity(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -296,10 +246,7 @@ pub async fn api_metrics_senses_acuity(
     }
 }
 
-/// GET /api/metrics/emergent -- Emergent senses time-series metrics.
-///
-/// # Query parameters
-/// * `limit` (optional, default 200): maximum number of data points.
+/// GET /api/metrics/emergent — Metriques de sens emergents.
 pub async fn api_metrics_emergent(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -315,10 +262,7 @@ pub async fn api_metrics_emergent(
     }
 }
 
-/// GET /api/metrics/knowledge -- Knowledge source distribution metrics.
-///
-/// # Query parameters
-/// * `limit` (optional, default 200): maximum number of data points.
+/// GET /api/metrics/knowledge — Distribution des sources de connaissance.
 pub async fn api_metrics_knowledge(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -334,10 +278,7 @@ pub async fn api_metrics_knowledge(
     }
 }
 
-/// GET /api/metrics/attention -- Attention time-series metrics over a period.
-///
-/// # Query parameters
-/// * `limit` (optional, default 100): maximum number of data points.
+/// GET /api/metrics/attention — Metriques d'attention sur une periode.
 pub async fn api_metrics_attention(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -353,10 +294,7 @@ pub async fn api_metrics_attention(
     }
 }
 
-/// GET /api/metrics/desires -- Desire tracking time-series metrics over a period.
-///
-/// # Query parameters
-/// * `limit` (optional, default 100): maximum number of data points.
+/// GET /api/metrics/desires — Metriques de desirs sur une periode.
 pub async fn api_metrics_desires(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -372,10 +310,7 @@ pub async fn api_metrics_desires(
     }
 }
 
-/// GET /api/metrics/learning -- Learning progress time-series metrics over a period.
-///
-/// # Query parameters
-/// * `limit` (optional, default 100): maximum number of data points.
+/// GET /api/metrics/learning — Metriques d'apprentissage sur une periode.
 pub async fn api_metrics_learning(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -391,10 +326,7 @@ pub async fn api_metrics_learning(
     }
 }
 
-/// GET /api/metrics/healing -- Healing/recovery time-series metrics over a period.
-///
-/// # Query parameters
-/// * `limit` (optional, default 100): maximum number of data points.
+/// GET /api/metrics/healing — Metriques de guerison sur une periode.
 pub async fn api_metrics_healing(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -410,10 +342,7 @@ pub async fn api_metrics_healing(
     }
 }
 
-/// GET /api/metrics/dreams -- Dream activity time-series metrics over a period.
-///
-/// # Query parameters
-/// * `limit` (optional, default 100): maximum number of data points.
+/// GET /api/metrics/dreams — Metriques de reves sur une periode.
 pub async fn api_metrics_dreams(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -429,10 +358,7 @@ pub async fn api_metrics_dreams(
     }
 }
 
-/// GET /api/metrics/psyche -- Psyche (Freudian model: id/ego/superego) time-series metrics.
-///
-/// # Query parameters
-/// * `limit` (optional, default 200): maximum number of data points.
+/// GET /api/metrics/psyche — Metriques psyche (Freud) sur une periode.
 pub async fn api_metrics_psyche(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -448,10 +374,7 @@ pub async fn api_metrics_psyche(
     }
 }
 
-/// GET /api/metrics/maslow -- Maslow hierarchy of needs time-series metrics.
-///
-/// # Query parameters
-/// * `limit` (optional, default 200): maximum number of data points.
+/// GET /api/metrics/maslow — Metriques Maslow sur une periode.
 pub async fn api_metrics_maslow(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -467,10 +390,7 @@ pub async fn api_metrics_maslow(
     }
 }
 
-/// GET /api/metrics/eq -- Emotional Quotient (Goleman model) time-series metrics.
-///
-/// # Query parameters
-/// * `limit` (optional, default 200): maximum number of data points.
+/// GET /api/metrics/eq — Metriques EQ (Goleman) sur une periode.
 pub async fn api_metrics_eq(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -486,10 +406,7 @@ pub async fn api_metrics_eq(
     }
 }
 
-/// GET /api/metrics/flow -- Flow state time-series metrics.
-///
-/// # Query parameters
-/// * `limit` (optional, default 200): maximum number of data points.
+/// GET /api/metrics/flow — Metriques Flow sur une periode.
 pub async fn api_metrics_flow(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -505,10 +422,7 @@ pub async fn api_metrics_flow(
     }
 }
 
-/// GET /api/metrics/shadow -- Shadow (Jungian model) time-series metrics.
-///
-/// # Query parameters
-/// * `limit` (optional, default 200): maximum number of data points.
+/// GET /api/metrics/shadow — Metriques Ombre (Jung) sur une periode.
 pub async fn api_metrics_shadow(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -524,10 +438,7 @@ pub async fn api_metrics_shadow(
     }
 }
 
-/// GET /api/metrics/nn_learnings -- Neural network / vector learning time-series metrics.
-///
-/// # Query parameters
-/// * `limit` (optional, default 200): maximum number of data points.
+/// GET /api/metrics/nn_learnings — Metriques apprentissages vectoriels.
 pub async fn api_metrics_nn_learnings(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -543,13 +454,7 @@ pub async fn api_metrics_nn_learnings(
     }
 }
 
-/// GET /api/metrics/chemical_health -- Chemical health indicators over time.
-///
-/// Returns aggregated health metrics derived from neurotransmitter balance,
-/// stability, and drift from baselines.
-///
-/// # Query parameters
-/// * `limit` (optional, default 200): maximum number of data points.
+/// GET /api/metrics/chemical_health — Indicateurs de sante chimique.
 pub async fn api_metrics_chemical_health(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -563,4 +468,49 @@ pub async fn api_metrics_chemical_health(
     } else {
         axum::Json(serde_json::json!({"error": "LogsDb not available"}))
     }
+}
+
+/// GET /api/metrics/receptors — Snapshot des sensibilites des recepteurs.
+pub async fn api_metrics_receptors(
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    let agent = state.agent.lock().await;
+    let receptors = &agent.hormonal_system.receptors;
+    axum::Json(serde_json::json!({
+        "data": {
+            "cycle": agent.cycle_count,
+            "sensitivity": receptors.to_snapshot_json(),
+            "factors": {
+                "dopamine": receptors.factor_for(crate::neurochemistry::Molecule::Dopamine),
+                "cortisol": receptors.factor_for(crate::neurochemistry::Molecule::Cortisol),
+                "serotonin": receptors.factor_for(crate::neurochemistry::Molecule::Serotonin),
+                "adrenaline": receptors.factor_for(crate::neurochemistry::Molecule::Adrenaline),
+                "oxytocin": receptors.factor_for(crate::neurochemistry::Molecule::Oxytocin),
+                "endorphin": receptors.factor_for(crate::neurochemistry::Molecule::Endorphin),
+                "noradrenaline": receptors.factor_for(crate::neurochemistry::Molecule::Noradrenaline),
+                "gaba": receptors.factor_for(crate::neurochemistry::Molecule::Gaba),
+                "glutamate": receptors.factor_for(crate::neurochemistry::Molecule::Glutamate),
+            },
+            "desensitized": receptors.describe_desensitized(),
+        },
+    }))
+}
+
+/// GET /api/metrics/bdnf — Snapshot BDNF et neuroplasticite.
+pub async fn api_metrics_bdnf(
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    let agent = state.agent.lock().await;
+    let gm = &agent.grey_matter;
+    axum::Json(serde_json::json!({
+        "data": {
+            "cycle": agent.cycle_count,
+            "bdnf_level": gm.bdnf_level,
+            "neuroplasticity": gm.neuroplasticity,
+            "neurogenesis_rate": gm.neurogenesis_rate,
+            "synaptic_density": gm.synaptic_density,
+            "grey_matter_volume": gm.grey_matter_volume,
+            "myelination": gm.myelination,
+        },
+    }))
 }

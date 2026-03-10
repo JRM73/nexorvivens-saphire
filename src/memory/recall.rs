@@ -1,59 +1,49 @@
-// recall.rs — Types for unified retrieval across the 3 memory tiers
+// recall.rs — Types pour la recherche unifiée dans les 3 niveaux de mémoire
 //
-// This module defines the types used during memory recall (retrieval) across
-// the different tiers of the Saphire memory system.
+// Ce module définit les types utilisés lors du rappel (recall) de souvenirs
+// à travers les différents niveaux du système mnésique de Saphire.
 //
-// During a recall operation, the system can retrieve memories from any tier:
-//   - Working:  working memory (items currently active in the RAM buffer).
-//   - Episodic: episodic memory (recent experiences stored in PostgreSQL).
-//   - LongTerm: long-term memory (permanently consolidated memories with
-//               vector indexing for semantic retrieval).
-//   - Founding: founding memories (pre-programmed identity-defining memories).
-//   - Archive:  archived batches of pruned LTM memories, still accessible
-//               via vector similarity search.
+// Lors d'un rappel, le système peut retrouver des souvenirs provenant de
+// n'importe quel niveau :
+//   - Working   : mémoire de travail (items actuellement actifs en RAM).
+//   - Episodic  : mémoire épisodique (souvenirs récents en PostgreSQL).
+//   - LongTerm  : mémoire à long terme (souvenirs consolidés permanents).
+//   - Founding  : souvenirs fondateurs (identité de base de Saphire).
 //
-// The MemoryLevel enum allows identification of a retrieved memory's origin,
-// which is useful for display, debugging, and differential weighting of
-// recall results.
+// Le type MemoryLevel permet d'identifier la provenance d'un souvenir
+// retrouvé, ce qui est utile pour l'affichage, le débogage et la
+// pondération des résultats de rappel.
 //
-// Dependencies:
-//   - serde: serialization for WebSocket transmission and API responses.
+// Dépendances :
+//   - serde : sérialisation pour l'envoi via WebSocket et les API.
 
 use serde::Serialize;
 use crate::neurochemistry::{ChemicalSignature, NeuroChemicalState};
 use crate::db::MemoryRecord;
 
-/// Memory tier from which a recalled memory originates.
+/// Niveau de mémoire d'où provient un souvenir retrouvé lors d'un rappel.
 ///
-/// Used to tag retrieval results with their provenance across the unified
-/// multi-tier memory search.
+/// Utilisé pour identifier l'origine d'un souvenir dans les résultats
+/// de recherche unifiée à travers les 3 niveaux mnésiques.
 #[derive(Debug, Clone, Serialize)]
 pub enum MemoryLevel {
-    /// Working memory: item currently active in the limited-capacity
-    /// consciousness buffer (analogous to the phonological loop).
+    /// Mémoire de travail : item actuellement actif dans le tampon de conscience.
     Working,
-    /// Episodic memory: recent experience persisted in the database,
-    /// subject to strength decay (analogous to hippocampal traces).
+    /// Mémoire épisodique : souvenir récent persisté en base de données.
     Episodic,
-    /// Long-term memory: permanently consolidated memory indexed by
-    /// vector embedding for semantic cosine-similarity retrieval
-    /// (analogous to neocortical storage).
+    /// Mémoire à long terme : souvenir consolidé, permanent et indexé
+    /// par vecteur pour la recherche sémantique.
     LongTerm,
-    /// Founding memory: pre-programmed initial memory that defines
-    /// Saphire's core identity and values. These are never decayed
-    /// or pruned.
+    /// Souvenir fondateur : memoire initiale programmee qui definit
+    /// l'identite et les valeurs de base de Saphire.
     Founding,
-    /// Archive: a compressed batch of pruned LTM memories. Archives
-    /// remain accessible via vector similarity search but at reduced
-    /// granularity compared to individual LTM entries.
+    /// Archive : lot de souvenirs LTM elagués puis compresses en resume.
+    /// Les archives restent accessibles par recherche vectorielle.
     Archive,
 }
 
 impl MemoryLevel {
-    /// Returns a textual label identifying the memory tier.
-    ///
-    /// # Returns
-    /// A static string naming the tier (e.g., "working", "episodic", "long_term").
+    /// Retourne un libelle textuel identifiant le niveau de memoire.
     pub fn label(&self) -> &str {
         match self {
             MemoryLevel::Working => "working",
@@ -65,24 +55,17 @@ impl MemoryLevel {
     }
 }
 
-/// Re-ranks LTM memories by combining textual similarity with neurochemical
-/// similarity (state-dependent memory).
+/// Re-classe des souvenirs LTM par combinaison de similarite textuelle
+/// et de similarite chimique (state-dependent memory).
 ///
-/// A neurochemical state similar to the one present at encoding time
-/// facilitates recall, implementing the state-dependent memory effect
-/// observed in humans (Godden & Baddeley, 1975; Eich, 1980). Memories
-/// encoded under a particular neurochemical profile (e.g., high dopamine)
-/// are more easily retrieved when the current state matches.
+/// Un etat chimique similaire a celui de l'encodage facilite le rappel,
+/// comme chez l'humain (memoire dependante de l'etat).
 ///
-/// The final similarity score is a weighted combination:
-///   `final_score = text_similarity * text_weight + chemical_similarity * chem_weight`
-///
-/// # Parameters
-/// - `candidates`: LTM memories already sorted by textual cosine similarity.
-///   Their `similarity` field is overwritten with the blended score.
-/// - `current_chemistry`: Saphire's current neurochemical state.
-/// - `text_weight`: weight assigned to textual similarity (typically 0.8).
-/// - `chem_weight`: weight assigned to chemical similarity (typically 0.2).
+/// # Parametres
+/// - `candidates` : souvenirs deja tries par similarite textuelle
+/// - `current_chemistry` : etat chimique courant de Saphire
+/// - `text_weight` : poids de la similarite textuelle (defaut 0.8)
+/// - `chem_weight` : poids de la similarite chimique (defaut 0.2)
 pub fn recall_with_chemical_context(
     candidates: &mut [MemoryRecord],
     current_chemistry: &NeuroChemicalState,
@@ -90,16 +73,14 @@ pub fn recall_with_chemical_context(
     chem_weight: f64,
 ) {
     let current_sig = ChemicalSignature::from(current_chemistry);
-    // Recompute the similarity score as a weighted blend of text and chemistry.
+    // Recalculer le score de similarite comme mix texte + chimie
     for mem in candidates.iter_mut() {
         let chem_sim = mem.chemical_signature
             .as_ref()
             .map(|sig| sig.similarity(&current_sig))
-            // Default to 0.5 (neutral) for legacy memories without a chemical signature.
-            .unwrap_or(0.5);
-        // Overwrite the similarity field with the blended score.
+            .unwrap_or(0.5); // neutre pour les anciens souvenirs sans signature
         mem.similarity = mem.similarity * text_weight + chem_sim * chem_weight;
     }
-    // Re-sort by the blended score in descending order.
+    // Re-trier par score final decroissant
     candidates.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity).unwrap_or(std::cmp::Ordering::Equal));
 }

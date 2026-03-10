@@ -1,30 +1,11 @@
 // =============================================================================
-// db/knowledge.rs — Acquired knowledge (WebKnowledge)
-//
-// Purpose: CRUD operations for knowledge acquired by the agent, typically
-// from web searches. Each entry records the source, query, title, URL,
-// extracted content, LLM reflection, emotion, and satisfaction level.
-// Also provides statistics loading for boot restoration and anti-repetition
-// title listing.
+// db/knowledge.rs — Connaissances acquises (WebKnowledge)
 // =============================================================================
 
 use super::{SaphireDb, DbError};
 
 impl SaphireDb {
-    /// Records a piece of acquired knowledge (typically from a web search).
-    ///
-    /// # Parameters
-    /// - `source`: knowledge source (e.g., "web", "wikipedia")
-    /// - `query`: the original search query
-    /// - `title`: title of the knowledge entry
-    /// - `url`: source URL
-    /// - `extract`: extracted text content
-    /// - `llm_reflection`: optional LLM reflection on the knowledge
-    /// - `emotion`: optional dominant emotion during acquisition
-    /// - `satisfaction`: optional satisfaction level [0.0 - 1.0]
-    ///
-    /// # Returns
-    /// The ID of the inserted knowledge entry
+    /// Enregistre une connaissance acquise (typiquement depuis une recherche web).
     #[allow(clippy::too_many_arguments)]
     pub async fn log_knowledge(
         &self,
@@ -46,7 +27,7 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Counts the total number of acquired knowledge entries.
+    /// Compte le nombre total de connaissances acquises.
     pub async fn count_knowledge(&self) -> Result<i64, DbError> {
         let client = self.pool.get().await?;
         let row = client.query_one(
@@ -56,10 +37,7 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Retrieves the N most recently acquired knowledge entries.
-    ///
-    /// # Returns
-    /// A vector of tuples: (source, title, created_at as text)
+    /// Recupere les N dernieres connaissances acquises.
     pub async fn recent_knowledge(&self, limit: i64) -> Result<Vec<(String, String, String)>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -73,14 +51,11 @@ impl SaphireDb {
         Ok(results)
     }
 
-    /// Loads knowledge statistics for boot restoration.
-    ///
-    /// # Returns
-    /// A tuple of (unique titles sorted by last appearance DESC, total search count,
-    /// article read count map: title -> count)
+    /// Charge les statistiques knowledge pour restauration au boot.
+    /// Retourne (titres uniques par date DESC, total recherches, article_read_count).
     pub async fn load_knowledge_stats(&self) -> Result<(Vec<String>, u64, std::collections::HashMap<String, u32>), DbError> {
         let client = self.pool.get().await?;
-        // Unique titles sorted by last appearance
+        // Titres uniques tries par derniere apparition
         let rows = client.query(
             "SELECT title, COUNT(*)::bigint as cnt FROM knowledge_log GROUP BY title ORDER BY MAX(created_at) DESC",
             &[],
@@ -98,7 +73,7 @@ impl SaphireDb {
         Ok((titles, total, read_counts))
     }
 
-    /// Lists recent knowledge titles (for anti-repetition filtering).
+    /// Liste les titres de connaissances recentes (pour anti-repetition).
     pub async fn recent_knowledge_titles(&self, limit: i64) -> Result<Vec<String>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(

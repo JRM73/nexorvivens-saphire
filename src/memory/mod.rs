@@ -1,25 +1,21 @@
-// memory/mod.rs — Three-tier memory system
+// memory/mod.rs — Système de mémoire à 3 niveaux
 //
-// This module is the entry point of the Saphire memory subsystem.
-// It orchestrates three hierarchical memory tiers inspired by human cognitive
-// psychology and the Atkinson-Shiffrin memory model:
-//   1. Working memory (working): volatile RAM-only buffer with limited capacity,
-//      analogous to the phonological loop and visuospatial sketchpad.
-//   2. Episodic memory (episodic): recent experiences stored in PostgreSQL
-//      with progressive strength decay, modeling the hippocampal encoding
-//      of autobiographical events.
-//   3. Long-term memory (long_term): permanently consolidated memories indexed
-//      by vector embeddings (pgvector) for cosine-similarity semantic retrieval,
-//      analogous to neocortical long-term storage after hippocampal replay.
+// Ce module est le point d'entrée du sous-système de mémoire de Saphire.
+// Il orchestre trois niveaux inspirés de la psychologie cognitive humaine :
+//   1. Mémoire de travail (working) : tampon volatile en RAM, capacité limitée.
+//   2. Mémoire épisodique (episodic) : souvenirs récents stockés en PostgreSQL
+//      avec décroissance progressive.
+//   3. Mémoire à long terme (long_term) : souvenirs consolidés permanents,
+//      indexés par vecteurs (pgvector) pour la recherche sémantique.
 //
-// Key dependencies:
-//   - serde: serialization and deserialization of configuration structures.
-//   - crate::db: PostgreSQL database access layer.
+// Dépendances principales :
+//   - serde : sérialisation / désérialisation de la configuration.
+//   - crate::db : couche d'accès à la base de données PostgreSQL.
 //
-// This file exposes the configuration struct (MemoryConfig), re-exported types
-// from sub-modules, and the utility function build_memory_context() which
-// assembles the memory context block injected into the LLM (Large Language
-// Model) prompt.
+// Ce fichier expose la structure de configuration (MemoryConfig), les types
+// réexportés des sous-modules et la fonction utilitaire build_memory_context()
+// qui assemble le contexte mémoire injecté dans le prompt LLM
+// (Large Language Model = Grand Modèle de Langage).
 
 pub mod working;
 pub mod episodic;
@@ -35,123 +31,114 @@ pub use recall::MemoryLevel;
 
 use serde::{Deserialize, Serialize};
 
-/// Complete configuration for the three-tier memory system.
+/// Configuration complète du système de mémoire.
 ///
-/// Each field has a sensible default provided by the corresponding `default_*`
-/// function, allowing partial configuration in JSON/TOML files where only
-/// overridden values need to be specified.
+/// Chaque champ possède une valeur par défaut raisonnable via les fonctions
+/// `default_*`, ce qui permet de ne spécifier que les valeurs à personnaliser
+/// dans le fichier de configuration JSON/TOML.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MemoryConfig {
-    /// Maximum capacity of working memory (number of items).
-    /// Defaults to 7, based on Miller's Law (7 +/- 2 chunks), which models the
-    /// limited capacity of the human phonological loop.
+    /// Capacité maximale de la mémoire de travail (nombre d'items).
+    /// Vaut 7 par défaut, d'après la loi de Miller (7 ± 2 éléments).
     #[serde(default = "default_working_capacity")]
     pub working_capacity: usize,
 
-    /// Per-cycle relevance decay rate for working memory items.
-    /// At each cognitive cycle, every item's relevance score is reduced by this
-    /// amount, simulating attentional fading.
+    /// Taux de décroissance de la pertinence en mémoire de travail par cycle.
+    /// À chaque cycle cognitif, la pertinence de chaque item diminue de cette valeur.
     #[serde(default = "default_working_decay")]
     pub working_decay_rate: f64,
 
-    /// Maximum number of episodic memories stored in the database.
-    /// When exceeded, a pruning pass is triggered to remove the weakest entries.
+    /// Nombre maximal de souvenirs épisodiques en base de données.
+    /// Au-delà, un élagage (pruning) est déclenché.
     #[serde(default = "default_episodic_max")]
     pub episodic_max: usize,
 
-    /// Per-consolidation-cycle strength decay rate for episodic memories.
-    /// Unconsolidated memories progressively lose strength until they are
-    /// either consolidated into LTM or pruned, modeling hippocampal trace decay.
+    /// Taux de décroissance de la force des souvenirs épisodiques par cycle
+    /// de consolidation. Les souvenirs non consolidés perdent progressivement
+    /// de la force jusqu'à être élagués.
     #[serde(default = "default_episodic_decay")]
     pub episodic_decay_rate: f64,
 
-    /// Target number of episodic memories after a pruning pass.
-    /// When episodic_max is exceeded, the weakest entries are removed until
-    /// this count is reached.
+    /// Nombre cible de souvenirs épisodiques après élagage.
+    /// Quand episodic_max est dépassé, on élague jusqu'à atteindre cette valeur.
     #[serde(default = "default_episodic_prune")]
     pub episodic_prune_target: usize,
 
-    /// Interval (in cognitive cycles) between two consolidation processes.
-    /// Every N cycles, episodic memories are evaluated for transfer to long-term
-    /// memory, analogous to hippocampal-neocortical replay during sleep.
+    /// Intervalle (en cycles cognitifs) entre deux processus de consolidation.
+    /// Tous les N cycles, les souvenirs épisodiques sont évalués pour
+    /// transfert vers la mémoire à long terme.
     #[serde(default = "default_consol_interval")]
     pub consolidation_interval_cycles: u64,
 
-    /// Minimum consolidation score required for an episodic memory to be
-    /// transferred to long-term memory (LTM). Value between 0.0 and 1.0.
+    /// Score minimum de consolidation pour qu'un souvenir épisodique soit
+    /// transféré vers la mémoire à long terme (LTM = Long-Term Memory).
+    /// Valeur entre 0.0 et 1.0.
     #[serde(default = "default_consol_threshold")]
     pub consolidation_threshold: f64,
 
-    /// When true, consolidation is also triggered during Saphire's "sleep"
-    /// (idle period), mimicking the role of slow-wave sleep and REM sleep
-    /// in human memory consolidation via hippocampal replay.
+    /// Si vrai, la consolidation est aussi déclenchée lors du « sommeil »
+    /// (période d'inactivité de Saphire), imitant le rôle du sommeil
+    /// dans la consolidation mnésique chez l'humain.
     #[serde(default = "default_consol_sleep")]
     pub consolidation_on_sleep: bool,
 
-    /// Maximum number of memories in long-term memory storage.
+    /// Nombre maximal de souvenirs en mémoire à long terme.
     #[serde(default = "default_ltm_max")]
     pub ltm_max: usize,
 
-    /// Cosine similarity threshold for considering an LTM memory as relevant
-    /// during recall. Value between 0.0 and 1.0.
+    /// Seuil de similarité cosinus pour considérer un souvenir LTM comme
+    /// pertinent lors d'un rappel. Valeur entre 0.0 et 1.0.
     #[serde(default = "default_ltm_threshold")]
     pub ltm_similarity_threshold: f64,
 
-    /// Target number of LTM memories after a pruning pass.
-    /// When ltm_max is exceeded, the weakest unprotected entries are archived
-    /// until this count is reached.
+    /// Nombre cible de souvenirs LTM apres elagage.
+    /// Quand ltm_max est depasse, on elague jusqu'a atteindre cette valeur.
     #[serde(default = "default_ltm_prune_target")]
     pub ltm_prune_target: usize,
 
-    /// Minimum access count for an LTM memory to be protected from pruning.
-    /// Frequently recalled memories are considered important and are preserved,
-    /// modeling the testing effect (retrieval practice strengthens traces).
+    /// Nombre minimum d'acces pour qu'un souvenir LTM soit protege de l'elagage.
     #[serde(default = "default_ltm_protection_access_count")]
     pub ltm_protection_access_count: i32,
 
-    /// Minimum emotional weight for an LTM memory to be protected from pruning.
-    /// Emotionally significant memories resist forgetting, consistent with
-    /// amygdala-mediated modulation of hippocampal consolidation.
+    /// Poids emotionnel minimum pour qu'un souvenir LTM soit protege de l'elagage.
     #[serde(default = "default_ltm_protection_emotional_weight")]
     pub ltm_protection_emotional_weight: f32,
 
-    /// Batch size used when archiving pruned LTM memories.
-    /// Pruned memories are compressed into archive summaries in batches of this size.
+    /// Taille des lots lors de l'archivage des souvenirs LTM elagués.
     #[serde(default = "default_archive_batch_size")]
     pub archive_batch_size: usize,
 
-    /// Number of recent episodic memories retrieved for context injection.
+    /// Nombre de souvenirs episodiques rappeles pour le contexte.
     #[serde(default = "default_recall_episodic_limit")]
     pub recall_episodic_limit: usize,
 
-    /// Number of LTM memories retrieved by similarity for context injection.
+    /// Nombre de souvenirs LTM rappeles par similarite.
     #[serde(default = "default_recall_ltm_limit")]
     pub recall_ltm_limit: usize,
 
-    /// Minimum similarity threshold for LTM recall.
+    /// Seuil de similarite minimum pour le rappel LTM.
     #[serde(default = "default_recall_ltm_threshold")]
     pub recall_ltm_threshold: f64,
 
-    /// Number of deep archive entries retrieved for context injection.
+    /// Nombre d'archives profondes rappelees.
     #[serde(default = "default_recall_archive_limit")]
     pub recall_archive_limit: usize,
 
-    /// Minimum similarity threshold for archive recall.
+    /// Seuil de similarite minimum pour le rappel d'archives.
     #[serde(default = "default_recall_archive_threshold")]
     pub recall_archive_threshold: f64,
 
-    /// Number of subconscious vector memories (dreams, insights, connections)
-    /// retrieved by similarity for context injection.
+    /// Nombre de souvenirs subconscients (vecteurs) rappeles par similarite.
     #[serde(default = "default_recall_vectors_limit")]
     pub recall_vectors_limit: usize,
 
-    /// Minimum similarity threshold for subconscious vector recall.
+    /// Seuil de similarite minimum pour le rappel de vecteurs subconscients.
     #[serde(default = "default_recall_vectors_threshold")]
     pub recall_vectors_threshold: f64,
 }
 
-// --- Default value functions for serde deserialization ---
-// Each function returns the default value for one field of MemoryConfig.
+// --- Fonctions de valeurs par défaut pour la désérialisation serde ---
+// Chaque fonction retourne la valeur par défaut d'un champ de MemoryConfig.
 
 fn default_working_capacity() -> usize { 7 }
 fn default_working_decay() -> f64 { 0.05 }
@@ -176,7 +163,7 @@ fn default_recall_vectors_limit() -> usize { 3 }
 fn default_recall_vectors_threshold() -> f64 { 0.30 }
 
 impl Default for MemoryConfig {
-    /// Returns a MemoryConfig instance with all fields set to their default values.
+    /// Retourne une configuration mémoire avec toutes les valeurs par défaut.
     fn default() -> Self {
         Self {
             working_capacity: 7,
@@ -204,25 +191,20 @@ impl Default for MemoryConfig {
     }
 }
 
-/// Builds the complete memory context string intended for injection into the
-/// LLM (Large Language Model) prompt.
+/// Construit le contexte mémoire complet destiné à être injecté dans le
+/// prompt envoyé au LLM (Large Language Model = Grand Modèle de Langage).
 ///
-/// This function merges memories from five sources into a single structured
-/// text block, providing the LLM with awareness of past context and enabling
-/// continuity across conversations.
+/// Cette fonction fusionne trois sources de souvenirs en un seul bloc de
+/// texte structuré, pour que le LLM ait conscience du contexte passé.
 ///
-/// # Parameters
-/// - `wm_summary`: textual summary of the working memory (currently active items).
-/// - `episodic_recent`: recent episodic memories retrieved from the database.
-/// - `ltm_similar`: long-term memories found by cosine vector similarity
-///   against the current query embedding.
-/// - `archive_similar`: deep archive entries (compressed batches of pruned LTM
-///   memories) found by vector similarity.
-/// - `subconscious_vectors`: subconscious vector records (dreams, insights,
-///   neural connections, eureka moments, mental imagery) found by similarity.
+/// # Paramètres
+/// - `wm_summary` : résumé textuel de la mémoire de travail (items actifs).
+/// - `episodic_recent` : souvenirs épisodiques récents récupérés depuis la DB.
+/// - `ltm_similar` : souvenirs de la mémoire à long terme trouvés par
+///   similarité vectorielle (cosinus) avec la requête courante.
 ///
-/// # Returns
-/// A formatted string containing up to five labeled sections of memory context.
+/// # Retour
+/// Une chaîne de caractères formatée contenant les trois sections de contexte.
 pub fn build_memory_context(
     wm_summary: &str,
     episodic_recent: &[EpisodicRecord],
@@ -232,13 +214,13 @@ pub fn build_memory_context(
 ) -> String {
     let mut ctx = String::new();
 
-    // Section 1: Working memory (immediate context, currently active items)
+    // Section 1 : Memoire de travail (contexte immediat)
     if !wm_summary.is_empty() {
         ctx.push_str(wm_summary);
         ctx.push('\n');
     }
 
-    // Section 2: Recent episodic memories (hippocampal short-term store)
+    // Section 2 : Souvenirs episodiques recents
     if !episodic_recent.is_empty() {
         ctx.push_str("SOUVENIRS RECENTS :\n");
         for ep in episodic_recent {
@@ -248,7 +230,7 @@ pub fn build_memory_context(
         ctx.push('\n');
     }
 
-    // Section 3: Relevant long-term memories (neocortical consolidated store)
+    // Section 3 : Souvenirs de la memoire a long terme pertinents
     if !ltm_similar.is_empty() {
         ctx.push_str("MEMOIRE PROFONDE :\n");
         for mem in ltm_similar {
@@ -261,7 +243,7 @@ pub fn build_memory_context(
         ctx.push('\n');
     }
 
-    // Section 4: Deep archives (pruned LTM memories compressed into summaries)
+    // Section 4 : Archives profondes (souvenirs LTM elagués puis compresses)
     if !archive_similar.is_empty() {
         ctx.push_str("ARCHIVES PROFONDES :\n");
         for arc in archive_similar {
@@ -275,8 +257,7 @@ pub fn build_memory_context(
         ctx.push('\n');
     }
 
-    // Section 5: Subconscious memories (dreams, insights, neural connections,
-    // eureka moments, mental imagery — generated during idle/sleep processing)
+    // Section 5 : Souvenirs subconscients (reves, insights, connexions, eureka, images mentales)
     if !subconscious_vectors.is_empty() {
         ctx.push_str("SOUVENIRS SUBCONSCIENTS :\n");
         for sv in subconscious_vectors {
@@ -298,17 +279,10 @@ pub fn build_memory_context(
     ctx
 }
 
-/// Builds the context string for past learnings, intended for LLM prompt injection.
+/// Construit le contexte des apprentissages passes pour injection dans le prompt LLM.
 ///
-/// Each learning entry is displayed with its domain, summary, and confidence score.
-/// This context allows the LLM to leverage previously acquired knowledge and
-/// build upon earlier insights.
-///
-/// # Parameters
-/// - `learnings`: slice of learning records retrieved from the database.
-///
-/// # Returns
-/// A formatted string listing all learnings, or an empty string if none exist.
+/// Chaque apprentissage est affiche avec son domaine, son resume et sa confiance.
+/// Ce contexte permet au LLM de s'appuyer sur ses apprentissages anterieurs.
 pub fn build_learning_context(
     learnings: &[crate::db::learnings::NnLearningRecord],
 ) -> String {

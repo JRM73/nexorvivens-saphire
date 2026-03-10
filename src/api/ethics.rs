@@ -1,11 +1,9 @@
 // =============================================================================
-// api/ethics.rs — Personal ethics handlers
+// api/ethics.rs — Handlers ethique personnelle
 //
-// This module exposes HTTP endpoints for the agent's three-layer ethical system:
-// 1. Overview of all three ethical layers (hardcoded, configured, personal).
-// 2. Listing and detail views for personal ethical principles.
-// 3. Readiness check: whether all conditions are met for the agent to
-//    formulate a new personal ethical principle.
+// Role : Endpoints pour les 3 couches ethiques (vue d'ensemble),
+// la liste des principes personnels, le detail par ID,
+// et les conditions de formulation (readiness).
 // =============================================================================
 
 use axum::extract::State;
@@ -13,20 +11,13 @@ use axum::response::IntoResponse;
 
 use super::state::AppState;
 
-/// GET /api/ethics/layers -- Overview of all three ethical layers.
-///
-/// Returns a JSON representation of the hardcoded, configured, and personal
-/// ethical layers including their principles and activation status.
+/// GET /api/ethics/layers — Vue d'ensemble des 3 couches ethiques.
 pub async fn api_ethics_layers(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     axum::Json(agent.ethics.to_broadcast_json())
 }
 
-/// GET /api/ethics/personal -- Lists all personal ethical principles.
-///
-/// Returns a JSON object containing the active count, total count, and an array
-/// of all personal principles with their metadata (title, content, reasoning,
-/// origin, creation cycle, emotional context, invocation/questioning counts, etc.).
+/// GET /api/ethics/personal — Liste des principes ethiques personnels.
 pub async fn api_ethics_personal(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let principles: Vec<serde_json::Value> = agent.ethics.personal_principles().iter().map(|p| {
@@ -51,14 +42,7 @@ pub async fn api_ethics_personal(State(state): State<AppState>) -> impl IntoResp
     }))
 }
 
-/// GET /api/ethics/personal/:id -- Detail view of a single personal ethical principle.
-///
-/// # Path parameters
-/// * `id` - The unique identifier of the principle.
-///
-/// # Returns
-/// Full JSON representation of the principle including supersession info and timestamps,
-/// or `{"error": "not found"}` if no principle matches the given ID.
+/// GET /api/ethics/personal/:id — Detail d'un principe ethique personnel.
 pub async fn api_ethics_personal_by_id(
     State(state): State<AppState>,
     axum::extract::Path(id): axum::extract::Path<i64>,
@@ -86,21 +70,8 @@ pub async fn api_ethics_personal_by_id(
     }
 }
 
-/// GET /api/ethics/readiness -- Ethical formulation readiness check.
-///
-/// Exposes the status of every precondition required for the agent to formulate
-/// a new personal ethical principle. There are 7 conditions that must all be met:
-/// 1. Minimum cycle count (>= 50 cycles of operation).
-/// 2. Sufficient moral reflections accumulated.
-/// 3. Consciousness level above the formulation threshold.
-/// 4. Cortisol below 0.5 (not stressed).
-/// 5. Serotonin at or above 0.4 (stable mood).
-/// 6. Cooldown period since last formulation elapsed.
-/// 7. Capacity available (below max personal principles limit).
-///
-/// # Returns
-/// JSON with `enabled`, per-condition status (required/current/met), `all_met`,
-/// `met_count`, and `total_conditions`.
+/// GET /api/ethics/readiness — Conditions de formulation ethique.
+/// Expose l'etat de chaque condition requise pour formuler un nouveau principe.
 pub async fn api_ethics_readiness(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let config = &agent.config().ethics;

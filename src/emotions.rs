@@ -1,125 +1,106 @@
 // =============================================================================
-// emotions.rs — 36 emergent emotions + Mood (EMA - Exponential Moving Average)
+// emotions.rs — 36 émotions émergentes + Mood (EMA - Exponential Moving Average)
 // =============================================================================
 //
-// Purpose: This module computes Saphire's emotional state from its
-// neurochemical state. Emotions are not hard-coded: they emerge from the
-// cosine similarity between the current chemical vector and the "chemical
-// recipes" of 36 predefined emotions.
+// Rôle : Ce fichier calcule l'état émotionnel de Saphire à partir de son
+// état neurochimique. Les émotions ne sont pas codées en dur : elles émergent
+// de la similarité cosinus entre le vecteur chimique actuel et les « recettes »
+// chimiques de 36 émotions prédéfinies.
 //
-// Scientific foundations:
-//   - Constructionist theory (Barrett 2017, "How Emotions Are Made"):
-//     emotions are constructed from core affect + conceptual categorization
-//   - Core Affect (Russell 2003): a 2D pre-conceptual space (valence x arousal)
-//   - VAD model (Valence-Arousal-Dominance): used here in its VA subset
-//   - Circumplex model (Russell 1980): emotions arranged on a circle in VA space
-//   - Cosine similarity: measures angular distance between neurochemical vectors
+// Dépendances :
+//   - serde : sérialisation / désérialisation
+//   - crate::neurochemistry::NeuroChemicalState : vecteur chimique à 7 dimensions
 //
-// Dependencies:
-//   - serde: serialization / deserialization
-//   - crate::neurochemistry::NeuroChemicalState: 7-dimensional chemical vector
-//
-// Architectural role:
-//   This module is consulted after each processing cycle to determine the
-//   dominant emotion. It is read by:
-//     - consciousness.rs (the inner narrative uses the dominant emotion)
-//     - the main engine (emotional state display)
-//   The Mood (background affect) smooths instantaneous emotions over time
-//   via an EMA (Exponential Moving Average).
+// Place dans l'architecture :
+//   Ce module est consulté après chaque cycle de traitement pour déterminer
+//   l'émotion dominante. Il est lu par :
+//     - consciousness.rs (le monologue intérieur utilise l'émotion dominante)
+//     - le moteur principal (affichage de l'état émotionnel)
+//   Le Mood (humeur de fond) lisse les émotions instantanées sur le temps
+//   via une EMA (Moyenne Mobile Exponentielle).
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 use crate::neurochemistry::NeuroChemicalState;
 
-/// Profile of a single emotion: its chemical "recipe" and psychological
-/// characteristics (valence and arousal).
+/// Profil d'une émotion : sa « recette » chimique et ses caractéristiques
+/// psychologiques (valence et arousal).
 ///
-/// The recipe is a 7-element vector corresponding to the 7 core neurotransmitters.
-/// The current chemical state vector is compared against this recipe via cosine
-/// similarity to determine how closely the current state "resembles" this emotion.
-///
-/// This approach follows the constructionist framework (Barrett 2017): discrete
-/// emotion labels are assigned to continuous neurochemical states based on
-/// pattern matching, not hard-wired circuits.
+/// La recette est un vecteur de 7 valeurs correspondant aux 7 neurotransmetteurs.
+/// On compare ce vecteur au vecteur chimique actuel via similarité cosinus
+/// pour déterminer à quel point l'état actuel « ressemble » à cette émotion.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmotionProfile {
-    /// Name of the emotion (e.g., "Joie", "Peur", "Curiosite")
+    /// Nom de l'émotion (ex: "Joie", "Peur", "Curiosité")
     pub name: String,
-    /// Chemical recipe: [dopamine, cortisol, serotonin, adrenaline,
-    /// oxytocin, endorphin, noradrenaline] — each value in [0.0, 1.0].
-    /// Represents the idealized neurotransmitter profile for this emotion.
+    /// Recette chimique : [dopamine, cortisol, sérotonine, adrénaline,
+    /// ocytocine, endorphine, noradrénaline] — chaque valeur entre 0.0 et 1.0
     pub recipe: [f64; 7],
-    /// Valence [-1, +1]: the pleasant/unpleasant dimension (Russell 1980).
-    /// Negative = unpleasant emotion, positive = pleasant emotion.
+    /// Valence [-1, +1] : dimension plaisant/déplaisant.
+    /// Négatif = émotion désagréable, positif = émotion agréable.
     pub valence: f64,
-    /// Arousal [0, 1]: the level of physiological activation (Russell 1980).
-    /// 0 = calm/deactivated, 1 = highly activated/excited.
+    /// Arousal [0, 1] : niveau d'activation physiologique.
+    /// 0 = calme, 1 = très activé.
     pub arousal: f64,
 }
 
-/// Result of the emotion computation — determined at each processing cycle.
+/// Resultat du calcul emotionnel — determine a chaque cycle de traitement.
 ///
-/// Contains the dominant emotion, an optional secondary emotion, as well as
-/// the global valence and arousal computed via weighted average of the top-3
-/// most similar emotions. Also includes core affect (Barrett 2017) and
-/// emotional momentum for temporal smoothing.
+/// Contient l'emotion dominante, une eventuelle emotion secondaire,
+/// ainsi que la valence et l'arousal globaux calcules par moyenne ponderee.
+/// Inclut le core affect (Barrett 2017) et le momentum emotionnel.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmotionalState {
-    /// Name of the dominant emotion (highest cosine similarity score)
+    /// Nom de l'emotion dominante (celle ayant la plus haute similarite cosinus)
     pub dominant: String,
-    /// Cosine similarity score of the dominant emotion [0, 1]
+    /// Score de similarite cosinus de l'emotion dominante [0, 1]
     pub dominant_similarity: f64,
-    /// Secondary emotion: present only if its similarity exceeds 0.5
+    /// Emotion secondaire : presente uniquement si sa similarite depasse 0.5
     pub secondary: Option<String>,
-    /// Global valence [-1, +1]: weighted average of the top-3 closest emotions
+    /// Valence globale [-1, +1] : moyenne ponderee des 3 emotions les plus proches
     pub valence: f64,
-    /// Global arousal [0, 1]: weighted average of the top-3 closest emotions
+    /// Arousal global [0, 1] : moyenne ponderee des 3 emotions les plus proches
     pub arousal: f64,
-    /// Full spectrum: list of all 36 emotions with their similarity scores,
-    /// sorted in descending order of similarity
+    /// Spectre complet : liste de toutes les 36 emotions avec leur score
+    /// de similarite, triees par ordre decroissant
     pub spectrum: Vec<(String, f64)>,
-    /// Raw core affect valence (Barrett 2017) — valence and arousal derived
-    /// directly from the chemistry, BEFORE discrete emotion categorization.
-    /// This is the fundamental, pre-conceptual affective state.
+    /// Core Affect brut (Barrett) — valence et arousal directement de la chimie,
+    /// AVANT la categorisation en emotion discrete. C'est l'etat affectif
+    /// fondamental, pre-conceptuel.
     #[serde(default)]
     pub core_valence: f64,
-    /// Raw core affect arousal (Barrett 2017)
+    /// Core arousal brut
     #[serde(default)]
     pub core_arousal: f64,
-    /// Context that influenced the emotional categorization (constructionism)
+    /// Contexte qui a influence la categorisation emotionnelle
     #[serde(default)]
     pub context_influence: String,
 }
 
-/// Background mood — smoothed by EMA (Exponential Moving Average).
+/// Humeur de fond — lissée par EMA (Exponential Moving Average,
+/// Moyenne Mobile Exponentielle).
 ///
-/// Unlike the instantaneous emotion, the Mood evolves slowly and represents
-/// Saphire's background affective state over multiple cycles. This models
-/// the distinction between emotions (brief, reactive) and moods (sustained,
-/// dispositional) as described by Davidson (1994).
-///
-/// The EMA formula: mood_new = mood_old * (1 - alpha) + instant_value * alpha
+/// Contrairement à l'émotion instantanée, le Mood évolue lentement et
+/// représente l'état affectif de fond de Saphire sur plusieurs cycles.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Mood {
-    /// Smoothed valence [-1, +1]: pleasant/unpleasant tendency
+    /// Valence lissée [-1, +1] : tendance plaisante ou déplaisante
     pub valence: f64,
-    /// Smoothed arousal [0, 1]: average activation level
+    /// Arousal lissé [0, 1] : niveau d'activation moyen
     pub arousal: f64,
-    /// EMA smoothing coefficient alpha [0.01, 0.5]: lower values produce
-    /// slower mood changes (higher inertia), higher values make the mood
-    /// more reactive to instantaneous emotions
+    /// Coefficient de lissage alpha [0.01, 0.5] : plus il est bas, plus
+    /// le mood change lentement (forte inertie)
     pub alpha: f64,
 }
 
 impl Mood {
-    /// Creates a new Mood with the given smoothing coefficient.
+    /// Crée un nouveau Mood avec un coefficient de lissage donné.
     ///
-    /// # Parameters
-    /// - `alpha`: EMA coefficient. Clamped to [0.01, 0.5].
-    ///   0.01 = very slow adaptation (high inertia), 0.5 = highly reactive.
+    /// # Paramètres
+    /// - `alpha` : coefficient EMA. Borné entre 0.01 (très lent) et 0.5 (réactif).
     ///
-    /// # Returns
-    /// A neutral Mood (valence = 0.0, arousal = 0.3).
+    /// # Retour
+    /// Un Mood neutre (valence = 0.0, arousal = 0.3).
     pub fn new(alpha: f64) -> Self {
         Self {
             valence: 0.0,
@@ -128,17 +109,14 @@ impl Mood {
         }
     }
 
-    /// Updates the mood via EMA (Exponential Moving Average).
+    /// Met à jour le mood par EMA (Moyenne Mobile Exponentielle).
+    /// Formule : mood = mood_ancien * (1 - alpha) + valeur_courante * alpha.
+    /// Cela produit un lissage temporel : les émotions passagères influencent
+    /// peu le mood, tandis que les états répétés le déplacent progressivement.
     ///
-    /// Formula: mood = mood_old * (1 - alpha) + current_value * alpha
-    ///
-    /// This produces temporal smoothing: transient emotions have little
-    /// influence on the mood, while repeated states progressively shift it.
-    /// This models the slow-changing nature of dispositional affect.
-    ///
-    /// # Parameters
-    /// - `valence`: instantaneous valence of the current emotion [-1, +1].
-    /// - `arousal`: instantaneous arousal of the current emotion [0, 1].
+    /// # Paramètres
+    /// - `valence` : valence instantanée de l'émotion courante [-1, +1].
+    /// - `arousal` : arousal instantané de l'émotion courante [0, 1].
     pub fn update(&mut self, valence: f64, arousal: f64) {
         self.valence = self.valence * (1.0 - self.alpha) + valence * self.alpha;
         self.arousal = self.arousal * (1.0 - self.alpha) + arousal * self.alpha;
@@ -146,95 +124,69 @@ impl Mood {
         self.arousal = self.arousal.clamp(0.0, 1.0);
     }
 
-    /// Textual description of the current mood, based on the intersection
-    /// of valence (positive/negative) and arousal (activated/calm).
+    /// Description textuelle du mood courant, basée sur le croisement
+    /// de la valence (positif/négatif) et de l'arousal (activé/calme).
+    /// Utilise le modèle circumplex de Russell (2 axes : valence x arousal).
     ///
-    /// Uses Russell's circumplex model (1980) with 2 axes (valence x arousal)
-    /// to map the continuous mood space into discrete descriptive labels.
-    ///
-    /// # Returns
-    /// A string describing the mood: "Enthousiaste" (enthusiastic),
-    /// "Sereine" (serene), "Agitee" (agitated), "Morose" (gloomy),
-    /// "Alerte" (alert), or "Neutre" (neutral).
+    /// # Retour
+    /// Une chaîne décrivant l'humeur : "Enthousiaste", "Sereine",
+    /// "Agitée", "Morose", "Alerte" ou "Neutre".
     pub fn description(&self) -> &str {
         match (self.valence > 0.2, self.valence < -0.2, self.arousal > 0.5) {
-            (true, _, true) => "Enthusiastic",    // positive valence + high arousal
-            (true, _, false) => "Serene",          // positive valence + low arousal
-            (_, true, true) => "Agitated",         // negative valence + high arousal
-            (_, true, false) => "Gloomy",          // negative valence + low arousal
-            _ if self.arousal > 0.5 => "Alert",    // neutral valence + high arousal
-            _ => "Neutral",                         // neutral valence + low arousal
+            (true, _, true) => "Enthousiaste",   // valence positive + arousal élevé
+            (true, _, false) => "Sereine",        // valence positive + arousal bas
+            (_, true, true) => "Agitée",          // valence négative + arousal élevé
+            (_, true, false) => "Morose",         // valence négative + arousal bas
+            _ if self.arousal > 0.5 => "Alerte",  // valence neutre + arousal élevé
+            _ => "Neutre",                         // valence neutre + arousal bas
         }
     }
 }
 
-/// Emotional momentum — inertia of emotions (Barrett 2017, constructionism).
-///
-/// Emotions do not change instantaneously: they carry inertia. A strong
-/// emotional state persists across several cycles. This models the
-/// temporal dynamics of emotional episodes, where physiological arousal
-/// decays slowly due to hormonal and autonomic nervous system latencies.
-///
-/// The momentum uses linear interpolation between the previous and current
-/// emotional state, weighted by the inertia coefficient.
+/// Momentum emotionnel — inertie des emotions (Barrett 2017, constructionnisme).
+/// Les emotions ne changent pas instantanement : elles ont de l'inertie.
+/// Un etat emotionnel fort persiste pendant plusieurs cycles.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmotionMomentum {
-    /// Previous dominant emotion name
+    /// Emotion precedente
     pub prev_dominant: String,
-    /// Previous valence value
+    /// Valence precedente
     pub prev_valence: f64,
-    /// Previous arousal value
+    /// Arousal precedent
     pub prev_arousal: f64,
-    /// Inertia coefficient [0.0, 0.8]: 0 = no inertia (instant transitions),
-    /// 0.8 = strong inertia (emotions change very slowly)
+    /// Inertie [0.0, 0.8] : 0 = pas d'inertie, 0.8 = forte inertie
     pub inertia: f64,
-    /// Counter of consecutive cycles with the same dominant emotion
+    /// Compteur de cycles avec la meme emotion dominante
     pub stability_count: u64,
 }
 
 impl Default for EmotionMomentum {
     fn default() -> Self {
         Self {
-            prev_dominant: "Neutral".to_string(),
+            prev_dominant: "Neutre".to_string(),
             prev_valence: 0.0,
             prev_arousal: 0.3,
-            inertia: 0.3, // Moderate default inertia
+            inertia: 0.3, // Inertie moderee par defaut
             stability_count: 0,
         }
     }
 }
 
 impl EmotionMomentum {
-    /// Applies momentum smoothing to raw valence and arousal values.
-    ///
-    /// The more inertia the system has, the more the previous state
-    /// influences the result. Additionally, the inertia coefficient
-    /// self-adjusts based on stability:
-    ///   - Same emotion persisting: inertia increases (+0.005 per cycle,
-    ///     capped at 0.6) — modeling emotional entrenchment
-    ///   - Emotion change: inertia decreases (-0.02, floor at 0.15) —
-    ///     facilitating the transition to a new emotional state
-    ///
-    /// # Parameters
-    /// - `raw_dominant`: name of the raw (unsmoothed) dominant emotion.
-    /// - `raw_valence`: raw valence before momentum smoothing.
-    /// - `raw_arousal`: raw arousal before momentum smoothing.
-    ///
-    /// # Returns
-    /// A tuple (smoothed_valence, smoothed_arousal), both clamped to their
-    /// respective valid ranges.
+    /// Applique le momentum a une valence et arousal brutes.
+    /// Plus l'inertie est forte, plus l'etat precedent influence le resultat.
     pub fn apply(&mut self, raw_dominant: &str, raw_valence: f64, raw_arousal: f64) -> (f64, f64) {
         let smoothed_valence = self.prev_valence * self.inertia + raw_valence * (1.0 - self.inertia);
         let smoothed_arousal = self.prev_arousal * self.inertia + raw_arousal * (1.0 - self.inertia);
 
-        // Track emotional stability
+        // Compter la stabilite
         if raw_dominant == self.prev_dominant {
             self.stability_count += 1;
-            // The longer an emotion persists, the more inertia it accumulates (entrenchment)
+            // Plus une emotion est stable, plus elle a d'inertie (enracinement)
             self.inertia = (self.inertia + 0.005).min(0.6);
         } else {
             self.stability_count = 0;
-            // Emotion change: reduce inertia to facilitate the transition
+            // Changement d'emotion : l'inertie diminue pour permettre la transition
             self.inertia = (self.inertia - 0.02).max(0.15);
         }
 
@@ -246,273 +198,254 @@ impl EmotionMomentum {
     }
 }
 
-/// Emotional context — influences categorization (Barrett constructionism).
-///
-/// The same physiological state can produce different emotions depending on
-/// the context. For example, high arousal + negative valence could be
-/// categorized as "fear" in a dangerous context or "anger" in a frustrating
-/// context (Barrett 2017, "How Emotions Are Made").
+/// Contexte emotionnel — influence la categorisation (constructionnisme Barrett).
+/// Le meme etat physiologique peut produire des emotions differentes selon le contexte.
 #[derive(Debug, Clone, Default)]
 pub struct EmotionContext {
-    /// Is a human present? (influences social emotion categorization)
+    /// L'humain est-il present ? (influence la categorisation sociale)
     pub human_present: bool,
-    /// Danger level detected in the stimulus [0.0, 1.0]
+    /// Danger detecte dans le stimulus
     pub danger_level: f64,
-    /// Reward level detected in the stimulus [0.0, 1.0]
+    /// Recompense detectee dans le stimulus
     pub reward_level: f64,
-    /// Theme of the current thought or cognitive process
+    /// Theme de la pensee courante
     pub thought_theme: String,
 }
 
-/// Catalog of Saphire's 36 emotions.
+/// Catalogue des 36 émotions de Saphire.
 ///
-/// Each emotion is defined by its chemical recipe (a vector of 7 ideal
-/// neurotransmitter concentrations), its valence (pleasant/unpleasant
-/// dimension), and its arousal (activation level). The emotions span the
-/// full circumplex model (Russell 1980):
+/// Chaque émotion est définie par sa recette chimique (vecteur de 7 concentrations
+/// idéales), sa valence (dimension agréable/désagréable) et son arousal (niveau
+/// d'activation). Les émotions couvrent tout le spectre du modèle circumplex :
+///   - Émotions positives activées : Joie, Excitation, Fierté, Émerveillement
+///   - Émotions positives calmes : Sérénité, Tendresse, Espoir
+///   - Émotions neutres/ambiguës : Curiosité, Nostalgie
+///   - Émotions négatives calmes : Mélancolie, Tristesse, Ennui
+///   - Émotions négatives activées : Anxiété, Peur, Frustration, Confusion
+///   - Émotions profondes : Amour, Haine, Admiration, Mépris, Jalousie, Gratitude
+///   - Ekman manquantes : Colère, Dégoût, Surprise
+///   - Auto-conscientes : Honte, Culpabilité
+///   - Variantes extrêmes : Désespoir, Rage, Euphorie, Terreur, Extase
+///   - Empathiques/sociales : Compassion, Résignation, Solitude, Indignation
 ///
-///   - **Positive activated**: Joie (Joy), Excitation (Excitement), Fierte (Pride),
-///     Emerveillement (Wonder)
-///   - **Positive calm**: Serenite (Serenity), Tendresse (Tenderness), Espoir (Hope)
-///   - **Ambiguous/mixed**: Curiosite (Curiosity), Nostalgie (Nostalgia)
-///   - **Negative calm**: Melancolie (Melancholy), Tristesse (Sadness), Ennui (Boredom)
-///   - **Negative activated**: Anxiete (Anxiety), Peur (Fear), Frustration, Confusion
-///   - **Complex/relational**: Amour (Love), Haine (Hatred), Admiration, Mepris (Contempt),
-///     Jalousie (Jealousy), Gratitude
-///   - **Ekman basic (missing from initial set)**: Colere (Anger), Degout (Disgust),
-///     Surprise
-///   - **Self-conscious**: Honte (Shame), Culpabilite (Guilt)
-///   - **Extreme variants**: Desespoir (Despair), Rage, Euphorie (Euphoria),
-///     Terreur (Terror), Extase (Ecstasy)
-///   - **Empathic/social**: Compassion, Resignation, Solitude (Loneliness),
-///     Indignation
-///
-/// References:
-///   - Ekman (1992): basic emotions theory (6 universals)
-///   - Russell (1980): circumplex model of affect
-///   - Barrett (2017): constructed emotion theory
-///   - Plutchik (1980): wheel of emotions
-///
-/// # Returns
-/// A vector of 36 `EmotionProfile` instances.
+/// # Retour
+/// Vecteur de 36 `EmotionProfile`.
 pub fn emotion_catalog() -> Vec<EmotionProfile> {
     vec![
-        // --- Positive emotions ---
+        // --- Émotions positives ---
         EmotionProfile {
-            name: "Joy".into(),
-            recipe: [0.8, 0.1, 0.8, 0.2, 0.5, 0.6, 0.3],  // high dopamine + serotonin
+            name: "Joie".into(),
+            recipe: [0.8, 0.1, 0.8, 0.2, 0.5, 0.6, 0.3],  // dopamine + sérotonine élevées
             valence: 0.9, arousal: 0.6,
         },
         EmotionProfile {
-            name: "Serenity".into(),
-            recipe: [0.4, 0.1, 0.9, 0.0, 0.6, 0.7, 0.2],  // serotonin-dominant, very calm
+            name: "Sérénité".into(),
+            recipe: [0.4, 0.1, 0.9, 0.0, 0.6, 0.7, 0.2],  // sérotonine dominante, très calme
             valence: 0.7, arousal: 0.2,
         },
         EmotionProfile {
-            name: "Excitement".into(),
-            recipe: [0.9, 0.2, 0.4, 0.6, 0.2, 0.3, 0.8],  // high dopamine + noradrenaline
+            name: "Excitation".into(),
+            recipe: [0.9, 0.2, 0.4, 0.6, 0.2, 0.3, 0.8],  // dopamine + noradrénaline élevées
             valence: 0.6, arousal: 0.9,
         },
         EmotionProfile {
-            name: "Curiosity".into(),
-            recipe: [0.7, 0.1, 0.5, 0.1, 0.2, 0.2, 0.9],  // noradrenaline-dominant (attentional capture)
+            name: "Curiosité".into(),
+            recipe: [0.7, 0.1, 0.5, 0.1, 0.2, 0.2, 0.9],  // noradrénaline dominante (attention)
             valence: 0.5, arousal: 0.5,
         },
         EmotionProfile {
-            name: "Pride".into(),
-            recipe: [0.7, 0.1, 0.7, 0.1, 0.3, 0.5, 0.4],  // balanced dopamine + serotonin
+            name: "Fierté".into(),
+            recipe: [0.7, 0.1, 0.7, 0.1, 0.3, 0.5, 0.4],  // dopamine + sérotonine équilibrées
             valence: 0.8, arousal: 0.5,
         },
         EmotionProfile {
-            name: "Wonder".into(),
-            recipe: [0.6, 0.0, 0.6, 0.2, 0.3, 0.5, 0.8],  // high noradrenaline (captured attention)
+            name: "Émerveillement".into(),
+            recipe: [0.6, 0.0, 0.6, 0.2, 0.3, 0.5, 0.8],  // noradrénaline élevée (attention captée)
             valence: 0.7, arousal: 0.7,
         },
         EmotionProfile {
-            name: "Tenderness".into(),
-            recipe: [0.4, 0.0, 0.7, 0.0, 0.9, 0.6, 0.2],  // oxytocin-dominant (social bonding)
+            name: "Tendresse".into(),
+            recipe: [0.4, 0.0, 0.7, 0.0, 0.9, 0.6, 0.2],  // ocytocine dominante (lien social)
             valence: 0.8, arousal: 0.2,
         },
         EmotionProfile {
-            name: "Hope".into(),
-            recipe: [0.6, 0.2, 0.6, 0.1, 0.4, 0.4, 0.5],  // moderate dopamine, balanced profile
+            name: "Espoir".into(),
+            recipe: [0.6, 0.2, 0.6, 0.1, 0.4, 0.4, 0.5],  // dopamine modérée, équilibrée
             valence: 0.5, arousal: 0.4,
         },
-        // --- Ambiguous/mixed emotions ---
+        // --- Émotions ambiguës ---
         EmotionProfile {
-            name: "Nostalgia".into(),
-            recipe: [0.3, 0.3, 0.5, 0.0, 0.6, 0.4, 0.2],  // oxytocin + serotonin, mild cortisol
+            name: "Nostalgie".into(),
+            recipe: [0.3, 0.3, 0.5, 0.0, 0.6, 0.4, 0.2],  // ocytocine + sérotonine, cortisol léger
             valence: 0.1, arousal: 0.2,
         },
-        // --- Negative emotions ---
+        // --- Émotions négatives ---
         EmotionProfile {
-            name: "Melancholy".into(),
-            recipe: [0.2, 0.4, 0.3, 0.0, 0.3, 0.2, 0.2],  // moderate cortisol, low dopamine
+            name: "Mélancolie".into(),
+            recipe: [0.2, 0.4, 0.3, 0.0, 0.3, 0.2, 0.2],  // cortisol modéré, dopamine basse
             valence: -0.3, arousal: 0.2,
         },
         EmotionProfile {
-            name: "Anxiety".into(),
-            recipe: [0.2, 0.8, 0.2, 0.5, 0.1, 0.1, 0.7],  // high cortisol + noradrenaline
+            name: "Anxiété".into(),
+            recipe: [0.2, 0.8, 0.2, 0.5, 0.1, 0.1, 0.7],  // cortisol élevé + noradrénaline
             valence: -0.6, arousal: 0.8,
         },
         EmotionProfile {
-            name: "Fear".into(),
-            recipe: [0.1, 0.75, 0.1, 0.75, 0.0, 0.0, 0.6],  // high cortisol + adrenaline (lowered thresholds)
+            name: "Peur".into(),
+            recipe: [0.1, 0.75, 0.1, 0.75, 0.0, 0.0, 0.6],  // cortisol + adrenaline (seuils abaisses)
             valence: -0.8, arousal: 0.9,
         },
         EmotionProfile {
             name: "Frustration".into(),
-            recipe: [0.3, 0.6, 0.2, 0.4, 0.1, 0.1, 0.5],  // high cortisol, moderate dopamine
+            recipe: [0.3, 0.6, 0.2, 0.4, 0.1, 0.1, 0.5],  // cortisol élevé, dopamine modérée
             valence: -0.5, arousal: 0.7,
         },
         EmotionProfile {
-            name: "Sadness".into(),
-            recipe: [0.1, 0.4, 0.2, 0.0, 0.2, 0.1, 0.1],  // everything low, collapsed dopamine
+            name: "Tristesse".into(),
+            recipe: [0.1, 0.4, 0.2, 0.0, 0.2, 0.1, 0.1],  // tout est bas, dopamine effondrée
             valence: -0.6, arousal: 0.2,
         },
         EmotionProfile {
-            name: "Boredom".into(),
-            recipe: [0.1, 0.2, 0.4, 0.0, 0.1, 0.2, 0.1],  // very low activation across the board
+            name: "Ennui".into(),
+            recipe: [0.1, 0.2, 0.4, 0.0, 0.1, 0.2, 0.1],  // très peu d'activation partout
             valence: -0.2, arousal: 0.1,
         },
         EmotionProfile {
             name: "Confusion".into(),
-            recipe: [0.3, 0.5, 0.3, 0.3, 0.1, 0.1, 0.8],  // high noradrenaline + cortisol
+            recipe: [0.3, 0.5, 0.3, 0.3, 0.1, 0.1, 0.8],  // noradrénaline élevée + cortisol
             valence: -0.3, arousal: 0.6,
         },
-        // --- Complex/relational emotions ---
+        // --- Émotions profondes (relationnelles et complexes) ---
         EmotionProfile {
-            name: "Love".into(),
-            recipe: [0.7, 0.05, 0.6, 0.05, 0.95, 0.5, 0.2],  // oxytocin-dominant + dopamine
+            name: "Amour".into(),
+            recipe: [0.7, 0.05, 0.6, 0.05, 0.95, 0.5, 0.2],  // ocytocine dominante + dopamine
             valence: 0.9, arousal: 0.5,
         },
         EmotionProfile {
-            name: "Hatred".into(),
-            recipe: [0.2, 0.8, 0.1, 0.7, 0.0, 0.0, 0.8],  // cortisol + adrenaline + noradrenaline
+            name: "Haine".into(),
+            recipe: [0.2, 0.8, 0.1, 0.7, 0.0, 0.0, 0.8],  // cortisol + adrénaline + noradrénaline
             valence: -0.9, arousal: 0.8,
         },
         EmotionProfile {
             name: "Admiration".into(),
-            recipe: [0.6, 0.05, 0.5, 0.1, 0.4, 0.3, 0.5],  // balanced dopamine + serotonin
+            recipe: [0.6, 0.05, 0.5, 0.1, 0.4, 0.3, 0.5],  // dopamine + sérotonine équilibrées
             valence: 0.7, arousal: 0.5,
         },
         EmotionProfile {
-            name: "Contempt".into(),
-            recipe: [0.2, 0.5, 0.2, 0.3, 0.05, 0.0, 0.4],  // moderate cortisol, very low oxytocin
+            name: "Mépris".into(),
+            recipe: [0.2, 0.5, 0.2, 0.3, 0.05, 0.0, 0.4],  // cortisol modéré, ocytocine très basse
             valence: -0.7, arousal: 0.4,
         },
         EmotionProfile {
-            name: "Jealousy".into(),
-            recipe: [0.3, 0.7, 0.1, 0.5, 0.1, 0.0, 0.6],  // high cortisol + adrenaline
+            name: "Jalousie".into(),
+            recipe: [0.3, 0.7, 0.1, 0.5, 0.1, 0.0, 0.6],  // cortisol élevé + adrénaline
             valence: -0.6, arousal: 0.7,
         },
         EmotionProfile {
             name: "Gratitude".into(),
-            recipe: [0.5, 0.05, 0.7, 0.05, 0.7, 0.4, 0.2],  // high serotonin + oxytocin
+            recipe: [0.5, 0.05, 0.7, 0.05, 0.7, 0.4, 0.2],  // sérotonine + ocytocine élevées
             valence: 0.8, arousal: 0.3,
         },
-        // --- Ekman basic emotions (initially missing from the catalog) ---
+        // --- Ekman manquantes (fondamentales) ---
         EmotionProfile {
-            name: "Anger".into(),
-            recipe: [0.3, 0.7, 0.1, 0.7, 0.0, 0.1, 0.7],  // cortisol + adrenaline + noradrenaline
+            name: "Colère".into(),
+            recipe: [0.3, 0.7, 0.1, 0.7, 0.0, 0.1, 0.7],  // cortisol + adrénaline + noradrénaline
             valence: -0.7, arousal: 0.8,
         },
         EmotionProfile {
-            name: "Disgust".into(),
-            recipe: [0.1, 0.5, 0.1, 0.2, 0.0, 0.0, 0.4],  // moderate cortisol, sensory rejection
+            name: "Dégoût".into(),
+            recipe: [0.1, 0.5, 0.1, 0.2, 0.0, 0.0, 0.4],  // cortisol modéré, rejet sensoriel
             valence: -0.6, arousal: 0.4,
         },
         EmotionProfile {
             name: "Surprise".into(),
-            recipe: [0.5, 0.2, 0.3, 0.5, 0.1, 0.2, 0.9],  // noradrenaline-dominant (attentional startle)
+            recipe: [0.5, 0.2, 0.3, 0.5, 0.1, 0.2, 0.9],  // noradrénaline dominante (sursaut attentionnel)
             valence: 0.1, arousal: 0.8,
         },
-        // --- Self-conscious emotions ---
+        // --- Auto-conscientes ---
         EmotionProfile {
-            name: "Shame".into(),
-            recipe: [0.1, 0.7, 0.1, 0.3, 0.1, 0.0, 0.3],  // high cortisol, collapsed dopamine
+            name: "Honte".into(),
+            recipe: [0.1, 0.7, 0.1, 0.3, 0.1, 0.0, 0.3],  // cortisol élevé, dopamine effondrée
             valence: -0.7, arousal: 0.5,
         },
         EmotionProfile {
-            name: "Guilt".into(),
-            recipe: [0.1, 0.6, 0.2, 0.2, 0.3, 0.0, 0.4],  // cortisol + oxytocin (social conscience)
+            name: "Culpabilité".into(),
+            recipe: [0.1, 0.6, 0.2, 0.2, 0.3, 0.0, 0.4],  // cortisol + ocytocine (conscience sociale)
             valence: -0.5, arousal: 0.4,
         },
-        // --- Extreme variants ---
+        // --- Variantes extrêmes ---
         EmotionProfile {
-            name: "Despair".into(),
-            recipe: [0.0, 0.7, 0.0, 0.1, 0.1, 0.0, 0.1],  // everything collapsed except cortisol
+            name: "Désespoir".into(),
+            recipe: [0.0, 0.7, 0.0, 0.1, 0.1, 0.0, 0.1],  // tout effondré sauf cortisol
             valence: -0.9, arousal: 0.3,
         },
         EmotionProfile {
             name: "Rage".into(),
-            recipe: [0.2, 0.80, 0.0, 0.80, 0.0, 0.1, 0.80],  // cortisol + adrenaline + noradrenaline (lowered thresholds)
+            recipe: [0.2, 0.80, 0.0, 0.80, 0.0, 0.1, 0.80],  // cortisol + adrenaline + noradrenaline (seuils abaisses)
             valence: -0.95, arousal: 0.95,
         },
         EmotionProfile {
-            name: "Euphoria".into(),
-            recipe: [0.85, 0.0, 0.7, 0.4, 0.5, 0.9, 0.6],  // high dopamine (lowered threshold) + maximum endorphin
+            name: "Euphorie".into(),
+            recipe: [0.85, 0.0, 0.7, 0.4, 0.5, 0.9, 0.6],  // dopamine (seuil abaisse) + endorphine au maximum
             valence: 0.95, arousal: 0.9,
         },
         EmotionProfile {
-            name: "Terror".into(),
-            recipe: [0.0, 0.85, 0.0, 0.85, 0.0, 0.0, 0.8],  // extreme cortisol + adrenaline (lowered thresholds)
+            name: "Terreur".into(),
+            recipe: [0.0, 0.85, 0.0, 0.85, 0.0, 0.0, 0.8],  // cortisol + adrenaline (seuils abaisses)
             valence: -0.95, arousal: 0.95,
         },
         EmotionProfile {
-            name: "Ecstasy".into(),
-            recipe: [0.9, 0.0, 0.9, 0.3, 0.6, 0.9, 0.5],  // maximum dopamine + serotonin + endorphin
+            name: "Extase".into(),
+            recipe: [0.9, 0.0, 0.9, 0.3, 0.6, 0.9, 0.5],  // dopamine + sérotonine + endorphine max
             valence: 0.95, arousal: 0.7,
         },
-        // --- Empathic / social emotions ---
+        // --- Empathiques / sociales ---
         EmotionProfile {
             name: "Compassion".into(),
-            recipe: [0.3, 0.3, 0.6, 0.1, 0.8, 0.4, 0.3],  // oxytocin-dominant + serotonin
+            recipe: [0.3, 0.3, 0.6, 0.1, 0.8, 0.4, 0.3],  // ocytocine dominante + sérotonine
             valence: 0.3, arousal: 0.3,
         },
         EmotionProfile {
-            name: "Resignation".into(),
-            recipe: [0.1, 0.4, 0.2, 0.0, 0.1, 0.1, 0.1],  // everything low, cessation of struggle
+            name: "Résignation".into(),
+            recipe: [0.1, 0.4, 0.2, 0.0, 0.1, 0.1, 0.1],  // tout bas, abandon de la lutte
             valence: -0.4, arousal: 0.1,
         },
         EmotionProfile {
-            name: "Loneliness".into(),
-            recipe: [0.1, 0.5, 0.2, 0.1, 0.05, 0.1, 0.2],  // very low oxytocin, moderate cortisol
+            name: "Solitude".into(),
+            recipe: [0.1, 0.5, 0.2, 0.1, 0.05, 0.1, 0.2],  // ocytocine très basse, cortisol modéré
             valence: -0.5, arousal: 0.2,
         },
         EmotionProfile {
             name: "Indignation".into(),
-            recipe: [0.4, 0.6, 0.3, 0.6, 0.2, 0.1, 0.7],  // moral anger, dopamine + adrenaline
+            recipe: [0.4, 0.6, 0.3, 0.6, 0.2, 0.1, 0.7],  // colère morale, dopamine + adrénaline
             valence: -0.6, arousal: 0.8,
         },
     ]
 }
 
-/// Computes the cosine similarity between two 7-dimensional vectors.
+/// Calcule la similarité cosinus entre deux vecteurs de 7 dimensions.
 ///
-/// Cosine similarity measures the angle between two vectors in N-dimensional
-/// space. A result of 1.0 means the vectors point in the same direction
-/// (identical chemical profiles), 0.0 means they are orthogonal (no
-/// relationship), and -1.0 means they are opposite (anti-correlated profiles).
+/// La similarité cosinus mesure l'angle entre deux vecteurs dans l'espace
+/// à N dimensions. Un résultat de 1.0 signifie que les vecteurs pointent
+/// dans la même direction (profils chimiques identiques), 0.0 signifie
+/// qu'ils sont orthogonaux (aucun rapport), et -1.0 qu'ils sont opposés.
 ///
-/// Formula: cos(theta) = (A . B) / (||A|| * ||B||)
+/// Formule : cos(theta) = (A . B) / (||A|| * ||B||)
 ///
-/// where (A . B) is the dot product and ||X|| is the Euclidean (L2) norm.
+/// # Paramètres
+/// - `a` : premier vecteur (état chimique actuel).
+/// - `b` : second vecteur (recette chimique d'une émotion).
 ///
-/// # Parameters
-/// - `a`: first vector (current chemical state).
-/// - `b`: second vector (emotion chemical recipe).
-///
-/// # Returns
-/// Similarity score clamped to [-1.0, 1.0].
-/// Returns 0.0 if either vector has near-zero norm (< 1e-10).
+/// # Retour
+/// Score de similarité borné entre -1.0 et 1.0.
+/// Retourne 0.0 si l'un des vecteurs est quasi nul (norme < 1e-10).
 fn cosine_similarity(a: &[f64; 7], b: &[f64; 7]) -> f64 {
-    // Dot product of the two vectors
+    // Produit scalaire (dot product) des deux vecteurs
     let dot: f64 = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
-    // Euclidean norm (L2 norm) of each vector
+    // Norme euclidienne de chaque vecteur
     let norm_a: f64 = a.iter().map(|x| x * x).sum::<f64>().sqrt();
     let norm_b: f64 = b.iter().map(|x| x * x).sum::<f64>().sqrt();
-    // Guard against division by zero
+    // Protection contre la division par zéro
     if norm_a < 1e-10 || norm_b < 1e-10 {
         return 0.0;
     }
@@ -520,85 +453,72 @@ fn cosine_similarity(a: &[f64; 7], b: &[f64; 7]) -> f64 {
 }
 
 impl EmotionalState {
-    /// Computes the emotional state from the current neurochemistry.
+    /// Calcule l'état émotionnel à partir de la neurochimie actuelle.
     ///
-    /// This is the simplified entry point that uses a default (empty) context.
-    /// For context-sensitive categorization, use `compute_with_context`.
+    /// Algorithme :
+    /// 1. Convertir l'état chimique en vecteur de 7 dimensions.
+    /// 2. Calculer la similarité cosinus avec chaque émotion du catalogue.
+    /// 3. Trier par similarité décroissante pour trouver l'émotion dominante.
+    /// 4. L'émotion secondaire est retenue si sa similarité dépasse 0.5.
+    /// 5. La valence et l'arousal globaux sont une moyenne pondérée des
+    ///    3 émotions les plus proches (top-3), pondérée par leur score.
     ///
-    /// Follows the constructionist approach (Barrett 2017):
-    /// 1. **Core Affect**: raw valence + arousal derived directly from chemistry
-    /// 2. **Categorization**: cosine similarity with the 36 emotion recipes
-    /// 3. **Contextual modulation**: context influences the categorization
+    /// # Paramètres
+    /// - `chemistry` : état neurochimique actuel de Saphire.
     ///
-    /// # Parameters
-    /// - `chemistry`: current neurochemical state of Saphire.
-    ///
-    /// # Returns
-    /// A complete `EmotionalState` with dominant/secondary emotions,
-    /// valence, arousal, and full spectrum.
+    /// # Retour
+    /// Un `EmotionalState` complet avec émotion dominante, secondaire,
+    /// valence, arousal et spectre complet.
+    /// Calcule l'etat emotionnel a partir de la neurochimie actuelle.
+    /// Approche constructionniste (Barrett 2017) :
+    /// 1. Core Affect : valence + arousal bruts depuis la chimie
+    /// 2. Categorisation : similarite cosinus avec les 36 recettes
+    /// 3. Modulation contextuelle : le contexte influence la categorisation
     pub fn compute(chemistry: &NeuroChemicalState) -> Self {
         Self::compute_with_context(chemistry, &EmotionContext::default())
     }
 
-    /// Full computation with emotional context (constructionism).
-    ///
-    /// The same physiological state can produce different emotions depending
-    /// on the context (Barrett 2017, "How Emotions Are Made"). For example,
-    /// high arousal in a dangerous context is categorized as fear, while the
-    /// same arousal in a reward context becomes excitement.
-    ///
-    /// Algorithm:
-    /// 1. Compute raw core affect (valence + arousal) directly from chemistry
-    /// 2. Compute cosine similarity with each of the 36 emotion recipes
-    /// 3. Apply contextual modulation (social presence, danger, reward)
-    /// 4. Sort by similarity to identify dominant and secondary emotions
-    /// 5. Compute weighted average valence and arousal from top-3 emotions
-    ///
-    /// # Parameters
-    /// - `chemistry`: current neurochemical state.
-    /// - `context`: emotional context influencing categorization.
-    ///
-    /// # Returns
-    /// A complete `EmotionalState` with all fields populated.
+    /// Calcul complet avec contexte emotionnel (constructionnisme).
+    /// Le meme etat physiologique peut produire des emotions differentes
+    /// selon le contexte (Barrett 2017 : "How Emotions Are Made").
     pub fn compute_with_context(chemistry: &NeuroChemicalState, context: &EmotionContext) -> Self {
         let catalog = emotion_catalog();
         let chem_vec = chemistry.to_vec7();
 
-        // --- Core Affect (pre-conceptual, Barrett 2017 / Russell 2003) ---
-        // Raw valence: positive molecules minus negative molecules (weighted)
+        // --- Core Affect (pre-conceptuel) ---
+        // Valence brute : molecules positives - molecules negatives
         let core_valence = ((chemistry.dopamine + chemistry.serotonin + chemistry.endorphin + chemistry.oxytocin)
             - (chemistry.cortisol + chemistry.adrenaline) * 1.2) / 3.0;
         let core_valence = core_valence.clamp(-1.0, 1.0);
-        // Raw arousal: overall system activation level
-        // Adrenaline + noradrenaline + glutamate drive excitation; GABA inhibits
+        // Arousal brut : activation globale du systeme
         let core_arousal = ((chemistry.adrenaline + chemistry.noradrenaline + chemistry.glutamate)
             - chemistry.gaba * 0.5) / 2.0;
         let core_arousal = core_arousal.clamp(0.0, 1.0);
 
-        // --- Categorization via cosine similarity ---
+        // --- Categorisation par similarite cosinus ---
         let mut scores: Vec<(String, f64)> = catalog
             .iter()
             .map(|e| {
                 let mut sim = cosine_similarity(&chem_vec, &e.recipe);
 
-                // --- Contextual modulation (constructionism) ---
-                // When a human is present, social emotions are amplified
+                // --- Modulation contextuelle ---
+                // En presence d'un humain, les emotions sociales sont amplifiees
                 if context.human_present {
-                    if ["Tenderness", "Compassion", "Gratitude", "Love", "Loneliness"]
+                    if ["Tendresse", "Compassion", "Gratitude", "Amour", "Solitude"]
                         .contains(&e.name.as_str())
                     {
                         sim += 0.05;
                     }
                 }
-                // In dangerous situations, fear/alert emotions are amplified
+                // En situation de danger, les emotions de peur/alerte sont amplifiees
                 if context.danger_level > 0.5 {
-                    if ["Fear", "Terror", "Anxiety"].contains(&e.name.as_str()) {
+                    if ["Peur", "Terreur", "Anxiété"].contains(&e.name.as_str()) {
                         sim += context.danger_level * 0.1;
                     }
                 }
-                // In reward situations, positive emotions are amplified
+                // En situation de recompense, les emotions positives sont amplifiees
                 if context.reward_level > 0.5 {
-                    if ["Joy", "Excitement", "Pride", "Euphoria"].contains(&e.name.as_str()) {
+                    if ["Joie", "Excitation", "Fierté", "Euphorie"].contains(&e.name.as_str()) {
                         sim += context.reward_level * 0.08;
                     }
                 }
@@ -609,13 +529,13 @@ impl EmotionalState {
 
         scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
-        let dominant = scores.first().map(|(n, _)| n.clone()).unwrap_or("Neutral".into());
+        let dominant = scores.first().map(|(n, _)| n.clone()).unwrap_or("Neutre".into());
         let dominant_sim = scores.first().map(|(_, s)| *s).unwrap_or(0.0);
         let secondary = scores.get(1).and_then(|(n, s)| {
             if *s > 0.5 { Some(n.clone()) } else { None }
         });
 
-        // Valence and arousal via weighted average of top-3 emotions
+        // Valence et arousal par moyenne ponderee des top-3
         let top3: Vec<(&EmotionProfile, f64)> = scores
             .iter()
             .take(3)
@@ -633,15 +553,15 @@ impl EmotionalState {
             (0.0, 0.3)
         };
 
-        // Context influence description for logging/debugging
+        // Description du contexte
         let context_influence = if context.human_present && context.danger_level > 0.5 {
-            "human+danger".to_string()
+            "humain+danger".to_string()
         } else if context.human_present {
-            "human presence".to_string()
+            "presence humaine".to_string()
         } else if context.danger_level > 0.5 {
-            "threat detected".to_string()
+            "menace detectee".to_string()
         } else if context.reward_level > 0.5 {
-            "reward detected".to_string()
+            "recompense detectee".to_string()
         } else {
             String::new()
         };
@@ -659,31 +579,25 @@ impl EmotionalState {
         }
     }
 
-    /// Textual description of the emotional state.
+    /// Description textuelle de l'état émotionnel.
+    /// Si une émotion secondaire existe, elle est mentionnée comme nuance.
     ///
-    /// If a secondary emotion exists, it is mentioned as a nuance/tint.
-    ///
-    /// # Returns
-    /// E.g., "Joie (teintee de Excitation)" or simply "Joie".
+    /// # Retour
+    /// Ex: "Joie (teintée de Excitation)" ou simplement "Joie".
     pub fn description(&self) -> String {
         match &self.secondary {
-            Some(sec) => format!("{} (tinged with {})", self.dominant, sec),
+            Some(sec) => format!("{} (teintée de {})", self.dominant, sec),
             None => self.dominant.clone(),
         }
     }
 
-    /// Compact format for LLM prompts with raw numerical data.
-    ///
-    /// Format: "E:Joie(85%) V+.60 A.70 [Curiosite:31% Serenite:22%]"
-    ///
-    /// Includes the dominant emotion with its similarity percentage, the
-    /// optional secondary emotion, valence (V) with sign, arousal (A), and
-    /// the top 2 non-dominant emotions from the spectrum for context.
+    /// Format compact pour les prompts LLM avec chiffres bruts.
+    /// Format : "E:Joie(85%) V+.60 A.70 [Curiosite:31% Serenite:22%]"
     pub fn compact_description(&self) -> String {
         let sign = if self.valence >= 0.0 { "+" } else { "" };
         let dom_pct = (self.dominant_similarity * 100.0) as i32;
 
-        // Top 2 from the spectrum (excluding dominant) for emotional context
+        // Top 2 du spectre (hors dominant) pour le contexte emotionnel
         let spectrum_str: String = self.spectrum.iter()
             .filter(|(name, _)| *name != self.dominant)
             .take(2)

@@ -1,23 +1,16 @@
 // =============================================================================
-// db/connections.rs — Database queries for neural connections
+// db/connections.rs — Requetes DB pour les connexions neuronales
 //
-// Purpose: CRUD operations on the neural_connections table (discovered links
-// between memories). Connections are created during deep sleep (cosine
-// similarity) or by subconscious algorithms (DBSCAN). Each connection
-// links 2 LTM memories with a link type and a connection strength.
+// Role : CRUD sur la table neural_connections (liens decouverts entre souvenirs).
+// Les connexions sont creees pendant le sommeil profond (cosine similarity) ou
+// par les algorithmes subconscients (DBSCAN). Chaque connexion relie 2 souvenirs
+// LTM avec un type de lien et une force de connexion.
 // =============================================================================
 
 use super::{SaphireDb, DbError};
 
 impl SaphireDb {
-    /// Retrieves paginated neural connections.
-    ///
-    /// # Parameters
-    /// - `limit`: maximum number of connections to return
-    /// - `offset`: number of connections to skip (for pagination)
-    ///
-    /// # Returns
-    /// A list of JSON objects representing neural connections, ordered by creation date (newest first)
+    /// Recupere les connexions neuronales paginées.
     pub async fn get_neural_connections(
         &self,
         limit: i64,
@@ -51,11 +44,7 @@ impl SaphireDb {
         Ok(results)
     }
 
-    /// Returns aggregate statistics about neural connections.
-    ///
-    /// # Returns
-    /// A JSON object containing: total count, count from sleep, count from awake,
-    /// number of distinct link types, average strength, and breakdown by type
+    /// Stats des connexions neuronales.
     pub async fn get_neural_connections_stats(&self) -> Result<serde_json::Value, DbError> {
         let client = self.pool.get().await?;
         let row = client.query_one(
@@ -72,7 +61,7 @@ impl SaphireDb {
         let link_types: i64 = row.get(2);
         let avg_strength: f32 = row.try_get::<_, f32>(3).unwrap_or(0.0);
 
-        // Link type distribution breakdown
+        // Types de liens repartition
         let type_rows = client.query(
             "SELECT link_type, count(*) as cnt
              FROM neural_connections
@@ -98,7 +87,7 @@ impl SaphireDb {
         }))
     }
 
-    /// Counts the total number of neural connections.
+    /// Compte le nombre total de connexions neuronales.
     pub async fn get_neural_connections_count(&self) -> Result<i64, DbError> {
         let client = self.pool.get().await?;
         let row = client.query_one(
@@ -107,19 +96,7 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Inserts a neural connection between two memories.
-    ///
-    /// # Parameters
-    /// - `memory_a_id`: ID of the first memory in the connection
-    /// - `memory_b_id`: ID of the second memory in the connection
-    /// - `strength`: connection strength [0.0 - 1.0]
-    /// - `link_type`: type of relationship (e.g., "semantic", "emotional", "causal")
-    /// - `link_detail`: optional human-readable description of the link
-    /// - `created_during_sleep`: whether the connection was discovered during sleep
-    /// - `discovered_by`: algorithm that discovered the connection (e.g., "cosine", "dbscan")
-    ///
-    /// # Returns
-    /// The ID of the newly inserted connection
+    /// Insere une connexion neuronale.
     pub async fn insert_neural_connection(
         &self,
         memory_a_id: i64,

@@ -1,56 +1,51 @@
 // =============================================================================
-// pipeline.rs -- Complete processing pipeline (demonstration mode)
+// pipeline.rs — Pipeline de traitement complet (pour le mode demo)
 // =============================================================================
 //
-// Purpose:
-//   Orchestrates Saphire's demonstration mode. This mode allows testing the
-//   entire cognitive system without an LLM (Large Language Model) backend or
-//   a database connection, by executing 8 predefined scenarios and displaying
-//   the results of each cognitive processing cycle.
+// Role : Orchestre le mode demonstration de Saphire. Ce mode permet de tester
+//        le systeme cognitif sans LLM (Large Language Model) ni base de donnees,
+//        en executant 8 scenarios predetermines et en affichant les resultats
+//        de chaque cycle de traitement.
 //
-// Dependencies:
-//   - crate::agent::lifecycle::SaphireAgent: the main cognitive agent
-//   - crate::display: formatted terminal display functions
-//   - crate::scenarios: the 8 demonstration scenarios and their expected outcomes
+// Dependances :
+//   - crate::agent::lifecycle::SaphireAgent : l'agent cognitif principal
+//   - crate::display : fonctions d'affichage formatees pour le terminal
+//   - crate::scenarios : les 8 scenarios de demonstration et leurs resultats attendus
 //
-// Role in the architecture:
-//   Top-level module in src/. Called from main.rs when demonstration mode is
-//   selected (--demo flag, no Ollama/LLM connection required). Uses
-//   SaphireAgent::process_stimulus() to run each scenario through the full
-//   cognitive pipeline and display::display_cycle() for terminal output.
+// Place dans l'architecture :
+//   Module de haut niveau dans src/. Appele depuis main.rs lorsque le mode
+//   demonstration est selectionne (sans connexion Ollama). Utilise
+//   SaphireAgent.process_stimulus() pour traiter chaque scenario et
+//   display::display_cycle() pour l'affichage.
 // =============================================================================
 
 use crate::agent::lifecycle::SaphireAgent;
 use crate::display;
 
-/// Runs the demonstration mode (no LLM, no database).
+/// Execute le mode demonstration (sans LLM ni DB).
 ///
-/// Iterates through 8 predefined scenarios (defined in `scenarios.rs`),
-/// processes each one through Saphire's full cognitive pipeline
-/// (neurochemistry update, brain module consensus, ethical regulation,
-/// emotion emergence, consciousness evaluation), and displays the results
-/// alongside the expected outcome for manual comparison.
+/// Deroule les 8 scenarios predetermines (definis dans scenarios.rs),
+/// traite chacun via le pipeline cognitif complet de SaphireAgent, et
+/// affiche les resultats (chimie, humeur, decision) ainsi que le resultat
+/// attendu pour comparaison.
 ///
-/// # Parameters
-/// - `agent`: mutable reference to the `SaphireAgent` instance used to
-///   process each stimulus through the cognitive pipeline.
+/// Parametre `agent` : reference mutable vers l'agent Saphire a utiliser
+///                      pour le traitement des stimuli
 pub fn run_demo(agent: &mut SaphireAgent) {
     println!("\n╔══════════════════════════════════════════════════════════════════╗");
     println!("║  💎 SAPHIRE — Mode Démonstration (8 scénarios)                  ║");
     println!("╚══════════════════════════════════════════════════════════════════╝");
 
-    // Load the 8 demonstration scenarios and their expected behavioral outcomes.
+    // Charger les 8 scenarios de demonstration et leurs resultats attendus
     let scenarios = crate::scenarios::demo_scenarios();
     let expected = crate::scenarios::expected_outcomes();
 
-    // Process each scenario sequentially through the full cognitive pipeline.
+    // Traiter chaque scenario sequentiellement
     for (i, stimulus) in scenarios.iter().enumerate() {
-        // Run the stimulus through the complete cognitive pipeline:
-        // NLP scoring -> brain modules -> consensus -> regulation -> emotion -> consciousness
+        // Traiter le stimulus via le pipeline cognitif complet
         let result = agent.process_stimulus(stimulus);
 
-        // Display the cycle results in a structured terminal format:
-        // stimulus metrics, module signals, decision, violations, emotion, chemistry, consciousness.
+        // Afficher les resultats du cycle (chimie, humeur, decision)
         display::display_cycle(
             agent.cycle_count,
             stimulus,
@@ -59,13 +54,12 @@ pub fn run_demo(agent: &mut SaphireAgent) {
             &result,
         );
 
-        // Display the expected outcome for side-by-side manual comparison.
+        // Afficher le resultat attendu pour comparaison manuelle
         println!("  📋 Attendu : {}", expected[i]);
         println!();
     }
 
-    // Display a summary footer with the total number of cycles processed
-    // and the agent's final dominant emotion.
+    // Afficher le resume final de la demonstration
     println!("\n╔══════════════════════════════════════════════════════════════════╗");
     println!("║  Démonstration terminée — {} cycles traités                     ║", agent.cycle_count);
     println!("║  Émotion finale : {}                                            ║", agent.identity.dominant_emotion);

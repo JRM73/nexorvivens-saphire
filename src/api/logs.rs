@@ -1,14 +1,8 @@
 // =============================================================================
-// api/logs.rs — Log, cognitive trace, and LLM history handlers
+// api/logs.rs — Handlers de logs, traces et historique LLM
 //
-// This module provides HTTP endpoints for:
-// - Logs: listing with filtering, detail by ID, bulk export.
-// - Cognitive traces: per-cycle retrieval (with optional session filtering),
-//   and paginated listing with source type filtering.
-// - LLM history: paginated listing of LLM requests and detail by ID.
-//
-// All endpoints require the LogsDb to be available; they return a JSON error
-// if it is not configured.
+// Role : Endpoints pour les logs (liste, detail, export), les traces
+// cognitives (par cycle, par session) et l'historique des requetes LLM.
 // =============================================================================
 
 use std::collections::HashMap;
@@ -17,16 +11,7 @@ use axum::response::IntoResponse;
 
 use super::state::AppState;
 
-/// GET /api/logs -- Lists logs with optional filtering.
-///
-/// # Query parameters
-/// * `level` (optional): filter by log level (e.g. "info", "warn", "error").
-/// * `category` (optional): filter by log category.
-/// * `limit` (optional, default 100): maximum number of log entries to return.
-/// * `offset` (optional, default 0): pagination offset.
-///
-/// # Returns
-/// JSON `{"logs": [...]}` on success, or `{"error": ...}` on failure.
+/// GET /api/logs — Liste les logs avec filtrage optionnel.
 pub async fn api_get_logs(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -45,13 +30,7 @@ pub async fn api_get_logs(
     }
 }
 
-/// GET /api/logs/:id -- Retrieves a single log entry by its ID.
-///
-/// # Path parameters
-/// * `id` - The unique identifier of the log entry.
-///
-/// # Returns
-/// The log entry as JSON, `{"error": "not found"}` if absent, or an internal error.
+/// GET /api/logs/:id — Recupere un log par ID.
 pub async fn api_get_log_by_id(
     State(state): State<AppState>,
     axum::extract::Path(id): axum::extract::Path<i64>,
@@ -67,9 +46,7 @@ pub async fn api_get_log_by_id(
     }
 }
 
-/// GET /api/logs/export -- Exports up to 10,000 log entries as a JSON array.
-///
-/// This is a bulk export endpoint intended for backup or offline analysis.
+/// GET /api/logs/export — Exporte les logs en JSON.
 pub async fn api_export_logs(State(state): State<AppState>) -> impl IntoResponse {
     if let Some(ref logs_db) = state.logs_db {
         match logs_db.export_logs(10000).await {
@@ -81,18 +58,20 @@ pub async fn api_export_logs(State(state): State<AppState>) -> impl IntoResponse
     }
 }
 
-/// GET /api/trace/:cycle -- Retrieves the cognitive trace for a specific cycle.
+/// GET /api/trace/:cycle — Recupere la trace cognitive d'un cycle specifique.
 ///
-/// # Path parameters
-/// * `cycle` - The cognitive cycle number to retrieve.
+/// Parametres :
+///   - :cycle (path) : numero du cycle cognitif a recuperer
+///   - ?session_id=N (query, optionnel) : filtre par session
 ///
-/// # Query parameters
-/// * `session_id` (optional): when provided, targets the exact trace for this
-///   cycle within the given session (avoids cycle number collisions across sessions).
-///   When absent, returns the most recent trace for this cycle across all sessions.
+/// Comportement :
+///   - Si session_id est fourni : utilise get_trace_by_cycle_and_session()
+///     pour cibler exactement la bonne trace (evite les collisions de cycles
+///     entre sessions differentes)
+///   - Si session_id est absent : utilise get_trace_by_cycle() qui retourne
+///     la trace la plus recente pour ce cycle (toutes sessions confondues)
 ///
-/// # Returns
-/// JSON of the complete trace (19 JSONB fields) on success, or `{"error": ...}`.
+/// Retourne : JSON de la trace complete (19 champs JSONB) ou {"error": ...}
 pub async fn api_get_trace(
     State(state): State<AppState>,
     axum::extract::Path(cycle): axum::extract::Path<i64>,
@@ -114,22 +93,21 @@ pub async fn api_get_trace(
     }
 }
 
-/// GET /api/traces -- Lists cognitive traces with optional filters.
+/// GET /api/traces — Liste les traces cognitives avec filtres optionnels.
 ///
-/// # Query parameters (all optional)
-/// * `session_id` (recommended): filter traces by session ID.
-/// * `source_type`: filter by trace source type:
-///   - `"Human"`: traces originating from a user message (contains NLP of the message).
-///   - `"Autonomous"`: traces from autonomous thought (contains NLP of the thought).
-/// * `limit` (default 50): maximum number of traces to return.
+/// Parametres (query string, tous optionnels) :
+///   - session_id=N : filtrer par session (recommande)
+///   - source_type=Human|Autonomous : filtrer par type de source
+///     * "Human" : traces issues d'un message utilisateur (contient NLP du message)
+///     * "Autonomous" : traces issues de la pensee autonome (contient NLP de la pensee)
+///   - limit=50 : nombre max de traces retournees (defaut 50)
 ///
-/// # Behavior
-/// - If `session_id` is provided: uses `traces_by_session()` with `source_type` filter.
-/// - If `session_id` is absent: uses `recent_traces()` (no source_type filter).
+/// Comportement :
+///   - Si session_id est fourni : utilise traces_by_session() avec filtre source_type
+///   - Si session_id est absent : utilise recent_traces() (sans filtre source_type)
 ///
-/// # Returns
-/// JSON `{"data": [traces...]}` on success, or `{"error": ...}` on failure.
-/// Used by the dashboard for the clickable trace listing.
+/// Retourne : {"data": [traces...]} ou {"error": ...}
+/// Utilise par le dashboard pour le listing cliquable des traces
 pub async fn api_list_traces(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -152,14 +130,7 @@ pub async fn api_list_traces(
     }
 }
 
-/// GET /api/llm/history -- Paginated LLM request history.
-///
-/// # Query parameters
-/// * `limit` (optional, default 50): maximum number of entries to return.
-/// * `offset` (optional, default 0): pagination offset.
-///
-/// # Returns
-/// JSON `{"history": [...]}` on success, or `{"error": ...}` on failure.
+/// GET /api/llm/history — Historique LLM avec pagination.
 pub async fn api_llm_history(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -176,13 +147,7 @@ pub async fn api_llm_history(
     }
 }
 
-/// GET /api/llm/history/:id -- Detail view of a single LLM request.
-///
-/// # Path parameters
-/// * `id` - The unique identifier of the LLM request entry.
-///
-/// # Returns
-/// Full LLM request data as JSON, `{"error": "not found"}` if absent, or an internal error.
+/// GET /api/llm/history/:id — Detail d'une requete LLM.
 pub async fn api_llm_history_by_id(
     State(state): State<AppState>,
     axum::extract::Path(id): axum::extract::Path<i64>,

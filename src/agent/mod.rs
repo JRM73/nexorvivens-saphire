@@ -1,33 +1,33 @@
 // =============================================================================
-// agent/mod.rs — Root module for the Saphire agent
+// agent/mod.rs — Module racine de l'agent Saphire
 // =============================================================================
 //
-// This module is the entry point of the "agent" subsystem in Saphire.
-// It groups together the four sub-modules that form the core of the agent:
+// Ce module est le point d'entree du sous-systeme "agent" de Saphire.
+// Il regroupe les quatre sous-modules qui constituent le coeur de l'agent :
 //
-// - `thought_engine`: autonomous thought engine using a UCB1 (Upper Confidence
-//   Bound 1) multi-armed bandit algorithm to select thought types.
-// - `boot`: startup sequence (Genesis / Awakening / Crash Recovery).
-// - `identity`: persistent identity of Saphire (name, statistics, values).
-// - `lifecycle`: main life loop, stimulus processing pipeline, memory
-//   management, LLM (Large Language Model) calls, and shutdown.
+// - `thought_engine` : moteur de pensee autonome, utilisant un algorithme
+//   UCB1 (Upper Confidence Bound 1) pour selectionner le type de pensee.
+// - `boot` : sequence de demarrage (Genesis / Awakening / Crash Recovery).
+// - `identity` : identite persistante de Saphire (nom, statistiques, valeurs).
+// - `lifecycle` : boucle de vie principale, pipeline de traitement des stimuli,
+//   gestion de la memoire, appels au LLM (Large Language Model), et shutdown.
 //
-// Direct dependencies: all sub-modules listed above.
-// Architectural role: this is the module imported by `main.rs` and the web
-// server to instantiate and control the Saphire agent.
+// Dependances directes : tous les sous-modules ci-dessus.
+// Place dans l'architecture : c'est le module importe par `main.rs` et par
+// le serveur web pour instancier et piloter l'agent Saphire.
 // =============================================================================
 
-/// Autonomous thought engine (DMN = Default Mode Network) with UCB1 bandit.
+/// Moteur de pensee autonome (DMN = Default Mode Network) avec bandit UCB1
 pub mod thought_engine;
 
-/// Startup sequence: Genesis, Awakening, Crash Recovery.
+/// Sequence de demarrage : Genesis, Awakening, Crash Recovery
 pub mod boot;
 
-/// Persistent identity of Saphire (serialized as JSON / stored in PostgreSQL).
+/// Identite persistante de Saphire (serialisee en JSON / PostgreSQL)
 pub mod identity;
 
-/// Main life loop, stimulus pipeline, memory management, and shutdown.
+/// Boucle de vie principale, pipeline de stimuli, gestion memoire et shutdown
 pub mod lifecycle;
 
-// Re-export the main struct for direct access via `crate::agent::SaphireAgent`.
+// Re-export de la structure principale pour un acces direct via `crate::agent::SaphireAgent`
 pub use lifecycle::SaphireAgent;

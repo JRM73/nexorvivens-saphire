@@ -1,19 +1,19 @@
 // =============================================================================
-// lifecycle/thinking.rs — Autonomous thinking orchestrator
+// lifecycle/thinking.rs — Orchestrateur de la pensee autonome
 // =============================================================================
 //
-// This file contains the main orchestrator (`autonomous_think`) that calls
-// phases distributed across sub-files:
-//   - thinking_perception.rs   — Pre-LLM phases (world perception)
-//   - thinking_preparation.rs  — Thought selection and prompt preparation
-//   - thinking_processing.rs   — LLM call and immediate post-processing
-//   - thinking_reflection.rs   — Reflection and learning phases
+// Ce fichier contient l'orchestrateur principal (autonomous_think) qui appelle
+// les phases reparties dans les sous-fichiers :
+//   - thinking_perception.rs   — Phases pre-LLM (perception du monde)
+//   - thinking_preparation.rs  — Phases de selection et preparation du prompt
+//   - thinking_processing.rs   — Phases LLM et post-traitement immediat
+//   - thinking_reflection.rs   — Phases de reflexion, apprentissage, psychologie
 //
-// This file also contains shared structures:
-//   - ThinkingContext: mutable context shared across all phases
-//   - FeedbackRequest: pending human feedback request
-//   - strip_chemical_trace(): cleanup of the LLM chemical trace header
-//   - is_positive_feedback(): simple analysis of human feedback
+// Ce fichier contient aussi les structures partagees :
+//   - ThinkingContext : contexte mutable partage entre toutes les phases
+//   - FeedbackRequest : demande de feedback humain en attente
+//   - strip_chemical_trace() : nettoyage de la trace chimique LLM
+//   - is_positive_feedback() : analyse simple du feedback humain
 // =============================================================================
 
 use std::sync::atomic::Ordering;
@@ -24,37 +24,33 @@ use super::SaphireAgent;
 use super::ProcessResult;
 
 // =============================================================================
-// FeedbackRequest — Pending human feedback request
+// FeedbackRequest — Demande de feedback humain en attente
 // =============================================================================
 
-/// A pending human feedback request awaiting a response.
-/// Stored in `SaphireAgent.feedback_pending` when Saphire asks a question.
+/// Demande de feedback humain en attente de reponse.
+/// Stockee dans `SaphireAgent.feedback_pending` quand Saphire pose une question.
 #[allow(dead_code)]
 pub(super) struct FeedbackRequest {
-    /// The text of the thought that prompted the feedback request.
     pub thought_text: String,
-    /// The type of thought that was generated.
     pub thought_type: crate::agent::thought_engine::ThoughtType,
-    /// The automatically computed reward for this thought.
     pub auto_reward: f64,
-    /// The cycle number at which the feedback was requested.
     pub asked_at_cycle: u64,
 }
 
-/// Simple analysis of human feedback without an additional LLM call.
-/// Returns `true` if the feedback is globally positive (clear approval).
-/// Corrective messages ("yes but...", "more simply...") count as negative.
+/// Analyse simple du feedback humain sans appel LLM supplementaire.
+/// Retourne true si le feedback est globalement positif (approbation claire).
+/// Les messages correctifs ("oui mais...", "plus simplement...") sont negatifs.
 pub(super) fn is_positive_feedback(response: &str) -> bool {
     let lower = response.to_lowercase();
-    // Corrective markers — the human corrects or suggests an improvement
+    // Marqueurs correctifs — l'humain corrige ou suggere une amelioration
     let corrective = [
         "mais", "plutot", "simplement", "simple", "par exemple",
         "tu devrais", "tu peux", "essaie", "il faudrait", "il faut",
         "au lieu", "instead", "try", "should", "better",
     ];
     let has_correction = corrective.iter().any(|w| lower.contains(*w));
-    // If the message contains a corrective marker, it is negative feedback
-    // even if it starts with "yes"
+    // Si le message contient un marqueur correctif, c'est un feedback negatif
+    // meme s'il commence par "oui"
     if has_correction { return false; }
 
     let positive = [
@@ -73,35 +69,35 @@ pub(super) fn is_positive_feedback(response: &str) -> bool {
     pos_score > neg_score
 }
 
-/// Removes the chemical trace header from the beginning of an LLM thought.
-/// Typical format: "C[sero,0.75,ocyt,0.55] E:Espoir+Curiosite V+0.90 A0.55 Actual text..."
-/// Returns the cleaned text, ready to be displayed to the human.
+/// Retire la trace chimique du debut d'une pensee LLM.
+/// Format typique : "C[sero,0.75,ocyt,0.55] E:Espoir+Curiosite V+0.90 A0.55 Texte reel..."
+/// Retourne le texte nettoye, pret a etre affiche a l'humain.
 pub(super) fn strip_chemical_trace(text: &str) -> String {
     let t = text.trim();
-    // Find the end of the chemical header: after the last numeric field (V+x.xx or Ax.xx).
-    // Pattern: C[...] E:... V+x.xx Ax.xx <text>
-    // Strategy: find the first alphabetic character after an Ax.xx or V+x.xx pattern.
+    // Chercher la fin du header chimique : apres le dernier champ numerique (V+x.xx ou Ax.xx)
+    // Le pattern est : C[...] E:... V+x.xx Ax.xx <texte>
+    // Strategie : trouver le premier caractere alphabetique apres un pattern Ax.xx ou V+x.xx
     if let Some(c_start) = t.find("C[") {
-        // Find the end of the block: skip the chemical tokens
+        // Chercher la fin du bloc : on saute les tokens chimiques
         let after_c = &t[c_start..];
-        // Look for a pattern " A" followed by a digit, then find the text after it
+        // Chercher un pattern " A" suivi d'un chiffre puis trouver le texte apres
         if let Some(a_pos) = after_c.rfind(" A") {
             let rest = &after_c[a_pos + 2..];
-            // Skip the number (e.g., "0.55")
+            // Sauter le nombre (ex: "0.55")
             let skip = rest.find(|c: char| c == ' ').unwrap_or(rest.len());
             if skip < rest.len() {
                 return rest[skip..].trim().to_string();
             }
         }
-        // Fallback: look after the "]" for the actual text (skip E:, V+, A tokens)
+        // Fallback : chercher apres le "]" le vrai texte (sauter E:, V+, A tokens)
         if let Some(bracket_end) = after_c.find(']') {
             let rest = &after_c[bracket_end + 1..].trim();
-            // Skip the short E:, V+, A tokens
+            // Sauter les tokens E:, V+, A qui sont courts
             let chars = rest.chars().peekable();
             let mut pos = 0;
             let bytes = rest.as_bytes();
             while pos < rest.len() {
-                // Skip whitespace
+                // Sauter les espaces
                 while pos < rest.len() && bytes[pos] == b' ' { pos += 1; }
                 if pos >= rest.len() { break; }
                 // Token E:...
@@ -129,97 +125,104 @@ pub(super) fn strip_chemical_trace(text: &str) -> String {
 }
 
 // =============================================================================
-// ThinkingContext — Mutable context shared across all phases
+// ThinkingContext — Contexte mutable partage entre toutes les phases
 // =============================================================================
 
-/// Mutable context shared across all phases of autonomous thinking.
+/// Contexte mutable partage entre toutes les phases de la pensee autonome.
 ///
-/// This struct gathers all intermediate variables that were previously local
-/// variables in `autonomous_think()`. Each phase reads and/or writes to this
-/// context, eliminating the need to pass many parameters between functions.
+/// Ce struct regroupe toutes les variables intermediaires qui etaient
+/// auparavant des variables locales dans autonomous_think(). Chaque phase
+/// lit et/ou ecrit dans ce contexte, eliminant le besoin de passer
+/// 15+ parametres entre les fonctions.
 pub(super) struct ThinkingContext {
-    /// Start instant of the cycle for measuring total duration.
+    /// Instant de debut du cycle pour mesurer la duree totale
     pub cycle_start: Instant,
 
-    /// Thought type selected by the UCB1 bandit.
+    /// Type de pensee selectionne par le bandit UCB1
     pub thought_type: crate::agent::thought_engine::ThoughtType,
 
-    /// Variant index for alternating prompts.
+    /// Indice de variante pour alterner les prompts
     pub variant: usize,
 
-    /// Emotional state computed from the current chemistry.
+    /// Etat emotionnel calcule a partir de la chimie courante
     pub emotion: EmotionalState,
 
-    /// Web knowledge context (formatted text + KnowledgeResult), if a web search was performed.
+    /// Contexte de connaissance web (texte + KnowledgeResult)
     pub knowledge_context: Option<(String, crate::knowledge::KnowledgeResult)>,
 
-    /// Flag indicating whether a web search took place this cycle.
+    /// Flag indiquant si une recherche web a eu lieu
     pub was_web_search: bool,
 
-    /// Textual hint for the LLM prompt.
+    /// Hint textuel pour le prompt LLM
     pub hint: String,
 
-    /// World summary (weather, time of day, etc.).
+    /// Resume du monde (meteo, heure, etc.)
     pub world_summary: String,
 
-    /// Memory context built for the prompt (working memory + episodic + LTM).
+    /// Contexte memoire construit pour le prompt
     pub memory_context: String,
 
-    /// Intuition patterns detected before the LLM call.
+    /// Patterns intuitifs detectes avant le LLM
     pub intuition_patterns: Vec<crate::vital::intuition::IntuitionPattern>,
 
-    /// Newly generated premonitions.
+    /// Nouvelles premonitions generees
     pub new_premonitions: Vec<crate::vital::premonition::Premonition>,
 
-    /// System prompt (static portion, cacheable via KV-cache).
+    /// Prompt systeme (statique, cacheable KV-cache)
     pub system_prompt: String,
 
-    /// Dynamic prompt (user-role message sent to the LLM).
+    /// Prompt dynamique (message utilisateur)
     pub prompt: String,
 
-    /// Text of the thought generated by the LLM.
+    /// Texte de la pensee generee par le LLM
     pub thought_text: String,
 
-    /// LLM response time in seconds.
+    /// Temps de reponse du LLM en secondes
     pub llm_elapsed: f64,
 
-    /// Result of the brain pipeline (consensus, emotion, consciousness).
+    /// Resultat du pipeline cerebral (consensus, emotion, conscience)
     pub process_result: Option<ProcessResult>,
 
-    /// UCB1 reward computed for this cycle.
+    /// Recompense UCB1 calculee pour ce cycle
     pub reward: f64,
 
-    /// Flag indicating whether an item was ejected from working memory.
+    /// Flag indiquant si un element a ete ejecte de la memoire de travail
     pub had_wm_ejection: bool,
 
-    /// Flag indicating the cycle should be aborted (LLM error).
+    /// Flag indiquant qu'il faut abandonner le cycle (erreur LLM)
     pub should_abort: bool,
 
-    /// Evaluated thought quality (0.0-1.0).
+    /// Deliberation volontaire eventuelle de ce cycle
+    pub deliberation: Option<crate::psychology::will::Deliberation>,
+
+    /// Nombre total d'apprentissages vectoriels (pour metrics)
+    pub nn_learnings_count: i32,
+
+    /// Qualite de pensee evaluee par metacognition (0.0-1.0)
     pub quality: f64,
 
-    /// Memory recall data for the cognitive trace.
+    /// Donnees de rappel memoire pour la trace cognitive
     pub memory_trace_data: serde_json::Value,
 
-    /// Analogy hint for the LLM prompt.
+    /// Hint d'analogie pour le prompt (raisonnement analogique M6)
     pub analogy_hint: String,
 
-    /// Associations found by the connectome (A* pathfinding).
+    /// Associations trouvees par le connectome (A* pathfinding)
     pub connectome_associations: String,
 
-    /// Experiential anchor: concrete context to enrich the thought.
+    /// Ancrage experiential : contexte concret pour enrichir la pensee
     pub anchor: Option<String>,
 
-    /// MAP network tension (gap between perception and brain reaction).
+    /// Tension du reseau MAP (ecart perception/reaction cerebrale)
     pub network_tension: f64,
 
-    /// Self-framing: a frame self-formulated by Saphire.
+    /// Cadre auto-formule par Saphire (self-framing) : metriques, angle, profondeur
     pub self_framing: Option<String>,
 }
 
 impl ThinkingContext {
-    /// Creates a new context with default values.
-    /// Actual contents are populated by each phase.
+    /// Cree un nouveau contexte avec des valeurs par defaut.
+    /// Les vrais contenus sont remplis par chaque phase.
     pub(super) fn new() -> Self {
         Self {
             cycle_start: Instant::now(),
@@ -251,6 +254,8 @@ impl ThinkingContext {
             reward: 0.0,
             had_wm_ejection: false,
             should_abort: false,
+            deliberation: None,
+            nn_learnings_count: 0,
             quality: 0.0,
             memory_trace_data: serde_json::json!({}),
             analogy_hint: String::new(),
@@ -263,29 +268,31 @@ impl ThinkingContext {
 }
 
 // =============================================================================
-// Main orchestrator — autonomous_think()
+// Orchestrateur principal — autonomous_think()
 // =============================================================================
 
 impl SaphireAgent {
-    /// Autonomous thought: generated when no human is interacting with Saphire.
+    /// Pensee autonome : generee quand aucun humain n'interagit avec Saphire.
     ///
-    /// This method is called periodically by the life loop (every
-    /// `thought_interval` seconds). It orchestrates all phases via a shared
-    /// `ThinkingContext`. Each phase is a named method defined in the
-    /// `thinking_*.rs` sub-files.
+    /// Cette methode est appelee periodiquement par la boucle de vie (toutes
+    /// les `thought_interval` secondes). Elle orchestre ~55 phases via un
+    /// ThinkingContext partage. Chaque phase est une methode nommee definie
+    /// dans les sous-fichiers thinking_*.rs.
     ///
-    /// # Returns
-    /// `Some(text)` if a thought was generated, `None` if the LLM was busy.
+    /// Retourne : `Some(texte)` si une pensee a ete generee, `None` si le LLM etait occupe.
     pub async fn autonomous_think(&mut self) -> Option<String> {
         if self.llm_busy.load(Ordering::Relaxed) {
             return None;
         }
         let mut ctx = ThinkingContext::new();
 
-        // Pre-LLM phases: update world state and internal state
+        // Phases pre-LLM : mise a jour du monde et de l'etat interne
         self.phase_init(&mut ctx);
         self.phase_weather_and_body(&mut ctx);
+        self.phase_needs(&mut ctx);
         self.phase_vital_spark(&mut ctx).await;
+        self.phase_senses(&mut ctx);
+        self.phase_map_sync(&mut ctx);             // MAP : synchronise BrainNetwork + Connectome
         self.phase_chemistry_history(&mut ctx);
         self.phase_birthday(&mut ctx).await;
         self.phase_world_broadcast(&mut ctx);
@@ -293,28 +300,37 @@ impl SaphireAgent {
         self.phase_conversation_timeout(&mut ctx).await;
         self.phase_episodic_decay(&mut ctx).await;
         self.phase_consolidation(&mut ctx).await;
+        self.phase_auto_algorithms(&mut ctx).await;
 
-        // Thought selection and prompt preparation phases
+        // Phases de selection et preparation du prompt
         self.phase_select_thought(&mut ctx);
         self.phase_generate_dynamic_prompt(&mut ctx).await;
-        self.phase_prospective(&mut ctx);
+        self.phase_connectome_associations(&mut ctx); // GA1 : A* pathfinding connectome
+        self.phase_prospective(&mut ctx);           // M4 : memoire prospective
         self.phase_web_search(&mut ctx).await;
         self.phase_build_context(&mut ctx).await;
-        self.phase_analogies(&mut ctx);
+        self.phase_analogies(&mut ctx);             // M6 : raisonnement analogique
         self.phase_intuition_premonition(&mut ctx);
-        self.phase_build_prompt(&mut ctx);
+        self.phase_orchestrators(&mut ctx).await;
+        self.phase_cognitive_load(&mut ctx);        // M7 : charge cognitive
+        self.phase_build_prompt(&mut ctx);          // inclut continuation monologue M2
+        self.phase_deliberation(&mut ctx);
 
-        // LLM call phase
+        // Phase LLM
         self.phase_call_llm(&mut ctx).await;
         if ctx.should_abort {
             return None;
         }
 
-        // Post-LLM phases: response processing
+        // Phases post-LLM : traitement de la reponse
         self.phase_llm_history(&mut ctx);
+        self.phase_algorithm_request(&mut ctx).await;
         self.phase_pipeline(&mut ctx);
-        self.phase_monologue(&mut ctx);
-        self.phase_dissonance(&mut ctx);
+        self.phase_monologue(&mut ctx);             // M2 : monologue interieur
+        self.phase_dissonance(&mut ctx);            // M3 : dissonance cognitive
+        self.phase_imagery(&mut ctx).await;           // M9 : imagerie mentale
+        self.phase_sentiments(&mut ctx);              // Sentiments (etats affectifs durables)
+        self.phase_state_clustering(&mut ctx);         // PCA + K-Means etat cognitif
         self.phase_working_memory(&mut ctx).await;
         self.phase_memory_echo(&mut ctx).await;
         self.phase_reward_and_ethics(&mut ctx).await;
@@ -322,19 +338,21 @@ impl SaphireAgent {
         self.phase_lora_collect(&mut ctx).await;
         self.phase_knowledge_bonus(&mut ctx).await;
         self.phase_thought_log(&mut ctx).await;
+        self.phase_profiling(&mut ctx).await;
         self.phase_cognitive_trace(&mut ctx);
         self.phase_broadcast(&mut ctx).await;
         self.phase_metrics(&mut ctx);
         self.phase_learning(&mut ctx).await;
         self.phase_nn_learning(&mut ctx).await;
-        self.phase_self_critique(&mut ctx).await;
-        self.phase_personality_snapshot(&mut ctx).await;
-        self.phase_introspection_journal(&mut ctx).await;
+        self.phase_metacognition(&mut ctx).await;   // inclut M8+M10
+        self.phase_self_critique(&mut ctx).await;  // Auto-critique reflexive (periodique)
+        self.phase_personality_snapshot(&mut ctx).await;  // Portrait temporel (50 cycles)
+        self.phase_introspection_journal(&mut ctx).await; // Journal introspectif (200 cycles)
         self.phase_desire_birth(&mut ctx).await;
-        self.phase_narrative(&mut ctx);
-        self.phase_state_clustering(&mut ctx);
+        self.phase_psychology(&mut ctx);
+        self.phase_narrative(&mut ctx);             // M5 : identite narrative
+        self.phase_game_algorithms(&mut ctx);       // GA2 : influence map, FSM, steering, GOAP
         self.phase_homeostasis(&mut ctx);
-        self.phase_connectome_associations(&mut ctx);
 
         Some(ctx.thought_text)
     }

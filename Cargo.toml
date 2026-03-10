@@ -2,9 +2,7 @@
 name = "saphire"
 version = "1.0.0"
 edition = "2021"
-description = "Saphire — Autonomous Cognitive Agent"
-license = "NAGL-1.0"
-repository = "https://github.com/JRM73/nexorvivens-saphire"
+description = "Saphire — Agent Cognitif Autonome"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }

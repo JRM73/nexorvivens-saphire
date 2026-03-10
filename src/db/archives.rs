@@ -1,67 +1,53 @@
 // =============================================================================
-// db/archives.rs — Memory archives (pruned LTM memories compressed into batches)
+// db/archives.rs — Archives memoire (souvenirs LTM elagués compresses en lots)
 //
-// Purpose: CRUD operations for the memory_archives table. Each archive is a
-// compressed summary of a batch of pruned LTM memories, with an L2-normalized
-// mean embedding for cosine similarity search. Pruned memories never truly
-// disappear -- they are archived here. Also provides text-based search
-// (lite mode) and dashboard listing/statistics methods.
+// Role : CRUD pour la table memory_archives. Chaque archive est un resume
+// compresse d'un lot de souvenirs LTM elagués, avec un embedding moyen
+// normalise L2 pour la recherche par similarite cosinus.
+// Les souvenirs elagués ne disparaissent jamais — ils sont archivés ici.
 // =============================================================================
 
 use super::{SaphireDb, DbError};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-/// A new archive to insert into the database.
+/// Nouvelle archive a inserer en base.
 pub struct NewArchive {
-    /// Concatenated summary of the batch's memories
+    /// Resume concatene des souvenirs du lot
     pub summary: String,
-    /// Number of source memories in the batch
+    /// Nombre de souvenirs source
     pub source_count: i32,
-    /// IDs of the pruned LTM memories
+    /// IDs des souvenirs LTM elagués
     pub source_ids: Vec<i64>,
-    /// Unique emotions extracted from the batch
+    /// Emotions uniques extraites du lot
     pub emotions: Vec<String>,
-    /// Date of the oldest memory in the batch
+    /// Date du souvenir le plus ancien du lot
     pub period_start: DateTime<Utc>,
-    /// Date of the most recent memory in the batch
+    /// Date du souvenir le plus recent du lot
     pub period_end: DateTime<Utc>,
-    /// Average emotional weight of the batch
+    /// Poids emotionnel moyen du lot
     pub avg_emotional_weight: f32,
-    /// L2-normalized mean embedding (64 dimensions)
+    /// Embedding moyen normalise L2 (64 dimensions)
     pub embedding: Vec<f32>,
 }
 
-/// An archive record read from the database.
+/// Archive lue depuis la base de donnees.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ArchiveRecord {
-    /// Unique identifier of the archive
     pub id: i64,
-    /// Compressed textual summary of the archived memories
     pub summary: String,
-    /// Number of source memories that were compressed into this archive
     pub source_count: i32,
-    /// IDs of the original LTM memories that were pruned
     pub source_ids: Vec<i64>,
-    /// Unique emotions present in the archived memories
     pub emotions: Vec<String>,
-    /// Start of the time period covered by this archive
     pub period_start: DateTime<Utc>,
-    /// End of the time period covered by this archive
     pub period_end: DateTime<Utc>,
-    /// Average emotional weight of the archived memories
     pub avg_emotional_weight: f32,
-    /// Cosine similarity score (populated during vector search, 0.0 otherwise)
     pub similarity: f64,
-    /// Timestamp of when the archive was created (UTC)
     pub created_at: DateTime<Utc>,
 }
 
 impl SaphireDb {
-    /// Stores a memory archive in the memory_archives table.
-    ///
-    /// # Returns
-    /// The ID of the inserted archive
+    /// Stocke une archive memoire dans la table memory_archives.
     pub async fn store_archive(&self, archive: &NewArchive) -> Result<i64, DbError> {
         let client = self.pool.get().await?;
         let embedding_vec = pgvector::Vector::from(archive.embedding.clone());
@@ -78,12 +64,7 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Searches for the most similar archives by cosine distance.
-    ///
-    /// # Parameters
-    /// - `embedding`: query vector for similarity search
-    /// - `limit`: maximum number of results to return
-    /// - `threshold`: minimum similarity threshold [0.0 - 1.0]
+    /// Recherche les archives les plus similaires par distance cosinus.
     pub async fn search_similar_archives(
         &self,
         embedding: &[f32],
@@ -122,65 +103,14 @@ impl SaphireDb {
         Ok(archives)
     }
 
-    /// Searches archives by text matching (without embeddings).
-    /// Replaces search_similar_archives (vectorized) in the lite version.
-    /// Returns archives whose summary contains one of the keywords from the text.
-    pub async fn search_similar_archives_by_text(
-        &self,
-        query_text: &str,
-        limit: i64,
-        _threshold: f64,
-    ) -> Result<Vec<ArchiveRecord>, DbError> {
-        if query_text.trim().is_empty() {
-            return Ok(vec![]);
-        }
-        let tokens: Vec<String> = query_text
-            .split_whitespace()
-            .filter(|w| w.len() >= 4)
-            .take(6)
-            .map(|w| format!("%{}%", w.to_lowercase()))
-            .collect();
-        if tokens.is_empty() {
-            return Ok(vec![]);
-        }
-        let client = self.pool.get().await?;
-        let rows = client.query(
-            "SELECT id, summary, source_count, source_ids, emotions,
-                    period_start, period_end, avg_emotional_weight,
-                    0.4::float8 as similarity, created_at
-             FROM memory_archives
-             WHERE LOWER(summary) ILIKE $1
-             ORDER BY avg_emotional_weight DESC, created_at DESC
-             LIMIT $2",
-            &[&tokens[0], &limit],
-        ).await?;
-
-        let mut archives = Vec::new();
-        for row in &rows {
-            archives.push(ArchiveRecord {
-                id: row.get(0),
-                summary: row.get(1),
-                source_count: row.get(2),
-                source_ids: row.get(3),
-                emotions: row.get(4),
-                period_start: row.get(5),
-                period_end: row.get(6),
-                avg_emotional_weight: row.get(7),
-                similarity: row.get::<_, f64>(8),
-                created_at: row.get(9),
-            });
-        }
-        Ok(archives)
-    }
-
-    /// Counts the total number of archives.
+    /// Compte le nombre total d'archives.
     pub async fn count_archives(&self) -> Result<i64, DbError> {
         let client = self.pool.get().await?;
         let row = client.query_one("SELECT COUNT(*) FROM memory_archives", &[]).await?;
         Ok(row.get(0))
     }
 
-    /// Lists archives with pagination (for the dashboard).
+    /// Liste les archives avec pagination (pour le dashboard).
     pub async fn list_archives(&self, limit: i64, offset: i64) -> Result<Vec<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -211,10 +141,7 @@ impl SaphireDb {
         Ok(results)
     }
 
-    /// Archive statistics for the dashboard.
-    ///
-    /// # Returns
-    /// JSON object with archive_count, total_archived_memories, and avg_emotional_weight
+    /// Statistiques des archives pour le dashboard.
     pub async fn archive_stats(&self) -> Result<serde_json::Value, DbError> {
         let client = self.pool.get().await?;
         let count: i64 = client.query_one(

@@ -1,173 +1,164 @@
-// episodic.rs — Episodic memory (PostgreSQL-backed, with strength decay)
+// episodic.rs — Mémoire épisodique (PostgreSQL, avec decay)
 //
-// This module manages Saphire's episodic memory, the second tier of the
-// three-level memory system. Episodic memory stores recent experiences as
-// contextualized episodes (content, emotion, satisfaction, etc.) in the
-// PostgreSQL database, analogous to the hippocampal encoding of
-// autobiographical events in human memory.
+// Ce module gère la mémoire épisodique de Saphire, le deuxième niveau
+// du système mnésique. La mémoire épisodique stocke les souvenirs récents
+// sous forme d'épisodes contextualisés (contenu, émotion, satisfaction, etc.)
+// dans la base de données PostgreSQL.
 //
-// Unlike working memory (volatile, RAM-only), episodic memories are persisted
-// but undergo progressive strength decay over consolidation cycles. Memories
-// that are sufficiently important (high consolidation score) will be
-// consolidated into long-term memory (LTM), mirroring hippocampal-to-
-// neocortical transfer during sleep replay.
+// Contrairement à la mémoire de travail (volatile en RAM), les souvenirs
+// épisodiques sont persistés mais subissent une décroissance progressive
+// de leur force. Les souvenirs suffisamment importants seront consolidés
+// vers la mémoire à long terme (LTM = Long-Term Memory = Mémoire à Long Terme).
 //
-// Dependencies:
-//   - serde: serialization and deserialization of records.
-//   - chrono: UTC timestamps for memory creation and access tracking.
-//   - serde_json: structured data storage (stimulus payload, emotional chemistry).
+// Dépendances :
+//   - serde : sérialisation / désérialisation des enregistrements.
+//   - chrono : horodatage des souvenirs.
+//   - serde_json : stockage des données structurées (stimulus, chimie émotionnelle).
 
 use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
 use crate::neurochemistry::ChemicalSignature;
 
-/// A new episodic memory item to be inserted into the database.
+/// Structure représentant un nouvel épisode à insérer en base de données.
 ///
-/// Serves as a DTO (Data Transfer Object) between the cognitive cycle and
-/// the persistence layer. All fields are populated at encoding time.
+/// Utilisée comme DTO (Data Transfer Object = Objet de Transfert de Données)
+/// entre le cycle cognitif et la couche de persistance.
 pub struct EpisodicItem {
-    /// Textual content of the memory (summary of the experienced episode).
+    /// Contenu textuel du souvenir (résumé de l'épisode vécu).
     pub content: String,
-    /// Source type that triggered this episode (e.g., "user_message",
+    /// Type de source ayant déclenché cet épisode (ex : "user_message",
     /// "thought", "web_knowledge").
     pub source_type: String,
-    /// JSON payload of the stimulus that triggered the cognitive cycle
-    /// (message, event, etc.).
+    /// Données JSON du stimulus ayant déclenché le cycle cognitif
+    /// (message, événement, etc.).
     pub stimulus_json: serde_json::Value,
-    /// Numeric identifier of the decision made during this cycle
-    /// (action chosen by the decision-making module).
+    /// Identifiant numérique de la décision prise lors de ce cycle
+    /// (action choisie par le module décisionnel).
     pub decision: i16,
-    /// JSON-serialized emotional chemistry state at the time of the episode.
-    /// Contains simulated neurotransmitter levels (dopamine, serotonin, etc.).
+    /// État de la chimie émotionnelle au moment de l'épisode, sérialisé en JSON.
+    /// Contient les niveaux de neurotransmetteurs simulés (dopamine, sérotonine, etc.).
     pub chemistry_json: serde_json::Value,
-    /// Dominant emotion experienced during this episode (e.g., "Joy", "Curiosity").
+    /// Émotion dominante ressentie pendant cet épisode (ex : "Joie", "Curiosité").
     pub emotion: String,
-    /// Satisfaction level resulting from the episode, ranging from 0.0 (fully
-    /// unsatisfied) to 1.0 (fully satisfied).
+    /// Niveau de satisfaction résultant de l'épisode, entre 0.0 (insatisfait)
+    /// et 1.0 (pleinement satisfait).
     pub satisfaction: f32,
-    /// Emotional intensity of the episode, ranging from 0.0 (neutral) to 1.0
-    /// (extremely intense). This is a key factor for consolidation: intense
-    /// memories are better retained, consistent with amygdala-mediated
-    /// modulation of hippocampal encoding.
+    /// Intensité émotionnelle de l'épisode, entre 0.0 (neutre) et 1.0 (très intense).
+    /// Facteur clé pour la consolidation : les souvenirs intenses sont mieux retenus.
     pub emotional_intensity: f32,
-    /// Optional conversation identifier, used to group memories by conversation
-    /// for contextual retrieval.
+    /// Identifiant optionnel de la conversation durant laquelle cet épisode
+    /// a eu lieu. Permet de regrouper les souvenirs par conversation.
     pub conversation_id: Option<String>,
-    /// Neurochemical signature at encoding time, enabling state-dependent
-    /// memory retrieval (memories are more easily recalled when the chemical
-    /// state matches the encoding state).
+    /// Signature chimique au moment de l'encodage
     pub chemical_signature: Option<ChemicalSignature>,
 }
 
-/// An episodic memory record read from the database.
+/// Enregistrement épisodique lu depuis la base de données.
 ///
-/// Contains all fields of an EpisodicItem plus database-assigned metadata
-/// (primary key, residual strength, access counter, consolidation status, etc.).
+/// Contient tous les champs d'un EpisodicItem plus les métadonnées ajoutées
+/// par la DB (id, force résiduelle, compteur d'accès, statut de consolidation, etc.).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EpisodicRecord {
-    /// Unique database identifier (primary key).
+    /// Identifiant unique en base de données (clé primaire).
     pub id: i64,
-    /// Textual content of the memory.
+    /// Contenu textuel du souvenir.
     pub content: String,
-    /// Source type that triggered this episode.
+    /// Type de source ayant déclenché cet épisode.
     pub source_type: String,
-    /// JSON payload of the stimulus (None if unavailable at read time).
+    /// Données JSON du stimulus (optionnel si non disponible à la lecture).
     pub stimulus_json: Option<serde_json::Value>,
-    /// Decision made during this cycle (None if unavailable).
+    /// Décision prise lors de ce cycle (optionnel si non disponible).
     pub decision: Option<i16>,
-    /// JSON emotional chemistry state (None if unavailable).
+    /// État de la chimie émotionnelle en JSON (optionnel).
     pub chemistry_json: Option<serde_json::Value>,
-    /// Dominant emotion of the episode.
+    /// Émotion dominante de l'épisode.
     pub emotion: String,
-    /// Satisfaction level of the episode (0.0 to 1.0).
+    /// Niveau de satisfaction de l'épisode (0.0 à 1.0).
     pub satisfaction: f32,
-    /// Emotional intensity of the episode (0.0 to 1.0).
+    /// Intensité émotionnelle de l'épisode (0.0 à 1.0).
     pub emotional_intensity: f32,
-    /// Residual strength of the memory (0.0 to 1.0). Decreases at each
-    /// consolidation cycle. When it drops too low, the memory is pruned.
-    /// Models hippocampal trace decay over time.
+    /// Force résiduelle du souvenir (0.0 à 1.0). Décroît à chaque cycle de
+    /// consolidation. Quand elle tombe trop bas, le souvenir est élagué.
     pub strength: f32,
-    /// Number of times this memory has been recalled (accessed during a
-    /// retrieval operation). A frequently recalled memory is considered more
-    /// important — this models the testing effect (retrieval practice
-    /// strengthens memory traces).
+    /// Nombre de fois que ce souvenir a été rappelé (accédé lors d'un recall).
+    /// Un souvenir souvent rappelé est considéré comme plus important.
     pub access_count: i32,
-    /// Timestamp of the last access to this memory (None if never recalled).
+    /// Horodatage du dernier accès à ce souvenir (None si jamais rappelé).
     pub last_accessed_at: Option<DateTime<Utc>>,
-    /// Whether this memory has already been consolidated into long-term memory.
-    /// A consolidated memory is no longer a candidate for re-consolidation.
+    /// Indique si ce souvenir a déjà été consolidé en mémoire à long terme.
+    /// Un souvenir consolidé n'est plus candidat à la consolidation.
     pub consolidated: bool,
-    /// Optional conversation identifier for grouping memories by conversation.
+    /// Identifiant optionnel de la conversation associée.
     pub conversation_id: Option<String>,
-    /// Timestamp of when this memory was created in the database.
+    /// Horodatage de la création de ce souvenir en base de données.
     pub created_at: DateTime<Utc>,
-    /// Neurochemical signature at encoding time (None for legacy memories
-    /// created before this feature was added).
+    /// Signature chimique au moment de l'encodage (None pour les anciens souvenirs)
     pub chemical_signature: Option<ChemicalSignature>,
 }
 
-/// Computes the consolidation score for an episodic memory.
+/// Calcule le score de consolidation d'un souvenir épisodique.
 ///
-/// This score determines whether a memory qualifies for transfer from episodic
-/// memory to long-term memory (LTM). It is based on a weighted multi-factor
-/// model inspired by cognitive psychology research on memory consolidation:
+/// Ce score détermine si un souvenir mérite d'être transféré de la mémoire
+/// épisodique vers la mémoire à long terme (LTM). Il est basé sur un modèle
+/// pondéré de 5 facteurs, inspiré de la psychologie cognitive :
 ///
-/// | Factor                  | Weight | Justification                                    |
-/// |-------------------------|--------|--------------------------------------------------|
-/// | Emotional intensity     | 0.35   | Strong emotions anchor memories (amygdala-mediated enhancement) |
-/// | Satisfaction impact     | 0.20   | Extreme outcomes (successes and failures) are more memorable    |
-/// | Recall frequency        | 0.15   | Frequently recalled memories are important (testing effect)     |
-/// | Residual strength       | 0.15   | Memories that resisted decay are good consolidation candidates  |
-/// | Human interaction bonus | 0.15   | Exchanges with a human are given priority (social cognition)    |
+/// | Facteur                 | Poids | Justification                            |
+/// |-------------------------|-------|------------------------------------------|
+/// | Intensité émotionnelle  | 0.35  | Les émotions fortes ancrent les souvenirs|
+/// | Impact de satisfaction  | 0.20  | Réussites et échecs marquants comptent   |
+/// | Fréquence de rappel     | 0.15  | Un souvenir souvent rappelé est important|
+/// | Force résiduelle        | 0.15  | Un souvenir encore « fort » mérite d'être conservé |
+/// | Interaction humaine     | 0.15  | Les échanges avec un humain sont privilégiés |
 ///
-/// # Parameters
-/// - `record`: the episodic record to evaluate.
+/// Le score final est module par le niveau de BDNF :
+/// - BDNF = 0.0 → multiplicateur 0.8 (consolidation affaiblie)
+/// - BDNF = 0.5 → multiplicateur 1.0 (consolidation normale)
+/// - BDNF = 1.0 → multiplicateur 1.2 (consolidation renforcee)
 ///
-/// # Returns
-/// A score between 0.0 and 1.0. This is compared against the
-/// `consolidation_threshold` configuration value to decide whether the
-/// memory should be transferred to LTM.
-pub fn consolidation_score(record: &EpisodicRecord) -> f64 {
+/// # Paramètres
+/// - `record` : enregistrement épisodique à évaluer.
+/// - `bdnf_level` : niveau courant de BDNF (0.0 - 1.0).
+///
+/// # Retour
+/// Score entre 0.0 et 1.0. Comparé au seuil `consolidation_threshold`
+/// de la configuration pour décider du transfert vers la LTM.
+pub fn consolidation_score(record: &EpisodicRecord, bdnf_level: f64) -> f64 {
     let mut score = 0.0;
 
-    // Factor 1: Emotional intensity is the dominant factor (weight 0.35).
-    // Strongly emotional memories are better retained, reflecting the well-
-    // established amygdala-hippocampus interaction in emotional memory encoding
-    // (McGaugh, 2004).
+    // Facteur 1 : L'intensité émotionnelle est le facteur principal (poids 0.35).
+    // Les souvenirs fortement émotionnels sont mieux retenus, comme chez l'humain.
     score += record.emotional_intensity as f64 * 0.35;
 
-    // Factor 2: Satisfaction impact (weight 0.20).
-    // Measures deviation from neutral (0.5): extreme outcomes — whether highly
-    // satisfying or highly unsatisfying — are more memorable than neutral ones.
-    // This models the Von Restorff isolation effect for emotionally distinctive events.
+    // Facteur 2 : Impact de la satisfaction (poids 0.20).
+    // On mesure l'écart par rapport au neutre (0.5) : les extrêmes (très
+    // satisfaisant ou très insatisfaisant) sont plus mémorables que le neutre.
     let satisfaction_impact = (record.satisfaction as f64 - 0.5).abs() * 2.0;
     score += satisfaction_impact * 0.20;
 
-    // Factor 3: Recall frequency (weight 0.15).
-    // A memory that has been recalled often is evidently important to Saphire.
-    // Capped at 10 accesses and normalized to [0, 1] to prevent runaway scores.
-    // Models the testing effect: each retrieval strengthens the memory trace
-    // (Roediger & Karpicke, 2006).
+    // Facteur 3 : Fréquence de rappel (poids 0.15).
+    // Un souvenir rappelé souvent est manifestement important pour Saphire.
+    // On plafonne à 10 accès pour normaliser entre 0 et 1.
     let access_factor = (record.access_count as f64).min(10.0) / 10.0;
     score += access_factor * 0.15;
 
-    // Factor 4: Residual strength (weight 0.15).
-    // A memory that has resisted decay over multiple consolidation cycles is a
-    // strong candidate for permanent storage. This reflects the complementary
-    // learning systems theory: robust hippocampal traces are preferentially
-    // transferred to the neocortex.
+    // Facteur 4 : Force résiduelle du souvenir (poids 0.15).
+    // Un souvenir qui a bien résisté à la décroissance est un bon candidat.
     score += record.strength as f64 * 0.15;
 
-    // Factor 5: Human interaction bonus (weight 0.15).
-    // Memories linked to human exchanges are considered more significant,
-    // reflecting the social dimension of episodic memory and the preferential
-    // encoding of socially relevant information.
+    // Facteur 5 : Bonus d'interaction humaine (poids 0.15).
+    // Les souvenirs liés à des échanges avec un humain sont considérés
+    // comme plus significatifs et reçoivent un bonus fixe.
     let is_human = record.source_type == "user_message"
                  || record.source_type == "conversation";
     if is_human {
         score += 0.15;
     }
 
-    // Final clamping to ensure the score stays within the [0.0, 1.0] interval.
+    // Modulation BDNF : le facteur neurotrophique module la consolidation.
+    // BDNF bas (0.0) → 0.8x, BDNF normal (0.5) → 1.0x, BDNF haut (1.0) → 1.2x
+    let bdnf_mod = 0.8 + bdnf_level * 0.4;
+    score *= bdnf_mod;
+
+    // Clampage final pour garantir un score dans l'intervalle [0.0, 1.0].
     score.clamp(0.0, 1.0)
 }

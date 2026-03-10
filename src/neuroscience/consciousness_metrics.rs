@@ -1,31 +1,31 @@
 // =============================================================================
-// consciousness_metrics.rs — 3 scientific consciousness metrics
+// consciousness_metrics.rs — 3 metriques scientifiques de la conscience
 // =============================================================================
 //
-// Purpose: Implements 3 published and validated heuristic algorithms for
-//          measuring consciousness / system complexity:
+// Role : Implemente 3 algorithmes heuristiques publies et valides pour
+// mesurer la conscience / complexite d'un systeme :
 //
-// 1. LZC (Lempel-Ziv Complexity) — algorithmic complexity of a temporal
-//    sequence. Measures the informational richness of the signal.
-//    Ref: Lempel & Ziv (1976), Casali et al. (2013) for consciousness
-//    application.
+// 1. LZC (Lempel-Ziv Complexity) — complexite algorithmique d'une sequence
+//    temporelle. Mesure la richesse informationnelle du signal.
+//    Ref: Lempel & Ziv (1976), Casali et al. (2013) pour l'application
+//    a la conscience.
 //
 // 2. PCI (Perturbational Complexity Index) — Casali, Massimini et al. (2013)
-//    Perturbs the brain network, measures the complexity of the response.
-//    Used clinically to assess consciousness in comatose patients, under
-//    anesthesia, or during sleep.
-//    PCI = LZC(spatiotemporal response) / source_entropy
+//    Perturbe le reseau cerebral, mesure la complexite de la reponse.
+//    Utilise en clinique pour evaluer la conscience chez les patients
+//    comateux, sous anesthesie, ou en sommeil.
+//    PCI = LZC(reponse spatiotemporelle) / entropie_source
 //
-// 3. Phi* (Phi-star) — computable approximation of Phi (IIT, Tononi)
-//    Measures integrated information: how much information the system
-//    generates AS A WHOLE beyond the sum of its parts.
+// 3. Phi* (Phi-star) — approximation calculable de Phi (IIT, Tononi)
+//    Mesure l'information integree : combien d'information le systeme
+//    genere EN TANT QUE TOUT au-dela de la somme de ses parties.
 //    Ref: Oizumi et al. (2014) — mismatched decoding approach
-//    Here: approximation via Gaussian mutual information.
+//    Ici : approximation par information mutuelle gaussienne.
 //
-// These 3 metrics are complementary:
-//   - LZC = raw signal complexity
-//   - PCI = complexity of the RESPONSE to a perturbation (more robust)
-//   - Phi* = information integration (irreducibility of the system)
+// Ces 3 metriques sont complementaires :
+//   - LZC = complexite du signal brut
+//   - PCI = complexite de la REPONSE a une perturbation (plus robuste)
+//   - Phi* = integration de l'information (irréductibilité du systeme)
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
@@ -35,39 +35,39 @@ use crate::neuroscience::brain_regions::{BrainNetwork, NUM_REGIONS};
 // 1. LZC — Lempel-Ziv Complexity
 // =============================================================================
 
-/// Computes the Lempel-Ziv complexity (LZ76) of a binary sequence.
+/// Calcule la complexite de Lempel-Ziv (LZ76) d'une sequence binaire.
 ///
-/// Algorithm:
-/// - Traverse the sequence from left to right
-/// - At each position, find the longest sub-word already seen
-/// - Increment the complexity counter for each new sub-word
-/// - Normalize by n / log2(n) (theoretical maximum complexity)
+/// Algorithme :
+/// - Parcourir la sequence de gauche a droite
+/// - A chaque position, chercher le plus long sous-mot deja vu
+/// - Incrementer le compteur de complexite a chaque nouveau sous-mot
+/// - Normaliser par n / log2(n) (complexite maximale theorique)
 ///
-/// Returns a score [0, 1]: 0 = trivial sequence, 1 = maximally complex
+/// Retourne un score [0, 1] : 0 = sequence triviale, 1 = maximalement complexe
 pub fn lempel_ziv_complexity(binary_seq: &[bool]) -> f64 {
     let n = binary_seq.len();
     if n <= 1 {
         return 0.0;
     }
 
-    // LZ76 algorithm (Kaspar & Schuster 1987):
-    // Decompose the sequence into exhaustive sub-words.
-    // At each step, find the longest prefix of the remainder
-    // that appears in the already-parsed part (positions 0..i).
-    // The reproduction can overflow into the current zone (sliding copy).
+    // Algorithme LZ76 (Kaspar & Schuster 1987) :
+    // On decoupe la sequence en sous-mots exhaustifs.
+    // A chaque pas, on cherche le plus long prefix du reste
+    // qui apparait dans la partie deja parsee (positions 0..i).
+    // La reproduction peut deborder dans la zone courante (copie glissante).
     let mut complexity: usize = 1;
-    let mut i: usize = 1; // start of the current component (1st symbol is component #1)
-    let mut l: usize = 1; // length of the current component
+    let mut i: usize = 1; // debut du composant courant (le 1er symbole est le composant #1)
+    let mut l: usize = 1; // longueur du composant courant
 
     while i + l <= n {
-        // Search for s[i..i+l] as a substring starting BEFORE position i
-        // The source can overflow into the current zone (LZ77-style copy)
+        // Chercher s[i..i+l] comme sous-chaine commencant AVANT position i
+        // La source peut deborder dans la zone courante (copie type LZ77)
         let pat_end = (i + l).min(n);
         let pattern = &binary_seq[i..pat_end];
 
-        // Search in starting positions 0..i only
+        // Chercher dans les positions de depart 0..i uniquement
         let found = (0..i).any(|start| {
-            // Compare element by element (can overflow into the current zone)
+            // Comparer element par element (peut deborder dans la zone courante)
             for k in 0..pattern.len() {
                 if start + k >= n || binary_seq[start + k] != pattern[k] {
                     return false;
@@ -77,17 +77,17 @@ pub fn lempel_ziv_complexity(binary_seq: &[bool]) -> f64 {
         });
 
         if found && i + l < n {
-            // The pattern already exists, we can extend
+            // Le pattern existe deja, on peut etendre
             l += 1;
         } else {
-            // New component found
+            // Nouveau composant trouve
             complexity += 1;
             i += l;
             l = 1;
         }
     }
 
-    // Normalization: max complexity ~ n / log2(n) for a random sequence
+    // Normalisation : complexite max ≈ n / log2(n) pour une sequence aleatoire
     let log2n = (n as f64).log2();
     if log2n < 1.0 {
         return 0.5;
@@ -96,8 +96,8 @@ pub fn lempel_ziv_complexity(binary_seq: &[bool]) -> f64 {
     (complexity as f64 / max_complexity).clamp(0.0, 1.0)
 }
 
-/// Binarizes a vector of floating-point values relative to their mean.
-/// Each value above the mean -> true, otherwise -> false.
+/// Binarise un vecteur de valeurs flottantes par rapport a leur moyenne.
+/// Chaque valeur au-dessus de la moyenne → true, sinon → false.
 pub fn binarize(values: &[f64]) -> Vec<bool> {
     if values.is_empty() {
         return Vec::new();
@@ -106,16 +106,16 @@ pub fn binarize(values: &[f64]) -> Vec<bool> {
     values.iter().map(|&v| v > mean).collect()
 }
 
-/// Computes LZC on a time series of multidimensional vectors.
-/// Concatenates the binarized channels then applies LZ76.
+/// Calcule le LZC sur une serie temporelle de vecteurs multidimensionnels.
+/// Concatene les canaux binarises puis applique LZ76.
 ///
-/// Used to measure the complexity of brain activity over time.
+/// Utilise pour mesurer la complexite de l'activite cerebrale au cours du temps.
 pub fn lzc_from_timeseries(timeseries: &[[f64; NUM_REGIONS]]) -> f64 {
     if timeseries.len() < 3 {
         return 0.0;
     }
 
-    // Binarize each channel separately, then concatenate
+    // Binariser chaque canal separement, puis concatener
     let mut binary = Vec::new();
     for channel in 0..NUM_REGIONS {
         let channel_values: Vec<f64> = timeseries.iter().map(|t| t[channel]).collect();
@@ -129,25 +129,25 @@ pub fn lzc_from_timeseries(timeseries: &[[f64; NUM_REGIONS]]) -> f64 {
 // 2. PCI — Perturbational Complexity Index (Casali/Massimini 2013)
 // =============================================================================
 
-/// Number of simulation steps for the perturbation response.
+/// Nombre de pas de simulation pour la reponse a la perturbation.
 const PCI_RESPONSE_STEPS: usize = 15;
 
-/// Perturbation intensity (TMS analogy).
+/// Intensite de la perturbation (analogie TMS).
 const PCI_PERTURBATION_STRENGTH: f64 = 0.5;
 
-/// Computes PCI: perturbs a region, measures the complexity of the cascade.
+/// Calcule le PCI : perturbe une region, mesure la complexite de la cascade.
 ///
-/// Algorithm (adapted from Casali et al. 2013):
-/// 1. Save the network state
-/// 2. Inject a perturbation into a region (TMS analogy)
-/// 3. Simulate PCI_RESPONSE_STEPS propagation steps
-/// 4. Record the spatiotemporal matrix [time x regions]
-/// 5. Binarize (significant activity vs not)
-/// 6. Compute LZC of the binarized matrix
-/// 7. Normalize by the source entropy
-/// 8. Restore the original network state
+/// Algorithme (adapte de Casali et al. 2013) :
+/// 1. Sauvegarder l'etat du reseau
+/// 2. Injecter une perturbation dans une region (analogie TMS)
+/// 3. Simuler PCI_RESPONSE_STEPS pas de propagation
+/// 4. Enregistrer la matrice spatiotemporelle [temps x regions]
+/// 5. Binariser (activite significative vs pas)
+/// 6. Calculer LZC de la matrice binarisee
+/// 7. Normaliser par l'entropie de la source
+/// 8. Restaurer l'etat original du reseau
 ///
-/// target_region: index of the region to perturb (0-11)
+/// target_region : index de la region a perturber (0-11)
 pub fn perturbational_complexity_index(
     network: &BrainNetwork,
     chemistry: &crate::neurochemistry::NeuroChemicalState,
@@ -157,20 +157,20 @@ pub fn perturbational_complexity_index(
         return PciResult::default();
     }
 
-    // 1. Clone the network to avoid modifying the original
+    // 1. Clone du reseau pour ne pas modifier l'original
     let mut sim = network.clone();
 
-    // Save baseline activations
+    // Sauvegarder les activations de base
     let baseline: Vec<f64> = sim.regions.iter().map(|r| r.activation).collect();
 
-    // 2. Inject the perturbation (TMS analogy)
+    // 2. Injecter la perturbation (analogie TMS)
     sim.regions[target_region].activation =
         (sim.regions[target_region].activation + PCI_PERTURBATION_STRENGTH).clamp(0.0, 1.0);
 
-    // 3-4. Simulate and record the cascade
+    // 3-4. Simuler et enregistrer la cascade
     let mut spatiotemporal = Vec::with_capacity(PCI_RESPONSE_STEPS);
     for _ in 0..PCI_RESPONSE_STEPS {
-        sim.tick(chemistry, [0.0; 5]); // PCI: pure perturbation, no sensory input
+        sim.tick(chemistry, [0.0; 5]); // PCI : perturbation pure, pas d'input sensoriel
         let activations: [f64; NUM_REGIONS] = {
             let mut arr = [0.0; NUM_REGIONS];
             for (i, r) in sim.regions.iter().enumerate() {
@@ -181,8 +181,8 @@ pub fn perturbational_complexity_index(
         spatiotemporal.push(activations);
     }
 
-    // 5. Binarize: significant activity = deviation > threshold from baseline
-    let threshold = 0.05; // 5% deviation = significant
+    // 5. Binariser : activite significative = ecart > seuil par rapport au baseline
+    let threshold = 0.05; // 5% d'ecart = significatif
     let mut binary_matrix = Vec::new();
     let mut active_count = 0usize;
     let total = PCI_RESPONSE_STEPS * NUM_REGIONS;
@@ -195,21 +195,21 @@ pub fn perturbational_complexity_index(
         }
     }
 
-    // 6. LZC of the binarized matrix
+    // 6. LZC de la matrice binarisee
     let lzc = lempel_ziv_complexity(&binary_matrix);
 
-    // 7. Source entropy (proportion of active bits)
+    // 7. Entropie de la source (proportion de bits actifs)
     let p = active_count as f64 / total as f64;
     let source_entropy = if p > 0.0 && p < 1.0 {
         -(p * p.log2() + (1.0 - p) * (1.0 - p).log2())
     } else {
-        0.001 // avoid division by zero
+        0.001 // eviter division par zero
     };
 
-    // PCI = LZC normalized by entropy
+    // PCI = LZC normalise par l'entropie
     let pci = (lzc / source_entropy.max(0.001)).clamp(0.0, 1.0);
 
-    // Count regions affected by the perturbation
+    // Compter les regions touchees par la perturbation
     let regions_affected = spatiotemporal.last()
         .map(|last| {
             last.iter().zip(baseline.iter())
@@ -228,8 +228,8 @@ pub fn perturbational_complexity_index(
     }
 }
 
-/// Computes the mean PCI across all regions (more robust).
-/// In clinical settings, multiple TMS stimulations are applied at different locations.
+/// Calcule le PCI moyen sur toutes les regions (plus robuste).
+/// En clinique, on fait plusieurs stimulations TMS a differents endroits.
 pub fn pci_mean_all_regions(
     network: &BrainNetwork,
     chemistry: &crate::neurochemistry::NeuroChemicalState,
@@ -241,20 +241,20 @@ pub fn pci_mean_all_regions(
     sum / NUM_REGIONS as f64
 }
 
-/// Result of PCI computation for a given perturbation.
+/// Resultat du PCI pour une perturbation donnee.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PciResult {
-    /// Final PCI [0, 1]: 0 = no consciousness, 1 = maximal consciousness
+    /// PCI final [0, 1] : 0 = pas de conscience, 1 = conscience maximale
     pub pci: f64,
-    /// Raw LZ complexity of the response
+    /// Complexite LZ brute de la reponse
     pub lzc: f64,
-    /// Source entropy (binarized matrix)
+    /// Entropie de la source (matrice binarisee)
     pub source_entropy: f64,
-    /// Perturbed region
+    /// Region perturbee
     pub target_region: String,
-    /// Number of regions affected by the cascade
+    /// Nombre de regions touchees par la cascade
     pub regions_affected: usize,
-    /// Number of simulation steps
+    /// Nombre de pas de simulation
     pub response_steps: usize,
 }
 
@@ -272,68 +272,68 @@ impl Default for PciResult {
 }
 
 // =============================================================================
-// 3. Phi* — Computable approximation of Phi (IIT)
+// 3. Phi* — Approximation calculable de Phi (IIT)
 // =============================================================================
 
-/// Computes Phi*: approximation of integrated information (IIT).
+/// Calcule Phi* : approximation de l'information integree (IIT).
 ///
-/// Algorithm (inspired by Oizumi et al. 2014, Barrett & Seth 2011):
+/// Algorithme (inspire de Oizumi et al. 2014, Barrett & Seth 2011) :
 ///
-/// Principle: Phi* measures how much information the system generates
-/// AS A WHOLE beyond the sum of its parts.
+/// Principe : Phi* mesure combien d'information le systeme genere
+/// EN TANT QUE TOUT au-dela de la somme de ses parties.
 ///
-/// 1. Compute the total mutual information I(past; future) of the whole system
-///    using regional activation time series
-/// 2. For each bipartition of the system, compute the sum of mutual
-///    information of the separated parts: sum(I(past_i; future_i))
+/// 1. Calculer l'information mutuelle totale I(past; future) du systeme entier
+///    en utilisant les series temporelles des activations regionales
+/// 2. Pour chaque bipartition du systeme, calculer la somme des informations
+///    mutuelles des parties separees : sum(I(past_i; future_i))
 /// 3. Phi* = I(whole) - min_partition(sum(I(parts)))
 ///
-/// Uses the Gaussian approximation:
-///    I(X; Y) = -0.5 * ln(1 - r^2) where r = Pearson correlation
+/// On utilise l'approximation gaussienne :
+///    I(X; Y) = -0.5 * ln(1 - r^2) ou r = correlation de Pearson
 ///
-/// To avoid the combinatorial explosion of partitions (2^12),
-/// natural anatomical bipartitions are used:
-///    - Left/Right (cortex/subcortex)
+/// Pour eviter l'explosion combinatoire des partitions (2^12),
+/// on utilise les bipartitions anatomiques naturelles :
+///    - Gauche/Droite (cortex/sous-cortex)
 ///    - Anterior/Posterior
 ///    - Cortical/Subcortical
-///    and the minimum is taken.
+///    et on prend le minimum.
 pub fn phi_star(timeseries: &[[f64; NUM_REGIONS]]) -> PhiStarResult {
     let n = timeseries.len();
     if n < 5 {
         return PhiStarResult::default();
     }
 
-    // Compute total mutual information: I(t-1; t) for the whole system
+    // Calculer l'information mutuelle totale : I(t-1; t) pour tout le systeme
     let mi_whole = mutual_information_system(timeseries);
 
-    // Anatomical bipartitions (indices of regions in each part)
+    // Bipartitions anatomiques (indices des regions dans chaque partie)
     let partitions: [(&str, &[usize], &[usize]); 4] = [
         // Cortical vs Subcortical
         ("Cortical/Subcortical",
-         &[2, 3, 5, 8, 9, 10],       // PFC-D, PFC-V, ACC, OFC, Temp, Par
-         &[0, 1, 4, 6, 7, 11]),       // Amyg, Hipp, Insula, BG, Brainstem, Cereb
+         &[2, 3, 5, 8, 9, 10],       // PFC-D, PFC-V, CCA, COF, Temp, Par
+         &[0, 1, 4, 6, 7, 11]),       // Amyg, Hipp, Insula, BG, Tronc, Cerv
 
         // Anterior vs Posterior
         ("Anterior/Posterior",
-         &[0, 2, 3, 5, 8],            // Amyg, PFC-D, PFC-V, ACC, OFC
-         &[1, 4, 6, 7, 9, 10, 11]),   // Hipp, Insula, BG, Brainstem, Temp, Par, Cereb
+         &[0, 2, 3, 5, 8],            // Amyg, PFC-D, PFC-V, CCA, COF
+         &[1, 4, 6, 7, 9, 10, 11]),   // Hipp, Insula, BG, Tronc, Temp, Par, Cerv
 
-        // Hemispheres (simplified: left=emotional, right=analytical)
-        ("Emotional/Analytical",
-         &[0, 1, 4, 6, 8],            // Amyg, Hipp, Insula, BG, OFC
-         &[2, 3, 5, 7, 9, 10, 11]),   // PFC-D, PFC-V, ACC, Brainstem, Temp, Par, Cereb
+        // Hemispheres (simplifie : gauche=emotionnel, droite=analytique)
+        ("Emotionnel/Analytique",
+         &[0, 1, 4, 6, 8],            // Amyg, Hipp, Insula, BG, COF
+         &[2, 3, 5, 7, 9, 10, 11]),   // PFC-D, PFC-V, CCA, Tronc, Temp, Par, Cerv
 
-        // Global Workspace vs periphery
-        ("Workspace/Periphery",
-         &[2, 3, 5, 9, 10],           // PFC-D, PFC-V, ACC, Temp, Par (associative cortex)
-         &[0, 1, 4, 6, 7, 8, 11]),    // rest (subcortical + sensory)
+        // Global Workspace vs peripherie
+        ("Workspace/Peripherie",
+         &[2, 3, 5, 9, 10],           // CPF-D, CPF-V, CCA, Temp, Par (cortex associatif)
+         &[0, 1, 4, 6, 7, 8, 11]),    // reste (sous-cortical + sensoriel)
     ];
 
     let mut min_partition_mi = f64::MAX;
     let mut mip_name = "";
 
     for &(name, part_a, part_b) in &partitions {
-        // Extract sub-series for each part
+        // Extraire les sous-series pour chaque partie
         let mi_a = mutual_information_partition(timeseries, part_a);
         let mi_b = mutual_information_partition(timeseries, part_b);
         let partition_sum = mi_a + mi_b;
@@ -344,8 +344,8 @@ pub fn phi_star(timeseries: &[[f64; NUM_REGIONS]]) -> PhiStarResult {
         }
     }
 
-    // Phi* = whole information - best partition information
-    // Normalized by MI_whole to obtain a ratio [0, 1]
+    // Phi* = information du tout - information de la meilleure partition
+    // Normalise par MI_whole pour obtenir un ratio [0, 1]
     let phi_raw = (mi_whole - min_partition_mi).max(0.0);
     let phi_normalized = if mi_whole > 1e-10 {
         (phi_raw / mi_whole).clamp(0.0, 1.0)
@@ -362,13 +362,13 @@ pub fn phi_star(timeseries: &[[f64; NUM_REGIONS]]) -> PhiStarResult {
     }
 }
 
-/// Gaussian mutual information of the whole system: I(X_t; X_{t+1})
-/// Uses the multivariate correlation (trace of the correlation matrix).
+/// Information mutuelle gaussienne du systeme entier : I(X_t; X_{t+1})
+/// Utilise la correlation multivariee (trace de la matrice de correlation).
 fn mutual_information_system(timeseries: &[[f64; NUM_REGIONS]]) -> f64 {
     let n = timeseries.len();
     if n < 3 { return 0.0; }
 
-    // Compute Pearson correlation between t and t+1 for each region
+    // Calculer la correlation de Pearson entre t et t+1 pour chaque region
     let mut total_mi = 0.0;
 
     for ch in 0..NUM_REGIONS {
@@ -377,28 +377,28 @@ fn mutual_information_system(timeseries: &[[f64; NUM_REGIONS]]) -> f64 {
         total_mi += gaussian_mi(&past, &future);
     }
 
-    // Add cross-correlations (inter-region)
-    // To avoid O(N^2) explosion, sample the most important pairs
+    // Ajouter les correlations croisees (inter-regions)
+    // Pour ne pas exploser en O(N^2), on echantillonne les paires les plus importantes
     let important_pairs: &[(usize, usize)] = &[
-        (0, 3),  // Amygdala <-> PFC-Ventro
-        (1, 2),  // Hippocampus <-> PFC-Dorso
-        (0, 7),  // Amygdala <-> Brainstem
-        (2, 5),  // PFC-Dorso <-> ACC
-        (4, 5),  // Insula <-> ACC
-        (6, 2),  // Basal Ganglia <-> PFC-Dorso
-        (3, 8),  // PFC-Ventro <-> OFC
+        (0, 3),  // Amygdale ↔ CPF-Ventro
+        (1, 2),  // Hippocampe ↔ CPF-Dorso
+        (0, 7),  // Amygdale ↔ Tronc
+        (2, 5),  // CPF-Dorso ↔ CCA
+        (4, 5),  // Insula ↔ CCA
+        (6, 2),  // Noyaux-Base ↔ CPF-Dorso
+        (3, 8),  // CPF-Ventro ↔ COF
     ];
 
     for &(a, b) in important_pairs {
         let x: Vec<f64> = timeseries[..n-1].iter().map(|t| t[a]).collect();
         let y: Vec<f64> = timeseries[1..].iter().map(|t| t[b]).collect();
-        total_mi += gaussian_mi(&x, &y) * 0.3; // Reduced weight for cross-correlations
+        total_mi += gaussian_mi(&x, &y) * 0.3; // Poids reduit pour les cross-correlations
     }
 
     total_mi
 }
 
-/// Mutual information of a partition (subset of regions).
+/// Information mutuelle d'une partition (sous-ensemble de regions).
 fn mutual_information_partition(
     timeseries: &[[f64; NUM_REGIONS]],
     region_indices: &[usize],
@@ -417,10 +417,10 @@ fn mutual_information_partition(
     total_mi
 }
 
-/// Gaussian mutual information between two vectors:
-/// I(X; Y) = -0.5 * ln(1 - r^2) where r = Pearson correlation.
+/// Information mutuelle gaussienne entre deux vecteurs :
+/// I(X; Y) = -0.5 * ln(1 - r^2) ou r = correlation de Pearson.
 ///
-/// Returns 0.0 if data is insufficient or constant.
+/// Retourne 0.0 si les donnees sont insuffisantes ou constantes.
 fn gaussian_mi(x: &[f64], y: &[f64]) -> f64 {
     let n = x.len().min(y.len());
     if n < 3 { return 0.0; }
@@ -443,22 +443,22 @@ fn gaussian_mi(x: &[f64], y: &[f64]) -> f64 {
     let denom = (var_x * var_y).sqrt();
     if denom < 1e-12 { return 0.0; }
 
-    let r = (cov_xy / denom).clamp(-0.999, 0.999); // Avoid log(0)
+    let r = (cov_xy / denom).clamp(-0.999, 0.999); // Eviter log(0)
     -0.5 * (1.0 - r * r).ln()
 }
 
-/// Result of the Phi* computation.
+/// Resultat du calcul de Phi*.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PhiStarResult {
-    /// Normalized Phi* [0, 1]: relative integrated information
+    /// Phi* normalise [0, 1] : information integree relative
     pub phi_star: f64,
-    /// Mutual information of the whole system
+    /// Information mutuelle du systeme entier
     pub mi_whole: f64,
-    /// Mutual information of the minimum partition
+    /// Information mutuelle de la partition minimale
     pub mi_minimum_partition: f64,
-    /// Name of the minimum partition (MIP -- Minimum Information Partition)
+    /// Nom de la partition minimale (MIP — Minimum Information Partition)
     pub minimum_information_partition: String,
-    /// Raw Phi* (non-normalized)
+    /// Phi* brut (non normalise)
     pub phi_raw: f64,
 }
 
@@ -475,45 +475,45 @@ impl Default for PhiStarResult {
 }
 
 // =============================================================================
-// Synthesis of all 3 metrics
+// Synthese des 3 metriques
 // =============================================================================
 
-/// Synthesis of the 3 consciousness metrics in a single report.
+/// Synthese des 3 metriques de conscience dans un seul rapport.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConsciousnessMetrics {
-    /// LZC: Lempel-Ziv complexity of brain activity [0, 1]
+    /// LZC : complexite de Lempel-Ziv de l'activite cerebrale [0, 1]
     pub lzc: f64,
-    /// PCI: Perturbational Complexity Index [0, 1]
+    /// PCI : indice de complexite perturbationnelle [0, 1]
     pub pci: PciResult,
-    /// Phi*: approximation of integrated information [0, 1]
+    /// Phi* : approximation de l'information integree [0, 1]
     pub phi_star: PhiStarResult,
-    /// Composite score [0, 1]: weighted average of the 3 metrics
+    /// Score composite [0, 1] : moyenne ponderee des 3 metriques
     pub composite_score: f64,
-    /// Qualitative interpretation of the consciousness level
+    /// Interpretation qualitative du niveau de conscience
     pub interpretation: String,
 }
 
-/// Computes all 3 metrics and produces a synthetic report.
+/// Calcule les 3 metriques et produit un rapport synthetique.
 ///
-/// Parameters:
-/// - timeseries: history of regional activations (at least 5 cycles)
-/// - network: brain network (for PCI)
-/// - chemistry: chemical state (for PCI propagation)
-/// - target_region: region to perturb for PCI (None = best PCI)
+/// Parametres :
+/// - timeseries : historique des activations regionales (au moins 5 cycles)
+/// - network : reseau cerebral (pour le PCI)
+/// - chemistry : etat chimique (pour la propagation PCI)
+/// - target_region : region a perturber pour le PCI (None = meilleur PCI)
 pub fn compute_all_metrics(
     timeseries: &[[f64; NUM_REGIONS]],
     network: &BrainNetwork,
     chemistry: &crate::neurochemistry::NeuroChemicalState,
     target_region: Option<usize>,
 ) -> ConsciousnessMetrics {
-    // 1. LZC on the raw time series
+    // 1. LZC sur la serie temporelle brute
     let lzc = lzc_from_timeseries(timeseries);
 
-    // 2. PCI -- perturb the target region or compute the mean
+    // 2. PCI — perturber la region cible ou calculer la moyenne
     let pci = if let Some(target) = target_region {
         perturbational_complexity_index(network, chemistry, target)
     } else {
-        // Mean PCI over the 3 most active regions
+        // PCI moyen sur les 3 regions les plus actives
         let mut indexed: Vec<(usize, f64)> = network.regions.iter()
             .enumerate()
             .map(|(i, r)| (i, r.activation))
@@ -530,28 +530,28 @@ pub fn compute_all_metrics(
         best.cloned().unwrap_or_default()
     };
 
-    // 3. Phi* on the time series
+    // 3. Phi* sur la serie temporelle
     let phi_star_result = phi_star(timeseries);
 
-    // Composite score: weights calibrated from the literature
-    // PCI has the most weight (clinically validated)
-    let composite = pci.pci * 0.40          // PCI: clinical validation (Casali 2013)
-        + phi_star_result.phi_star * 0.35   // Phi*: theoretical foundation (IIT)
-        + lzc * 0.25;                       // LZC: raw complexity
+    // Score composite : poids calibres sur la litterature
+    // PCI a le plus de poids (valide cliniquement)
+    let composite = pci.pci * 0.40          // PCI : validation clinique (Casali 2013)
+        + phi_star_result.phi_star * 0.35   // Phi* : fondement theorique (IIT)
+        + lzc * 0.25;                       // LZC : complexite brute
 
     let composite_score = composite.clamp(0.0, 1.0);
 
-    // Clinical interpretation (thresholds inspired by Casali et al. 2013)
+    // Interpretation clinique (seuils inspires de Casali et al. 2013)
     let interpretation = if composite_score > 0.7 {
-        "Vivid consciousness -- high integration and complexity (comparable to lucid wakefulness)"
+        "Conscience vive — haute integration et complexite (comparable a l'eveil lucide)"
     } else if composite_score > 0.5 {
-        "Moderate consciousness -- integrated and responsive system (comparable to normal wakefulness)"
+        "Conscience moderee — systeme integre et reactif (comparable a l'eveil normal)"
     } else if composite_score > 0.35 {
-        "Reduced consciousness -- low integration (comparable to light sedation)"
+        "Conscience reduite — faible integration (comparable a la sedation legere)"
     } else if composite_score > 0.2 {
-        "Minimal consciousness -- partial responses (comparable to MCS vegetative state)"
+        "Conscience minimale — reponses partielles (comparable a l'etat vegetatif MCS)"
     } else {
-        "Absent or very low consciousness (comparable to coma or deep anesthesia)"
+        "Conscience absente ou tres faible (comparable au coma ou a l'anesthesie profonde)"
     }.to_string();
 
     ConsciousnessMetrics {
@@ -573,25 +573,25 @@ mod tests {
 
     #[test]
     fn test_lzc_constant_sequence() {
-        // Constant sequence = minimal complexity
+        // Sequence constante = complexite minimale
         let seq = vec![true; 100];
         let c = lempel_ziv_complexity(&seq);
-        assert!(c < 0.2, "Constant sequence must have low LZC: {}", c);
+        assert!(c < 0.2, "Sequence constante doit avoir faible LZC: {}", c);
     }
 
     #[test]
     fn test_lzc_alternating_sequence() {
-        // Alternating sequence = slightly more complex but repetitive
+        // Sequence alternee = un peu plus complexe mais repetitive
         let seq: Vec<bool> = (0..100).map(|i| i % 2 == 0).collect();
         let c = lempel_ziv_complexity(&seq);
-        assert!(c > 0.0, "Alternating sequence must have LZC > 0: {}", c);
-        assert!(c < 0.5, "Alternating sequence remains repetitive: {}", c);
+        assert!(c > 0.0, "Sequence alternee doit avoir LZC > 0: {}", c);
+        assert!(c < 0.5, "Sequence alternee reste repetitive: {}", c);
     }
 
     #[test]
     fn test_lzc_random_sequence() {
-        // Pseudo-random sequence = higher complexity than a constant
-        // Using a simple PRNG with good distribution
+        // Sequence pseudo-aleatoire = complexite plus elevee qu'une constante
+        // On utilise un PRNG simple mais avec bonne distribution
         let mut state: u32 = 12345;
         let seq: Vec<bool> = (0..500).map(|_| {
             // xorshift32
@@ -603,7 +603,7 @@ mod tests {
         let c = lempel_ziv_complexity(&seq);
         let c_constant = lempel_ziv_complexity(&vec![true; 500]);
         assert!(c > c_constant * 2.0,
-            "Random sequence ({:.4}) must be much more complex than constant ({:.4})",
+            "Sequence aleatoire ({:.4}) doit etre bien plus complexe que constante ({:.4})",
             c, c_constant);
     }
 
@@ -616,37 +616,37 @@ mod tests {
 
     #[test]
     fn test_gaussian_mi_correlated() {
-        // Two perfectly correlated series
+        // Deux series parfaitement correlees
         let x: Vec<f64> = (0..50).map(|i| (i as f64) * 0.1).collect();
         let y: Vec<f64> = (0..50).map(|i| (i as f64) * 0.1 + 0.01).collect();
         let mi = gaussian_mi(&x, &y);
-        assert!(mi > 1.0, "Correlated series must have high MI: {}", mi);
+        assert!(mi > 1.0, "Series correlees doivent avoir MI eleve: {}", mi);
     }
 
     #[test]
     fn test_gaussian_mi_uncorrelated() {
-        // Two uncorrelated series
+        // Deux series non correlees
         let x: Vec<f64> = (0..50).map(|i| (i as f64) * 0.1).collect();
         let y: Vec<f64> = (0..50).map(|i| ((i * 7 + 13) % 50) as f64 * 0.02).collect();
         let mi = gaussian_mi(&x, &y);
-        assert!(mi < 1.0, "Uncorrelated series must have low MI: {}", mi);
+        assert!(mi < 1.0, "Series non correlees doivent avoir MI faible: {}", mi);
     }
 
     #[test]
     fn test_phi_star_needs_data() {
-        // Not enough data
+        // Pas assez de donnees
         let short: Vec<[f64; NUM_REGIONS]> = vec![[0.5; NUM_REGIONS]; 2];
         let result = phi_star(&short);
-        assert_eq!(result.phi_star, 0.0, "Phi* must be 0 without enough data");
+        assert_eq!(result.phi_star, 0.0, "Phi* doit etre 0 sans assez de donnees");
     }
 
     #[test]
     fn test_phi_star_constant_system() {
-        // Constant system = no information
+        // Systeme constant = pas d'information
         let constant: Vec<[f64; NUM_REGIONS]> = vec![[0.5; NUM_REGIONS]; 20];
         let result = phi_star(&constant);
         assert!(result.phi_star < 0.1,
-            "Constant system must have low Phi*: {}", result.phi_star);
+            "Systeme constant doit avoir Phi* faible: {}", result.phi_star);
     }
 
     #[test]
@@ -655,14 +655,14 @@ mod tests {
         let chemistry = crate::neurochemistry::NeuroChemicalState::default();
         let result = perturbational_complexity_index(&network, &chemistry, 0);
         assert!(result.pci >= 0.0 && result.pci <= 1.0,
-            "PCI must be in [0, 1]: {}", result.pci);
+            "PCI doit etre dans [0, 1]: {}", result.pci);
         assert!(result.regions_affected > 0,
-            "The perturbation must affect at least one region");
+            "La perturbation doit affecter au moins une region");
     }
 
     #[test]
     fn test_composite_score() {
-        // Generate a minimal history
+        // Generer un historique minimal
         let network = BrainNetwork::new();
         let chemistry = crate::neurochemistry::NeuroChemicalState::default();
         let timeseries: Vec<[f64; NUM_REGIONS]> = (0..20).map(|i| {

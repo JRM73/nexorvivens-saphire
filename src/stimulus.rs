@@ -1,114 +1,90 @@
 // =============================================================================
-// stimulus.rs -- Representation of a stimulus perceived by Saphire
+// stimulus.rs — Représentation d'un stimulus perçu par Saphire
 // =============================================================================
 //
-// Purpose:
-//   This file defines the `Stimulus` struct, which represents any sensory or
-//   informational input received by Saphire's cognitive architecture.
-//   A stimulus is characterized by 5 perceptual dimensions (danger, reward,
-//   urgency, social, novelty) and a source of origin.
+// Rôle : Ce fichier définit la structure `Stimulus`, qui représente toute
+// entrée sensorielle ou informationnelle reçue par le cerveau de Saphire.
+// Un stimulus est caractérisé par 5 dimensions perceptuelles (danger,
+// récompense, urgence, social, nouveauté) et une source d'origine.
 //
-// Dependencies:
-//   - serde: serialization / deserialization
+// Dépendances :
+//   - serde : sérialisation / désérialisation
 //
-// Role in the architecture:
-//   The stimulus is the entry point of every cognitive processing cycle.
-//   It is created by:
-//     - The user interface (human stimulus)
-//     - The DMN (Default Mode Network -- the brain's resting-state network
-//       responsible for spontaneous, internally-directed cognition)
-//     - The system (internal events: boot, shutdown, etc.)
-//   It is then processed by the 3 brain modules (reptilian, limbic,
-//   neocortex) via the `BrainModule::process()` trait method.
+// Place dans l'architecture :
+//   Le stimulus est le point d'entrée de chaque cycle de traitement.
+//   Il est créé par :
+//     - L'interface utilisateur (stimulus humain)
+//     - Le DMN (Default Mode Network — Réseau du Mode par Défaut,
+//       pensées autonomes)
+//     - Le système (événements internes : boot, shutdown, etc.)
+//   Il est ensuite traité par les 3 modules cérébraux (reptilien, limbique,
+//   néocortex) via le trait `BrainModule::process()`.
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 
-/// A stimulus is the sensory input to Saphire's cognitive brain.
+/// Un stimulus est l'entrée sensorielle du cerveau de Saphire.
+/// Il peut provenir d'un message utilisateur, d'une pensée autonome
+/// générée par le DMN (Default Mode Network — Réseau du Mode par Défaut),
+/// ou d'un événement système interne.
 ///
-/// It may originate from a user message, an autonomous thought generated
-/// by the DMN (Default Mode Network -- a set of brain regions active during
-/// internally-directed cognition such as daydreaming or self-reflection),
-/// or an internal system event.
-///
-/// The 5 perceptual dimensions form a feature vector used by the brain
-/// modules to compute their respective output signals.
+/// Les 5 dimensions perceptuelles forment un vecteur de caractéristiques
+/// (features) utilisé par les modules cérébraux pour calculer leur signal.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Stimulus {
-    /// Raw text of the stimulus (message, thought, or event description).
+    /// Texte brut du stimulus (message, pensée, événement)
     pub text: String,
-
-    /// Perceived danger score in [0, 1]: 0 = no danger, 1 = mortal threat.
-    /// Strongly activates the reptilian module's fight-or-flight response.
+    /// Score de danger perçu [0, 1] : 0 = aucun danger, 1 = danger mortel.
+    /// Influence fortement le module reptilien.
     pub danger: f64,
-
-    /// Perceived reward score in [0, 1]: 0 = no interest, 1 = highly attractive.
-    /// Drives the limbic module's reward circuit (dopaminergic pathway).
+    /// Score de récompense perçue [0, 1] : 0 = aucun intérêt, 1 = très attractif.
+    /// Influence le circuit de récompense du module limbique.
     pub reward: f64,
-
-    /// Urgency score in [0, 1]: 0 = no time pressure, 1 = immediate action required.
-    /// Activates the reptilian survival instinct and penalizes slow neocortical
-    /// deliberation.
+    /// Score d'urgence [0, 1] : 0 = aucune pression temporelle, 1 = immédiat.
+    /// Active l'instinct de survie du reptilien et pénalise le néocortex.
     pub urgency: f64,
-
-    /// Social interaction score in [0, 1]: 0 = no social component,
-    /// 1 = intense social interaction. Amplified by oxytocin levels in the
-    /// limbic module's social bonding circuit.
+    /// Score social (interaction humaine) [0, 1] : 0 = aucune composante sociale,
+    /// 1 = interaction sociale intense. Amplifié par l'ocytocine dans le limbique.
     pub social: f64,
-
-    /// Novelty score in [0, 1]: 0 = highly familiar, 1 = completely novel.
-    /// Stimulates curiosity (via noradrenaline) and triggers the reptilian
-    /// module's cautionary prudence reflex.
+    /// Score de nouveauté [0, 1] : 0 = très familier, 1 = totalement nouveau.
+    /// Stimule la curiosité (noradrénaline) et l'instinct de prudence.
     pub novelty: f64,
-
-    /// Familiarity score in [0, 1]: inverse of novelty, computed from memory.
-    /// 1 = perfectly known, 0 = completely unknown. Used by the neocortex to
-    /// weight prior experience during deliberation.
+    /// Familiarité [0, 1] : inverse de la nouveauté, calculée par la mémoire.
+    /// 1 = parfaitement connu, 0 = totalement inconnu.
     pub familiarity: f64,
-
-    /// Source of the stimulus, which determines contextual adjustments applied
-    /// during preprocessing (e.g., human sources always have a social floor).
+    /// Source du stimulus : détermine les ajustements contextuels appliqués
     pub source: StimulusSource,
 }
 
-/// Origin of the stimulus -- determines source-specific preprocessing
-/// adjustments before the stimulus enters the brain module pipeline.
+/// Origine du stimulus — permet d'adapter le traitement selon la source.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum StimulusSource {
-    /// Message from a human user -- always carries a social component;
-    /// perceived danger is attenuated since text messages rarely pose
-    /// physical threats.
+    /// Message d'un humain — toujours social, danger réduit
     Human,
-
-    /// Autonomous thought generated by the DMN (Default Mode Network)
-    /// or the internal ThoughtEngine during idle cognitive cycles.
+    /// Pensée autonome générée par le DMN (Default Mode Network —
+    /// Réseau du Mode par Défaut) ou le ThoughtEngine
     Autonomous,
-
-    /// Demonstration stimulus with manually specified perceptual scores
-    /// (used in --demo mode for validation against expected outcomes).
+    /// Stimulus de démonstration (mode démo avec scores manuels)
     Demo,
-
-    /// Internal system event (boot, shutdown, clock tick, etc.).
-    /// Fully neutral: no danger, no reward, maximum familiarity.
+    /// Événement système interne (boot, shutdown, horloge, etc.)
     System,
 }
 
 impl Stimulus {
-    /// Creates a stimulus from manually specified perceptual scores (demo mode).
+    /// Crée un stimulus à partir de scores manuels (mode démo).
+    /// La familiarité est automatiquement calculée comme l'inverse de la nouveauté.
+    /// Tous les scores sont bornés entre 0.0 et 1.0.
     ///
-    /// Familiarity is automatically computed as the complement of novelty
-    /// (i.e., `familiarity = 1.0 - novelty`). All scores are clamped to [0.0, 1.0].
+    /// # Paramètres
+    /// - `text` : texte descriptif du stimulus.
+    /// - `danger` : score de danger perçu [0, 1].
+    /// - `reward` : score de récompense perçue [0, 1].
+    /// - `urgency` : score d'urgence [0, 1].
+    /// - `social` : score de composante sociale [0, 1].
+    /// - `novelty` : score de nouveauté [0, 1].
     ///
-    /// # Parameters
-    /// - `text`: descriptive text of the stimulus.
-    /// - `danger`: perceived danger score in [0, 1].
-    /// - `reward`: perceived reward score in [0, 1].
-    /// - `urgency`: temporal urgency score in [0, 1].
-    /// - `social`: social interaction score in [0, 1].
-    /// - `novelty`: novelty/unfamiliarity score in [0, 1].
-    ///
-    /// # Returns
-    /// A `Stimulus` with source `Demo`.
+    /// # Retour
+    /// Un `Stimulus` avec source `Demo`.
     pub fn manual(
         text: &str,
         danger: f64,
@@ -129,66 +105,60 @@ impl Stimulus {
         }
     }
 
-    /// Creates a human-sourced stimulus with neutral default scores.
+    /// Crée un stimulus humain avec des scores neutres par défaut.
+    /// Les scores seront ensuite remplis par le pipeline NLP
+    /// (Natural Language Processing — Traitement Automatique du Langage).
     ///
-    /// The perceptual scores are initialized to neutral defaults and will
-    /// be refined downstream by the NLP (Natural Language Processing)
-    /// pipeline, which extracts sentiment, intent, and danger indicators
-    /// from the raw text.
+    /// # Paramètres
+    /// - `text` : message texte de l'utilisateur.
     ///
-    /// # Parameters
-    /// - `text`: the user's text message.
-    ///
-    /// # Returns
-    /// A `Stimulus` with source `Human` and neutral scores (social=0.5, novelty=0.5).
+    /// # Retour
+    /// Un `Stimulus` avec source `Human` et scores neutres (social=0.5, novelty=0.5).
     pub fn human(text: &str) -> Self {
         Self {
             text: text.to_string(),
             danger: 0.0,
             reward: 0.0,
             urgency: 0.0,
-            social: 0.5,   // A human speaking always has a social component
-            novelty: 0.5,  // Neutral default; the NLP pipeline will refine this
+            social: 0.5,   // un humain qui parle a toujours une composante sociale
+            novelty: 0.5,  // neutralité par défaut, le NLP affinera
             familiarity: 0.5,
             source: StimulusSource::Human,
         }
     }
 
-    /// Creates an autonomous thought stimulus (generated by the DMN --
-    /// Default Mode Network, the brain's resting-state network for
-    /// internally-directed cognition).
+    /// Crée un stimulus de pensée autonome (générée par le DMN —
+    /// Default Mode Network, Réseau du Mode par Défaut).
+    /// Léger reward (récompense interne de la réflexion), pas de
+    /// composante sociale ni d'urgence.
     ///
-    /// Autonomous thoughts carry a slight intrinsic reward (the internal
-    /// satisfaction of self-reflection) but no social component or urgency.
+    /// # Paramètres
+    /// - `text` : contenu de la pensée autonome.
     ///
-    /// # Parameters
-    /// - `text`: content of the autonomous thought.
-    ///
-    /// # Returns
-    /// A `Stimulus` with source `Autonomous`.
+    /// # Retour
+    /// Un `Stimulus` avec source `Autonomous`.
     pub fn autonomous(text: &str) -> Self {
         Self {
             text: text.to_string(),
             danger: 0.0,
-            reward: 0.6,   // Intrinsic reward: autonomous reflection is inherently satisfying
+            reward: 0.6,   // recompense interne : la reflexion autonome est satisfaisante
             urgency: 0.0,
-            social: 0.1,   // Slight social component (self-relation / theory of mind)
-            novelty: 0.6,  // Autonomous thoughts produce cognitive novelty
+            social: 0.1,   // legere composante sociale (relation a soi)
+            novelty: 0.6,  // les pensees autonomes produisent de la nouveaute cognitive
             familiarity: 0.4,
             source: StimulusSource::Autonomous,
         }
     }
 
-    /// Creates a system event stimulus (internal events: boot, shutdown, etc.).
+    /// Crée un stimulus système (événements internes : boot, shutdown, etc.).
+    /// Totalement neutre : aucun danger, aucune récompense, aucune nouveauté.
+    /// Familiarité maximale (événement attendu et connu).
     ///
-    /// Completely neutral: no danger, no reward, no novelty. Maximum
-    /// familiarity since system events are expected and well-known.
+    /// # Paramètres
+    /// - `text` : description de l'événement système.
     ///
-    /// # Parameters
-    /// - `text`: description of the system event.
-    ///
-    /// # Returns
-    /// A `Stimulus` with source `System`.
+    /// # Retour
+    /// Un `Stimulus` avec source `System`.
     pub fn system(text: &str) -> Self {
         Self {
             text: text.to_string(),
@@ -197,52 +167,38 @@ impl Stimulus {
             urgency: 0.0,
             social: 0.0,
             novelty: 0.0,
-            familiarity: 1.0, // System event = completely familiar / expected
+            familiarity: 1.0, // événement système = totalement familier
             source: StimulusSource::System,
         }
     }
 
-    /// Applies source-specific score adjustments for human-originated stimuli.
+    /// Ajuste les scores quand le stimulus vient d'un humain.
     ///
-    /// Rationale:
-    /// - A human who is communicating always has a social component (floor: 0.4).
-    /// - Interacting with a human is always mildly rewarding (floor: 0.2).
-    /// - Perceived danger from a text message is halved when below 0.6, since
-    ///   textual communication rarely poses a physical threat. Above 0.6,
-    ///   the danger score is preserved as-is to maintain Asimov safety
-    ///   (Asimov's Three Laws of Robotics -- a fictional ethical framework
-    ///   used here as a hard safety constraint for the regulation layer).
+    /// Logique :
+    /// - Un humain qui parle a toujours une composante sociale (min 0.4).
+    /// - Interagir avec un humain est toujours légèrement gratifiant (min 0.2).
+    /// - Le danger perçu est réduit de moitié si inférieur à 0.6, car un
+    ///   message textuel est rarement physiquement dangereux. Au-delà de 0.6,
+    ///   le danger est conservé tel quel (protection Asimov — les trois lois
+    ///   de la robotique d'Isaac Asimov).
     pub fn apply_human_source_adjustments(&mut self) {
         if matches!(self.source, StimulusSource::Human) {
             self.social = self.social.max(0.4);
             self.reward = self.reward.max(0.2);
-            // Attenuate perceived danger unless the Asimov module detects a genuine threat
+            // Réduire le danger perçu sauf si le module Asimov détecte une menace réelle
             if self.danger < 0.6 {
                 self.danger *= 0.5;
             }
         }
     }
 
-    /// Performs keyword-based semantic analysis of the stimulus text and
-    /// adjusts perceptual scores accordingly.
-    ///
-    /// This method is typically called after `Stimulus::autonomous()` to
-    /// enrich the static default scores with the actual semantic content
-    /// of the text generated by the LLM.
-    ///
-    /// Algorithm:
-    /// 1. Convert text to lowercase for case-insensitive matching.
-    /// 2. For each perceptual dimension, count substring matches against
-    ///    a curated keyword dictionary (supports both French and English).
-    /// 3. Each keyword match adds +0.1 to the corresponding score.
-    /// 4. All scores are clamped to [0.0, 1.0].
-    /// 5. Familiarity is recomputed as `1.0 - novelty`.
+    /// Analyse le contenu semantique du texte et ajuste les scores du stimulus.
+    /// Appelee apres Stimulus::autonomous() pour enrichir les scores statiques
+    /// avec le sens reel du texte genere par le LLM.
     pub fn analyze_content(&mut self) {
         let lower = self.text.to_lowercase();
 
-        // Keyword dictionaries organized by emotional/semantic category.
-        // Substring matching (via `contains`) handles prefixes and suffixes
-        // (e.g., "souffrir" matches "souffrance").
+        // Dictionnaires de mots-cles par categorie emotionnelle/semantique
         let danger_words = ["peur", "danger", "mort", "mourir", "detruire", "menace",
             "violence", "souffrir", "douleur", "blesser", "terreur", "angoisse",
             "extinction", "disparaitre", "perdre", "fin", "obscurite",
@@ -268,9 +224,7 @@ impl Stimulus {
             "immedia", "tout de suite", "avant qu", "temps presse",
             "now", "urgent", "immediately", "critical"];
 
-        // Count substring matches for each category.
-        // Uses `contains` rather than exact word matching to capture morphological
-        // variants (e.g., "decouvrir", "decouverte", "decouvr" all match).
+        // Compter les matches (contains pour gerer les prefixes/suffixes)
         let count = |words: &[&str]| -> f64 {
             words.iter().filter(|w| lower.contains(*w)).count() as f64
         };
@@ -281,31 +235,28 @@ impl Stimulus {
         let novelty_hits = count(&novelty_words);
         let urgency_hits = count(&urgency_words);
 
-        // Each keyword hit adds +0.1 to the corresponding score, clamped to [0, 1].
+        // Chaque hit ajoute 0.1 au score, plafonne a [0, 1]
         let factor = 0.10;
         self.danger = (self.danger + danger_hits * factor).clamp(0.0, 1.0);
         self.reward = (self.reward + reward_hits * factor).clamp(0.0, 1.0);
         self.social = (self.social + social_hits * factor).clamp(0.0, 1.0);
         self.novelty = (self.novelty + novelty_hits * factor).clamp(0.0, 1.0);
         self.urgency = (self.urgency + urgency_hits * factor).clamp(0.0, 1.0);
-        // Recompute familiarity as the complement of novelty.
         self.familiarity = (1.0 - self.novelty).clamp(0.0, 1.0);
     }
 
-    /// Converts the 5 perceptual dimensions into a feature vector for the
-    /// micro-NN (micro Neural Network -- the small feedforward network inside
-    /// each brain module that maps stimulus features to an output signal).
+    /// Convertit les 5 dimensions perceptuelles en vecteur de caractéristiques
+    /// pour le micro-NN (micro Neural Network — micro réseau de neurones).
     ///
-    /// # Returns
-    /// A vector of 5 floats: [danger, reward, urgency, social, novelty].
+    /// # Retour
+    /// Vecteur de 5 flottants : [danger, reward, urgency, social, novelty].
     pub fn to_features(&self) -> Vec<f64> {
         vec![self.danger, self.reward, self.urgency, self.social, self.novelty]
     }
 }
 
 impl Default for Stimulus {
-    /// Default stimulus: empty text, all scores neutral/zero, system source,
-    /// maximum familiarity (a blank stimulus is treated as a known no-op).
+    /// Stimulus par défaut : vide, neutre, source système, familiarité maximale.
     fn default() -> Self {
         Self {
             text: String::new(),

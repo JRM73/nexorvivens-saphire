@@ -1,10 +1,10 @@
 // =============================================================================
-// vital/mod.rs — Orchestrator for the 3 pillars of consciousness
+// vital/mod.rs — Orchestrateur des 3 piliers de conscience
 //
-// Purpose: Exposes the 3 fundamental pillars of consciousness:
-//   1. VitalSpark — the spark of life, the emergent survival instinct
-//   2. IntuitionEngine — unconscious pattern-matching, the "gut feeling"
-//   3. PremonitionEngine — predictive anticipation
+// Role : Expose les 3 piliers fondamentaux de la conscience :
+//   1. VitalSpark — l'etincelle de vie, l'instinct de survie emergent
+//   2. IntuitionEngine — le pattern-matching inconscient, le "gut feeling"
+//   3. PremonitionEngine — l'anticipation predictive
 // =============================================================================
 
 pub mod spark;

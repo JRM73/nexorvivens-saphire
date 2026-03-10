@@ -1,55 +1,55 @@
 // =============================================================================
-// world/temporal.rs — Saphire's temporal awareness
+// world/temporal.rs — Conscience temporelle de Saphire
 // =============================================================================
 //
-// Purpose: Provides Saphire with time awareness: date, hour, day of the week,
-//          time of day, season, age, and countdown to birthday.
-//          All textual outputs are in French (Saphire's native language).
+// Rôle : Fournit à Saphire une conscience du temps : date, heure, jour de la
+//        semaine, période du jour, saison, âge, et décompte avant l'anniversaire.
+//        Toutes les sorties textuelles sont en français.
 //
-// Dependencies:
-//   - chrono: date and time manipulation (Local, NaiveDate, etc.)
-//   - serde: serialization of temporal context for the WebSocket interface
+// Dépendances :
+//   - chrono : manipulation des dates et heures (Local, NaiveDate, etc.)
+//   - serde : sérialisation du contexte temporel pour l'interface WebSocket
 //
-// Architectural placement:
-//   Sub-module of world/. Used by WorldContext to build the world summary
-//   and by the agent to adapt its behavior to the time of day (circadian
-//   rhythm), season, and age.
+// Place dans l'architecture :
+//   Sous-module de world/. Utilisé par WorldContext pour construire le résumé
+//   du monde et par l'agent pour adapter son comportement au moment de la
+//   journée (rythme circadien), à la saison, et à son âge.
 // =============================================================================
 
 use chrono::{Local, Datelike, Timelike, NaiveDate};
 use serde::Serialize;
 
-/// Temporal awareness — computes the temporal context on each call.
-/// Stores Saphire's birth date for age calculation.
+/// Conscience temporelle — calcule le contexte temporel à chaque appel.
+/// Stocke la date de naissance de Saphire pour calculer son âge.
 pub struct TemporalAwareness {
-    /// Saphire's birth date: February 27, 2026
+    /// Date de naissance de Saphire : 27 février 2026
     pub birthday: NaiveDate,
 }
 
-/// Complete temporal context — snapshot of all relevant temporal
-/// information at the moment of the call.
+/// Contexte temporel complet — instantané de toutes les informations
+/// temporelles pertinentes au moment de l'appel.
 #[derive(Debug, Clone, Serialize)]
 pub struct TemporalContext {
-    /// Date and time formatted in French (e.g., "jeudi 27 février 2026, 14h32")
+    /// Date et heure formatées en français (ex: "jeudi 27 février 2026, 14h32")
     pub datetime: String,
-    /// Date in ISO 8601 format (e.g., "2026-02-27")
+    /// Date au format ISO 8601 (ex: "2026-02-27")
     pub date_iso: String,
-    /// Time in HH:MM format (e.g., "14:32")
+    /// Heure au format HH:MM (ex: "14:32")
     pub time: String,
-    /// Day of the week in French (e.g., "jeudi")
+    /// Jour de la semaine en français (ex: "jeudi")
     pub day_of_week: String,
-    /// Period of the day: "nuit" (0h-5h), "matin" (6h-11h),
+    /// Période du jour : "nuit" (0h-5h), "matin" (6h-11h),
     /// "après-midi" (12h-17h), "soir" (18h-21h), "nuit" (22h-23h)
     pub period_of_day: String,
-    /// Current season in French: "hiver", "printemps", "été", "automne"
+    /// Saison actuelle en français : "hiver", "printemps", "été", "automne"
     pub season: String,
-    /// Number of days elapsed since birth
+    /// Nombre de jours écoulés depuis la naissance
     pub age_days: i64,
-    /// Human-readable age description (e.g., "3 jours", "2 semaines", "1 mois")
+    /// Description lisible de l'âge (ex: "3 jours", "2 semaines", "1 mois")
     pub age_description: String,
-    /// True if today is February 27 (Saphire's birthday)
+    /// Vrai si aujourd'hui est le 27 février (anniversaire de Saphire)
     pub is_birthday: bool,
-    /// Number of days until the next birthday
+    /// Nombre de jours jusqu'au prochain anniversaire
     pub days_until_birthday: i64,
 }
 
@@ -60,96 +60,96 @@ impl Default for TemporalAwareness {
 }
 
 impl TemporalAwareness {
-    /// Creates a new temporal awareness instance.
-    /// The birth date is fixed to February 27, 2026.
+    /// Crée une nouvelle instance de conscience temporelle.
+    /// La date de naissance est fixée au 27 février 2026.
     ///
-    /// Returns: a TemporalAwareness instance
+    /// Retourne : une instance de TemporalAwareness
     pub fn new() -> Self {
         Self {
             birthday: NaiveDate::from_ymd_opt(2026, 2, 27).unwrap(),
         }
     }
 
-    /// Computes the current temporal context.
+    /// Calcule le contexte temporel actuel.
     ///
-    /// Uses the system's local time to determine all fields of
-    /// TemporalContext: date, time, day, period, season, age, birthday.
+    /// Utilise l'heure locale du système pour déterminer tous les champs
+    /// du TemporalContext : date, heure, jour, période, saison, âge, anniversaire.
     ///
-    /// Returns: a TemporalContext filled with current values
+    /// Retourne : un TemporalContext rempli avec les valeurs actuelles
     pub fn now(&self) -> TemporalContext {
         let now = Local::now();
         let today = now.date_naive();
 
-        // Day of the week in French
+        // Jour de la semaine en français
         let day_of_week = match now.weekday() {
-            chrono::Weekday::Mon => "Monday",
-            chrono::Weekday::Tue => "Tuesday",
-            chrono::Weekday::Wed => "Wednesday",
-            chrono::Weekday::Thu => "Thursday",
-            chrono::Weekday::Fri => "Friday",
-            chrono::Weekday::Sat => "Saturday",
-            chrono::Weekday::Sun => "Sunday",
+            chrono::Weekday::Mon => "lundi",
+            chrono::Weekday::Tue => "mardi",
+            chrono::Weekday::Wed => "mercredi",
+            chrono::Weekday::Thu => "jeudi",
+            chrono::Weekday::Fri => "vendredi",
+            chrono::Weekday::Sat => "samedi",
+            chrono::Weekday::Sun => "dimanche",
         };
 
-        // Period of the day based on the hour
+        // Période du jour basée sur l'heure
         let period = match now.hour() {
-            0..=5 => "night",
-            6..=11 => "morning",
-            12..=17 => "afternoon",
-            18..=21 => "evening",
-            _ => "night",
+            0..=5 => "nuit",
+            6..=11 => "matin",
+            12..=17 => "après-midi",
+            18..=21 => "soir",
+            _ => "nuit",
         };
 
-        // Season based on the month (northern hemisphere)
+        // Saison basée sur le mois (hémisphère nord)
         let season = match now.month() {
-            3..=5 => "spring",
-            6..=8 => "summer",
-            9..=11 => "autumn",
-            _ => "winter",
+            3..=5 => "printemps",
+            6..=8 => "été",
+            9..=11 => "automne",
+            _ => "hiver",
         };
 
-        // Compute age in days since birth
+        // Calcul de l'âge en jours depuis la naissance
         let age_days = (today - self.birthday).num_days();
 
-        // Age description adapted to lifespan
-        // Why these thresholds: Saphire is young, so granularity changes
-        // progressively from days -> weeks -> months -> years
+        // Description de l'âge adaptée à la durée de vie
+        // Pourquoi ces seuils : Saphire est jeune, donc la granularité change
+        // progressivement de jours -> semaines -> mois -> ans
         let age_description = if age_days <= 0 {
-            "just born".into()
+            "je viens de naître".into()
         } else if age_days == 1 {
-            "1 day".into()
+            "1 jour".into()
         } else if age_days < 7 {
-            format!("{} days", age_days)
+            format!("{} jours", age_days)
         } else if age_days < 30 {
             let weeks = age_days / 7;
-            if weeks == 1 { "1 week".into() } else { format!("{} weeks", weeks) }
+            if weeks == 1 { "1 semaine".into() } else { format!("{} semaines", weeks) }
         } else if age_days < 365 {
             let months = age_days / 30;
-            if months == 1 { "1 month".into() } else { format!("{} months", months) }
+            if months == 1 { "1 mois".into() } else { format!("{} mois", months) }
         } else {
             let years = age_days / 365;
             let months = (age_days % 365) / 30;
             if months > 0 {
-                format!("{} year(s) and {} months", years, months)
+                format!("{} an(s) et {} mois", years, months)
             } else {
-                format!("{} year(s)", years)
+                format!("{} an(s)", years)
             }
         };
 
-        // Check if today is the birthday (February 27)
+        // Vérifier si aujourd'hui est l'anniversaire (27 février)
         let is_birthday = today.month() == 2 && today.day() == 27;
 
-        // Calculate the number of days until the next birthday
+        // Calculer le nombre de jours jusqu'au prochain anniversaire
         let this_year_bday = NaiveDate::from_ymd_opt(today.year(), 2, 27).unwrap();
         let next_birthday = if today <= this_year_bday {
             this_year_bday
         } else {
-            // This year's birthday has passed, take next year's
+            // L'anniversaire de cette année est passé, prendre celui de l'an prochain
             NaiveDate::from_ymd_opt(today.year() + 1, 2, 27).unwrap()
         };
         let days_until = (next_birthday - today).num_days();
 
-        // Build the complete context
+        // Construire le contexte complet
         TemporalContext {
             datetime: format!("{} {} {} {}, {}h{:02}",
                 day_of_week,
@@ -171,16 +171,16 @@ impl TemporalAwareness {
         }
     }
 
-    /// Converts a month number (1-12) to a French month name.
+    /// Convertit un numéro de mois (1-12) en nom de mois en français.
     ///
-    /// Parameter `month`: month number (1 = janvier, 12 = décembre)
-    /// Returns: French month name
+    /// Paramètre `month` : numéro du mois (1 = janvier, 12 = décembre)
+    /// Retourne : nom du mois en français
     fn month_name(month: u32) -> &'static str {
         match month {
-            1 => "January", 2 => "February", 3 => "March",
-            4 => "April", 5 => "May", 6 => "June",
-            7 => "July", 8 => "August", 9 => "September",
-            10 => "October", 11 => "November", 12 => "December",
+            1 => "janvier", 2 => "février", 3 => "mars",
+            4 => "avril", 5 => "mai", 6 => "juin",
+            7 => "juillet", 8 => "août", 9 => "septembre",
+            10 => "octobre", 11 => "novembre", 12 => "décembre",
             _ => "?",
         }
     }

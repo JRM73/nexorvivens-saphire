@@ -67,13 +67,31 @@ services:
     networks:
       - saphire-net
 
+  proxy:
+    image: nginx:alpine
+    container_name: saphire-proxy
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/saphire.crt:/etc/nginx/certs/saphire.crt:ro
+      - ./nginx/saphire.key:/etc/nginx/certs/saphire.key:ro
+    depends_on:
+      - brain
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - saphire-net
+
   brain:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: saphire-brain
     ports:
-      - "3080:3080"
+      - "127.0.0.1:3080:3080"
     volumes:
       - ./saphire.toml:/app/saphire.toml:ro
       - ./profiles:/app/profiles:ro
@@ -90,7 +108,7 @@ services:
       - SAPHIRE_LOGS_DB_PASSWORD=${SAPHIRE_LOGS_DB_PASSWORD:-saphire_logs}
       - SAPHIRE_LOGS_DB_NAME=saphire_logs
       - SAPHIRE_LLM_URL=http://llm:11434/v1
-      - SAPHIRE_LLM_MODEL=saphire:latest
+      - SAPHIRE_LLM_MODEL=mistral-nemo:latest
       - SAPHIRE_WEB_HOST=0.0.0.0
       - SAPHIRE_API_KEY=${SAPHIRE_API_KEY:-}
       - RUST_LOG=info
@@ -103,6 +121,8 @@ services:
       llm:
         condition: service_healthy
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     networks:
       - saphire-net
 

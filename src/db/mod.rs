@@ -1,25 +1,25 @@
 // =============================================================================
-// db/mod.rs — SaphireDb: PostgreSQL connection pool + pgvector
+// db/mod.rs — SaphireDb : pool de connexions PostgreSQL + pgvector
 //
-// Purpose: This module manages the entire persistence layer of Saphire.
-// It provides a PostgreSQL connection pool (via deadpool) and all
-// CRUD (Create, Read, Update, Delete) operations for the various
-// tables: memories, identity, thoughts, sessions, neural weights,
-// tuning parameters, knowledge, personality profiles, etc.
+// Role : Ce module gere toute la couche de persistance de Saphire.
+// Il fournit un pool de connexions PostgreSQL (via deadpool) et toutes
+// les operations CRUD (Create, Read, Update, Delete) pour les differentes
+// tables : souvenirs, identite, pensees, sessions, poids neuronaux,
+// parametres de tuning, connaissances, profils de personnalite, etc.
 //
-// Dependencies:
-//   - deadpool_postgres: asynchronous PostgreSQL connection pool
-//   - tokio_postgres: asynchronous PostgreSQL client (no TLS here)
-//   - pgvector: PostgreSQL extension for vector similarity search
-//   - serde / serde_json: JSON data serialization
-//   - chrono: date and time management
+// Dependances :
+//   - deadpool_postgres : pool de connexions asynchrones PostgreSQL
+//   - tokio_postgres : client PostgreSQL asynchrone (sans TLS ici)
+//   - pgvector : extension PostgreSQL pour la recherche vectorielle
+//   - serde / serde_json : serialisation des donnees JSON
+//   - chrono : gestion des dates et heures
 //
-// Place in the architecture:
-//   SaphireDb is owned by the agent (SaphireAgent) and used to
-//   persist memories, identity, neural network weights,
-//   auto-tuning parameters, and the thought journal.
-//   Vector search (pgvector) enables retrieval of memories
-//   similar to a new event via cosine distance.
+// Place dans l'architecture :
+//   SaphireDb est possede par l'agent (SaphireAgent) et utilise pour
+//   persister les souvenirs, l'identite, les poids du reseau de neurones,
+//   les parametres d'auto-tuning et le journal des pensees.
+//   La recherche vectorielle (pgvector) permet de retrouver des souvenirs
+//   similaires a un nouvel evenement via la distance cosinus.
 // =============================================================================
 
 mod identity;
@@ -42,15 +42,15 @@ use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
 use crate::neurochemistry::ChemicalSignature;
 
-/// Database layer errors.
-/// Three error categories are distinguished for easier diagnosis.
+/// Erreurs de la couche base de donnees.
+/// Trois categories d'erreurs sont distinguees pour faciliter le diagnostic.
 #[derive(Debug)]
 pub enum DbError {
-    /// Error related to the connection pool (no connection available, timeout, etc.)
+    /// Erreur liee au pool de connexions (pas de connexion disponible, timeout, etc.)
     Pool(String),
-    /// Error related to the execution of an SQL query
+    /// Erreur liee a l'execution d'une requete SQL
     Query(String),
-    /// Error during schema migration execution
+    /// Erreur lors de l'execution des migrations de schema
     Migration(String),
 }
 
@@ -64,32 +64,32 @@ impl std::fmt::Display for DbError {
     }
 }
 
-// Automatic conversion from deadpool pool errors to DbError
+// Conversion automatique des erreurs du pool deadpool vers DbError
 impl From<deadpool_postgres::PoolError> for DbError {
     fn from(e: deadpool_postgres::PoolError) -> Self {
         DbError::Pool(e.to_string())
     }
 }
 
-// Automatic conversion from tokio_postgres errors to DbError
+// Conversion automatique des erreurs tokio_postgres vers DbError
 impl From<tokio_postgres::Error> for DbError {
     fn from(e: tokio_postgres::Error) -> Self {
         DbError::Query(e.to_string())
     }
 }
 
-/// Configuration for connecting to the PostgreSQL database.
+/// Configuration de la connexion a la base de donnees PostgreSQL.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DbConfig {
-    /// PostgreSQL server address (e.g., "localhost", "postgres")
+    /// Adresse du serveur PostgreSQL (ex: "localhost", "postgres")
     pub host: String,
-    /// PostgreSQL server port (default: 5432)
+    /// Port du serveur PostgreSQL (par defaut : 5432)
     pub port: u16,
-    /// Username for the connection
+    /// Nom d'utilisateur pour la connexion
     pub user: String,
-    /// Password for the connection
+    /// Mot de passe pour la connexion
     pub password: String,
-    /// Database name
+    /// Nom de la base de donnees
     pub dbname: String,
 }
 
@@ -105,81 +105,81 @@ impl Default for DbConfig {
     }
 }
 
-/// A memory record stored in the database.
-/// Represents an event experienced by the agent with all its metadata
-/// (emotion, chemistry, decision, satisfaction, etc.).
+/// Un souvenir stocke en base de donnees.
+/// Represente un evenement vecu par l'agent avec toutes ses metadonnees
+/// (emotion, chimie, decision, satisfaction, etc.).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MemoryRecord {
-    /// Unique identifier of the memory in the database
+    /// Identifiant unique du souvenir en base
     pub id: i64,
-    /// Textual summary of the memory (generated by the LLM or extracted from the stimulus)
+    /// Resume textuel du souvenir (genere par le LLM ou extrait du stimulus)
     pub text_summary: String,
-    /// Original stimulus data in JSON format (danger, reward, etc.)
+    /// Donnees du stimulus d'origine en JSON (danger, recompense, etc.)
     pub stimulus_json: serde_json::Value,
-    /// Decision taken: -1 (No), 0 (Maybe), 1 (Yes)
+    /// Decision prise : -1 (Non), 0 (Peut-etre), 1 (Oui)
     pub decision: i16,
-    /// Neurochemical state at the time of the memory (7 neurotransmitters in JSON)
+    /// Etat neurochimique au moment du souvenir (7 neurotransmetteurs en JSON)
     pub chemistry_json: serde_json::Value,
-    /// Dominant emotion at the time of the memory (e.g., "Curiosity", "Fear")
+    /// Emotion dominante au moment du souvenir (ex: "Curiosite", "Peur")
     pub emotion: String,
-    /// Mood valence: -1.0 (very negative) to +1.0 (very positive)
+    /// Valence de l'humeur : -1.0 (tres negative) a +1.0 (tres positive)
     pub mood_valence: f32,
-    /// Satisfaction level felt [0.0 - 1.0]
+    /// Niveau de satisfaction ressentie [0.0 - 1.0]
     pub satisfaction: f32,
-    /// Emotional weight of the memory (stronger memories are better retained)
+    /// Poids emotionnel du souvenir (les souvenirs forts sont mieux retenus)
     pub emotional_weight: f32,
-    /// Date and time of memory creation (UTC)
+    /// Date et heure de creation du souvenir (UTC)
     pub created_at: DateTime<Utc>,
-    /// Similarity score against a query vector (populated during a search)
+    /// Score de similarite avec un vecteur de requete (rempli lors d'une recherche)
     pub similarity: f64,
-    /// Chemical signature at encoding time (None for legacy memories)
+    /// Signature chimique au moment de l'encodage (None pour les anciens souvenirs)
     pub chemical_signature: Option<ChemicalSignature>,
 }
 
-/// A new memory to insert into the database.
-/// Contains the vector embedding and all associated metadata.
+/// Nouveau souvenir a inserer en base de donnees.
+/// Contient l'embedding vectoriel et toutes les metadonnees associees.
 pub struct NewMemory {
-    /// Embedding vector (vector representation of the content for pgvector)
+    /// Vecteur d'embedding (representation vectorielle du contenu pour pgvector)
     pub embedding: Vec<f32>,
-    /// Textual summary of the memory
+    /// Resume textuel du souvenir
     pub text_summary: String,
-    /// Original stimulus data in JSON format
+    /// Donnees du stimulus d'origine en JSON
     pub stimulus_json: serde_json::Value,
-    /// Decision taken: -1 (No), 0 (Maybe), 1 (Yes)
+    /// Decision prise : -1 (Non), 0 (Peut-etre), 1 (Oui)
     pub decision: i16,
-    /// Neurochemical state in JSON
+    /// Etat neurochimique en JSON
     pub chemistry_json: serde_json::Value,
-    /// Dominant emotion
+    /// Emotion dominante
     pub emotion: String,
-    /// Mood valence
+    /// Valence de l'humeur
     pub mood_valence: f32,
-    /// Satisfaction level felt
+    /// Satisfaction ressentie
     pub satisfaction: f32,
-    /// Emotional weight
+    /// Poids emotionnel
     pub emotional_weight: f32,
-    /// Optional identifier of the source episodic memory (tier 1 -> tier 2 link)
+    /// Identifiant optionnel du souvenir episodique d'origine (lien tier 1 -> tier 2)
     pub source_episodic_id: Option<i64>,
-    /// Chemical signature at encoding time
+    /// Signature chimique au moment de l'encodage
     pub chemical_signature: Option<ChemicalSignature>,
 }
 
-/// PostgreSQL connection pool for Saphire.
-/// Wraps the deadpool pool and provides all persistence methods.
+/// Pool de connexions PostgreSQL pour Saphire.
+/// Encapsule le pool deadpool et fournit toutes les methodes de persistance.
 pub struct SaphireDb {
-    /// The underlying connection pool (max 8 simultaneous connections)
+    /// Le pool de connexions sous-jacent (max 8 connexions simultanees)
     pub(crate) pool: Pool,
 }
 
 impl SaphireDb {
-    /// Connects to the PostgreSQL server, creates the connection pool, and runs
-    /// schema migrations (creates tables if they do not exist).
+    /// Connecte au serveur PostgreSQL, cree le pool de connexions et execute
+    /// les migrations de schema (creation des tables si elles n'existent pas).
     ///
-    /// # Parameters
-    /// - `config`: connection configuration (host, port, user, password, dbname)
+    /// # Parametres
+    /// - `config` : configuration de connexion (host, port, user, password, dbname)
     ///
-    /// # Returns
-    /// - `Ok(SaphireDb)`: the connection pool ready for use
-    /// - `Err(DbError)`: connection or migration error
+    /// # Retour
+    /// - `Ok(SaphireDb)` : le pool de connexions pret a l'emploi
+    /// - `Err(DbError)` : erreur de connexion ou de migration
     pub async fn connect(config: &DbConfig) -> Result<Self, DbError> {
         let mut pg_config = tokio_postgres::Config::new();
         pg_config.host(&config.host);
@@ -188,25 +188,25 @@ impl SaphireDb {
         pg_config.password(&config.password);
         pg_config.dbname(&config.dbname);
 
-        // Configure the connection recycling manager.
-        // RecyclingMethod::Fast: reuses connections without expensive verification.
+        // Configuration du gestionnaire de recyclage des connexions.
+        // RecyclingMethod::Fast : reutilise les connexions sans verification couteuse.
         let mgr_config = ManagerConfig {
             recycling_method: RecyclingMethod::Fast,
         };
         let mgr = Manager::from_config(pg_config, NoTls, mgr_config);
         let pool = Pool::builder(mgr)
-            .max_size(8) // Maximum 8 simultaneous connections in the pool
+            .max_size(8) // Maximum 8 connexions simultanees dans le pool
             .build()
             .map_err(|e| DbError::Pool(e.to_string()))?;
 
         let db = Self { pool };
-        // Run migrations to create/update the schema
+        // Executer les migrations pour creer/mettre a jour le schema
         db.run_migrations().await?;
         Ok(db)
     }
 
-    /// Runs SQL migrations from the embedded schema.sql file.
-    /// Uses IF NOT EXISTS to be idempotent (can be executed multiple times).
+    /// Execute les migrations SQL depuis le fichier schema.sql embarque.
+    /// Utilise IF NOT EXISTS pour etre idempotent (peut etre execute plusieurs fois).
     async fn run_migrations(&self) -> Result<(), DbError> {
         let client = self.pool.get().await?;
         client.batch_execute(include_str!("../../sql/schema.sql")).await
@@ -214,11 +214,11 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Verifies that the database connection is functional.
-    /// Useful for health checks and monitoring.
+    /// Verifie que la connexion a la base de donnees est fonctionnelle.
+    /// Utile pour les health checks et le monitoring.
     ///
-    /// # Returns
-    /// `true` if the connection is operational, `false` otherwise
+    /// # Retour
+    /// true si la connexion est operationnelle, false sinon
     pub async fn health_check(&self) -> bool {
         match self.pool.get().await {
             Ok(client) => client.query_one("SELECT 1", &[]).await.is_ok(),
@@ -226,9 +226,7 @@ impl SaphireDb {
         }
     }
 
-    /// Statistics for the main database tables.
-    /// Returns a JSON object mapping each table name to its row count.
-    /// A count of -1 indicates that the table could not be queried.
+    /// Statistiques des tables de la base principale.
     pub async fn table_stats(&self) -> Result<serde_json::Value, DbError> {
         let client = self.pool.get().await?;
 

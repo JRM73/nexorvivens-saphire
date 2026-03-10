@@ -1,52 +1,30 @@
 // =============================================================================
-// nlp/mod.rs — Hybrid 3-layer NLP (Natural Language Processing) pipeline
+// nlp/mod.rs — Pipeline NLP (Natural Language Processing / Traitement Automatique
+//              du Langage Naturel) hybride a 3 couches
 //
-// Purpose: Entry point for the NLP module. Orchestrates the complete text
-//          analysis pipeline across 3 successive layers:
-//            Layer 1  — Preprocessing (tokenization, normalization, structural
-//                       feature extraction)
-//            Layer 2A — Sentiment analysis (bilingual VADER-inspired lexicon,
-//                       FR+EN)
-//            Layer 2B — Intent detection (simplified Naive Bayes keyword
-//                       classifier)
-//            Layer 2C — Dimension extraction (danger, reward, urgency, social,
-//                       novelty)
+// Role : Point d'entree du module NLP. Orchestre le pipeline complet d'analyse
+//        textuelle en 3 couches successives :
+//          Couche 1 — Pretraitement (tokenisation, normalisation, features structurelles)
+//          Couche 2A — Analyse de sentiment (lexique VADER-like bilingue)
+//          Couche 2B — Detection d'intention (classificateur Naive Bayes simplifie)
+//          Couche 2C — Extraction de dimensions (danger, recompense, urgence, social, nouveaute)
 //
-// Dependencies:
-//   - serde: serialization / deserialization of analysis results
-//   - crate::stimulus: the Stimulus struct (multi-dimensional emotional vector)
-//   - Sub-modules: preprocessor, sentiment, intent, dimensions, dictionaries,
-//                  stagnation
+// Dependances :
+//   - serde : serialisation/deserialisation des resultats
+//   - crate::stimulus : structure Stimulus (vecteur de dimensions emotionnelles)
+//   - Sous-modules : preprocessor, sentiment, intent, dimensions, dictionaries
 //
-// Role in the architecture:
-//   This module is invoked by Saphire's main cognitive loop to transform the
-//   user's raw text input into a multi-dimensional stimulus vector that is
-//   consumed by the profiling system and the tri-cerebral consensus engine.
+// Place dans l'architecture :
+//   Ce module est appele par la boucle cognitive principale de Saphire pour
+//   transformer le texte brut de l'utilisateur en un vecteur de stimulus
+//   multidimensionnel exploitable par le systeme de profilage et le consensus.
 // =============================================================================
 
-/// Sub-module providing Layer 1 text preprocessing (tokenization, normalization,
-/// structural feature extraction).
 pub mod preprocessor;
-
-/// Sub-module providing Layer 2A sentiment analysis using a bilingual
-/// VADER-inspired lexicon with boosters, negations, and adversative pivots.
 pub mod sentiment;
-
-/// Sub-module providing Layer 2B intent classification through weighted keyword
-/// matching across 11 communicative intent categories.
 pub mod intent;
-
-/// Sub-module providing Layer 2C dimension extraction, converting tokenized text
-/// into a 5-axis Stimulus vector (danger, reward, urgency, social, novelty).
 pub mod dimensions;
-
-/// Sub-module containing all bilingual (FR+EN) lexical dictionaries used across
-/// the NLP pipeline (sentiment words, boosters, negations, adversatives, and
-/// per-dimension keyword lists).
 pub mod dictionaries;
-
-/// Sub-module providing thematic and semantic stagnation detection utilities,
-/// used to identify obsessive repetition across recent texts.
 pub mod stagnation;
 
 use serde::{Deserialize, Serialize};
@@ -56,48 +34,37 @@ use self::sentiment::{SentimentLexicon, SentimentResult};
 use self::intent::{IntentClassifier, IntentResult};
 use self::dimensions::DimensionExtractor;
 
-/// Complete result of the NLP analysis pipeline.
+/// Resultat complet de l'analyse NLP (Natural Language Processing).
 ///
-/// Aggregates all information extracted from the raw text after it has been
-/// processed through the 3-layer pipeline: preprocessing, parallel analyses
-/// (sentiment, intent, dimensions), and cross-layer fusion.
+/// Regroupe toutes les informations extraites du texte brut apres passage
+/// dans le pipeline a 3 couches.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NlpResult {
-    /// The multi-dimensional stimulus extracted from the text, with axes for
-    /// danger, reward, urgency, social relevance, and novelty.
+    /// Le stimulus multidimensionnel extrait du texte (danger, recompense, urgence, social, nouveaute)
     pub stimulus: Stimulus,
-    /// The sentiment analysis result containing positive/negative polarity
-    /// scores and the composite compound score.
+    /// Le resultat de l'analyse de sentiment (polarite positive/negative, score compose)
     pub sentiment: SentimentResult,
-    /// The detected communicative intent of the message (e.g., question,
-    /// command, emotion expression, greeting).
+    /// L'intention detectee dans le message (question, ordre, expression d'emotion, etc.)
     pub intent: IntentResult,
-    /// The detected language of the message (French, English, or Unknown),
-    /// determined by heuristic marker counting.
+    /// La langue detectee du message (francais, anglais ou inconnue)
     pub language: Language,
-    /// The structural features of the text (uppercase ratio, punctuation
-    /// counts, ellipsis presence, token count).
+    /// Les caracteristiques structurelles du texte (majuscules, ponctuation, longueur)
     pub structural_features: StructuralFeatures,
 }
 
-/// Complete NLP processing pipeline.
+/// Pipeline NLP complet.
 ///
-/// Contains the 4 components of the pipeline: the text preprocessor, the
-/// sentiment lexicon, the intent classifier, and the dimension extractor.
-/// Each component is initialized once at construction time and reused for
-/// every subsequent analysis call.
+/// Contient les 4 composants du pipeline : le preprocesseur, le lexique de sentiment,
+/// le classificateur d'intention et l'extracteur de dimensions. Chaque composant est
+/// initialise une seule fois et reutilise a chaque appel d'analyse.
 pub struct NlpPipeline {
-    /// Preprocessing component: normalization, tokenization, and structural
-    /// feature extraction from raw text.
+    /// Composant de pretraitement : normalisation, tokenisation, extraction de features structurelles
     preprocessor: TextPreprocessor,
-    /// Bilingual (FR+EN) sentiment lexicon with support for intensity
-    /// modifiers (boosters/dampeners) and negation handling.
+    /// Lexique de sentiment bilingue FR+EN avec intensifieurs et negations
     sentiment_lexicon: SentimentLexicon,
-    /// Intent classifier based on weighted keyword matching across bilingual
-    /// pattern lists for 11 communicative intent categories.
+    /// Classificateur d'intention par correspondance de mots-cles ponderes
     intent_classifier: IntentClassifier,
-    /// Dimension extractor that converts tokenized text into a Stimulus
-    /// vector spanning 5 emotional axes.
+    /// Extracteur de dimensions texte vers Stimulus (5 axes emotionnels)
     dimension_extractor: DimensionExtractor,
 }
 
@@ -108,14 +75,12 @@ impl Default for NlpPipeline {
 }
 
 impl NlpPipeline {
-    /// Creates a new NLP pipeline instance.
+    /// Cree une nouvelle instance du pipeline NLP.
     ///
-    /// Initializes all four components (preprocessor, sentiment lexicon, intent
-    /// classifier, dimension extractor) with their default bilingual
-    /// dictionaries.
+    /// Initialise tous les composants (preprocesseur, lexique, classificateur, extracteur)
+    /// avec leurs dictionnaires par defaut.
     ///
-    /// # Returns
-    /// A fully initialized `NlpPipeline` ready to analyze text.
+    /// Retour : une instance prete a analyser du texte
     pub fn new() -> Self {
         Self {
             preprocessor: TextPreprocessor::new(),
@@ -125,43 +90,39 @@ impl NlpPipeline {
         }
     }
 
-    /// Performs a complete analysis of raw text input.
+    /// Analyse complete d'un texte brut.
     ///
-    /// Executes the pipeline across 3 layers:
-    ///   1. **Preprocessing**: tokenization + structural feature extraction.
-    ///   2. **Parallel analyses**: sentiment (Layer 2A), intent (Layer 2B),
-    ///      dimensions (Layer 2C).
-    ///   3. **Cross-layer fusion**: sentiment adjusts the stimulus — strongly
-    ///      positive sentiment reinforces the reward dimension, while strongly
-    ///      negative sentiment reinforces the danger dimension.
+    /// Deroule le pipeline en 3 couches :
+    ///   1. Pretraitement : tokenisation + extraction de features structurelles
+    ///   2. Analyses paralleles : sentiment (2A), intention (2B), dimensions (2C)
+    ///   3. Fusion : le sentiment ajuste le stimulus (recompense si positif, danger si negatif)
     ///
-    /// # Parameters
-    /// - `text`: the raw text to analyze (typically a user message).
+    /// Parametre :
+    ///   - text : le texte brut a analyser (message de l'utilisateur)
     ///
-    /// # Returns
-    /// An `NlpResult` containing the stimulus vector, sentiment scores,
-    /// detected intent, language, and structural features.
+    /// Retour : un NlpResult contenant le stimulus, le sentiment, l'intention,
+    ///          la langue et les features structurelles
     pub fn analyze(&self, text: &str) -> NlpResult {
-        // Layer 1: Preprocessing — tokenization and structural feature extraction
+        // Couche 1 : Pretraitement — tokenisation et extraction des features structurelles
         let (tokens, features) = self.preprocessor.process(text);
 
-        // Layer 2A: Sentiment — positive/negative polarity analysis
+        // Couche 2A : Sentiment — analyse de polarite positive/negative
         let sentiment = self.sentiment_lexicon.analyze(&tokens);
 
-        // Layer 2B: Intent — communicative intent classification
+        // Couche 2B : Intention — classification de l'intention communicative
         let intent = self.intent_classifier.classify(&tokens, text);
 
-        // Layer 2C: Dimension extraction — convert tokens into a Stimulus vector
+        // Couche 2C : Extraction dimensions — conversion des tokens en vecteur Stimulus
         let mut stimulus = self.dimension_extractor.extract(&tokens, text, &features);
 
-        // Cross-layer fusion: adjust the stimulus based on sentiment scores.
-        // A strongly positive sentiment (compound > 0.3) reinforces the "reward"
-        // dimension by adding 30% of the positive sentiment component.
+        // Ajuster le stimulus par le sentiment :
+        // Un sentiment fortement positif (compound > 0.3) renforce la dimension "recompense"
+        // en y ajoutant 30% de la composante positive du sentiment.
         if sentiment.compound > 0.3 {
             stimulus.reward = (stimulus.reward + sentiment.positive * 0.3).min(1.0);
         }
-        // A strongly negative sentiment (compound < -0.3) reinforces the "danger"
-        // dimension by adding 20% of the negative sentiment component.
+        // Un sentiment fortement negatif (compound < -0.3) renforce la dimension "danger"
+        // en y ajoutant 20% de la composante negative du sentiment.
         if sentiment.compound < -0.3 {
             stimulus.danger = (stimulus.danger + sentiment.negative * 0.2).min(1.0);
         }

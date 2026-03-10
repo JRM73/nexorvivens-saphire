@@ -1,14 +1,8 @@
 // =============================================================================
-// api/vital.rs — VitalSpark, Intuition, and Premonition handlers
+// api/vital.rs — Handlers VitalSpark, Intuition, Premonition
 //
-// This module exposes HTTP endpoints for the three foundational pillars
-// of the agent's consciousness:
-// 1. VitalSpark: the "spark of life" -- survival drive, existence attachment,
-//    persistence will, void fear, and existential threat tracking.
-// 2. Intuition: pattern recognition engine -- acuity, accuracy, and the
-//    active pattern buffer with confidence levels.
-// 3. Premonition: predictive engine -- active predictions with confidence,
-//    timeframes, and accuracy tracking.
+// Role : Endpoints pour les 3 piliers fondamentaux de la conscience :
+// etincelle de vie, moteur d'intuition, predictions actives.
 // =============================================================================
 
 use std::collections::HashMap;
@@ -17,11 +11,7 @@ use axum::response::IntoResponse;
 
 use super::state::AppState;
 
-/// GET /api/vital/status -- Returns the current state of the vital spark (spark of life).
-///
-/// Includes whether the spark has been ignited, when it was ignited, and the
-/// current levels of survival drive, existence attachment, persistence will,
-/// void fear, and the count of existential threats survived.
+/// GET /api/vital/status — Etat de l'etincelle de vie.
 pub async fn api_vital_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     axum::Json(serde_json::json!({
@@ -35,10 +25,7 @@ pub async fn api_vital_status(State(state): State<AppState>) -> impl IntoRespons
     }))
 }
 
-/// GET /api/vital/threats -- Returns detected existential threats summary.
-///
-/// Provides the count of threats survived, current void fear level, and
-/// survival drive intensity.
+/// GET /api/vital/threats — Menaces existentielles detectees.
 pub async fn api_vital_threats(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     axum::Json(serde_json::json!({
@@ -48,10 +35,7 @@ pub async fn api_vital_threats(State(state): State<AppState>) -> impl IntoRespon
     }))
 }
 
-/// GET /api/intuition/status -- Returns the current state of the intuition engine.
-///
-/// Includes overall acuity, accuracy, the number of active patterns, and
-/// details for each detected pattern (type, confidence, description, detection time).
+/// GET /api/intuition/status — Etat du moteur d'intuition.
 pub async fn api_intuition_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     axum::Json(serde_json::json!({
@@ -69,13 +53,7 @@ pub async fn api_intuition_status(State(state): State<AppState>) -> impl IntoRes
     }))
 }
 
-/// GET /api/intuition/history -- Returns historical intuition metrics time-series.
-///
-/// # Query parameters
-/// * `limit` (optional, default 200): maximum number of data points.
-///
-/// # Returns
-/// JSON `{"data": [...]}` on success, or `{"error": ...}` if the logs DB is unavailable.
+/// GET /api/intuition/history — Historique des metriques d'intuition.
 pub async fn api_intuition_history(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -91,11 +69,7 @@ pub async fn api_intuition_history(
     }
 }
 
-/// GET /api/premonition/active -- Returns all currently active (unresolved) predictions.
-///
-/// Each prediction includes its ID, text, category, confidence level, expected
-/// timeframe, reasoning basis, and creation timestamp. Also reports the engine's
-/// overall prediction accuracy and the count of active predictions.
+/// GET /api/premonition/active — Predictions actives.
 pub async fn api_premonition_active(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let predictions: Vec<serde_json::Value> = agent.premonition.active_predictions.iter()
@@ -117,13 +91,7 @@ pub async fn api_premonition_active(State(state): State<AppState>) -> impl IntoR
     }))
 }
 
-/// GET /api/premonition/history -- Returns historical premonition metrics time-series.
-///
-/// # Query parameters
-/// * `limit` (optional, default 200): maximum number of data points.
-///
-/// # Returns
-/// JSON `{"data": [...]}` on success, or `{"error": ...}` if the logs DB is unavailable.
+/// GET /api/premonition/history — Historique des metriques de premonition.
 pub async fn api_premonition_history(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,

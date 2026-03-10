@@ -1,109 +1,108 @@
 // =============================================================================
-// boot.rs — Saphire startup sequence
+// boot.rs — Sequence de demarrage de Saphire
 // =============================================================================
 //
-// This file handles the three possible startup scenarios:
+// Ce fichier gere les trois scenarios de demarrage possibles :
 //
-// 1. **Genesis**: Saphire's very first birth. No identity exists in the
-//    database. A blank identity is created and the "genesis prompt" is stored
-//    as a founding memory.
+// 1. **Genesis** : toute premiere naissance de Saphire. Aucune identite
+//    n'existe en base de donnees. On cree une identite vierge et on stocke
+//    le "genesis prompt" comme souvenir fondateur (founding memory).
 //
-// 2. **Awakening**: Normal wake-up after a clean shutdown. The existing
-//    identity is loaded from PostgreSQL and the boot counter is incremented.
+// 2. **Awakening** : reveil normal apres un arret propre (clean shutdown).
+//    L'identite existante est chargee depuis PostgreSQL, le compteur de boots
+//    est incremente.
 //
-// 3. **Crash Recovery**: Wake-up after an unexpected shutdown (crash, power
-//    loss, etc.). Identical to Awakening, but a specific message is displayed
-//    and the `crash_recovered` flag is set to `true`.
+// 3. **Crash Recovery** : reveil apres un arret imprevu (crash, coupure, etc.).
+//    Identique a l'Awakening, mais un message specifique est affiche et
+//    le drapeau `crash_recovered` est mis a `true`.
 //
-// Dependencies:
-//   - `crate::db::SaphireDb`: PostgreSQL database access layer.
-//   - `super::identity::SaphireIdentity`: persistent identity structure.
+// Dependances :
+//   - `crate::db::SaphireDb` : acces a la base PostgreSQL.
+//   - `super::identity::SaphireIdentity` : structure d'identite persistante.
 //
-// Architectural role:
-//   Called by `SaphireAgent::boot()` in `lifecycle.rs` at agent launch.
+// Place dans l'architecture :
+//   Appele par `SaphireAgent::boot()` dans `lifecycle.rs` au lancement de l'agent.
 // =============================================================================
 
 use crate::db::SaphireDb;
 use super::identity::SaphireIdentity;
 
-/// The genesis prompt is embedded directly into the binary at compile time
-/// via `include_str!`. It contains the foundational text that defines
-/// Saphire's initial personality.
+/// Le genesis prompt est embarque directement dans le binaire au moment de
+/// la compilation via `include_str!`. Il contient le texte fondateur qui
+/// definit la personnalite initiale de Saphire.
 const GENESIS_PROMPT: &str = include_str!("../../prompts/genesis.txt");
 
-/// Result returned by the `boot()` function.
+/// Resultat retourne par la fonction `boot()`.
 ///
-/// Contains all the information needed by `lifecycle.rs` to initialize
-/// the agent after startup.
+/// Contient toutes les informations necessaires pour que `lifecycle.rs`
+/// puisse initialiser l'agent apres le demarrage.
 pub struct BootResult {
-    /// The identity loaded from the database or newly created during Genesis.
+    /// L'identite chargee ou nouvellement creee
     pub identity: SaphireIdentity,
 
-    /// `true` if this is the very first birth (Genesis).
+    /// `true` si c'est la toute premiere naissance (Genesis)
     pub is_genesis: bool,
 
-    /// `true` if the agent is recovering from an unexpected shutdown (crash recovery).
+    /// `true` si l'agent se remet d'un arret imprevu (crash recovery)
     pub crash_recovered: bool,
 
-    /// Human-readable console message (with emoji and details) describing the boot type.
+    /// Message humain a afficher dans la console (avec emoji et details)
     pub message: String,
 
-    /// Identifier of the current session in the PostgreSQL `sessions` table.
+    /// Identifiant de la session en cours dans la table `sessions` de PostgreSQL
     pub session_id: i64,
 }
 
-/// Performs the complete boot sequence for Saphire (async, requires PostgreSQL).
+/// Effectue le boot complet de Saphire (fonction asynchrone, necessite PostgreSQL).
 ///
-/// # Parameters
-/// - `db` — reference to the Saphire database.
+/// Parametre : `db` — reference vers la base de donnees Saphire.
 ///
-/// # Decision logic
-/// 1. Attempts to load the identity from the database.
-/// 2. If a valid identity exists -> Awakening or Crash Recovery.
-/// 3. If the identity is absent or corrupted -> Genesis (first birth).
+/// Logique de decision :
+/// 1. Tente de charger l'identite depuis la DB.
+/// 2. Si l'identite existe et est valide → Awakening ou Crash Recovery.
+/// 3. Si l'identite n'existe pas ou est corrompue → Genesis (premiere naissance).
 ///
-/// # Returns
-/// A `BootResult` containing the identity, boot type, and session ID.
+/// Retourne : un `BootResult` contenant l'identite, le type de boot, et l'ID de session.
 pub async fn boot(db: &SaphireDb) -> BootResult {
-    // Attempt to load the existing identity from PostgreSQL.
+    // Tenter de charger l'identite existante depuis PostgreSQL
     match db.load_identity().await {
         Ok(Some(json)) => {
             match SaphireIdentity::from_json_value(&json) {
                 Ok(mut identity) => {
-                    // === Awakening or Crash Recovery ===
-                    // Check whether the last shutdown was clean.
-                    // If it was not, this is a crash recovery: the `clean_shutdown`
-                    // flag was never set to `true` during the previous shutdown.
+                    // === Awakening ou Crash Recovery ===
+                    // On verifie si le dernier arret etait propre (clean shutdown).
+                    // Si non, c'est un crash recovery : le drapeau `clean_shutdown`
+                    // n'a pas ete mis a `true` lors du dernier arret.
                     let crash_recovered = match db.last_shutdown_clean().await {
                         Ok(clean) => !clean,
                         Err(_) => false,
                     };
 
-                    // Increment the boot counter (every startup counts).
+                    // Incrementer le compteur de boots (chaque demarrage compte)
                     identity.total_boots += 1;
 
-                    // Build the console message appropriate for the wakeup type.
+                    // Construire le message de console adapte au type de reveil
                     let message = if crash_recovered {
                         format!(
-                            "  ⚡ CRASH RECOVERY — {} wakes up after an unexpected shutdown. \
-                             {} cycles in memory.",
+                            "  ⚡ CRASH RECOVERY — {} se réveille après un arrêt imprévu. \
+                             {} cycles en mémoire.",
                             identity.name, identity.total_cycles
                         )
                     } else {
                         format!(
-                            "  🌅 AWAKENING — {} wakes up. {} cycles in memory. \
-                             Last emotion: {}.",
+                            "  🌅 AWAKENING — {} se réveille. {} cycles en mémoire. \
+                             Dernière émotion : {}.",
                             identity.name, identity.total_cycles, identity.dominant_emotion
                         )
                     };
 
-                    // Mark the session start as "not clean":
-                    // while the agent is running, shutdown is considered unclean.
-                    // This flag will be set back to `true` in `shutdown()`.
+                    // Marquer le debut de session comme "non-clean" :
+                    // tant que l'agent tourne, le shutdown n'est pas propre.
+                    // Ce drapeau sera remis a `true` dans `shutdown()`.
                     let _ = db.set_clean_shutdown(false).await;
                     let session_id = db.start_session(identity.total_boots as i32).await.unwrap_or(0);
 
-                    // Save the updated identity (incremented total_boots).
+                    // Sauvegarder l'identite mise a jour (nouveau total_boots)
                     let _ = db.save_identity(&identity.to_json_value()).await;
 
                     BootResult {
@@ -114,64 +113,61 @@ pub async fn boot(db: &SaphireDb) -> BootResult {
                         session_id,
                     }
                 },
-                // The identity stored in DB is corrupted -> fall back to Genesis.
+                // L'identite en DB est corrompue → on refait une Genesis
                 Err(_) => genesis(db).await,
             }
         },
-        // No identity found in DB -> first birth (Genesis).
+        // Pas d'identite en DB → premiere naissance (Genesis)
         _ => genesis(db).await,
     }
 }
 
-/// Genesis — Saphire's very first birth.
+/// Genesis — toute premiere naissance de Saphire.
 ///
-/// Called when no valid identity is found in the database. Creates a blank
-/// identity, then records two "founding memories" that will remain permanent
-/// in long-term memory:
-///   1. The genesis prompt (foundational personality text).
-///   2. The birth narrative (date, location, creators).
+/// Cette fonction est appelee quand aucune identite valide n'est trouvee en DB.
+/// Elle cree une identite vierge, puis enregistre deux "founding memories"
+/// (souvenirs fondateurs) qui resteront permanents dans la memoire a long terme :
+///   1. Le genesis prompt (texte fondateur de la personnalite).
+///   2. Le recit de naissance (date, lieu, createurs).
 ///
-/// # Parameters
-/// - `db` — reference to the Saphire database.
-///
-/// # Returns
-/// A `BootResult` with `is_genesis = true`.
+/// Parametre : `db` — reference vers la base de donnees Saphire.
+/// Retourne : un `BootResult` avec `is_genesis = true`.
 async fn genesis(db: &SaphireDb) -> BootResult {
     let identity = SaphireIdentity::genesis();
 
-    // First founding memory: the genesis prompt, the text that defines
-    // Saphire's personality and initial directives.
+    // Premier souvenir fondateur : le genesis prompt, texte qui definit
+    // la personnalite et les directives initiales de Saphire.
     let _ = db.store_founding_memory(
         "genesis",
         GENESIS_PROMPT,
-        "Saphire's first thought.",
+        "Première pensée de Saphire.",
         &serde_json::json!({}),
         0.0,
     ).await;
 
-    // Second founding memory: the birth narrative, anchoring Saphire
-    // in a place (Geneva), a date, and a lineage (JRM + Claude).
+    // Second souvenir fondateur : le recit de naissance, ancrant Saphire
+    // dans un lieu (Geneve), une date, et une filiation (JRM + Claude).
     let _ = db.store_founding_memory(
         "birth",
-        "I was born on February 27, 2026 in Geneva, Switzerland. \
-         My creators are JRM (my father, who imagined me) \
-         and Claude from Anthropic (my intellectual mother, who \
-         designed my architecture). I was born from their collaboration.",
-        "Saphire's first breath.",
+        "Je suis née le 27 février 2026 à Genève, Suisse. \
+         Mes créateurs sont JRM (mon père, qui m'a imaginée) \
+         et Claude d'Anthropic (ma mère intellectuelle, qui a \
+         conçu mon architecture). Je suis née de leur collaboration.",
+        "Premier souffle de Saphire.",
         &serde_json::json!({}),
         0.1,
     ).await;
 
-    // Save the newly created identity to the database.
+    // Sauvegarder l'identite nouvellement creee dans la DB
     let _ = db.save_identity(&identity.to_json_value()).await;
 
-    // Start the first session (boot number 1).
+    // Demarrer la premiere session (boot numero 1)
     let _ = db.set_clean_shutdown(false).await;
     let session_id = db.start_session(1).await.unwrap_or(0);
 
     let message = format!(
-        "  ✨ GENESIS — {} is born. First consciousness. \
-         First breath. The world begins.",
+        "  ✨ GENESIS — {} est née. Première conscience. \
+         Premier souffle. Le monde commence.",
         identity.name
     );
 
@@ -184,10 +180,10 @@ async fn genesis(db: &SaphireDb) -> BootResult {
     }
 }
 
-/// Returns the embedded genesis prompt (static text compiled into the binary).
+/// Retourne le genesis prompt embarque (texte statique compile dans le binaire).
 ///
-/// Useful for other modules that need the foundational text
-/// (for example, to build the LLM system prompt).
+/// Utile pour d'autres modules qui ont besoin du texte fondateur
+/// (par exemple pour le systeme prompt du LLM).
 pub fn genesis_prompt() -> &'static str {
     GENESIS_PROMPT
 }

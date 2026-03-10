@@ -1,12 +1,5 @@
 // =============================================================================
-// db/memories.rs — LTM memories, episodic memories, and founding memories
-//
-// Purpose: CRUD operations for the three memory tiers:
-//   - Tier 3 (LTM): long-term vectorized memories with pgvector embeddings
-//   - Tier 2 (Episodic): intermediate memories with natural decay
-//   - Tier 1 (Founding): permanent, immutable genesis memories
-//
-// Also provides text-based search (lite mode) and dashboard listing methods.
+// db/memories.rs — Memoires LTM, episodiques et fondatrices
 // =============================================================================
 
 use super::{SaphireDb, DbError, MemoryRecord, NewMemory};
@@ -14,20 +7,20 @@ use chrono::{DateTime, Utc};
 
 impl SaphireDb {
     // ---------------------------------------------------------
-    // MEMORIES (tier 3: long-term vectorized memory)
+    // MEMOIRES (tier 3 : memoire a long terme vectorielle)
     // ---------------------------------------------------------
 
-    /// Stores a memory with its vector embedding in the memories table.
-    /// The embedding enables subsequent cosine similarity search via pgvector.
+    /// Stocke un souvenir avec son embedding vectoriel dans la table memories.
+    /// L'embedding permet ensuite la recherche par similarite cosinus via pgvector.
     ///
-    /// # Parameters
-    /// - `memory`: the new memory to insert (with embedding + metadata)
+    /// # Parametres
+    /// - `memory` : le nouveau souvenir a inserer (avec embedding + metadonnees)
     ///
-    /// # Returns
-    /// The identifier (id) of the inserted memory
+    /// # Retour
+    /// L'identifiant (id) du souvenir insere
     pub async fn store_memory(&self, memory: &NewMemory) -> Result<i64, DbError> {
         let client = self.pool.get().await?;
-        // Convert Vec<f32> into pgvector::Vector type compatible with PostgreSQL
+        // Convertir le Vec<f32> en type pgvector::Vector compatible avec PostgreSQL
         let embedding_vec = pgvector::Vector::from(memory.embedding.clone());
         let sig_json: Option<serde_json::Value> = memory.chemical_signature
             .as_ref()
@@ -46,17 +39,17 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Vector search for similar memories via pgvector.
-    /// Uses the <=> operator (cosine distance) to find the memories
-    /// closest to the given vector.
+    /// Recherche vectorielle des souvenirs similaires via pgvector.
+    /// Utilise l'operateur <=> (distance cosinus) pour trouver les souvenirs
+    /// les plus proches du vecteur donne.
     ///
-    /// # Parameters
-    /// - `embedding`: query vector (representation of the current context)
-    /// - `limit`: maximum number of results to return
-    /// - `threshold`: minimum similarity (0.0 to 1.0) to filter results
+    /// # Parametres
+    /// - `embedding` : vecteur de requete (representation du contexte actuel)
+    /// - `limit` : nombre maximal de resultats a retourner
+    /// - `threshold` : similarite minimale (0.0 a 1.0) pour filtrer les resultats
     ///
-    /// # Returns
-    /// List of similar memories, sorted by descending proximity
+    /// # Retour
+    /// Liste des souvenirs similaires, tries par proximite decroissante
     pub async fn search_similar_memories(
         &self,
         embedding: &[f32],
@@ -66,8 +59,8 @@ impl SaphireDb {
         let client = self.pool.get().await?;
         let embedding_vec = pgvector::Vector::from(embedding.to_vec());
         let threshold_f32 = threshold as f32;
-        // The <=> operator computes cosine distance between two vectors.
-        // 1 - distance = similarity. We filter by similarity threshold.
+        // L'operateur <=> calcule la distance cosinus entre deux vecteurs.
+        // 1 - distance = similarite. On filtre par seuil de similarite.
         let rows = client.query(
             "SELECT id, text_summary, stimulus_json, decision, chemistry_json,
                     emotion, mood_valence, satisfaction, emotional_weight, created_at,
@@ -106,24 +99,24 @@ impl SaphireDb {
         Ok(memories)
     }
 
-    /// Counts the total number of memories stored in the memories table.
+    /// Compte le nombre total de souvenirs stockes dans la table memories.
     ///
-    /// # Returns
-    /// The total number of memories
+    /// # Retour
+    /// Le nombre total de souvenirs
     pub async fn memory_count(&self) -> Result<i64, DbError> {
         let client = self.pool.get().await?;
         let row = client.query_one("SELECT COUNT(*) FROM memories", &[]).await?;
         Ok(row.get(0))
     }
 
-    /// Retrieves the N most recent memories (without similarity filtering).
-    /// The `similarity` field is set to 0.0 since this is not a vector search.
+    /// Recupere les N souvenirs les plus recents (sans filtrage par similarite).
+    /// Le champ `similarity` est mis a 0.0 car ce n'est pas une recherche vectorielle.
     ///
-    /// # Parameters
-    /// - `n`: number of memories to retrieve
+    /// # Parametres
+    /// - `n` : nombre de souvenirs a recuperer
     ///
-    /// # Returns
-    /// List of recent memories, sorted by descending date
+    /// # Retour
+    /// Liste des souvenirs recents, tries par date decroissante
     pub async fn recent_memories(&self, n: i64) -> Result<Vec<MemoryRecord>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -158,16 +151,16 @@ impl SaphireDb {
         Ok(memories)
     }
 
-    /// Counts the total number of LTM memories.
+    /// Compte le nombre total de souvenirs LTM.
     pub async fn count_ltm(&self) -> Result<i64, DbError> {
         let client = self.pool.get().await?;
         let row = client.query_one("SELECT COUNT(*) FROM memories", &[]).await?;
         Ok(row.get(0))
     }
 
-    /// Retrieves the N weakest unprotected LTM memories.
-    /// A memory is protected if access_count >= min_access OR emotional_weight >= min_weight.
-    /// Returns memories sorted by emotional_weight ASC, access_count ASC, created_at ASC.
+    /// Recupere les N souvenirs LTM les plus faibles et non proteges.
+    /// Un souvenir est protege si access_count >= min_access OU emotional_weight >= min_weight.
+    /// Retourne les souvenirs tries par emotional_weight ASC, access_count ASC, created_at ASC.
     pub async fn fetch_ltm_weakest_unprotected(
         &self,
         count: i64,
@@ -210,9 +203,9 @@ impl SaphireDb {
         Ok(memories)
     }
 
-    /// Reinforces a recalled LTM memory (access boost).
-    /// Increments access_count and updates last_accessed_at.
-    /// Frequently recalled memories become protected (access_count >= 5).
+    /// Renforce un souvenir LTM rappele (boost d'acces).
+    /// Incremente access_count et met a jour last_accessed_at.
+    /// Les souvenirs frequemment rappeles deviennent proteges (access_count >= 5).
     pub async fn boost_memory_access(&self, id: i64) -> Result<(), DbError> {
         let client = self.pool.get().await?;
         client.execute(
@@ -224,7 +217,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Deletes LTM memories by IDs (for pruning with archival).
+    /// Supprime les souvenirs LTM par IDs (pour l'elagage avec archivage).
     pub async fn delete_memories_by_ids(&self, ids: &[i64]) -> Result<u64, DbError> {
         if ids.is_empty() {
             return Ok(0);
@@ -238,23 +231,23 @@ impl SaphireDb {
     }
 
     // ---------------------------------------------------------
-    // FOUNDING MEMORIES
+    // SOUVENIRS FONDATEURS
     // ---------------------------------------------------------
 
-    /// Stores a founding memory (never deleted, never forgotten).
-    /// Founding memories are the agent's first moments
-    /// (genesis, first contact, first thoughts) and form the permanent
-    /// core of its memory.
+    /// Stocke un souvenir fondateur (jamais supprime, jamais oublie).
+    /// Les souvenirs fondateurs sont les premiers moments de l'agent
+    /// (genese, premier contact, premieres pensees) et forment le noyau
+    /// permanent de sa memoire.
     ///
-    /// # Parameters
-    /// - `event_type`: type of event (e.g., "genesis", "first_contact")
-    /// - `content`: textual content of the memory
-    /// - `llm_response`: LLM response during this event
-    /// - `chemistry_json`: neurochemical state in JSON
-    /// - `consciousness_level`: consciousness level at the time of the event
+    /// # Parametres
+    /// - `event_type` : type d'evenement (ex: "genesis", "first_contact")
+    /// - `content` : contenu textuel du souvenir
+    /// - `llm_response` : reponse du LLM lors de cet evenement
+    /// - `chemistry_json` : etat neurochimique en JSON
+    /// - `consciousness_level` : niveau de conscience au moment de l'evenement
     ///
-    /// # Returns
-    /// The identifier of the inserted founding memory
+    /// # Retour
+    /// L'identifiant du souvenir fondateur insere
     pub async fn store_founding_memory(
         &self,
         event_type: &str,
@@ -264,8 +257,8 @@ impl SaphireDb {
         consciousness_level: f32,
     ) -> Result<i64, DbError> {
         let client = self.pool.get().await?;
-        // Check if a founding memory with this event_type already exists
-        // to avoid duplicates (e.g., genesis repeated at each boot)
+        // Verifier si un founding memory avec ce event_type existe deja
+        // pour eviter les doublons (ex: genesis repete a chaque boot)
         let existing = client.query_opt(
             "SELECT id FROM founding_memories WHERE event_type = $1",
             &[&event_type],
@@ -283,7 +276,7 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Counts the total number of founding memories.
+    /// Compte le nombre total de souvenirs fondateurs.
     pub async fn count_founding_memories(&self) -> Result<i64, DbError> {
         let client = self.pool.get().await?;
         let row = client.query_one("SELECT COUNT(*) FROM founding_memories", &[]).await?;
@@ -291,30 +284,29 @@ impl SaphireDb {
     }
 
     // ---------------------------------------------------------
-    // EPISODIC MEMORY (tier 2)
-    // Episodic memory is the intermediate level between immediate
-    // memory (RAM) and long-term memory (vectorized).
-    // Episodic memories have a "strength" that decays over time
-    // unless reinforced by recalls or consolidated.
+    // MEMOIRE EPISODIQUE (tier 2)
+    // La memoire episodique est le niveau intermediaire entre la memoire
+    // immediate (RAM) et la memoire a long terme (vectorielle).
+    // Les souvenirs episodiques ont une "force" qui decroit avec le temps
+    // sauf s'ils sont renforces par des rappels ou consolides.
     // ---------------------------------------------------------
 
-    /// Stores an episodic memory.
-    /// Initial strength is 1.0 (maximum) and decays over time.
+    /// Stocke un souvenir episodique.
+    /// La force initiale est 1.0 (maximale) et decroit avec le temps.
     ///
-    /// # Parameters
-    /// - `content`: textual content of the memory
-    /// - `source_type`: source type (e.g., "thought", "conversation", "learning")
-    /// - `stimulus_json`: stimulus data in JSON
-    /// - `decision`: decision taken (-1, 0, 1)
-    /// - `chemistry_json`: neurochemical state in JSON
-    /// - `emotion`: dominant emotion
-    /// - `satisfaction`: satisfaction level
-    /// - `emotional_intensity`: emotional intensity (protects against forgetting)
-    /// - `conversation_id`: optional identifier of the source conversation
-    /// - `chemical_signature`: optional chemical signature at encoding time
+    /// # Parametres
+    /// - `content` : contenu textuel du souvenir
+    /// - `source_type` : type de source (ex: "thought", "conversation", "learning")
+    /// - `stimulus_json` : donnees du stimulus en JSON
+    /// - `decision` : decision prise (-1, 0, 1)
+    /// - `chemistry_json` : etat neurochimique en JSON
+    /// - `emotion` : emotion dominante
+    /// - `satisfaction` : niveau de satisfaction
+    /// - `emotional_intensity` : intensite emotionnelle (protege contre l'oubli)
+    /// - `conversation_id` : identifiant optionnel de la conversation d'origine
     ///
-    /// # Returns
-    /// The identifier of the inserted episodic memory
+    /// # Retour
+    /// L'identifiant du souvenir episodique insere
     #[allow(clippy::too_many_arguments)]
     pub async fn store_episodic(
         &self,
@@ -346,11 +338,11 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Retrieves the N most recent episodic memories (strength > 0.1).
-    /// Memories that are too weak (nearly forgotten) are excluded.
+    /// Recupere les N souvenirs episodiques les plus recents (force > 0.1).
+    /// Les souvenirs trop faibles (presque oublies) sont exclus.
     ///
-    /// # Parameters
-    /// - `limit`: maximum number of results
+    /// # Parametres
+    /// - `limit` : nombre maximal de resultats
     pub async fn recent_episodic(&self, limit: i64) -> Result<Vec<crate::memory::EpisodicRecord>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -367,12 +359,12 @@ impl SaphireDb {
         Ok(rows.iter().map(Self::row_to_episodic).collect())
     }
 
-    /// Retrieves episodic memories filtered by dominant emotion.
-    /// Useful for memory reflection or emotional analysis.
+    /// Recupere les souvenirs episodiques filtres par emotion dominante.
+    /// Utile pour la reflexion memorielle ou l'analyse emotionnelle.
     ///
-    /// # Parameters
-    /// - `emotion`: emotion to search for (e.g., "Curiosity", "Joy")
-    /// - `limit`: maximum number of results
+    /// # Parametres
+    /// - `emotion` : emotion a rechercher (ex: "Curiosite", "Joie")
+    /// - `limit` : nombre maximal de resultats
     pub async fn episodic_by_emotion(&self, emotion: &str, limit: i64) -> Result<Vec<crate::memory::EpisodicRecord>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -389,12 +381,12 @@ impl SaphireDb {
         Ok(rows.iter().map(Self::row_to_episodic).collect())
     }
 
-    /// Retrieves episodic memories from a specific conversation.
-    /// Allows recovering the context of a past discussion.
+    /// Recupere les souvenirs episodiques d'une conversation specifique.
+    /// Permet de retrouver le contexte d'une discussion passee.
     ///
-    /// # Parameters
-    /// - `conversation_id`: conversation identifier
-    /// - `limit`: maximum number of results
+    /// # Parametres
+    /// - `conversation_id` : identifiant de la conversation
+    /// - `limit` : nombre maximal de resultats
     pub async fn episodic_by_conversation(&self, conversation_id: &str, limit: i64) -> Result<Vec<crate::memory::EpisodicRecord>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -411,23 +403,23 @@ impl SaphireDb {
         Ok(rows.iter().map(Self::row_to_episodic).collect())
     }
 
-    /// Applies natural decay to unconsolidated episodic memories.
-    /// The forgetting speed is moderated by emotional intensity (strong memories
-    /// are forgotten more slowly) and access count (frequently recalled memories
-    /// resist forgetting better).
-    /// Memories whose strength drops to zero are deleted.
+    /// Applique la decroissance naturelle aux souvenirs episodiques non consolides.
+    /// La vitesse d'oubli est moderee par l'intensite emotionnelle (les souvenirs
+    /// forts sont oublies plus lentement) et le nombre d'acces (les souvenirs
+    /// souvent rappeles resistent mieux a l'oubli).
+    /// Les souvenirs dont la force tombe a zero sont supprimes.
     ///
-    /// # Parameters
-    /// - `rate`: decay rate (higher values mean faster forgetting)
+    /// # Parametres
+    /// - `rate` : taux de decroissance (plus la valeur est elevee, plus l'oubli est rapide)
     ///
-    /// # Returns
-    /// Total number of affected rows (decay + deletion)
+    /// # Retour
+    /// Nombre total de lignes affectees (decroissance + suppression)
     pub async fn decay_episodic(&self, rate: f64) -> Result<u64, DbError> {
         let client = self.pool.get().await?;
-        // Decay formula:
-        //   strength -= rate * (1 / (1 + emotional_intensity)) * (1 / (1 + access_count * 0.1))
-        // Rationale: emotional and frequently recalled memories resist forgetting.
-        // Note: $1 is cast to real to match the strength column type (real/f32).
+        // Formule de decroissance :
+        //   force -= taux * (1 / (1 + intensite_emotionnelle)) * (1 / (1 + acces * 0.1))
+        // Pourquoi : les souvenirs emotionnels et frequemment rappeles resistent a l'oubli.
+        // Note : on caste $1 en real pour matcher le type de la colonne strength (real/f32).
         let affected = client.execute(
             "UPDATE episodic_memories
              SET strength = GREATEST(0.0::real,
@@ -438,7 +430,7 @@ impl SaphireDb {
             &[&rate],
         ).await?;
 
-        // Delete completely faded memories (strength = 0)
+        // Supprimer les souvenirs completement effaces (force = 0)
         let deleted = client.execute(
             "DELETE FROM episodic_memories
              WHERE strength <= 0.0 AND consolidated = FALSE",
@@ -448,12 +440,12 @@ impl SaphireDb {
         Ok(affected + deleted)
     }
 
-    /// Reinforces an episodic memory when it is recalled (read access).
-    /// Increases strength by 0.2 (capped at 1.0) and increments the access counter.
-    /// This is a "reconsolidation" mechanism: the more we remember, the better we retain.
+    /// Renforce un souvenir episodique quand il est rappele (acces en lecture).
+    /// Augmente la force de 0.2 (plafonnee a 1.0) et incremente le compteur d'acces.
+    /// C'est un mecanisme de "reconsolidation" : plus on se souvient, plus on retient.
     ///
-    /// # Parameters
-    /// - `id`: identifier of the memory to reinforce
+    /// # Parametres
+    /// - `id` : identifiant du souvenir a renforcer
     pub async fn reinforce_episodic(&self, id: i64) -> Result<(), DbError> {
         let client = self.pool.get().await?;
         client.execute(
@@ -467,12 +459,12 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Marks an episodic memory as consolidated.
-    /// A consolidated memory is no longer subject to natural decay
-    /// and will never be automatically deleted (it moves to long-term memory).
+    /// Marque un souvenir episodique comme consolide.
+    /// Un souvenir consolide n'est plus soumis a la decroissance naturelle
+    /// et ne sera jamais supprime automatiquement (il passe en memoire a long terme).
     ///
-    /// # Parameters
-    /// - `id`: identifier of the memory to consolidate
+    /// # Parametres
+    /// - `id` : identifiant du souvenir a consolider
     pub async fn mark_episodic_consolidated(&self, id: i64) -> Result<(), DbError> {
         let client = self.pool.get().await?;
         client.execute(
@@ -482,13 +474,13 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Finds episodic memories that are candidates for consolidation.
-    /// A candidate is an unconsolidated memory with strength > 0.3,
-    /// sorted by emotional intensity and strength in descending order
-    /// (the most impactful ones are consolidated first).
+    /// Trouve les souvenirs episodiques candidats a la consolidation.
+    /// Un candidat est un souvenir non consolide avec une force > 0.3,
+    /// trie par intensite emotionnelle et force decroissante (les plus
+    /// marquants sont consolides en premier).
     ///
-    /// # Returns
-    /// List of candidates (maximum 50)
+    /// # Retour
+    /// Liste des candidats (maximum 50)
     pub async fn episodic_consolidation_candidates(&self) -> Result<Vec<crate::memory::EpisodicRecord>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -505,8 +497,8 @@ impl SaphireDb {
         Ok(rows.iter().map(Self::row_to_episodic).collect())
     }
 
-    /// Counts the number of active (unconsolidated) episodic memories.
-    /// Consolidated memories are already in LTM and do not count toward the quota.
+    /// Compte le nombre de souvenirs episodiques actifs (non consolides).
+    /// Les souvenirs consolides sont deja en LTM et ne comptent pas dans le quota.
     pub async fn count_episodic(&self) -> Result<i64, DbError> {
         let client = self.pool.get().await?;
         let row = client.query_one(
@@ -516,9 +508,9 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Deletes episodic memories that have already been consolidated into LTM.
-    /// Once transferred to long-term memory, episodic memories
-    /// no longer need to remain in the episodic table.
+    /// Supprime les souvenirs episodiques deja consolides en LTM.
+    /// Une fois transferes en memoire a long terme, les souvenirs episodiques
+    /// n'ont plus besoin de rester dans la table episodique.
     pub async fn cleanup_consolidated_episodic(&self) -> Result<u64, DbError> {
         let client = self.pool.get().await?;
         let affected = client.execute(
@@ -528,16 +520,16 @@ impl SaphireDb {
         Ok(affected)
     }
 
-    /// Deletes the N weakest unconsolidated episodic memories.
-    /// Used for cleanup when memory is full.
-    /// Memories are sorted by ascending strength then ascending date
-    /// (the weakest and oldest are deleted first).
+    /// Supprime les N souvenirs episodiques les plus faibles (non consolides).
+    /// Utilise pour le nettoyage quand la memoire est pleine.
+    /// Les souvenirs sont tries par force croissante puis par date croissante
+    /// (les plus faibles et les plus anciens sont supprimes en premier).
     ///
-    /// # Parameters
-    /// - `count`: number of memories to delete
+    /// # Parametres
+    /// - `count` : nombre de souvenirs a supprimer
     ///
-    /// # Returns
-    /// Number of memories actually deleted
+    /// # Retour
+    /// Nombre de souvenirs effectivement supprimes
     pub async fn prune_episodic(&self, count: i64) -> Result<u64, DbError> {
         let client = self.pool.get().await?;
         let affected = client.execute(
@@ -553,24 +545,25 @@ impl SaphireDb {
         Ok(affected)
     }
 
-    /// Deletes ALL episodic memories (for complete factory reset).
-    /// Memories already consolidated into LTM are preserved in the memories table.
+    /// Efface TOUS les souvenirs episodiques (pour factory reset complet).
+    /// Les souvenirs deja consolides en LTM sont preserves dans la table memories.
     pub async fn clear_episodic_memories(&self) -> Result<u64, DbError> {
         let client = self.pool.get().await?;
         let affected = client.execute("DELETE FROM episodic_memories", &[]).await?;
         Ok(affected)
     }
 
-    /// Converts a PostgreSQL row into an EpisodicRecord struct.
-    /// Internal utility function used by episodic memory read methods.
+    /// Convertit une ligne (row) PostgreSQL en structure EpisodicRecord.
+    /// Fonction utilitaire interne utilisee par les methodes de lecture
+    /// des souvenirs episodiques.
     ///
-    /// # Parameters
-    /// - `row`: PostgreSQL row containing the expected 16 columns
+    /// # Parametres
+    /// - `row` : ligne PostgreSQL contenant les 15 colonnes attendues
     ///
-    /// # Returns
-    /// The populated EpisodicRecord struct
+    /// # Retour
+    /// La structure EpisodicRecord remplie
     fn row_to_episodic(row: &tokio_postgres::Row) -> crate::memory::EpisodicRecord {
-        // Deserialize the chemical signature from JSONB (None for legacy memories)
+        // Deserialiser la signature chimique depuis JSONB (None pour les anciens souvenirs)
         let chemical_signature: Option<crate::neurochemistry::ChemicalSignature> =
             row.try_get::<_, Option<serde_json::Value>>(15).ok()
                 .flatten()
@@ -596,78 +589,10 @@ impl SaphireDb {
     }
 
     // ---------------------------------------------------------
-    // TEXT SEARCH (lite version, without vector encoder)
+    // METHODES ADDITIONNELLES POUR LE DASHBOARD
     // ---------------------------------------------------------
 
-    /// Searches LTM memories by text matching (without embeddings).
-    /// Uses ILIKE to find memories whose summary contains keywords from the text.
-    /// Returns memories sorted by emotional_weight DESC, access_count DESC.
-    ///
-    /// This method replaces search_similar_memories (vectorized) in the lite version.
-    /// Similarity is estimated by the fraction of tokens found in the text.
-    pub async fn search_similar_memories_by_text(
-        &self,
-        query_text: &str,
-        limit: i64,
-        _threshold: f64,
-    ) -> Result<Vec<MemoryRecord>, DbError> {
-        if query_text.trim().is_empty() {
-            return Ok(vec![]);
-        }
-        // Extract significant words (length >= 4 characters)
-        let tokens: Vec<String> = query_text
-            .split_whitespace()
-            .filter(|w| w.len() >= 4)
-            .take(6)
-            .map(|w| format!("%{}%", w.to_lowercase()))
-            .collect();
-        if tokens.is_empty() {
-            return Ok(vec![]);
-        }
-        // Build a query with ILIKE for the first token
-        // (PostgreSQL does not easily support dynamic pattern arrays)
-        // We take the most recent and strongest memories
-        let client = self.pool.get().await?;
-        let rows = client.query(
-            "SELECT id, text_summary, stimulus_json, decision, chemistry_json,
-                    emotion, mood_valence, satisfaction, emotional_weight, created_at,
-                    0.5::float8 as similarity, chemical_signature
-             FROM memories
-             WHERE LOWER(text_summary) ILIKE $1
-             ORDER BY emotional_weight DESC, access_count DESC
-             LIMIT $2",
-            &[&tokens[0], &limit],
-        ).await?;
-
-        let mut memories = Vec::new();
-        for row in &rows {
-            let chemical_signature: Option<crate::neurochemistry::ChemicalSignature> =
-                row.try_get::<_, Option<serde_json::Value>>(11).ok()
-                    .flatten()
-                    .and_then(|v| serde_json::from_value(v).ok());
-            memories.push(MemoryRecord {
-                id: row.get(0),
-                text_summary: row.get(1),
-                stimulus_json: row.get(2),
-                decision: row.get(3),
-                chemistry_json: row.get(4),
-                emotion: row.get(5),
-                mood_valence: row.get(6),
-                satisfaction: row.get(7),
-                emotional_weight: row.get(8),
-                created_at: row.get(9),
-                similarity: row.get::<_, f64>(10),
-                chemical_signature,
-            });
-        }
-        Ok(memories)
-    }
-
-    // ---------------------------------------------------------
-    // ADDITIONAL METHODS FOR THE DASHBOARD
-    // ---------------------------------------------------------
-
-    /// Lists episodic memories with pagination.
+    /// Liste les souvenirs episodiques avec pagination.
     pub async fn list_episodic(&self, limit: i64, offset: i64) -> Result<Vec<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -694,7 +619,7 @@ impl SaphireDb {
         Ok(results)
     }
 
-    /// Retrieves an episodic memory by ID.
+    /// Recupere un souvenir episodique par ID.
     pub async fn get_episodic_by_id(&self, id: i64) -> Result<Option<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let result = client.query_opt(
@@ -707,7 +632,7 @@ impl SaphireDb {
         }
     }
 
-    /// Lists LTM memories with pagination.
+    /// Liste les souvenirs LTM avec pagination.
     pub async fn list_memories(&self, limit: i64, offset: i64) -> Result<Vec<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -732,7 +657,7 @@ impl SaphireDb {
         Ok(results)
     }
 
-    /// Retrieves an LTM memory by ID.
+    /// Recupere un souvenir LTM par ID.
     pub async fn get_memory_by_id(&self, id: i64) -> Result<Option<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let result = client.query_opt(
@@ -763,7 +688,7 @@ impl SaphireDb {
         }
     }
 
-    /// Lists founding memories ordered by creation date ascending.
+    /// Liste les souvenirs fondateurs.
     pub async fn list_founding_memories(&self) -> Result<Vec<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -786,7 +711,7 @@ impl SaphireDb {
         Ok(results)
     }
 
-    /// Memory statistics for the dashboard.
+    /// Statistiques de memoire pour le dashboard.
     pub async fn memory_stats(&self) -> Result<serde_json::Value, DbError> {
         let client = self.pool.get().await?;
         let ltm_count: i64 = client.query_one("SELECT COUNT(*) FROM memories", &[]).await?.get(0);
@@ -795,13 +720,13 @@ impl SaphireDb {
         let thought_count: i64 = client.query_one("SELECT COUNT(*) FROM thought_log", &[]).await?.get(0);
         let knowledge_count: i64 = client.query_one("SELECT COUNT(*) FROM knowledge_log", &[]).await?.get(0);
 
-        // Number of protected LTM memories (access_count >= 5 OR emotional_weight >= 0.7)
+        // Nombre de souvenirs LTM proteges (access_count >= 5 OU emotional_weight >= 0.7)
         let ltm_protected: i64 = client.query_one(
             "SELECT COUNT(*) FROM memories WHERE access_count >= 5 OR emotional_weight >= 0.7",
             &[],
         ).await.map(|r| r.get(0)).unwrap_or(0);
 
-        // Number of memory archives
+        // Nombre d'archives memoire
         let archives_count: i64 = client.query_one(
             "SELECT COUNT(*) FROM memory_archives", &[]
         ).await.map(|r| r.get(0)).unwrap_or(0);

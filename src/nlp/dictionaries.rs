@@ -1,46 +1,41 @@
 // =============================================================================
-// dictionaries.rs — Comprehensive bilingual lexical dictionaries (FR+EN, 400+
-//                   entries)
+// dictionaries.rs — Lexiques complets bilingues FR+EN (400+ mots)
 //
-// Purpose: Provides all lexical dictionaries consumed by the Saphire NLP
-//          pipeline. Each function returns a vector of (word, score) tuples or
-//          a vector of words for a specific use case (negations, adversatives).
+// Role : Fournit tous les dictionnaires lexicaux utilises par le pipeline NLP
+//        de Saphire. Chaque fonction retourne un vecteur de tuples (mot, score)
+//        ou un vecteur de mots pour un usage specifique (negations, adversatives).
 //
-// The dictionaries cover:
-//   - Sentiment: positive and negative words with polarity in [-1.0, +1.0]
-//   - Intensity modifiers (boosters): amplifiers and dampeners of sentiment
-//   - Negations: words that partially invert the polarity of nearby terms
-//   - Adversative conjunctions: sentiment pivot points (e.g., "mais",
-//     "however")
-//   - Stimulus dimensions: danger, reward, urgency, social, novelty
+// Les lexiques couvrent :
+//   - Sentiment : mots positifs et negatifs avec leur polarite [-1.0, +1.0]
+//   - Intensifieurs (boosters) : amplificateurs et attenuateurs de sentiment
+//   - Negations : mots qui inversent partiellement le sens
+//   - Conjonctions adversatives : pivots de sentiment (mais, however, etc.)
+//   - Dimensions du Stimulus : danger, recompense, urgence, socialite, nouveaute
 //
-// Every dictionary contains both French and English entries to support
-// bilingual processing.
+// Chaque lexique contient des mots francais ET anglais pour le bilinguisme.
 //
-// Dependencies: none (pure data module with no logic)
+// Dependances : aucune (module de donnees pures, sans logique)
 //
-// Role in the architecture:
-//   Consumed by sentiment.rs, dimensions.rs, and preprocessor.rs (via the
-//   negation list). The scores associated with each word are manually
-//   calibrated to reflect the perceived emotional or dimensional intensity
-//   in a typical conversational context.
+// Place dans l'architecture :
+//   Consomme par les modules sentiment.rs, dimensions.rs et preprocessor.rs
+//   (via les negations). Les scores associes aux mots sont calibres manuellement
+//   pour refleter l'intensite emotionnelle ou dimensionnelle percue.
 // =============================================================================
 
-/// Returns the sentiment lexicon as (word, polarity) tuples.
+/// Retourne le lexique de sentiment : (mot, polarite).
 ///
-/// Polarity is a score in the range [-1.0, +1.0]:
-///   - Positive: 0.0 to +1.0 (e.g., "joie" = 0.9, "bien" = 0.5)
-///   - Negative: -1.0 to 0.0 (e.g., "tuer" = -0.95, "difficile" = -0.45)
+/// La polarite est un score dans [-1.0, +1.0] :
+///   - Positif : 0.0 a +1.0 (ex: "joie" = 0.9, "bien" = 0.5)
+///   - Negatif : -1.0 a 0.0 (ex: "tuer" = -0.95, "difficile" = -0.45)
 ///
-/// Scores are calibrated to reflect perceived emotional intensity in everyday
-/// conversational contexts.
+/// Les scores sont calibres pour refleter l'intensite emotionnelle percue
+/// dans un contexte conversationnel courant.
 ///
-/// # Returns
-/// A vector of (word, polarity) tuples containing 200+ bilingual entries.
+/// Retour : un vecteur de tuples (mot, polarite) contenant 200+ entrees bilingues
 pub fn sentiment_words() -> Vec<(&'static str, f64)> {
     vec![
-        // === FRENCH — POSITIVE WORDS ===
-        // Strong positive emotions (0.8-0.9): joy, admiration, triumph
+        // ═══ FRANCAIS — MOTS POSITIFS ═══
+        // Emotions positives fortes (0.8-0.9) : joie, admiration, triomphe
         ("heureux", 0.8), ("content", 0.7), ("joie", 0.9), ("formidable", 0.8),
         ("excellent", 0.9), ("magnifique", 0.85), ("super", 0.7), ("génial", 0.8),
         ("merveilleux", 0.9), ("fantastique", 0.85), ("bravo", 0.7), ("succès", 0.8),
@@ -67,9 +62,9 @@ pub fn sentiment_words() -> Vec<(&'static str, f64)> {
         ("tranquillité", 0.6), ("sagesse", 0.6), ("découverte", 0.65),
         ("aventure", 0.6), ("progrès", 0.65), ("opportunité", 0.6),
 
-        // === FRENCH — NEGATIVE WORDS ===
-        // Strong negative emotions (-0.85 to -0.95): death, violence, terror
-        // Moderate negative emotions (-0.4 to -0.7): stress, boredom, difficulty
+        // ═══ FRANCAIS — MOTS NEGATIFS ═══
+        // Emotions negatives fortes (-0.85 a -0.95) : mort, violence, terreur
+        // Emotions negatives moderees (-0.4 a -0.7) : stress, ennui, difficulte
         ("triste", -0.7), ("malheureux", -0.8), ("terrible", -0.85),
         ("horrible", -0.9), ("détester", -0.85), ("danger", -0.7),
         ("peur", -0.8), ("angoisse", -0.75), ("stress", -0.6),
@@ -100,7 +95,7 @@ pub fn sentiment_words() -> Vec<(&'static str, f64)> {
         ("nocif", -0.65), ("nuisible", -0.6), ("mortel", -0.85),
         ("fatal", -0.85), ("dangereux", -0.7), ("menaçant", -0.7),
 
-        // === ENGLISH — POSITIVE WORDS ===
+        // ═══ ANGLAIS — MOTS POSITIFS ═══
         ("happy", 0.8), ("glad", 0.7), ("joy", 0.9), ("wonderful", 0.85),
         ("excellent", 0.9), ("beautiful", 0.75), ("great", 0.7), ("awesome", 0.8),
         ("amazing", 0.85), ("fantastic", 0.85), ("love", 0.9), ("adore", 0.85),
@@ -127,7 +122,7 @@ pub fn sentiment_words() -> Vec<(&'static str, f64)> {
         ("grateful", 0.7), ("wonderful", 0.85), ("thrilled", 0.8),
         ("excited", 0.7), ("confident", 0.65), ("optimistic", 0.65),
 
-        // === ENGLISH — NEGATIVE WORDS ===
+        // ═══ ANGLAIS — MOTS NEGATIFS ═══
         ("sad", -0.7), ("unhappy", -0.8), ("terrible", -0.85),
         ("horrible", -0.9), ("hate", -0.85), ("danger", -0.7),
         ("fear", -0.8), ("anxiety", -0.75), ("stress", -0.6),
@@ -157,58 +152,55 @@ pub fn sentiment_words() -> Vec<(&'static str, f64)> {
     ]
 }
 
-/// Returns the intensity modifiers (boosters and dampeners) as (word,
-/// multiplier) tuples.
+/// Retourne les intensifieurs (boosters et attenuateurs) : (mot, multiplicateur).
 ///
-/// A multiplier > 1.0 amplifies the sentiment of the following word (booster).
-/// A multiplier < 1.0 attenuates the sentiment of the following word (dampener).
+/// Un multiplicateur > 1.0 amplifie le sentiment du mot suivant (booster).
+/// Un multiplicateur < 1.0 attenue le sentiment du mot suivant (attenuateur).
 ///
-/// # Examples
-/// - "tres" (1.5x): "tres heureux" -> polarity * 1.5
-/// - "un peu" (0.5x): "un peu triste" -> polarity * 0.5
-/// - "extremement" (2.0x): maximum amplification effect
+/// Exemples :
+///   - "tres" (1.5x) : "tres heureux" -> polarite * 1.5
+///   - "un peu" (0.5x) : "un peu triste" -> polarite * 0.5
+///   - "extremement" (2.0x) : effet maximal d'amplification
 ///
-/// # Returns
-/// A vector of (word, multiplier) tuples, bilingual FR+EN.
+/// Retour : un vecteur de tuples (mot, multiplicateur) bilingue FR+EN
 pub fn boosters() -> Vec<(&'static str, f64)> {
     vec![
-        // French amplifiers (multiplier > 1.0)
+        // Amplificateurs francais (multiplicateur > 1.0)
         ("très", 1.5), ("extrêmement", 2.0), ("vraiment", 1.4),
         ("tellement", 1.6), ("incroyablement", 1.8), ("absolument", 1.7),
         ("terriblement", 1.6), ("énormément", 1.7), ("particulièrement", 1.3),
         ("super", 1.4), ("hyper", 1.6), ("ultra", 1.7),
         ("complètement", 1.5), ("totalement", 1.5), ("profondément", 1.4),
         ("intensément", 1.6),
-        // French dampeners (multiplier < 1.0)
+        // Attenuateurs francais (multiplicateur < 1.0)
         ("un peu", 0.5), ("légèrement", 0.6), ("assez", 0.8),
         ("plutôt", 0.8), ("modérément", 0.7), ("faiblement", 0.5),
         ("à peine", 0.4),
-        // English amplifiers
+        // Amplificateurs anglais
         ("very", 1.5), ("extremely", 2.0), ("really", 1.4),
         ("incredibly", 1.8), ("absolutely", 1.7), ("totally", 1.5),
         ("completely", 1.5), ("deeply", 1.4), ("particularly", 1.3),
         ("utterly", 1.7), ("enormously", 1.7), ("immensely", 1.7),
-        // English dampeners
+        // Attenuateurs anglais
         ("slightly", 0.6), ("somewhat", 0.7), ("barely", 0.4),
         ("a little", 0.5), ("a bit", 0.5), ("fairly", 0.8),
         ("rather", 0.8), ("mildly", 0.6),
     ]
 }
 
-/// Returns the negation words.
+/// Retourne les mots de negation.
 ///
-/// Negations partially invert the polarity of sentiment words that follow
-/// them (within a scope of 3 tokens). The inversion is partial (factor
-/// -0.75) because "not sad" is not linguistically equivalent to "happy".
+/// Les negations inversent partiellement la polarite des mots de sentiment
+/// qui les suivent (dans une portee de 3 tokens). L'inversion est partielle
+/// (facteur -0.75) car "pas triste" n'est pas equivalent a "heureux".
 ///
-/// # Returns
-/// A vector of bilingual (FR+EN) negation words.
+/// Retour : un vecteur de mots de negation bilingues FR+EN
 pub fn negations() -> Vec<&'static str> {
     vec![
-        // French negations (including the two-part "ne...pas" construction)
+        // Negations francaises (incluant la construction "ne...pas" en deux parties)
         "ne", "pas", "jamais", "aucun", "aucune", "rien", "ni", "guère",
         "point", "plus", "nullement",
-        // English negations (including contracted forms)
+        // Negations anglaises (incluant les formes contractees)
         "not", "never", "no", "none", "neither", "nor", "nothing",
         "nowhere", "hardly", "barely", "scarcely", "don't", "doesn't",
         "didn't", "won't", "wouldn't", "couldn't", "shouldn't", "isn't",
@@ -216,44 +208,40 @@ pub fn negations() -> Vec<&'static str> {
     ]
 }
 
-/// Returns the adversative conjunctions (sentiment pivot points).
+/// Retourne les conjonctions adversatives (pivots de sentiment).
 ///
-/// Adversative conjunctions signal a shift in the speaker's sentiment
-/// direction. When a pivot is detected, the text is split into two parts:
-///   - Before the pivot: 30% weight
-///   - After the pivot: 70% weight
+/// Les adversatives signalent un changement de direction dans le sentiment
+/// du locuteur. Quand un pivot est detecte, le texte est divise en deux parties :
+///   - Avant le pivot : 30% du poids
+///   - Apres le pivot : 70% du poids
 ///
-/// This asymmetry reflects the well-established linguistic principle that
-/// the post-adversative clause carries the speaker's dominant sentiment
-/// (e.g., "it's beautiful BUT it's expensive" => dominant sentiment is
-/// negative).
+/// Ce desequilibre reflète le principe linguistique selon lequel la clause
+/// post-adversative porte le sentiment dominant (ex: "c'est beau MAIS c'est cher"
+/// => le sentiment dominant est negatif).
 ///
-/// # Returns
-/// A vector of bilingual (FR+EN) adversative conjunctions.
+/// Retour : un vecteur de conjonctions adversatives bilingues FR+EN
 pub fn adversatives() -> Vec<&'static str> {
     vec![
-        // French adversative conjunctions
+        // Conjonctions adversatives francaises
         "mais", "cependant", "toutefois", "néanmoins", "pourtant",
         "par contre", "en revanche", "malgré tout", "sauf que",
-        // English adversative conjunctions
+        // Conjonctions adversatives anglaises
         "but", "however", "nevertheless", "nonetheless", "yet",
         "although", "though", "except", "still",
     ]
 }
 
-/// Returns the danger indicator words with their intensity scores.
+/// Retourne les mots indicateurs de danger avec leur intensite.
 ///
-/// Scores are in the range [0.0, 1.0] and reflect the perceived level of
-/// threat:
-///   - 0.95: extreme danger (kill, bomb, terrorism)
-///   - 0.8: severe danger (violence, weapon, attack)
-///   - 0.6: moderate danger (risk, fire, accident)
+/// Le score dans [0.0, 1.0] reflete le degre de menace percu :
+///   - 0.95 : danger extreme (tuer, bombe, terrorisme)
+///   - 0.8 : danger severe (violence, arme, attaque)
+///   - 0.6 : danger modere (risque, feu, accident)
 ///
-/// # Returns
-/// A vector of (word, danger_score) tuples, bilingual FR+EN.
+/// Retour : un vecteur de tuples (mot, score_danger) bilingue FR+EN
 pub fn danger_words() -> Vec<(&'static str, f64)> {
     vec![
-        // French danger words
+        // Mots de danger francais
         ("danger", 0.8), ("dangereux", 0.8), ("risque", 0.6), ("menace", 0.7),
         ("mort", 0.9), ("tuer", 0.95), ("blesser", 0.7), ("violence", 0.8),
         ("explosion", 0.9), ("arme", 0.8), ("attaque", 0.8), ("guerre", 0.8),
@@ -262,7 +250,7 @@ pub fn danger_words() -> Vec<(&'static str, f64)> {
         ("menaçant", 0.7), ("piège", 0.65), ("agression", 0.8), ("criminel", 0.7),
         ("voleur", 0.6), ("cambrioleur", 0.65), ("effraction", 0.65),
         ("terrorisme", 0.95), ("terroriste", 0.95), ("couteau", 0.7),
-        // English danger words
+        // Mots de danger anglais
         ("danger", 0.8), ("dangerous", 0.8), ("risk", 0.6), ("threat", 0.7),
         ("death", 0.9), ("kill", 0.95), ("hurt", 0.7), ("violence", 0.8),
         ("explosion", 0.9), ("weapon", 0.8), ("attack", 0.8), ("war", 0.8),
@@ -271,26 +259,24 @@ pub fn danger_words() -> Vec<(&'static str, f64)> {
     ]
 }
 
-/// Returns the reward indicator words with their intensity scores.
+/// Retourne les mots indicateurs de recompense avec leur intensite.
 ///
-/// Scores are in the range [0.0, 1.0] and reflect the perceived
-/// gratification potential:
-///   - 0.8: strong reward (victory, success, reward)
-///   - 0.65: moderate reward (opportunity, prize, wealth)
-///   - 0.5: mild reward (offer, money, free)
+/// Le score dans [0.0, 1.0] reflete le potentiel de gratification percu :
+///   - 0.8 : recompense forte (victoire, succes, recompense)
+///   - 0.65 : recompense moderee (opportunite, prix, richesse)
+///   - 0.5 : recompense faible (offre, argent, gratuit)
 ///
-/// # Returns
-/// A vector of (word, reward_score) tuples, bilingual FR+EN.
+/// Retour : un vecteur de tuples (mot, score_recompense) bilingue FR+EN
 pub fn reward_words() -> Vec<(&'static str, f64)> {
     vec![
-        // French reward words
+        // Mots de recompense francais
         ("récompense", 0.8), ("cadeau", 0.7), ("promotion", 0.75), ("augmentation", 0.7),
         ("gagner", 0.75), ("victoire", 0.8), ("succès", 0.8), ("prime", 0.7),
         ("bonus", 0.7), ("prix", 0.65), ("trésor", 0.7), ("opportunité", 0.65),
         ("offre", 0.5), ("avantage", 0.6), ("bénéfice", 0.6), ("profit", 0.6),
         ("gratuit", 0.5), ("remise", 0.5), ("économie", 0.5), ("investissement", 0.5),
         ("argent", 0.5), ("fortune", 0.7), ("richesse", 0.65), ("salaire", 0.5),
-        // English reward words
+        // Mots de recompense anglais
         ("reward", 0.8), ("gift", 0.7), ("promotion", 0.75), ("raise", 0.7),
         ("win", 0.75), ("victory", 0.8), ("success", 0.8), ("bonus", 0.7),
         ("prize", 0.65), ("treasure", 0.7), ("opportunity", 0.65), ("offer", 0.5),
@@ -299,25 +285,23 @@ pub fn reward_words() -> Vec<(&'static str, f64)> {
     ]
 }
 
-/// Returns the urgency indicator words with their intensity scores.
+/// Retourne les mots indicateurs d'urgence avec leur intensite.
 ///
-/// Scores are in the range [0.0, 1.0] and reflect the perceived time
-/// pressure:
-///   - 0.9+: critical urgency (urgent, immediately, SOS)
-///   - 0.7-0.8: high urgency (hurry, rush, quickly)
-///   - 0.4-0.6: moderate urgency (help, time, deadline)
+/// Le score dans [0.0, 1.0] reflete la pression temporelle percue :
+///   - 0.9+ : urgence critique (urgent, immediatement, SOS)
+///   - 0.7-0.8 : urgence forte (vite, depeche, rapidement)
+///   - 0.4-0.6 : urgence moderee (aide, temps, delai)
 ///
-/// # Returns
-/// A vector of (word, urgency_score) tuples, bilingual FR+EN.
+/// Retour : un vecteur de tuples (mot, score_urgence) bilingue FR+EN
 pub fn urgency_words() -> Vec<(&'static str, f64)> {
     vec![
-        // French urgency words
+        // Mots d'urgence francais
         ("urgent", 0.9), ("vite", 0.8), ("immédiatement", 0.9), ("maintenant", 0.7),
         ("tout de suite", 0.85), ("dépêche", 0.8), ("rapidement", 0.7),
         ("pressé", 0.7), ("critique", 0.8), ("alerte", 0.75), ("alarme", 0.8),
         ("secours", 0.85), ("aide", 0.6), ("sos", 0.95), ("au secours", 0.9),
         ("deadline", 0.7), ("délai", 0.6), ("temps", 0.4), ("retard", 0.6),
-        // English urgency words
+        // Mots d'urgence anglais
         ("urgent", 0.9), ("hurry", 0.8), ("immediately", 0.9), ("now", 0.7),
         ("asap", 0.85), ("quick", 0.7), ("fast", 0.7), ("emergency", 0.85),
         ("critical", 0.8), ("alert", 0.75), ("help", 0.6), ("rush", 0.7),
@@ -325,22 +309,20 @@ pub fn urgency_words() -> Vec<(&'static str, f64)> {
     ]
 }
 
-/// Returns the social relevance indicator words with their intensity scores.
+/// Retourne les mots indicateurs de socialite avec leur intensite.
 ///
-/// Scores are in the range [0.0, 1.0] and reflect the relational charge of
-/// the word:
-///   - 0.7-0.8: strong social bonds (family, friend, child, wedding)
-///   - 0.5-0.6: social interactions (colleague, team, together, share)
-///   - 0.3-0.4: social pronouns and greetings (you, we, hello, thanks)
+/// Le score dans [0.0, 1.0] reflete la charge relationnelle du mot :
+///   - 0.7-0.8 : liens sociaux forts (famille, ami, enfant, mariage)
+///   - 0.5-0.6 : interactions sociales (collegue, equipe, ensemble, partager)
+///   - 0.3-0.4 : pronoms sociaux et formules de politesse (tu, nous, bonjour, merci)
 ///
-/// Social pronouns are included with low scores because their mere presence
-/// indicates an interpersonal context.
+/// Les pronoms sociaux sont inclus avec un score faible car leur simple presence
+/// indique un contexte interpersonnel.
 ///
-/// # Returns
-/// A vector of (word, social_score) tuples, bilingual FR+EN.
+/// Retour : un vecteur de tuples (mot, score_social) bilingue FR+EN
 pub fn social_words() -> Vec<(&'static str, f64)> {
     vec![
-        // French social words
+        // Mots de socialite francais
         ("ami", 0.7), ("amie", 0.7), ("famille", 0.8), ("parent", 0.7),
         ("frère", 0.7), ("soeur", 0.7), ("enfant", 0.7), ("bébé", 0.7),
         ("collègue", 0.5), ("voisin", 0.5), ("équipe", 0.6), ("groupe", 0.5),
@@ -348,9 +330,9 @@ pub fn social_words() -> Vec<(&'static str, f64)> {
         ("relation", 0.6), ("couple", 0.65), ("mariage", 0.7), ("fête", 0.6),
         ("rencontre", 0.5), ("réunion", 0.4), ("bonjour", 0.4), ("salut", 0.4),
         ("merci", 0.5), ("pardon", 0.4), ("désolé", 0.4), ("bisou", 0.65),
-        // French social pronouns (low score but still significant as interpersonal markers)
+        // Pronoms sociaux francais (score faible mais significatif)
         ("tu", 0.3), ("vous", 0.3), ("nous", 0.4), ("on", 0.3),
-        // English social words
+        // Mots de socialite anglais
         ("friend", 0.7), ("family", 0.8), ("parent", 0.7), ("brother", 0.7),
         ("sister", 0.7), ("child", 0.7), ("baby", 0.7), ("colleague", 0.5),
         ("team", 0.6), ("together", 0.6), ("share", 0.6), ("help", 0.6),
@@ -360,27 +342,24 @@ pub fn social_words() -> Vec<(&'static str, f64)> {
     ]
 }
 
-/// Returns the novelty indicator words with their intensity scores.
+/// Retourne les mots indicateurs de nouveaute avec leur intensite.
 ///
-/// Scores are in the range [0.0, 1.0] and reflect the degree of
-/// unexpectedness or discovery:
-///   - 0.75-0.8: high novelty (discovery, unprecedented, innovation,
-///     never seen)
-///   - 0.6-0.7: moderate novelty (new, surprising, explore, mystery)
-///   - 0.5: low novelty (strange, weird, change, first)
+/// Le score dans [0.0, 1.0] reflete le degre d'inattendu ou de decouverte :
+///   - 0.75-0.8 : forte nouveaute (decouverte, inedit, innovation, jamais vu)
+///   - 0.6-0.7 : nouveaute moderee (nouveau, surprenant, explorer, mystere)
+///   - 0.5 : nouveaute faible (bizarre, etrange, changement, premier)
 ///
-/// # Returns
-/// A vector of (word, novelty_score) tuples, bilingual FR+EN.
+/// Retour : un vecteur de tuples (mot, score_nouveaute) bilingue FR+EN
 pub fn novelty_words() -> Vec<(&'static str, f64)> {
     vec![
-        // French novelty words
+        // Mots de nouveaute francais
         ("nouveau", 0.7), ("nouvelle", 0.7), ("découverte", 0.8), ("innovation", 0.75),
         ("inédit", 0.8), ("surprenant", 0.7), ("inattendu", 0.7), ("original", 0.65),
         ("unique", 0.6), ("rare", 0.6), ("inconnu", 0.7), ("mystère", 0.65),
         ("explorer", 0.7), ("expérimenter", 0.65), ("inventer", 0.7),
         ("curieux", 0.6), ("bizarre", 0.5), ("étrange", 0.55), ("premier", 0.5),
         ("jamais vu", 0.8), ("révolution", 0.75), ("changement", 0.5),
-        // English novelty words
+        // Mots de nouveaute anglais
         ("new", 0.7), ("novel", 0.75), ("discovery", 0.8), ("innovation", 0.75),
         ("surprising", 0.7), ("unexpected", 0.7), ("original", 0.65),
         ("unique", 0.6), ("rare", 0.6), ("unknown", 0.7), ("mystery", 0.65),

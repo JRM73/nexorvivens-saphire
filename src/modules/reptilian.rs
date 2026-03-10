@@ -1,114 +1,92 @@
 // =============================================================================
-// reptilian.rs — Reptilian module: survival, threat detection, reflexes
+// reptilian.rs — Module reptilien : survie, danger, réflexes
 // =============================================================================
 //
-// Purpose: Implements the reptilian module of Saphire, inspired by the
-//          R-complex (reptilian complex) in Paul MacLean's triune brain
-//          model. The R-complex corresponds to the oldest evolutionary brain
-//          layer (basal ganglia, brainstem) and governs instinctive survival
-//          reactions: threat detection, fight-or-flight response, and
-//          vigilance toward the unfamiliar.
+// Rôle : Ce fichier implémente le module reptilien de Saphire, inspiré du
+// complexe R (cerveau reptilien) dans le modèle du cerveau triunique de
+// Paul MacLean. Il gère les réactions instinctives de survie :
+// détection du danger, réaction de fuite, vigilance face à l'inconnu.
 //
-// Dependencies:
-//   - crate::neurochemistry::NeuroChemicalState: neurochemical state
-//     (cortisol and adrenaline amplify threat perception)
-//   - crate::stimulus::Stimulus: sensory input (danger, urgency, familiarity
-//     axes)
-//   - super::BrainModule, ModuleSignal: shared trait and output type
+// Dépendances :
+//   - crate::neurochemistry::NeuroChemicalState : état chimique (amplifie la menace)
+//   - crate::stimulus::Stimulus : entrée sensorielle (danger, urgence, familiarité)
+//   - super::BrainModule, ModuleSignal : trait et type de sortie communs
 //
-// Role in the architecture:
-//   First of the 3 cerebral modules. Its signal (typically negative when
-//   danger is present) is combined with the limbic and neocortex signals in
-//   consensus.rs. Its weight in the consensus increases when cortisol and
-//   adrenaline are elevated (stress-driven hypervigilance).
+// Place dans l'architecture :
+//   Premier des 3 modules cérébraux. Son signal (généralement négatif face
+//   au danger) est combiné avec les signaux limbique et néocortex dans
+//   consensus.rs. Son poids augmente quand le cortisol et l'adrénaline
+//   sont élevés.
 // =============================================================================
 
 use crate::neurochemistry::NeuroChemicalState;
 use crate::stimulus::Stimulus;
 use super::{BrainModule, ModuleSignal};
 
-/// The reptilian complex (R-complex) — threat detection and survival
-/// instincts.
-///
-/// The most primitive module in the triune brain hierarchy, it responds
-/// rapidly and instinctively to stimuli. Its signal is almost always
-/// negative (rejection) in the presence of danger. When no threat is
-/// detected, its confidence drops significantly, reflecting the fact that
-/// threat assessment is its primary domain of expertise.
+/// Le cerveau reptilien — réagit au danger et à la survie.
+/// Module le plus primitif, il répond rapidement et instinctivement.
+/// Son signal est presque toujours négatif (rejet) en présence de danger.
 pub struct ReptilianModule;
 
 impl BrainModule for ReptilianModule {
-    /// Returns the name of this module: "Reptilian".
+    /// Retourne le nom du module : "Reptilien".
     fn name(&self) -> &str {
-        "Reptilian"
+        "Reptilien"
     }
 
-    /// Processes a stimulus from the perspective of survival and threat
-    /// detection.
+    /// Traite un stimulus du point de vue de la survie et du danger.
     ///
-    /// Algorithm:
-    /// 1. **Perceived threat**: the raw danger score from the stimulus is
-    ///    amplified by ambient cortisol (chronic stress hormone) and
-    ///    adrenaline (acute stress hormone). This simulates hypervigilance:
-    ///    a stressed individual perceives threats in an amplified manner
-    ///    (amygdala-HPA axis positive feedback loop).
-    /// 2. **Survival instinct**: reaction to the unfamiliar — a stimulus
-    ///    with low familiarity combined with high urgency triggers a
-    ///    defensive response (neophobia).
-    /// 3. **Signal computation**: threat pushes toward rejection (negative),
-    ///    while survival instinct has a slight positive effect (impetus to
-    ///    act quickly). The raw value is passed through tanh() to bound it
-    ///    in [-1.0, +1.0].
-    /// 4. **Confidence**: high when danger or urgency are clearly present
-    ///    (the reptilian complex's domain of expertise), low otherwise.
+    /// Algorithme :
+    /// 1. Calcul de la menace perçue : danger du stimulus amplifié par le
+    ///    cortisol (stress ambiant) et l'adrénaline (état d'alerte).
+    /// 2. Instinct de survie : réaction face à l'inconnu (faible familiarité)
+    ///    combinée avec l'urgence.
+    /// 3. Signal brut = -menace + survie*0.3, passé par tanh() pour borner.
+    /// 4. Confiance élevée quand le danger ou l'urgence sont clairs.
     ///
-    /// # Parameters
-    /// - `stimulus`: sensory input with its perceptual dimension scores.
-    /// - `chemistry`: neurochemical state (cortisol and adrenaline amplify
-    ///   threat perception via the HPA axis).
+    /// # Paramètres
+    /// - `stimulus` : entrée sensorielle avec ses scores perceptuels.
+    /// - `chemistry` : état chimique (cortisol et adrénaline amplifient la menace).
     ///
-    /// # Returns
-    /// A `ModuleSignal` with the computed signal, confidence, and
-    /// explanatory reasoning.
+    /// # Retour
+    /// Un `ModuleSignal` avec signal, confiance et raisonnement explicatif.
     fn process(&self, stimulus: &Stimulus, chemistry: &NeuroChemicalState) -> ModuleSignal {
-        // Perceived threat: the raw danger score is amplified by ambient
-        // cortisol and adrenaline. This simulates hypervigilance — a
-        // stressed organism perceives threats in an amplified manner due to
-        // amygdala sensitization and HPA axis activation.
+        // Menace perçue : le danger brut est amplifié par le cortisol et
+        // l'adrénaline ambiants. Cela simule l'hypervigilance : un individu
+        // stressé perçoit les menaces de manière amplifiée.
         let threat = stimulus.danger
             * (1.0 + chemistry.cortisol + chemistry.adrenaline * 2.0);
 
-        // Survival instinct toward the unfamiliar: a stimulus with low
-        // familiarity and high urgency triggers a defensive response
-        // (neophobia — the innate wariness toward novel stimuli).
+        // Instinct de survie face à l'inconnu : un stimulus peu familier
+        // et urgent déclenche une réaction défensive.
         let survival = (1.0 - stimulus.familiarity) * stimulus.urgency;
 
-        // Raw signal: threat drives toward rejection (negative), while the
-        // survival instinct has a slight positive effect (impetus to act
-        // quickly). tanh() naturally bounds the result in [-1.0, +1.0].
+        // Signal brut : la menace pousse vers le rejet (négatif), tandis
+        // que l'instinct de survie a un léger effet positif (agir vite).
+        // tanh() borne naturellement le résultat entre -1 et +1.
         let raw = -threat + survival * 0.3;
         let signal = raw.tanh();
 
-        // Confidence: the reptilian complex is highly confident when the
-        // situation is clearly dangerous or urgent (its domain of expertise).
-        // In the absence of danger, its confidence is low (it has no opinion).
+        // Confiance : le reptilien est très confiant quand la situation est
+        // clairement dangereuse ou urgente (domaine d'expertise).
+        // En l'absence de danger, sa confiance est faible (il n'a pas d'avis).
         let confidence = if stimulus.danger > 0.5 || stimulus.urgency > 0.7 {
-            0.9 // Clear danger = high confidence
+            0.9 // danger clair = haute confiance
         } else if stimulus.danger > 0.2 {
-            0.6 // Moderate danger = moderate confidence
+            0.6 // danger modéré = confiance moyenne
         } else {
-            0.3 // No danger = low confidence
+            0.3 // pas de danger = faible confiance
         };
 
-        // Textual reasoning: explanation of the reptilian module's response
+        // Raisonnement textuel : explication de la réponse du reptilien
         let reasoning = if threat > 1.0 {
-            format!("HIGH DANGER detected (threat={:.2}). Flight instinct activated.", threat)
+            format!("DANGER ÉLEVÉ détecté (menace={:.2}). Instinct de fuite activé.", threat)
         } else if threat > 0.5 {
-            format!("Moderate threat (threat={:.2}). Heightened vigilance.", threat)
+            format!("Menace modérée (menace={:.2}). Vigilance accrue.", threat)
         } else if survival > 0.5 {
-            format!("Urgent unknown situation (survival={:.2}). Caution.", survival)
+            format!("Situation inconnue urgente (survie={:.2}). Prudence.", survival)
         } else {
-            "No immediate danger. Reptilian module is calm.".to_string()
+            "Pas de danger immédiat. Le reptilien est calme.".to_string()
         };
 
         ModuleSignal {

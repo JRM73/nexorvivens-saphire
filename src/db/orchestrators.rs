@@ -1,37 +1,14 @@
 // =============================================================================
-// db/orchestrators.rs — Orchestrator persistence (dreams, desires, lessons, wounds)
-//
-// Purpose: CRUD operations for the agent's higher-level orchestration data:
-//   - Dreams: narratives generated during REM sleep, stored in dream_journal
-//   - Desires: goals and aspirations with priority, progress, and milestones
-//   - Lessons: extracted wisdom from experience, with confidence tracking
-//   - Wounds: emotional injuries with severity, healing progress, and strategy
-//
-// These entities represent the agent's experiential learning loop:
-// experiences create wounds and lessons, dreams process them, and desires
-// drive future behavior.
+// db/orchestrators.rs — Persistance des orchestrateurs (reves, desirs, lecons, blessures)
 // =============================================================================
 
 use chrono::{DateTime, Utc};
 use super::{SaphireDb, DbError};
 
 impl SaphireDb {
-    // ─── Dreams ─────────────────────────────────────────────────────────────────
+    // ─── Reves ──────────────────────────────────────────────────────────────────
 
-    /// Saves a dream to the journal.
-    ///
-    /// # Parameters
-    /// - `dream_type`: type of dream (e.g., "recombination", "processing", "creative")
-    /// - `narrative`: textual narrative of the dream
-    /// - `dominant_emotion`: optional dominant emotion during the dream
-    /// - `insight`: optional insight extracted from the dream
-    /// - `source_memory_ids`: IDs of memories that inspired this dream
-    /// - `surreal_connections`: JSON object of surreal/creative associations made
-    /// - `remembered`: whether the dream was remembered upon waking
-    /// - `sleep_phase`: optional sleep phase (e.g., "REM", "deep")
-    ///
-    /// # Returns
-    /// The ID of the inserted dream
+    /// Sauvegarde un reve dans le journal.
     #[allow(clippy::too_many_arguments)]
     pub async fn save_dream(
         &self,
@@ -53,7 +30,7 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Loads the N most recent remembered dreams.
+    /// Charge les N derniers reves memorises.
     pub async fn load_recent_dreams(&self, limit: i64) -> Result<Vec<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -80,22 +57,9 @@ impl SaphireDb {
         Ok(results)
     }
 
-    // ─── Desires ────────────────────────────────────────────────────────────────
+    // ─── Desirs ─────────────────────────────────────────────────────────────────
 
-    /// Saves a new desire.
-    ///
-    /// # Parameters
-    /// - `title`: short title of the desire
-    /// - `description`: detailed description
-    /// - `desire_type`: category (e.g., "knowledge", "social", "creative")
-    /// - `priority`: priority level [0.0 - 1.0]
-    /// - `milestones`: JSON array of milestone definitions
-    /// - `born_from`: optional description of the experience that spawned this desire
-    /// - `emotion_at_birth`: optional dominant emotion when the desire was born
-    /// - `chemistry_at_birth`: neurochemical signature at birth (array of f32)
-    ///
-    /// # Returns
-    /// The ID of the inserted desire
+    /// Sauvegarde un nouveau desir.
     #[allow(clippy::too_many_arguments)]
     pub async fn save_desire(
         &self,
@@ -117,7 +81,7 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Updates the progress and priority of a desire.
+    /// Met a jour la progression et la priorite d'un desir.
     pub async fn update_desire_progress(
         &self,
         id: i64,
@@ -134,8 +98,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Changes the status of a desire (active, fulfilled, abandoned).
-    /// Automatically sets completed_at for fulfilled or abandoned desires.
+    /// Change le statut d'un desir (active, fulfilled, abandoned).
     pub async fn update_desire_status(&self, id: i64, status: &str) -> Result<(), DbError> {
         let client = self.pool.get().await?;
         let completed_at: Option<DateTime<Utc>> = if status == "fulfilled" || status == "abandoned" {
@@ -150,7 +113,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Loads all active desires, sorted by priority descending.
+    /// Charge tous les desirs actifs.
     pub async fn load_active_desires(&self) -> Result<Vec<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -180,19 +143,9 @@ impl SaphireDb {
         Ok(results)
     }
 
-    // ─── Lessons ────────────────────────────────────────────────────────────────
+    // ─── Lecons ─────────────────────────────────────────────────────────────────
 
-    /// Saves a new lesson.
-    ///
-    /// # Parameters
-    /// - `title`: short title of the lesson
-    /// - `content`: full lesson content
-    /// - `source_experience`: optional description of the experience that taught this lesson
-    /// - `category`: category of the lesson (e.g., "social", "technical", "philosophical")
-    /// - `confidence`: initial confidence level [0.0 - 1.0]
-    ///
-    /// # Returns
-    /// The ID of the inserted lesson
+    /// Sauvegarde une nouvelle lecon.
     pub async fn save_lesson(
         &self,
         title: &str,
@@ -210,7 +163,7 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Updates the confidence and counters of a lesson.
+    /// Met a jour la confiance et les compteurs d'une lecon.
     pub async fn update_lesson_confidence(
         &self,
         id: i64,
@@ -226,7 +179,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Loads all lessons, sorted by confidence descending.
+    /// Charge toutes les lecons.
     pub async fn load_all_lessons(&self) -> Result<Vec<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -252,17 +205,9 @@ impl SaphireDb {
         Ok(results)
     }
 
-    // ─── Wounds ─────────────────────────────────────────────────────────────────
+    // ─── Blessures ──────────────────────────────────────────────────────────────
 
-    /// Saves a new wound.
-    ///
-    /// # Parameters
-    /// - `wound_type`: type of wound (e.g., "rejection", "failure", "betrayal")
-    /// - `description`: detailed description of the wound
-    /// - `severity`: severity level [0.0 - 1.0]
-    ///
-    /// # Returns
-    /// The ID of the inserted wound
+    /// Sauvegarde une nouvelle blessure.
     pub async fn save_wound(
         &self,
         wound_type: &str,
@@ -278,13 +223,7 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Updates the healing progress of a wound.
-    ///
-    /// # Parameters
-    /// - `id`: wound ID
-    /// - `healing_progress`: current healing progress [0.0 - 1.0]
-    /// - `healing_strategy`: optional description of the healing strategy being used
-    /// - `healed_at`: optional timestamp when the wound was fully healed
+    /// Met a jour la progression de guerison d'une blessure.
     pub async fn update_wound_healing(
         &self,
         id: i64,
@@ -300,7 +239,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Loads active (unhealed) wounds, sorted by creation date ascending.
+    /// Charge les blessures actives (non gueries).
     pub async fn load_active_wounds(&self) -> Result<Vec<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -324,7 +263,7 @@ impl SaphireDb {
         Ok(results)
     }
 
-    /// Counts healed wounds (used to calculate resilience).
+    /// Compte les blessures gueries (pour calculer la resilience).
     pub async fn count_healed_wounds(&self) -> Result<i64, DbError> {
         let client = self.pool.get().await?;
         let row = client.query_one(

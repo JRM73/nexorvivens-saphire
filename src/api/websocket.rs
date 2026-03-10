@@ -1,16 +1,13 @@
 // =============================================================================
-// api/websocket.rs — WebSocket handlers (main chat and dashboard)
+// api/websocket.rs — Handlers WebSocket (principal et dashboard)
 //
-// This module manages WebSocket connections for two distinct channels:
-// 1. Main WebSocket (/ws): bidirectional real-time chat and control commands
-//    between the web UI and the agent's lifecycle loop.
-// 2. Dashboard WebSocket (/ws/dashboard): unidirectional stream of monitoring
-//    data (logs, metrics) pushed to the dashboard UI.
-//
-// Both handlers verify the Origin header before accepting connections.
+// Role : Gestion des connexions WebSocket pour le chat temps reel
+// (principal) et le monitoring dashboard (dedie).
 // =============================================================================
 
-use axum::extract::State;
+use std::collections::HashMap;
+
+use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use futures::{StreamExt, SinkExt};
@@ -20,107 +17,117 @@ use super::state::{AppState, ControlMessage};
 use super::middleware::check_ws_origin;
 use crate::agent::lifecycle::UserMessage;
 
-/// GET /ws -- Main WebSocket upgrade handler.
-///
-/// Promotes the HTTP connection to a WebSocket when a client connects to /ws.
-/// The Origin header is verified against the allowed origins list before accepting.
-///
-/// # Arguments
-/// * `headers` - HTTP request headers (used for Origin verification).
-/// * `ws` - Axum WebSocket upgrade extractor.
-/// * `state` - Shared application state.
-///
-/// # Returns
-/// A WebSocket upgrade response, or HTTP 403 Forbidden if the Origin is not allowed.
+/// Verifie l'authentification WebSocket via query param `?token=` ou header Bearer.
+fn check_ws_auth(
+    headers: &axum::http::HeaderMap,
+    params: &HashMap<String, String>,
+    api_key: &Option<String>,
+) -> bool {
+    match api_key {
+        None => true, // Pas de cle configuree = tout autorise
+        Some(expected) => {
+            // 1. Query param ?token=xxx
+            if let Some(token) = params.get("token") {
+                if token == expected {
+                    return true;
+                }
+            }
+            // 2. Header Authorization: Bearer xxx
+            if let Some(auth) = headers.get("authorization").and_then(|v| v.to_str().ok()) {
+                if let Some(token) = auth.strip_prefix("Bearer ") {
+                    if token == expected {
+                        return true;
+                    }
+                }
+            }
+            false
+        }
+    }
+}
+
+/// GET /ws — Handler de mise a niveau WebSocket.
+/// Quand un client se connecte sur /ws, la connexion HTTP est promue en WebSocket.
+/// Verifie l'origine et l'authentification avant d'accepter la connexion.
 pub async fn ws_handler(
     headers: axum::http::HeaderMap,
+    Query(params): Query<HashMap<String, String>>,
     ws: axum::extract::ws::WebSocketUpgrade,
     State(state): State<AppState>,
 ) -> axum::response::Response {
     if !check_ws_origin(&headers, &state.allowed_origins) {
         return (StatusCode::FORBIDDEN, "Origin not allowed").into_response();
+    }
+    if !check_ws_auth(&headers, &params, &state.api_key) {
+        return (StatusCode::UNAUTHORIZED, "Token invalide").into_response();
     }
     ws.on_upgrade(move |socket| handle_ws(socket, state)).into_response()
 }
 
-/// GET /ws/dashboard -- Dedicated dashboard monitoring WebSocket upgrade handler.
-///
-/// Similar to `ws_handler`, but routes to a separate broadcast channel used exclusively
-/// for dashboard monitoring data. Verifies the Origin header before accepting.
-///
-/// # Arguments
-/// * `headers` - HTTP request headers (used for Origin verification).
-/// * `ws` - Axum WebSocket upgrade extractor.
-/// * `state` - Shared application state.
-///
-/// # Returns
-/// A WebSocket upgrade response, or HTTP 403 Forbidden if the Origin is not allowed.
+/// GET /ws/dashboard — WebSocket dedie au dashboard de monitoring.
+/// Verifie l'origine et l'authentification avant d'accepter la connexion.
 pub async fn ws_dashboard_handler(
     headers: axum::http::HeaderMap,
+    Query(params): Query<HashMap<String, String>>,
     ws: axum::extract::ws::WebSocketUpgrade,
     State(state): State<AppState>,
 ) -> axum::response::Response {
     if !check_ws_origin(&headers, &state.allowed_origins) {
         return (StatusCode::FORBIDDEN, "Origin not allowed").into_response();
     }
+    if !check_ws_auth(&headers, &params, &state.api_key) {
+        return (StatusCode::UNAUTHORIZED, "Token invalide").into_response();
+    }
     ws.on_upgrade(move |socket| handle_ws_dashboard(socket, state)).into_response()
 }
 
-/// Handles an individual main WebSocket connection.
+/// Gestion d'une connexion WebSocket individuelle.
+/// Deux taches paralleles sont lancees :
+///   1. Tache d'envoi : relaie les messages du broadcast vers le client
+///   2. Tache de reception : traite les messages du client (chat ou controle)
 ///
-/// Two concurrent tasks are spawned:
-/// 1. **Send task**: relays broadcast messages from the agent to the connected client.
-/// 2. **Receive task**: processes incoming messages from the client, which may be:
-///    - JSON control commands (identified by a `"type"` field): routed to the control channel.
-///    - JSON chat messages (type `"chat"`): forwarded to the user message channel.
-///    - Plain text: treated as chat messages for backward compatibility.
-///
-/// The connection is maintained until either task completes (client disconnect or
-/// broadcast channel closure).
-///
-/// # Arguments
-/// * `socket` - The established WebSocket connection.
-/// * `state` - Shared application state containing broadcast and message channels.
+/// # Parametres
+/// - `socket` : la connexion WebSocket etablie
+/// - `state` : etat partage de l'application
 async fn handle_ws(socket: axum::extract::ws::WebSocket, state: AppState) {
-    // Subscribe to the broadcast channel to receive messages from the agent
+    // S'abonner au canal broadcast pour recevoir les messages de l'agent
     let mut rx = state.ws_tx.subscribe();
-    // Split the socket into separate sender and receiver halves for concurrent use
+    // Separer le socket en emetteur et recepteur
     let (mut sender, mut receiver) = socket.split();
     let user_tx = state.user_tx.clone();
     let ctrl_tx = state.ctrl_tx.clone();
-    // Send task: broadcast channel -> WebSocket client
-    // Every message published by the agent is forwarded to this connected client.
+    // Tache d'envoi : broadcaster -> client WebSocket
+    // Chaque message diffuse par l'agent est transmis au client connecte.
     let send_task = tokio::spawn(async move {
         loop {
             match rx.recv().await {
                 Ok(msg) => {
                     let ws_msg = axum::extract::ws::Message::Text(msg);
                     if sender.send(ws_msg).await.is_err() {
-                        break; // Client disconnected
+                        break; // Client deconnecte
                     }
                 },
                 Err(broadcast::error::RecvError::Lagged(n)) => {
-                    tracing::debug!("WS broadcast: {} messages skipped (slow client)", n);
-                    continue; // Ignore lag, do not disconnect
+                    tracing::debug!("WS broadcast: {} messages sautes (client lent)", n);
+                    continue; // Ignorer le lag, ne pas deconnecter
                 },
-                Err(_) => break, // Channel closed
+                Err(_) => break, // Canal ferme
             }
         }
     });
 
-    // Receive task: WebSocket client -> agent
-    // JSON messages with a "type" field are interpreted as control commands.
-    // All other messages are treated as plain-text chat input.
+    // Tache de reception : client WebSocket -> agent
+    // Les messages JSON avec un champ "type" sont interpretes comme des commandes de controle.
+    // Les autres messages sont traites comme du texte de chat.
     let recv_task = tokio::spawn(async move {
         while let Some(Ok(msg)) = receiver.next().await {
             if let axum::extract::ws::Message::Text(text) = msg {
                 let text_str: String = text;
 
-                // Attempt to parse the message as a JSON control command
+                // Tenter de parser le message comme un JSON de controle
                 if let Ok(json) = serde_json::from_str::<serde_json::Value>(&text_str) {
                     if let Some(msg_type) = json.get("type").and_then(|t| t.as_str()) {
                         match msg_type {
-                            // Command: set baseline value for a neurotransmitter molecule
+                            // Commande : modifier la valeur de base d'une molecule
                             "set_baseline" => {
                                 if let (Some(mol), Some(val)) = (
                                     json.get("molecule").and_then(|m| m.as_str()),
@@ -132,7 +139,7 @@ async fn handle_ws(socket: axum::extract::ws::WebSocket, state: AppState) {
                                 }
                                 continue;
                             },
-                            // Command: modify the weight of a brain module
+                            // Commande : modifier le poids d'un module cerebral
                             "set_module_weight" => {
                                 if let (Some(m), Some(v)) = (
                                     json.get("module").and_then(|m| m.as_str()),
@@ -144,7 +151,7 @@ async fn handle_ws(socket: axum::extract::ws::WebSocket, state: AppState) {
                                 }
                                 continue;
                             },
-                            // Command: adjust a decision threshold
+                            // Commande : ajuster un seuil de decision
                             "set_threshold" => {
                                 if let (Some(w), Some(v)) = (
                                     json.get("which").and_then(|w| w.as_str()),
@@ -156,7 +163,7 @@ async fn handle_ws(socket: axum::extract::ws::WebSocket, state: AppState) {
                                 }
                                 continue;
                             },
-                            // Command: modify a general parameter
+                            // Commande : modifier un parametre general
                             "set_param" => {
                                 if let (Some(p), Some(v)) = (
                                     json.get("param").and_then(|p| p.as_str()),
@@ -168,12 +175,12 @@ async fn handle_ws(socket: axum::extract::ws::WebSocket, state: AppState) {
                                 }
                                 continue;
                             },
-                            // Command: emergency neurochemical stabilization
+                            // Commande : stabilisation d'urgence
                             "emergency_stabilize" => {
                                 let _ = ctrl_tx.send(ControlMessage::EmergencyStabilize).await;
                                 continue;
                             },
-                            // Command: suggest a topic for autonomous reflection
+                            // Commande : suggerer un sujet de reflexion
                             "suggest_topic" => {
                                 if let Some(topic) = json.get("topic").and_then(|t| t.as_str()) {
                                     let _ = ctrl_tx.send(ControlMessage::SuggestTopic {
@@ -182,7 +189,7 @@ async fn handle_ws(socket: axum::extract::ws::WebSocket, state: AppState) {
                                 }
                                 continue;
                             },
-                            // Command: factory reset to default values
+                            // Commande : reset aux valeurs d'usine
                             "factory_reset" => {
                                 let level_str = json.get("level").and_then(|l| l.as_str()).unwrap_or("chemistry_only");
                                 let level = match level_str {
@@ -192,13 +199,15 @@ async fn handle_ws(socket: axum::extract::ws::WebSocket, state: AppState) {
                                     "intuition_only" | "IntuitionOnly" => crate::factory::ResetLevel::IntuitionOnly,
                                     "personal_ethics_only" | "PersonalEthicsOnly" => crate::factory::ResetLevel::PersonalEthicsOnly,
                                     "psychology_only" | "PsychologyOnly" => crate::factory::ResetLevel::PsychologyOnly,
+                                    "sleep_only" | "SleepOnly" => crate::factory::ResetLevel::SleepOnly,
+                                    "biology_reset" | "BiologyReset" => crate::factory::ResetLevel::BiologyReset,
                                     "full_reset" | "FullReset" => crate::factory::ResetLevel::FullReset,
                                     _ => continue,
                                 };
                                 let _ = ctrl_tx.send(ControlMessage::FactoryReset { level }).await;
                                 continue;
                             },
-                            // Chat message with speaker identification
+                            // Message de chat avec identification de l'interlocuteur
                             "chat" => {
                                 let chat_text = json.get("text")
                                     .and_then(|t| t.as_str())
@@ -217,13 +226,13 @@ async fn handle_ws(socket: axum::extract::ws::WebSocket, state: AppState) {
                                 }
                                 continue;
                             },
-                            _ => {} // Unknown type: fall through and treat as plain-text chat
+                            _ => {} // Type inconnu : traiter comme du texte de chat
                         }
                     }
                 }
 
-                // Not a JSON control command or a JSON chat message:
-                // treat as raw text for backward compatibility
+                // Ce n'est pas un JSON de controle ni un chat JSON :
+                // traiter comme du texte brut (retrocompatibilite)
                 tracing::info!("WS chat recu: '{}'", &text_str);
                 let _ = user_tx.send(UserMessage {
                     text: text_str,
@@ -233,27 +242,19 @@ async fn handle_ws(socket: axum::extract::ws::WebSocket, state: AppState) {
         }
     });
 
-    // Wait for either task to complete (client disconnect or broadcast channel closure)
+    // Attendre que l'une des deux taches se termine (deconnexion du client ou du broadcast)
     tokio::select! {
         _ = send_task => {},
         _ = recv_task => {},
     }
 }
 
-/// Handles a dashboard WebSocket connection.
-///
-/// This is a unidirectional (server-to-client) connection that streams real-time
-/// monitoring data from the dedicated dashboard broadcast channel. The client
-/// receiver is kept alive but not actively read.
-///
-/// # Arguments
-/// * `socket` - The established WebSocket connection.
-/// * `state` - Shared application state containing the dashboard broadcast channel.
+/// Gestion du WebSocket dashboard.
 async fn handle_ws_dashboard(socket: axum::extract::ws::WebSocket, state: AppState) {
     let mut rx = state.dashboard_tx.subscribe();
     let (mut sender, mut _receiver) = socket.split();
 
-    // Forward real-time monitoring data to the dashboard client
+    // Envoyer les logs en temps reel au dashboard
     while let Ok(msg) = rx.recv().await {
         let ws_msg = axum::extract::ws::Message::Text(msg);
         if sender.send(ws_msg).await.is_err() {

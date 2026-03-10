@@ -1,63 +1,35 @@
 // =============================================================================
-// db/learnings.rs — CRUD for NN vectorized learnings
+// db/learnings.rs — CRUD pour les apprentissages vectoriels du NN
+// =============================================================================
 //
-// Purpose: Learning traces formulated by the LLM and stored with vector
-// embeddings in pgvector. Complementary to the NN (implicit learning):
-// here this is explicit episodic learning, queryable by cosine similarity.
-// Each learning has a domain, scope, summary, keywords, confidence,
-// satisfaction, emotion, and a strength that decays over time unless
-// reinforced by access.
+// Traces d'apprentissage formulees par le LLM et stockees avec embedding
+// vectoriel dans pgvector. Complementaire au NN (implicite) : ici c'est
+// de l'apprentissage episodique explicite, requetable par similarite.
 // =============================================================================
 
 use super::{SaphireDb, DbError};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-/// A learning record retrieved from the database (with optional similarity score).
+/// Un apprentissage retrouve depuis la base (avec similarite optionnelle).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NnLearningRecord {
-    /// Unique identifier of the learning in the database
     pub id: i64,
-    /// Knowledge domain (e.g., "mathematics", "philosophy", "social")
     pub domain: String,
-    /// Scope within the domain (e.g., "algebra", "ethics", "greeting")
     pub scope: String,
-    /// Textual summary of what was learned
     pub summary: String,
-    /// Keywords associated with this learning (JSON array)
     pub keywords: serde_json::Value,
-    /// Confidence level in this learning [0.0 - 1.0]
     pub confidence: f32,
-    /// Satisfaction felt when this was learned [0.0 - 1.0]
     pub satisfaction: f32,
-    /// Dominant emotion during the learning
     pub emotion: String,
-    /// Current strength of the learning [0.0 - 1.0], decays over time
     pub strength: f32,
-    /// Number of times this learning has been accessed/recalled
     pub access_count: i32,
-    /// Timestamp of when the learning was created (UTC)
     pub created_at: DateTime<Utc>,
-    /// Cosine similarity score (populated during vector search, 0.0 otherwise)
     pub similarity: f64,
 }
 
 impl SaphireDb {
-    /// Stores a learning with its vector embedding.
-    ///
-    /// # Parameters
-    /// - `embedding`: vector embedding for cosine similarity search
-    /// - `domain`: knowledge domain
-    /// - `scope`: scope within the domain
-    /// - `summary`: textual summary of the learning
-    /// - `keywords`: keywords as JSON array
-    /// - `confidence`: confidence level [0.0 - 1.0]
-    /// - `satisfaction`: satisfaction level [0.0 - 1.0]
-    /// - `emotion`: dominant emotion during learning
-    /// - `cycle`: cycle number at which the learning was created
-    ///
-    /// # Returns
-    /// The ID of the inserted learning
+    /// Stocke un apprentissage avec son embedding vectoriel.
     pub async fn store_nn_learning(
         &self,
         embedding: &[f32],
@@ -83,15 +55,7 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Searches for similar learnings by cosine distance.
-    ///
-    /// # Parameters
-    /// - `embedding`: query vector for similarity search
-    /// - `limit`: maximum number of results to return
-    /// - `threshold`: minimum similarity threshold [0.0 - 1.0]
-    ///
-    /// # Returns
-    /// List of similar learnings, sorted by descending similarity
+    /// Recherche les apprentissages similaires par distance cosinus.
     pub async fn search_similar_learnings(
         &self,
         embedding: &[f32],
@@ -136,7 +100,7 @@ impl SaphireDb {
         Ok(results)
     }
 
-    /// Increments the access counter and updates last_accessed_at.
+    /// Incremente le compteur d'acces et met a jour last_accessed_at.
     pub async fn boost_learning_access(&self, id: i64) -> Result<(), DbError> {
         let client = self.pool.get().await?;
         client.execute(
@@ -149,8 +113,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Reinforces a learning (confidence +0.05, strength reset to 1.0).
-    /// Also increments the access counter and updates last_accessed_at.
+    /// Renforce un apprentissage (confidence +0.05, strength reset a 1.0).
     pub async fn reinforce_learning(&self, id: i64) -> Result<(), DbError> {
         let client = self.pool.get().await?;
         client.execute(
@@ -165,14 +128,8 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Natural decay of learning strength.
-    /// Frequently accessed learnings resist forgetting better.
-    ///
-    /// # Parameters
-    /// - `rate`: decay rate (higher values mean faster forgetting)
-    ///
-    /// # Returns
-    /// Number of affected rows
+    /// Decroissance naturelle de la force des apprentissages.
+    /// Les apprentissages souvent consultes resistent mieux a l'oubli.
     pub async fn decay_learnings(&self, rate: f64) -> Result<u64, DbError> {
         let client = self.pool.get().await?;
         let affected = client.execute(
@@ -187,8 +144,7 @@ impl SaphireDb {
         Ok(affected)
     }
 
-    /// Deletes the weakest learnings if the quota is exceeded.
-    /// Only learnings with strength < 0.2 are eligible for pruning.
+    /// Supprime les apprentissages les plus faibles si le quota est depasse.
     pub async fn prune_learnings(&self, max_count: i64) -> Result<u64, DbError> {
         let client = self.pool.get().await?;
         let count: i64 = client.query_one(
@@ -214,7 +170,7 @@ impl SaphireDb {
         Ok(affected)
     }
 
-    /// Counts the total number of learnings.
+    /// Compte le nombre total d'apprentissages.
     pub async fn count_learnings(&self) -> Result<i64, DbError> {
         let client = self.pool.get().await?;
         let row = client.query_one(
@@ -224,7 +180,7 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Clears all vectorized learnings (used by FullReset).
+    /// Efface tous les apprentissages vectoriels (utilise par FullReset).
     pub async fn clear_nn_learnings(&self) -> Result<i64, DbError> {
         let client = self.pool.get().await?;
         let row = client.query_one(
@@ -233,7 +189,7 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Loads the N most recent learnings (with strength > 0.1).
+    /// Charge les N apprentissages les plus recents.
     pub async fn load_recent_learnings(&self, limit: i64) -> Result<Vec<NnLearningRecord>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(

@@ -1,29 +1,29 @@
 // =============================================================================
-// logging/db.rs — LogsDb: dedicated PostgreSQL pool for logs
+// logging/db.rs — LogsDb : pool PostgreSQL dedie aux logs
 // =============================================================================
 //
-// Purpose: Manages the connection to the separate logs database (saphire_logs),
-//          schema migrations, batch insertions, read queries with optional
-//          filtering, and periodic purge of old records.
+// Role : Gere la connexion a la base de logs separee (saphire_logs),
+//        les migrations, les insertions batch, les requetes de lecture
+//        et la purge periodique.
 //
-// Database: saphire_logs (PostgreSQL 16, port 5433)
-// Pool: deadpool-postgres, max 4 simultaneous connections
-// Schema: sql/schema_logs.sql (4 tables)
+// Base de donnees : saphire_logs (PostgreSQL 16, port 5433)
+// Pool : deadpool-postgres, max 4 connexions simultanees
+// Schema : sql/schema_logs.sql (4 tables)
 //
-// Managed tables:
-//   - system_logs: text logs with level, category, cycle, session_id
-//   - cognitive_traces: complete trace of a cognitive cycle (35+ JSONB fields)
-//   - llm_history: LLM request/response history (13 fields)
-//   - metric_snapshots: chemistry/emotion/consciousness/body metrics (33 fields)
+// Tables gerees :
+//   - system_logs : logs textuels avec level, category, cycle, session_id
+//   - cognitive_traces : trace complete d'un cycle cognitif (19 champs JSONB)
+//   - llm_history : historique requetes/reponses LLM (13 champs)
+//   - metric_snapshots : metriques chimie/emotion/conscience/corps (33 champs)
 //
-// Key methods:
-//   - batch_insert_logs(): grouped insertion of logs (called by the buffer)
-//   - save_trace(): saves a complete cognitive trace
-//   - save_llm_history(): saves an LLM request/response record
-//   - save_metric_snapshot(): saves a metrics snapshot
-//   - get_* / recent_*: read queries with filters (level, category, session, etc.)
-//   - purge_old_logs(): cleanup of logs older than N days
-//   - table_stats(): per-table row counts
+// Methodes principales :
+//   - batch_insert_logs() : insertion groupee de logs (appele par le buffer)
+//   - save_trace() : sauvegarde d'une trace cognitive complete
+//   - save_llm_history() : sauvegarde requete/reponse LLM
+//   - save_metric_snapshot() : sauvegarde snapshot metriques
+//   - get_* / recent_* : lecture avec filtres (level, category, session, etc.)
+//   - purge_old_logs() : nettoyage des logs > N jours
+//   - table_stats() : compteurs par table
 // =============================================================================
 
 use deadpool_postgres::{Pool, Manager, ManagerConfig, RecyclingMethod};
@@ -31,7 +31,7 @@ use tokio_postgres::NoTls;
 use crate::db::DbConfig;
 use super::{LogEntry, trace::CognitiveTrace};
 
-/// Errors from the logs database.
+/// Erreurs de la base de logs.
 #[derive(Debug)]
 pub enum LogsDbError {
     Pool(String),
@@ -61,13 +61,13 @@ impl From<tokio_postgres::Error> for LogsDbError {
     }
 }
 
-/// PostgreSQL connection pool dedicated to logs.
+/// Pool de connexions PostgreSQL dedie aux logs.
 pub struct LogsDb {
     pool: Pool,
 }
 
 impl LogsDb {
-    /// Connects to the logs database and runs schema migrations.
+    /// Connecte a la base de logs et execute les migrations.
     pub async fn connect(config: &DbConfig) -> Result<Self, LogsDbError> {
         let mut pg_config = tokio_postgres::Config::new();
         pg_config.host(&config.host);
@@ -90,7 +90,7 @@ impl LogsDb {
         Ok(db)
     }
 
-    /// Runs the logs schema migrations.
+    /// Execute les migrations du schema logs.
     async fn run_migrations(&self) -> Result<(), LogsDbError> {
         let client = self.pool.get().await?;
         client.batch_execute(include_str!("../../sql/schema_logs.sql")).await
@@ -98,9 +98,9 @@ impl LogsDb {
         Ok(())
     }
 
-    // --- LOGS --------------------------------------------------------
+    // ─── LOGS ─────────────────────────────────────────────
 
-    /// Inserts a batch of log entries in a single transaction.
+    /// Insere un batch de logs en une seule transaction.
     pub async fn batch_insert_logs(&self, entries: &[LogEntry]) -> Result<(), LogsDbError> {
         if entries.is_empty() {
             return Ok(());
@@ -121,7 +121,7 @@ impl LogsDb {
         Ok(())
     }
 
-    /// Retrieves logs with optional filtering by level and/or category.
+    /// Recupere les logs avec filtrage optionnel.
     pub async fn get_logs(
         &self,
         level: Option<&str>,
@@ -131,7 +131,7 @@ impl LogsDb {
     ) -> Result<Vec<serde_json::Value>, LogsDbError> {
         let client = self.pool.get().await?;
 
-        // Use query variants to avoid dynamic dispatch (non-Send issue).
+        // On utilise des variantes de requete pour eviter le dynamic dispatch (non-Send).
         let level_str = level.map(|s| s.to_string());
         let category_str = category.map(|s| s.to_string());
 
@@ -194,7 +194,7 @@ impl LogsDb {
         Ok(results)
     }
 
-    /// Retrieves a single log entry by its ID.
+    /// Recupere un log par son ID.
     pub async fn get_log_by_id(&self, id: i64) -> Result<Option<serde_json::Value>, LogsDbError> {
         let client = self.pool.get().await?;
         let result = client.query_opt(
@@ -220,12 +220,12 @@ impl LogsDb {
         }
     }
 
-    // --- COGNITIVE TRACES -------------------------------------------
+    // ─── TRACES COGNITIVES ────────────────────────────────
 
-    /// Saves a complete cognitive trace to the database.
+    /// Sauvegarde une trace cognitive complete.
     pub async fn save_trace(&self, trace: &CognitiveTrace) -> Result<i64, LogsDbError> {
         let client = self.pool.get().await?;
-        // Extract scalar fields for sleep/subconscious
+        // Extraire les champs scalaires sommeil/subconscient
         let is_sleeping = trace.sleep_data.get("is_sleeping")
             .and_then(|v| v.as_bool()).unwrap_or(false);
         let sleep_phase = trace.sleep_data.get("sleep_phase")
@@ -249,8 +249,9 @@ impl LogsDb {
                 psychology_data, will_data, nn_learning_data,
                 duration_ms, session_id,
                 is_sleeping, sleep_phase, sleep_progress,
-                subconscious_activation, subconscious_insight, subconscious_priming)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37)
+                subconscious_activation, subconscious_insight, subconscious_priming,
+                receptor_data, bdnf_data)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39)
              RETURNING id",
             &[&(trace.cycle as i64), &trace.timestamp, &trace.source_type, &trace.input_text,
               &trace.nlp_data, &trace.brain_data, &trace.consensus_data,
@@ -265,14 +266,15 @@ impl LogsDb {
               &trace.psychology_data, &trace.will_data, &trace.nn_learning_data,
               &trace.duration_ms, &trace.session_id,
               &is_sleeping, &sleep_phase, &sleep_progress,
-              &subconscious_activation, &subconscious_insight, &subconscious_priming],
+              &subconscious_activation, &subconscious_insight, &subconscious_priming,
+              &trace.receptor_data, &trace.bdnf_data],
         ).await?;
         Ok(row.get(0))
     }
 
-    /// Retrieves a cognitive trace by cycle number (across all sessions).
-    /// Returns the most recent trace for this cycle number.
-    /// WARNING: may return a trace from a different session if
+    /// Recupere une trace cognitive par cycle (toutes sessions confondues).
+    /// Retourne la trace la plus recente pour ce numero de cycle.
+    /// ATTENTION : peut retourner une trace d'une session differente si
     /// le meme cycle existe dans plusieurs sessions (voir get_trace_by_cycle_and_session).
     pub async fn get_trace_by_cycle(&self, cycle: i64) -> Result<Option<serde_json::Value>, LogsDbError> {
         let client = self.pool.get().await?;
@@ -287,14 +289,14 @@ impl LogsDb {
         }
     }
 
-    /// Retrieves a cognitive trace by cycle number AND session_id.
+    /// Recupere une trace cognitive par cycle ET session_id.
     ///
-    /// This method solves the cycle number collision problem:
-    /// when Saphire restarts, cycle numbers reset to 0, so the same
-    /// cycle number can exist across multiple sessions.
-    /// Without the session_id filter, get_trace_by_cycle() returns the
-    /// most recent trace (often an Autonomous trace from a restart
-    /// instead of the desired Human trace).
+    /// Cette methode resout le probleme de collision de cycles :
+    /// quand Saphire redemarre, les numeros de cycle repartent de 0,
+    /// donc un meme cycle peut exister dans plusieurs sessions.
+    /// Sans filtre session_id, get_trace_by_cycle() retourne la trace
+    /// la plus recente (souvent une trace Autonomous d'un redemarrage
+    /// au lieu de la trace Human recherchee).
     pub async fn get_trace_by_cycle_and_session(&self, cycle: i64, session_id: i64) -> Result<Option<serde_json::Value>, LogsDbError> {
         let client = self.pool.get().await?;
         let result = client.query_opt(
@@ -309,7 +311,7 @@ impl LogsDb {
         }
     }
 
-    /// Lists recent cognitive traces.
+    /// Liste les traces cognitives recentes.
     pub async fn recent_traces(&self, limit: i64) -> Result<Vec<serde_json::Value>, LogsDbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -320,17 +322,17 @@ impl LogsDb {
         Ok(rows.iter().map(|r| r.get(0)).collect())
     }
 
-    /// Lists cognitive traces for a session, with optional source_type filter.
+    /// Liste les traces cognitives d'une session, avec filtre optionnel sur source_type.
     ///
-    /// Parameters:
-    ///   - session_id: session identifier (incremented on each restart)
-    ///   - source_type: optional filter ("Human" or "Autonomous")
+    /// Parametres :
+    ///   - session_id : identifiant de la session (incremente a chaque redemarrage)
+    ///   - source_type : filtre optionnel ("Human" ou "Autonomous")
     ///     * "Human" : traces issues d'un message utilisateur
     ///     * "Autonomous" : traces issues de la pensee autonome de Saphire
-    ///   - limit: maximum number of traces to return
+    ///   - limit : nombre max de traces retournees
     ///
-    /// Traces are sorted by descending cycle (most recent first).
-    /// Used by the GET /api/traces?session_id=N&source_type=Human endpoint
+    /// Les traces sont triees par cycle decroissant (plus recentes d'abord).
+    /// Utilisee par l'endpoint GET /api/traces?session_id=N&source_type=Human
     pub async fn traces_by_session(&self, session_id: i64, source_type: Option<&str>, limit: i64) -> Result<Vec<serde_json::Value>, LogsDbError> {
         let client = self.pool.get().await?;
         let rows = if let Some(st) = source_type {
@@ -353,7 +355,7 @@ impl LogsDb {
 
     // ─── HISTORIQUE LLM ───────────────────────────────────
 
-    /// Saves an LLM request/response record.
+    /// Sauvegarde une requete/reponse LLM.
     #[allow(clippy::too_many_arguments)]
     pub async fn save_llm_history(
         &self,
@@ -385,7 +387,7 @@ impl LogsDb {
         Ok(row.get(0))
     }
 
-    /// Retrieves LLM history with filtering.
+    /// Recupere l'historique LLM avec filtrage.
     pub async fn get_llm_history(
         &self,
         limit: i64,
@@ -400,7 +402,7 @@ impl LogsDb {
         Ok(rows.iter().map(|r| r.get(0)).collect())
     }
 
-    /// Retrieves an LLM record by ID.
+    /// Recupere un enregistrement LLM par ID.
     pub async fn get_llm_by_id(&self, id: i64) -> Result<Option<serde_json::Value>, LogsDbError> {
         let client = self.pool.get().await?;
         let result = client.query_opt(
@@ -415,7 +417,7 @@ impl LogsDb {
 
     // ─── METRIQUES ────────────────────────────────────────
 
-    /// Saves a metrics snapshot.
+    /// Sauvegarde un snapshot de metriques.
     #[allow(clippy::too_many_arguments)]
     pub async fn save_metric_snapshot(
         &self,
@@ -433,7 +435,7 @@ impl LogsDb {
         body_breath_rate: f32, body_awareness: f32,
         ethics_active_count: i32,
         session_id: i64,
-        // Vital, intuition, premonition, senses, knowledge columns
+        // Vital, intuition, premonition, senses, knowledge
         survival_drive: f32, existence_attachment: f32,
         intuition_acuity: f32, intuition_accuracy: f32,
         premonition_accuracy: f32, active_predictions: i32,
@@ -441,7 +443,7 @@ impl LogsDb {
         reading_beauty: f32, ambiance_scent: &str, contact_warmth: f32,
         emergent_senses_germinated: i32,
         knowledge_sources_used: &serde_json::Value,
-        // Orchestrator columns
+        // Orchestrateurs
         attention_focus: &str, attention_depth: f32, attention_fatigue: f32,
         attention_concentration: f32,
         desires_active: i32, desires_fulfilled_total: i32, desires_top_priority: &str,
@@ -451,7 +453,7 @@ impl LogsDb {
         behavior_changes_total: i32,
         wounds_active: i32, wounds_healed_total: i32, resilience: f32,
         dreams_total: i32, dreams_insights_total: i32, last_dream_type: &str,
-        // Psychology columns
+        // Psychologie
         psyche_id_drive: f32, psyche_id_frustration: f32,
         psyche_ego_strength: f32, psyche_ego_anxiety: f32,
         psyche_superego_guilt: f32, psyche_superego_pride: f32,
@@ -464,13 +466,13 @@ impl LogsDb {
         in_flow: bool, flow_intensity: f32, flow_total_cycles: i64,
         psyche_defense: &str, maslow_priority_need: &str,
         toltec_invocations: i64, toltec_violations: i64, shadow_leaking: bool,
-        // Will/deliberation columns
+        // Volonte
         willpower: f32, decision_fatigue: f32,
         total_deliberations: i64, proud_decisions: i64, regretted_decisions: i64,
         deliberation_this_cycle: bool,
-        // Vector learning columns
+        // Apprentissages vectoriels
         nn_learnings_count: i32,
-        // Sleep and subconscious columns
+        // Sommeil et subconscient
         is_sleeping: bool,
         sleep_phase: &str,
         sleep_pressure: f32,
@@ -480,6 +482,22 @@ impl LogsDb {
         repressed_content_count: i32,
         incubating_problems: i32,
         neural_connections_total: i64,
+        // Sensibilite des recepteurs (9 molecules)
+        receptor_dopamine_sensitivity: f32,
+        receptor_serotonin_sensitivity: f32,
+        receptor_noradrenaline_sensitivity: f32,
+        receptor_endorphin_sensitivity: f32,
+        receptor_oxytocin_sensitivity: f32,
+        receptor_adrenaline_sensitivity: f32,
+        receptor_cortisol_sensitivity: f32,
+        receptor_gaba_sensitivity: f32,
+        receptor_glutamate_sensitivity: f32,
+        // BDNF et matiere grise
+        bdnf_level: f32,
+        neuroplasticity: f32,
+        synaptic_density: f32,
+        grey_matter_volume: f32,
+        myelination: f32,
     ) -> Result<i64, LogsDbError> {
         let client = self.pool.get().await?;
         let row = client.query_one(
@@ -520,8 +538,15 @@ impl LogsDb {
                 nn_learnings_count,
                 is_sleeping, sleep_phase, sleep_pressure, awake_cycles,
                 subconscious_activation, pending_associations, repressed_content_count,
-                incubating_problems, neural_connections_total)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65, $66, $67, $68, $69, $70, $71, $72, $73, $74, $75, $76, $77, $78, $79, $80, $81, $82, $83, $84, $85, $86, $87, $88, $89, $90, $91, $92, $93, $94, $95, $96, $97, $98, $99, $100, $101, $102, $103, $104, $105, $106, $107, $108, $109, $110, $111, $112, $113, $114, $115, $116)
+                incubating_problems, neural_connections_total,
+                receptor_dopamine_sensitivity, receptor_serotonin_sensitivity,
+                receptor_noradrenaline_sensitivity, receptor_endorphin_sensitivity,
+                receptor_oxytocin_sensitivity, receptor_adrenaline_sensitivity,
+                receptor_cortisol_sensitivity, receptor_gaba_sensitivity,
+                receptor_glutamate_sensitivity,
+                bdnf_level, neuroplasticity, synaptic_density,
+                grey_matter_volume, myelination)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65, $66, $67, $68, $69, $70, $71, $72, $73, $74, $75, $76, $77, $78, $79, $80, $81, $82, $83, $84, $85, $86, $87, $88, $89, $90, $91, $92, $93, $94, $95, $96, $97, $98, $99, $100, $101, $102, $103, $104, $105, $106, $107, $108, $109, $110, $111, $112, $113, $114, $115, $116, $117, $118, $119, $120, $121, $122, $123, $124, $125, $126, $127, $128, $129, $130)
              RETURNING id",
             &[&(cycle as i64), &dopamine, &cortisol, &serotonin, &adrenaline,
               &oxytocin, &endorphin, &noradrenaline, &gaba, &glutamate,
@@ -562,94 +587,28 @@ impl LogsDb {
               &nn_learnings_count,
               &is_sleeping, &sleep_phase, &sleep_pressure, &awake_cycles,
               &subconscious_activation, &pending_associations, &repressed_content_count,
-              &incubating_problems, &neural_connections_total],
+              &incubating_problems, &neural_connections_total,
+              &receptor_dopamine_sensitivity, &receptor_serotonin_sensitivity,
+              &receptor_noradrenaline_sensitivity, &receptor_endorphin_sensitivity,
+              &receptor_oxytocin_sensitivity, &receptor_adrenaline_sensitivity,
+              &receptor_cortisol_sensitivity, &receptor_gaba_sensitivity,
+              &receptor_glutamate_sensitivity,
+              &bdnf_level, &neuroplasticity, &synaptic_density,
+              &grey_matter_volume, &myelination],
         ).await?;
         Ok(row.get(0))
     }
 
-    // ─── METRIQUES LITE ───────────────────────────────────────
-
-    /// Lightweight version of save_metric_snapshot for the lite edition.
-    /// Inserts only the core columns (chemistry, emotion, consciousness, body, vital).
-    /// Columns for removed modules (psychology, needs, sleep...) use SQL DEFAULT values.
-    #[allow(clippy::too_many_arguments)]
-    pub async fn save_metric_snapshot_lite(
-        &self,
-        cycle: u64,
-        dopamine: f32, cortisol: f32, serotonin: f32,
-        adrenaline: f32, oxytocin: f32, endorphin: f32, noradrenaline: f32,
-        gaba: f32, glutamate: f32,
-        emotion: &str, valence: f32, arousal: f32, dominance: f32,
-        consciousness_level: f32, phi: f32,
-        consensus_score: f32, decision: &str, satisfaction: f32,
-        thought_type: &str, llm_response_time_ms: f32,
-        heart_bpm: f32, heart_beat_count: i64,
-        heart_hrv: f32, heart_is_racing: bool,
-        body_energy: f32, body_tension: f32, body_warmth: f32,
-        body_comfort: f32, body_pain: f32, body_vitality: f32,
-        body_breath_rate: f32, body_awareness: f32,
-        ethics_active_count: i32,
-        session_id: i64,
-        survival_drive: f32, existence_attachment: f32,
-        intuition_acuity: f32, intuition_accuracy: f32,
-        premonition_accuracy: f32, active_predictions: i32,
-    ) -> Result<i64, LogsDbError> {
-        let client = self.pool.get().await?;
-        let row = client.query_one(
-            "INSERT INTO metric_snapshots (
-                cycle,
-                dopamine, cortisol, serotonin, adrenaline,
-                oxytocin, endorphin, noradrenaline, gaba, glutamate,
-                emotion, valence, arousal, dominance,
-                consciousness_level, phi,
-                consensus_score, decision, satisfaction,
-                thought_type, llm_response_time_ms,
-                heart_bpm, heart_beat_count, heart_hrv, heart_is_racing,
-                body_energy, body_tension, body_warmth, body_comfort, body_pain,
-                body_vitality, body_breath_rate, body_awareness,
-                ethics_active_count,
-                session_id,
-                survival_drive, existence_attachment,
-                intuition_acuity, intuition_accuracy,
-                premonition_accuracy, active_predictions
-             ) VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-                $11, $12, $13, $14, $15, $16, $17, $18, $19,
-                $20, $21, $22, $23, $24, $25, $26, $27, $28,
-                $29, $30, $31, $32, $33, $34, $35, $36, $37,
-                $38, $39, $40, $41
-             ) RETURNING id",
-            &[
-                &(cycle as i64),
-                &dopamine, &cortisol, &serotonin, &adrenaline,
-                &oxytocin, &endorphin, &noradrenaline, &gaba, &glutamate,
-                &emotion, &valence, &arousal, &dominance,
-                &consciousness_level, &phi,
-                &consensus_score, &decision, &satisfaction,
-                &thought_type, &llm_response_time_ms,
-                &heart_bpm, &heart_beat_count, &heart_hrv, &heart_is_racing,
-                &body_energy, &body_tension, &body_warmth, &body_comfort, &body_pain,
-                &body_vitality, &body_breath_rate, &body_awareness,
-                &ethics_active_count,
-                &session_id,
-                &survival_drive, &existence_attachment,
-                &intuition_acuity, &intuition_accuracy,
-                &premonition_accuracy, &active_predictions,
-            ],
-        ).await?;
-        Ok(row.get(0))
-    }
-
-    /// Retrieves chemical health indicators (aggregates over the last N cycles).
+    /// Recupere les indicateurs de sante chimique (aggregats sur N derniers cycles).
     ///
-    /// Returns averages, standard deviations, distinct emotion count,
+    /// Retourne les moyennes, ecart-types, nombre d'emotions distinctes,
     /// la distribution des 10 emotions les plus frequentes, et les alertes detectees.
     pub async fn get_chemical_health(
         &self, limit: i64,
     ) -> Result<serde_json::Value, LogsDbError> {
         let client = self.pool.get().await?;
 
-        // Query 1: global aggregates over the last N cycles
+        // Requete 1 : aggregats globaux sur les N derniers cycles
         let agg_row = client.query_one(
             "SELECT AVG(cortisol)::float8, COALESCE(STDDEV(cortisol), 0)::float8,
                     AVG(dopamine)::float8, AVG(serotonin)::float8,
@@ -668,7 +627,7 @@ impl LogsDb {
         let valence_stddev: f64 = agg_row.get(5);
         let distinct_emotions: i64 = agg_row.get(6);
 
-        // Query 2: distribution of the 10 most frequent emotions
+        // Requete 2 : distribution des 10 emotions les plus frequentes
         let dist_rows = client.query(
             "SELECT emotion, COUNT(*) AS cnt
              FROM (SELECT emotion FROM metric_snapshots ORDER BY timestamp DESC LIMIT $1) sub
@@ -686,7 +645,7 @@ impl LogsDb {
             }));
         }
 
-        // Alert detection (intentional redundancy with the monitoring agent)
+        // Detection d'alertes (redondance voulue avec le monitoring agent)
         let mut alerts: Vec<serde_json::Value> = Vec::new();
 
         if cortisol_avg < 0.10 {
@@ -732,7 +691,7 @@ impl LogsDb {
         }))
     }
 
-    /// Retrieves chemistry metrics over a time period.
+    /// Recupere les metriques de chimie sur une periode.
     pub async fn get_chemistry_metrics(
         &self, limit: i64,
     ) -> Result<Vec<serde_json::Value>, LogsDbError> {
@@ -764,7 +723,7 @@ impl LogsDb {
         Ok(results)
     }
 
-    /// Retrieves emotion metrics over a time period.
+    /// Recupere les metriques d'emotions sur une periode.
     pub async fn get_emotion_metrics(&self, limit: i64) -> Result<Vec<serde_json::Value>, LogsDbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -787,7 +746,7 @@ impl LogsDb {
         Ok(results)
     }
 
-    /// Retrieves decision metrics.
+    /// Recupere les metriques de decisions.
     pub async fn get_decision_metrics(&self, limit: i64) -> Result<Vec<serde_json::Value>, LogsDbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -809,7 +768,7 @@ impl LogsDb {
         Ok(results)
     }
 
-    /// Retrieves satisfaction metrics.
+    /// Recupere les metriques de satisfaction.
     pub async fn get_satisfaction_metrics(&self, limit: i64) -> Result<Vec<serde_json::Value>, LogsDbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -831,7 +790,7 @@ impl LogsDb {
         Ok(results)
     }
 
-    /// Retrieves LLM metrics (response time).
+    /// Recupere les metriques LLM (temps de reponse).
     pub async fn get_llm_metrics(&self, limit: i64) -> Result<Vec<serde_json::Value>, LogsDbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -852,7 +811,7 @@ impl LogsDb {
         Ok(results)
     }
 
-    /// Retrieves thought type distributions.
+    /// Recupere les distributions de types de pensees.
     pub async fn get_thought_type_distribution(&self, limit: i64) -> Result<Vec<serde_json::Value>, LogsDbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -876,7 +835,7 @@ impl LogsDb {
 
     // ─── METRIQUES VITAL / INTUITION / PREMONITION / SENSES / KNOWLEDGE ───
 
-    /// Retrieves vital metrics (survival_drive, existence_attachment).
+    /// Recupere les metriques vitales (survival_drive, existence_attachment).
     pub async fn get_vital_metrics(&self, limit: i64) -> Result<Vec<serde_json::Value>, LogsDbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -897,7 +856,7 @@ impl LogsDb {
         Ok(results)
     }
 
-    /// Retrieves intuition metrics (acuity, accuracy).
+    /// Recupere les metriques d'intuition (acuity, accuracy).
     pub async fn get_intuition_metrics(&self, limit: i64) -> Result<Vec<serde_json::Value>, LogsDbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -918,7 +877,7 @@ impl LogsDb {
         Ok(results)
     }
 
-    /// Retrieves premonition metrics (accuracy, active_predictions).
+    /// Recupere les metriques de premonition (accuracy, active_predictions).
     pub async fn get_premonition_metrics(&self, limit: i64) -> Result<Vec<serde_json::Value>, LogsDbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -939,7 +898,7 @@ impl LogsDb {
         Ok(results)
     }
 
-    /// Retrieves ethics metrics (ethics_active_count per cycle).
+    /// Recupere les metriques d'ethique (ethics_active_count par cycle).
     pub async fn get_ethics_metrics(&self, limit: i64) -> Result<Vec<serde_json::Value>, LogsDbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -959,7 +918,7 @@ impl LogsDb {
         Ok(results)
     }
 
-    /// Retrieves sensory metrics (richness, dominant sense).
+    /// Recupere les metriques sensorielles (richesse, sens dominant).
     pub async fn get_senses_metrics(&self, limit: i64) -> Result<Vec<serde_json::Value>, LogsDbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -980,7 +939,7 @@ impl LogsDb {
         Ok(results)
     }
 
-    /// Retrieves sensory acuity metrics (beauty, warmth).
+    /// Recupere les metriques d'acuite sensorielle (beauty, warmth).
     pub async fn get_senses_acuity_metrics(&self, limit: i64) -> Result<Vec<serde_json::Value>, LogsDbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -1002,7 +961,7 @@ impl LogsDb {
         Ok(results)
     }
 
-    /// Retrieves the distribution of knowledge sources (aggregated).
+    /// Recupere la distribution des sources de connaissance (agrege).
     pub async fn get_knowledge_distribution(&self, limit: i64) -> Result<Vec<serde_json::Value>, LogsDbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -1020,7 +979,7 @@ impl LogsDb {
         Ok(results)
     }
 
-    /// Retrieves emergent meaning metrics (germinated count).
+    /// Recupere les metriques de sens emergents (germinated count).
     pub async fn get_emergent_senses_metrics(&self, limit: i64) -> Result<Vec<serde_json::Value>, LogsDbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -1042,7 +1001,7 @@ impl LogsDb {
 
     // ─── METRIQUES ORCHESTRATEURS ─────────────────────────
 
-    /// Retrieves attention metrics (focus, fatigue, concentration).
+    /// Recupere les metriques d'attention (focus, fatigue, concentration).
     pub async fn get_attention_metrics(&self, limit: i64) -> Result<Vec<serde_json::Value>, LogsDbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -1065,7 +1024,7 @@ impl LogsDb {
         Ok(results)
     }
 
-    /// Retrieves desire metrics (active desires, fundamental needs).
+    /// Recupere les metriques de desirs (actifs, besoins fondamentaux).
     pub async fn get_desires_metrics(&self, limit: i64) -> Result<Vec<serde_json::Value>, LogsDbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -1093,7 +1052,7 @@ impl LogsDb {
         Ok(results)
     }
 
-    /// Retrieves learning metrics (lessons, confirmed, contradicted).
+    /// Recupere les metriques d'apprentissage (lecons, confirmees, contredites).
     pub async fn get_learning_metrics(&self, limit: i64) -> Result<Vec<serde_json::Value>, LogsDbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -1116,7 +1075,7 @@ impl LogsDb {
         Ok(results)
     }
 
-    /// Retrieves vector learning metrics.
+    /// Recupere les metriques d'apprentissages vectoriels.
     pub async fn get_nn_learnings_metrics(&self, limit: i64) -> Result<Vec<serde_json::Value>, LogsDbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -1136,7 +1095,7 @@ impl LogsDb {
         Ok(results)
     }
 
-    /// Retrieves healing metrics (wounds, resilience).
+    /// Recupere les metriques de guerison (blessures, resilience).
     pub async fn get_healing_metrics(&self, limit: i64) -> Result<Vec<serde_json::Value>, LogsDbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -1158,7 +1117,7 @@ impl LogsDb {
         Ok(results)
     }
 
-    /// Retrieves dream metrics (total, insights, type).
+    /// Recupere les metriques de reves (total, insights, type).
     pub async fn get_dreams_metrics(&self, limit: i64) -> Result<Vec<serde_json::Value>, LogsDbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -1182,7 +1141,7 @@ impl LogsDb {
 
     // ─── METRIQUES COEUR & CORPS ─────────────────────────
 
-    /// Retrieves cardiac metrics (BPM + HRV).
+    /// Recupere les metriques cardiaques (BPM + HRV).
     pub async fn get_heart_metrics(&self, limit: i64) -> Result<Vec<serde_json::Value>, LogsDbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -1205,7 +1164,7 @@ impl LogsDb {
         Ok(results)
     }
 
-    /// Retrieves body metrics (energy, vitality, comfort).
+    /// Recupere les metriques corporelles (energie, vitalite, confort).
     pub async fn get_body_metrics(&self, limit: i64) -> Result<Vec<serde_json::Value>, LogsDbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -1235,12 +1194,12 @@ impl LogsDb {
 
     // ─── EXPORT & PURGE ───────────────────────────────────
 
-    /// Exports all logs as JSON (for the black box).
+    /// Exporte tous les logs en JSON (pour la boite noire).
     pub async fn export_logs(&self, limit: i64) -> Result<Vec<serde_json::Value>, LogsDbError> {
         self.get_logs(None, None, limit, 0).await
     }
 
-    /// Purges logs older than `days` days.
+    /// Purge les logs plus anciens que `days` jours.
     pub async fn purge_old_logs(&self, days: i32) -> Result<u64, LogsDbError> {
         let client = self.pool.get().await?;
         let result = client.execute(
@@ -1258,7 +1217,7 @@ impl LogsDb {
         Ok(result + result2 + result3)
     }
 
-    /// Returns row count statistics for all log tables.
+    /// Retourne les statistiques des tables de logs.
     pub async fn table_stats(&self) -> Result<serde_json::Value, LogsDbError> {
         let client = self.pool.get().await?;
 
@@ -1275,7 +1234,7 @@ impl LogsDb {
         }))
     }
 
-    /// Retrieves psychological metrics for the dashboard.
+    /// Recupere les metriques psychologiques pour le dashboard.
     pub async fn get_psychology_metrics(&self, limit: i64) -> Result<Vec<serde_json::Value>, LogsDbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -1327,7 +1286,7 @@ impl LogsDb {
         Ok(results)
     }
 
-    /// Retrieves psyche (Freud) metrics for the dashboard.
+    /// Recupere les metriques psyche (Freud) pour le dashboard.
     pub async fn get_psyche_metrics(&self, limit: i64) -> Result<Vec<serde_json::Value>, LogsDbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -1358,7 +1317,7 @@ impl LogsDb {
         Ok(results)
     }
 
-    /// Retrieves Maslow metrics for the dashboard.
+    /// Recupere les metriques Maslow pour le dashboard.
     pub async fn get_maslow_metrics(&self, limit: i64) -> Result<Vec<serde_json::Value>, LogsDbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -1385,7 +1344,7 @@ impl LogsDb {
         Ok(results)
     }
 
-    /// Retrieves EQ (Goleman) metrics for the dashboard.
+    /// Recupere les metriques EQ (Goleman) pour le dashboard.
     pub async fn get_eq_metrics(&self, limit: i64) -> Result<Vec<serde_json::Value>, LogsDbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -1412,7 +1371,7 @@ impl LogsDb {
         Ok(results)
     }
 
-    /// Retrieves Flow metrics for the dashboard.
+    /// Recupere les metriques Flow pour le dashboard.
     pub async fn get_flow_metrics(&self, limit: i64) -> Result<Vec<serde_json::Value>, LogsDbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -1434,7 +1393,7 @@ impl LogsDb {
         Ok(results)
     }
 
-    /// Retrieves Shadow (Jung) metrics for the dashboard.
+    /// Recupere les metriques Ombre (Jung) pour le dashboard.
     pub async fn get_shadow_metrics(&self, limit: i64) -> Result<Vec<serde_json::Value>, LogsDbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -1455,7 +1414,7 @@ impl LogsDb {
         Ok(results)
     }
 
-    /// Retrieves will/deliberation metrics over time.
+    /// Recupere les metriques de volonte sur le temps.
     pub async fn get_will_metrics(&self, limit: i64) -> Result<Vec<serde_json::Value>, LogsDbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -1483,7 +1442,7 @@ impl LogsDb {
         Ok(results)
     }
 
-    /// GET /api/metrics/sleep -- Sleep metrics over time.
+    /// GET /api/metrics/sleep — Metriques de sommeil sur le temps.
     pub async fn get_sleep_metrics(&self, limit: i64) -> Result<Vec<serde_json::Value>, LogsDbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -1509,7 +1468,7 @@ impl LogsDb {
         Ok(results)
     }
 
-    /// GET /api/metrics/subconscious -- Subconscious metrics over time.
+    /// GET /api/metrics/subconscious — Metriques du subconscient sur le temps.
     pub async fn get_subconscious_metrics(&self, limit: i64) -> Result<Vec<serde_json::Value>, LogsDbError> {
         let client = self.pool.get().await?;
         let rows = client.query(

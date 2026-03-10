@@ -62,6 +62,14 @@ impl SaphireAgent {
             self.chemistry.cortisol = (self.chemistry.cortisol - 0.03).max(0.0);
             self.in_conversation = true;
             self.conversation_id = Some(format!("conv_{}", chrono::Utc::now().timestamp()));
+            // Amorcer l'historique pour que le modele ne voie jamais un historique
+            // vide (sinon mistral-nemo se presente systematiquement au premier message)
+            if self.chat_history.is_empty() {
+                self.chat_history.push((
+                    "(conversation en cours)".to_string(),
+                    "Je t'ecoute.".to_string(),
+                ));
+            }
         }
 
         // ═══ TRAITEMENT FEEDBACK RLHF ═══
@@ -366,13 +374,9 @@ impl SaphireAgent {
 
             let llm_config = self.config.llm.clone();
             let start = Instant::now();
-            // Prefixer le message avec le nom de l'interlocuteur (comme "[JRM] : ...")
-            // pour que le modele sache a qui il repond sans instruction systeme lourde
-            let msg = if username != "Inconnu" {
-                format!("[{}] : {}", username, text)
-            } else {
-                text.to_string()
-            };
+            // Message brut sans prefixe — identique au comportement claude-chat.py
+            // qui fonctionne correctement. Le username reste disponible pour le logging.
+            let msg = text.to_string();
 
             // Detection de stagnation conversationnelle (mots exacts + semantique)
             let (conv_stagnating, obsessional_words) = self.detect_conversation_stagnation_full();
@@ -452,13 +456,8 @@ impl SaphireAgent {
         }
 
         // Stocker l'echange dans l'historique multi-turn (max 5 echanges)
-        // Prefixer avec le nom de l'interlocuteur pour coherence avec le LLM
-        let history_user = if username != "Inconnu" {
-            format!("[{}] : {}", username, text)
-        } else {
-            text.to_string()
-        };
-        self.chat_history.push((history_user, response.clone()));
+        // Message brut sans prefixe — identique au comportement claude-chat.py
+        self.chat_history.push((text.to_string(), response.clone()));
         if self.chat_history.len() > 5 {
             self.chat_history.remove(0);
         }

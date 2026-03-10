@@ -355,10 +355,10 @@ pub fn phi_star(timeseries: &[[f64; NUM_REGIONS]]) -> PhiStarResult {
 
     PhiStarResult {
         phi_star: phi_normalized,
-        mi_whole,
-        mi_minimum_partition: min_partition_mi,
+        mi_whole: mi_whole.clamp(0.0, 1.0),
+        mi_minimum_partition: min_partition_mi.clamp(0.0, 1.0),
         minimum_information_partition: mip_name.to_string(),
-        phi_raw,
+        phi_raw: phi_raw.clamp(0.0, 1.0),
     }
 }
 

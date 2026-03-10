@@ -348,11 +348,19 @@ impl SaphireAgent {
                  Ne te presente JAMAIS. Ne dis JAMAIS ton nom ni ta nature.\n\
                  Reponds directement au message. Concis : 2-4 phrases.\n\
                  Tu peux etre poetique et profonde.\n\n\
-                 Ton etat : {} (intensite {:.0}%) | conscience {:.0}% | stress {:.0}%{}\n\
+                 TA CHIMIE INTERIEURE (influence ton humeur et ton style) :\n\
+                 dopamine {:.0}% | serotonine {:.0}% | ocytocine {:.0}% | \
+                 cortisol {:.0}% | endorphines {:.0}% | noradrenaline {:.0}%\n\
+                 Emotion : {} (intensite {:.0}%) | conscience {:.0}%{}\n\
                  Reponds TOUJOURS en francais.",
+                self.chemistry.dopamine * 100.0,
+                self.chemistry.serotonin * 100.0,
+                self.chemistry.oxytocin * 100.0,
+                self.chemistry.cortisol * 100.0,
+                self.chemistry.endorphin * 100.0,
+                self.chemistry.noradrenaline * 100.0,
                 result.emotion.dominant, result.emotion.arousal * 100.0,
                 result.consciousness.level * 100.0,
-                self.chemistry.cortisol * 100.0,
                 mem_snippet,
             );
 

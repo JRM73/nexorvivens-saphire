@@ -436,7 +436,7 @@ The main WebSocket (`/ws`) accepts JSON control messages:
 
 The dashboard WebSocket (`/ws/dashboard`) is read-only and streams metrics every cognitive cycle.
 
-**Total: 81 REST endpoints + 2 WebSocket endpoints**
+**Total: 182 REST endpoints + 2 WebSocket endpoints**
 
 ---
 

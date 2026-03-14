@@ -1,8 +1,8 @@
 // =============================================================================
-// api/profiles.rs — Handlers des profils cognitifs neurodivergents
+// api/profiles.rs — Neurodivergent cognitive profile handlers
 //
-// Role : Endpoints pour lister, charger, comparer et reinitialiser les profils
-// cognitifs (TDAH, autisme, TAG, HPI, bipolaire, TOC).
+// Role: Endpoints to list, load, compare and reset cognitive profiles
+// (ADHD, autism, GAD, gifted, bipolar, OCD).
 // =============================================================================
 
 use axum::extract::{Query, State};
@@ -12,7 +12,7 @@ use serde::Deserialize;
 
 use super::state::AppState;
 
-/// GET /api/profiles — Liste des profils disponibles.
+/// GET /api/profiles — List available profiles.
 pub async fn api_list_profiles(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let profiles = agent.cognitive_profile_orch.list_profiles();
@@ -22,19 +22,19 @@ pub async fn api_list_profiles(State(state): State<AppState>) -> impl IntoRespon
     }))
 }
 
-/// GET /api/profiles/current — Profil actif + etat transition + phase bipolaire.
+/// GET /api/profiles/current — Active profile + transition state + bipolar phase.
 pub async fn api_current_profile(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     Json(agent.cognitive_profile_orch.to_status_json())
 }
 
-/// Corps de la requete POST /api/profiles/load
+/// Request body for POST /api/profiles/load
 #[derive(Deserialize)]
 pub struct LoadProfileRequest {
     pub name: String,
 }
 
-/// POST /api/profiles/load — Charge et applique un profil.
+/// POST /api/profiles/load — Load and apply a profile.
 pub async fn api_load_profile(
     State(state): State<AppState>,
     Json(body): Json<LoadProfileRequest>,
@@ -43,20 +43,20 @@ pub async fn api_load_profile(
     Json(agent.load_and_apply_profile(&body.name))
 }
 
-/// POST /api/profiles/reset — Revenir au profil neurotypique.
+/// POST /api/profiles/reset — Revert to neurotypical profile.
 pub async fn api_reset_profile(State(state): State<AppState>) -> impl IntoResponse {
     let mut agent = state.agent.lock().await;
     Json(agent.load_and_apply_profile("neurotypique"))
 }
 
-/// Parametres de la requete GET /api/profiles/compare
+/// Query parameters for GET /api/profiles/compare
 #[derive(Deserialize)]
 pub struct CompareQuery {
     pub a: String,
     pub b: String,
 }
 
-/// GET /api/profiles/compare?a=neurotypique&b=tdah — Compare deux profils.
+/// GET /api/profiles/compare?a=neurotypique&b=tdah — Compare two profiles.
 pub async fn api_compare_profiles(
     State(state): State<AppState>,
     Query(query): Query<CompareQuery>,

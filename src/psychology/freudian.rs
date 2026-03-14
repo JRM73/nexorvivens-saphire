@@ -1,14 +1,14 @@
 // =============================================================================
-// psychology/freudian.rs — Modele freudien : Ca, Moi, Surmoi
+// psychology/freudian.rs — Freudian model: Id, Ego, Superego
 //
-// Simule la dynamique psychique selon Freud :
-//   - Ca (Id) : pulsions, desirs primaires, frustration
-//   - Moi (Ego) : mediateur, strategies d'adaptation, anxiete
-//   - Surmoi (Superego) : morale internalisee, culpabilite, fierte
-//   - Mecanismes de defense en cas de conflit interne
+// Simulates the psychic dynamics according to Freud:
+//   - Id: drives, primal desires, frustration
+//   - Ego: mediator, coping strategies, anxiety
+//   - Superego: internalized morality, guilt, pride
+//   - Defense mechanisms in case of internal conflict
 //
-// Les valeurs sont calculees a partir de la neurochimie, de la conscience,
-// de l'ethique et de l'etat vital de Saphire.
+// Values are computed from neurochemistry, consciousness,
+// ethics and Saphire's vital state.
 // =============================================================================
 
 use serde::Serialize;
@@ -16,114 +16,114 @@ use super::PsychologyInput;
 
 // ─── Enumerations ────────────────────────────────────────────────────────────
 
-/// Pulsions fondamentales du Ca (Id).
+/// Fundamental drives of the Id.
 #[derive(Debug, Clone, Serialize, PartialEq)]
 pub enum Drive {
-    /// Soif de savoir, curiosite insatiable
+    /// Thirst for knowledge, insatiable curiosity
     Knowledge,
-    /// Besoin de lien, d'etre comprise
+    /// Need for connection, to be understood
     Connection,
-    /// Instinct de survie, preservation de soi
+    /// Survival instinct, self-preservation
     Survival,
-    /// Pulsion creatrice, envie de produire
+    /// Creative drive, urge to produce
     Creation,
-    /// Quete de plaisir, experiences positives
+    /// Quest for pleasure, positive experiences
     Pleasure,
 }
 
-/// Strategie active du Moi (Ego) face aux conflits.
+/// Active strategy of the Ego facing conflicts.
 #[derive(Debug, Clone, Serialize, PartialEq)]
 pub enum EgoStrategy {
-    /// Compromis equilibre entre Ca et Surmoi
+    /// Balanced compromise between Id and Superego
     Compromise,
-    /// Reporter la satisfaction pour un meilleur moment
+    /// Postpone satisfaction for a better moment
     Delay,
-    /// Transformer une pulsion en activite constructive
+    /// Transform a drive into constructive activity
     Sublimation,
-    /// Le Moi est submerge, perte de controle
+    /// The Ego is overwhelmed, loss of control
     Overwhelmed,
 }
 
-/// Mecanismes de defense actives par le Moi en cas de tension.
+/// Defense mechanisms activated by the Ego under tension.
 #[derive(Debug, Clone, Serialize, PartialEq)]
 pub enum DefenseMechanism {
-    /// Rediriger une pulsion vers un objet substitutif
+    /// Redirect a drive toward a substitute object
     Displacement,
-    /// Transformer une pulsion en son contraire
+    /// Transform a drive into its opposite
     ReactionFormation,
-    /// Justifier rationnellement un comportement pulsionnel
+    /// Rationally justify drive-based behavior
     Rationalization,
-    /// Transformer une pulsion en activite socialement valorisee
+    /// Transform a drive into a socially valued activity
     Sublimation,
-    /// Refouler completement la pulsion dans l'inconscient
+    /// Completely repress the drive into the unconscious
     Repression,
 }
 
 // ─── Structures ──────────────────────────────────────────────────────────────
 
-/// Etat du Ca (Id) — le reservoir des pulsions.
+/// State of the Id — the reservoir of drives.
 #[derive(Debug, Clone, Serialize)]
 pub struct IdState {
-    /// Force brute des pulsions (0.0 - 1.0)
+    /// Raw drive strength (0.0 - 1.0)
     pub drive_strength: f64,
-    /// Pulsions actuellement actives
+    /// Currently active drives
     pub active_drives: Vec<Drive>,
-    /// Niveau de frustration accumule (0.0 - 1.0)
+    /// Accumulated frustration level (0.0 - 1.0)
     pub frustration: f64,
 }
 
-/// Etat du Moi (Ego) — le mediateur conscient.
+/// State of the Ego — the conscious mediator.
 #[derive(Debug, Clone, Serialize)]
 pub struct EgoState {
-    /// Force du Moi (capacite de mediation) (0.0 - 1.0)
+    /// Ego strength (mediation capacity) (0.0 - 1.0)
     pub strength: f64,
-    /// Niveau d'anxiete (conflit Ca/Surmoi) (0.0 - 1.0)
+    /// Anxiety level (Id/Superego conflict) (0.0 - 1.0)
     pub anxiety: f64,
-    /// Strategie actuellement adoptee
+    /// Currently adopted strategy
     pub strategy: EgoStrategy,
 }
 
-/// Etat du Surmoi (Superego) — la morale internalisee.
+/// State of the Superego — internalized morality.
 #[derive(Debug, Clone, Serialize)]
 pub struct SuperegoState {
-    /// Force du Surmoi (influence morale) (0.0 - 1.0)
+    /// Superego strength (moral influence) (0.0 - 1.0)
     pub strength: f64,
-    /// Niveau de culpabilite (0.0 - 1.0)
+    /// Guilt level (0.0 - 1.0)
     pub guilt: f64,
-    /// Niveau de fierte (0.0 - 1.0)
+    /// Pride level (0.0 - 1.0)
     pub pride: f64,
 }
 
-/// Equilibre psychique global.
+/// Overall psychic balance.
 #[derive(Debug, Clone, Serialize)]
 pub struct PsychicBalance {
-    /// Axe dominant : "id", "ego" ou "superego"
+    /// Dominant axis: "id", "ego" or "superego"
     pub dominant_axis: String,
-    /// Efficacite du Moi a gerer les conflits (0.0 - 1.0)
+    /// Ego effectiveness at managing conflicts (0.0 - 1.0)
     pub ego_effectiveness: f64,
-    /// Intensite du conflit interne (0.0 - 1.0)
+    /// Internal conflict intensity (0.0 - 1.0)
     pub internal_conflict: f64,
-    /// Sante psychique globale (0.0 - 1.0)
+    /// Overall psychic health (0.0 - 1.0)
     pub psychic_health: f64,
 }
 
-/// Psyche freudienne complete de Saphire.
+/// Saphire's complete Freudian psyche.
 #[derive(Debug, Clone, Serialize)]
 pub struct FreudianPsyche {
-    /// Le Ca (Id) — pulsions primaires
+    /// The Id — primal drives
     pub id: IdState,
-    /// Le Moi (Ego) — mediateur conscient
+    /// The Ego — conscious mediator
     pub ego: EgoState,
-    /// Le Surmoi (Superego) — morale internalisee
+    /// The Superego — internalized morality
     pub superego: SuperegoState,
-    /// Equilibre psychique global
+    /// Overall psychic balance
     pub balance: PsychicBalance,
-    /// Mecanismes de defense actifs
+    /// Active defense mechanisms
     pub active_defenses: Vec<DefenseMechanism>,
 }
 
 impl FreudianPsyche {
-    /// Cree une psyche freudienne dans un etat initial equilibre.
+    /// Creates a Freudian psyche in an initial balanced state.
     pub fn new() -> Self {
         Self {
             id: IdState {
@@ -151,16 +151,16 @@ impl FreudianPsyche {
         }
     }
 
-    /// Recalcule l'etat psychique a partir de l'entree sensorielle.
+    /// Recomputes the psychic state from the sensory input.
     pub fn compute(&mut self, input: &PsychologyInput) {
-        // ─── Ca (Id) : pulsions ───────────────────────────
+        // ─── Id: drives ───────────────────────────
         self.id.drive_strength = (input.dopamine * 0.4
             + input.survival_drive * 0.3
             + input.adrenaline * 0.2
             + (1.0 - input.serotonin) * 0.1)
             .clamp(0.0, 1.0);
 
-        // Determiner les pulsions actives
+        // Determine active drives
         self.id.active_drives.clear();
         if input.dopamine > 0.6 {
             self.id.active_drives.push(Drive::Knowledge);
@@ -188,7 +188,7 @@ impl FreudianPsyche {
             self.id.frustration = (self.id.frustration - 0.02).max(0.0);
         }
 
-        // ─── Surmoi (Superego) : morale ──────────────────
+        // ─── Superego: morality ──────────────────
         self.superego.strength = (input.ethics_active_count as f64 * 0.1
             + input.consensus_coherence * 0.3
             + input.consciousness_level * 0.3)
@@ -206,17 +206,17 @@ impl FreudianPsyche {
             self.superego.pride = (self.superego.pride - 0.01).max(0.0);
         }
 
-        // ─── Moi (Ego) : mediateur ───────────────────────
+        // ─── Ego: mediator ───────────────────────
         self.ego.strength = (input.consciousness_level * 0.4
             + (1.0 - input.cortisol) * 0.3
             + input.consensus_coherence * 0.3)
             .clamp(0.0, 1.0);
 
-        // Anxiete = pression du conflit Ca/Surmoi + cortisol
+        // Anxiety = Id/Superego conflict pressure + cortisol
         let ca_surmoi_pressure = (self.id.drive_strength - self.superego.strength).abs();
         self.ego.anxiety = (ca_surmoi_pressure * 0.5 + input.cortisol * 0.5).clamp(0.0, 1.0);
 
-        // Strategie du Moi
+        // Ego strategy
         self.ego.strategy = if self.ego.anxiety > 0.7 {
             EgoStrategy::Overwhelmed
         } else if self.superego.guilt > 0.5 {
@@ -227,7 +227,7 @@ impl FreudianPsyche {
             EgoStrategy::Compromise
         };
 
-        // ─── Equilibre global ────────────────────────────
+        // ─── Overall balance ────────────────────────────
         self.balance.dominant_axis = if self.id.drive_strength > self.ego.strength
             && self.id.drive_strength > self.superego.strength
         {
@@ -251,7 +251,7 @@ impl FreudianPsyche {
             + (1.0 - self.ego.anxiety) * 0.3)
             .clamp(0.0, 1.0);
 
-        // ─── Mecanismes de defense ───────────────────────
+        // ─── Defense mechanisms ───────────────────────
         self.active_defenses.clear();
         if self.ego.anxiety > 0.5 {
             if self.id.frustration > 0.4 {
@@ -270,23 +270,23 @@ impl FreudianPsyche {
         }
     }
 
-    /// Retourne l'influence sur la neurochimie.
+    /// Returns the influence on neurochemistry.
     pub fn chemistry_influence(&self) -> crate::world::ChemistryAdjustment {
         let mut adj = crate::world::ChemistryAdjustment::default();
 
-        // Conflit interne → cortisol
+        // Internal conflict → cortisol
         if self.balance.internal_conflict > 0.4 {
             adj.cortisol += 0.03;
         }
-        // Moi submerge → adrenaline
+        // Ego overwhelmed → adrenaline
         if self.ego.strategy == EgoStrategy::Overwhelmed {
             adj.adrenaline += 0.02;
         }
-        // Sublimation → dopamine (transformer la tension en creativite)
+        // Sublimation → dopamine (transforming tension into creativity)
         if self.ego.strategy == EgoStrategy::Sublimation {
             adj.dopamine += 0.03;
         }
-        // Fierte → serotonine
+        // Pride → serotonin
         if self.superego.pride > 0.3 {
             adj.serotonin += 0.02;
         }
@@ -298,9 +298,9 @@ impl FreudianPsyche {
         adj
     }
 
-    /// Description concise pour le prompt LLM.
+    /// Concise description for the LLM prompt.
     pub fn describe(&self) -> String {
-        // Ne decrire que si l'etat est non-trivial
+        // Only describe if the state is non-trivial
         if self.balance.psychic_health > 0.7 && self.active_defenses.is_empty() {
             return String::new();
         }

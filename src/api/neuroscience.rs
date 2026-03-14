@@ -1,7 +1,7 @@
 // =============================================================================
-// api/neuroscience.rs — Handlers pour les modules neuroscientifiques avances
+// api/neuroscience.rs — Handlers for the modules neuroscientifiques avances
 //
-// Role : Endpoints pour recepteurs pharmacologiques, regions cerebrales,
+// Role: Endpoints for recepteurs pharmacologiques, regions cerebrales,
 // predictive processing, reconsolidation memorielle, metriques de conscience.
 // =============================================================================
 
@@ -69,7 +69,7 @@ pub async fn api_reconsolidation_status(State(state): State<AppState>) -> impl I
     }))
 }
 
-/// GET /api/receptors/sensitivity — Facteurs de sensibilite par molecule.
+/// GET /api/receptors/sensitivity — Facteurs de sensibilite par molecule(s).
 pub async fn api_receptors_sensitivity(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let receptors = &agent.hormonal_system.receptors;
@@ -94,7 +94,7 @@ pub async fn api_receptors_sensitivity(State(state): State<AppState>) -> impl In
 pub async fn api_consciousness_metrics(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let cs = &agent.consciousness;
-    // Calculer les metriques en direct
+    // Compute the metrics en direct
     let metrics = cs.compute_scientific_metrics(
         &agent.brain_network,
         &agent.chemistry,

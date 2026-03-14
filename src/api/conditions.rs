@@ -1,7 +1,7 @@
 // =============================================================================
-// api/conditions.rs — Endpoints conditions et afflictions
+// api/conditions.rs — Conditions and afflictions endpoints
 //
-// Role : Phobies, cinetose, et futures conditions.
+// Role: Phobias, motion sickness, and future conditions.
 // =============================================================================
 
 use axum::extract::State;
@@ -9,19 +9,19 @@ use axum::response::IntoResponse;
 
 use super::state::AppState;
 
-/// GET /api/conditions/phobias — Etat des phobies.
+/// GET /api/conditions/phobias — Phobias status.
 pub async fn api_phobias_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     axum::Json(agent.phobia_manager.to_json())
 }
 
-/// GET /api/conditions/motion_sickness — Etat de la cinetose.
+/// GET /api/conditions/motion_sickness — Motion sickness status.
 pub async fn api_motion_sickness_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     axum::Json(agent.motion_sickness.to_json())
 }
 
-/// POST /api/conditions/motion_sickness/trigger — Declencher un episode.
+/// POST /api/conditions/motion_sickness/trigger — Trigger an episode.
 /// Body: { "type": "vertigo" } (air, sea, land, vertigo, barotrauma)
 pub async fn api_motion_sickness_trigger(
     State(state): State<AppState>,
@@ -39,7 +39,7 @@ pub async fn api_motion_sickness_trigger(
     axum::Json(serde_json::json!({ "status": "ok", "nausea": agent.motion_sickness.current_nausea }))
 }
 
-/// GET /api/conditions/eating — Etat du trouble alimentaire.
+/// GET /api/conditions/eating — Eating disorder status.
 pub async fn api_eating_disorder_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let json = match &agent.eating_disorder {
@@ -49,43 +49,43 @@ pub async fn api_eating_disorder_status(State(state): State<AppState>) -> impl I
     axum::Json(json)
 }
 
-/// GET /api/conditions/disabilities — Etat des handicaps.
+/// GET /api/conditions/disabilities — Disabilities status.
 pub async fn api_disabilities_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     axum::Json(agent.disability_manager.to_json())
 }
 
-/// GET /api/conditions/extreme — Etat des conditions extremes.
+/// GET /api/conditions/extreme — Extreme conditions status.
 pub async fn api_extreme_condition_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     axum::Json(agent.extreme_condition_mgr.to_json())
 }
 
-/// GET /api/conditions/addictions — Etat des addictions.
+/// GET /api/conditions/addictions — Addictions status.
 pub async fn api_addictions_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     axum::Json(agent.addiction_manager.to_json())
 }
 
-/// GET /api/conditions/trauma — Etat PTSD et traumas.
+/// GET /api/conditions/trauma — PTSD and trauma status.
 pub async fn api_trauma_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     axum::Json(agent.ptsd.to_json())
 }
 
-/// GET /api/conditions/nde — Etat de l'experience de mort imminente.
+/// GET /api/conditions/nde — Near-death experience status.
 pub async fn api_nde_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     axum::Json(agent.nde.to_json())
 }
 
-/// GET /api/conditions/drugs — Drogues actives.
+/// GET /api/conditions/drugs — Active drugs.
 pub async fn api_drugs_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     axum::Json(agent.drug_manager.to_json())
 }
 
-/// POST /api/conditions/drugs/administer — Administrer une drogue.
+/// POST /api/conditions/drugs/administer — Administer a drug.
 /// Body: { "substance": "caffeine" }
 pub async fn api_drugs_administer(
     State(state): State<AppState>,
@@ -104,7 +104,7 @@ pub async fn api_drugs_administer(
     }
 }
 
-/// GET /api/conditions/iq — Contrainte QI.
+/// GET /api/conditions/iq — IQ constraint.
 pub async fn api_iq_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let json = match &agent.iq_constraint {
@@ -114,7 +114,7 @@ pub async fn api_iq_status(State(state): State<AppState>) -> impl IntoResponse {
     axum::Json(json)
 }
 
-/// GET /api/conditions/sexuality — Module sexualite.
+/// GET /api/conditions/sexuality — Sexuality module.
 pub async fn api_sexuality_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let json = match &agent.sexuality {
@@ -124,19 +124,19 @@ pub async fn api_sexuality_status(State(state): State<AppState>) -> impl IntoRes
     axum::Json(json)
 }
 
-/// GET /api/conditions/degenerative — Maladies degeneratives.
+/// GET /api/conditions/degenerative — Degenerative diseases.
 pub async fn api_degenerative_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     axum::Json(agent.degenerative_mgr.to_json())
 }
 
-/// GET /api/conditions/medical — Maladies generales.
+/// GET /api/conditions/medical — General medical conditions.
 pub async fn api_medical_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     axum::Json(agent.medical_mgr.to_json())
 }
 
-/// GET /api/conditions/culture — Cadre culturel.
+/// GET /api/conditions/culture — Cultural framework.
 pub async fn api_culture_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let json = match &agent.culture {
@@ -146,7 +146,7 @@ pub async fn api_culture_status(State(state): State<AppState>) -> impl IntoRespo
     axum::Json(json)
 }
 
-/// GET /api/conditions/precarity — Etat de precarite.
+/// GET /api/conditions/precarity — Precarity status.
 pub async fn api_precarity_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let json = match &agent.precarity {
@@ -156,7 +156,7 @@ pub async fn api_precarity_status(State(state): State<AppState>) -> impl IntoRes
     axum::Json(json)
 }
 
-/// GET /api/conditions/employment — Statut professionnel.
+/// GET /api/conditions/employment — Employment status.
 pub async fn api_employment_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let json = match &agent.employment {

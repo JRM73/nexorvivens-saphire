@@ -1,21 +1,21 @@
 // =============================================================================
-// consensus.rs — Pondération et consensus des 3 modules cérébraux
+// consensus.rs — Weighting and consensus of the 3 brain modules
 // =============================================================================
 //
-// Rôle : Ce fichier implémente le mécanisme de prise de décision de Saphire.
-// Il combine les signaux des 3 modules cérébraux (reptilien, limbique,
-// néocortex) en un score unique via une somme pondérée. Les poids de
-// chaque module varient dynamiquement selon l'état neurochimique.
+// Role: This file implements Saphire's decision-making mechanism.
+// It combines the signals from the 3 brain modules (reptilian, limbic,
+// neocortex) into a single score via a weighted sum. The weight of
+// each module varies dynamically according to the neurochemical state.
 //
-// Dépendances :
-//   - serde : sérialisation / désérialisation
-//   - crate::neurochemistry::NeuroChemicalState : état chimique (pour les poids)
-//   - crate::modules::ModuleSignal : signaux émis par chaque module cérébral
+// Dependencies:
+//   - serde : serialization / deserialization
+//   - crate::neurochemistry::NeuroChemicalState : chemical state (for the weights)
+//   - crate::modules::ModuleSignal : signals emitted by each brain module
 //
-// Place dans l'architecture :
-//   Ce module est le coeur décisionnel. Il est appelé après que les 3 modules
-//   cérébraux aient traité le stimulus. Le résultat est ensuite observé par
-//   consciousness.rs et utilisé pour la rétroaction neurochimique.
+// Place in architecture:
+//   This module is the decision-making core. It is called after the 3 brain
+//   modules have processed the stimulus. The result is then observed by
+//   consciousness.rs and used for neurochemical feedback.
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
@@ -23,24 +23,24 @@ use crate::neurochemistry::NeuroChemicalState;
 use crate::modules::ModuleSignal;
 use crate::tuning::params::TunableParams;
 
-/// Décision du cerveau — résultat trivalent (Oui / Non / Peut-être).
+/// Brain decision — trivalent result (Yes / No / Maybe).
 ///
-/// La décision est déterminée par comparaison du score pondéré avec les seuils.
+/// The decision is determined by comparing the weighted score with the thresholds.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Decision {
-    /// Approbation : le score dépasse le seuil positif
+    /// Approval: the score exceeds the positive threshold
     Yes,
-    /// Rejet : le score est en dessous du seuil négatif
+    /// Rejection: the score is below the negative threshold
     No,
-    /// Indécision : le score est entre les deux seuils
+    /// Indecision: the score is between the two thresholds
     Maybe,
 }
 
 impl Decision {
-    /// Convertit la décision en chaîne de caractères française.
+    /// Converts the decision to a French string.
     ///
-    /// # Retour
-    /// "Oui", "Non" ou "Peut-être".
+    /// # Returns
+    /// "Oui", "Non" or "Peut-être".
     pub fn as_str(&self) -> &str {
         match self {
             Decision::Yes => "Oui",
@@ -49,10 +49,10 @@ impl Decision {
         }
     }
 
-    /// Convertit la décision en entier signé.
+    /// Converts the decision to a signed integer.
     ///
-    /// # Retour
-    /// 1 (Oui), -1 (Non) ou 0 (Peut-être).
+    /// # Returns
+    /// 1 (Yes), -1 (No) or 0 (Maybe).
     pub fn as_i8(&self) -> i8 {
         match self {
             Decision::Yes => 1,
@@ -62,40 +62,40 @@ impl Decision {
     }
 }
 
-/// Résultat du consensus — contient toutes les informations sur la décision
-/// prise, les poids utilisés, les signaux individuels et la cohérence.
+/// Consensus result — contains all information about the decision
+/// made, the weights used, the individual signals, and the coherence.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConsensusResult {
-    /// Score final pondéré [-1, +1] : somme(poids_i * signal_i)
+    /// Final weighted score [-1, +1]: sum(weight_i * signal_i)
     pub score: f64,
-    /// Décision trivalente dérivée du score et des seuils
+    /// Trivalent decision derived from the score and thresholds
     pub decision: Decision,
-    /// Poids normalisés des modules [reptilien, limbique, néocortex].
-    /// Somme = 1.0. Varient dynamiquement selon la neurochimie.
+    /// Normalized module weights [reptilian, limbic, neocortex].
+    /// Sum = 1.0. Vary dynamically according to neurochemistry.
     pub weights: [f64; 3],
-    /// Signaux individuels des 3 modules cérébraux (reptilien, limbique, néocortex)
+    /// Individual signals from the 3 brain modules (reptilian, limbic, neocortex)
     pub signals: Vec<ModuleSignal>,
-    /// Cohérence entre modules [0, 1] : mesure l'accord entre les signaux.
-    /// 1.0 = unanimité parfaite, 0.0 = désaccord maximal.
+    /// Coherence between modules [0, 1]: measures agreement between signals.
+    /// 1.0 = perfect unanimity, 0.0 = maximum disagreement.
     pub coherence: f64,
 }
 
-/// Seuils de décision — définissent les bornes entre Oui, Non et Peut-être.
+/// Decision thresholds — define the boundaries between Yes, No, and Maybe.
 ///
-/// Si score > threshold_yes => Oui
-/// Si score < threshold_no => Non
-/// Sinon => Peut-être
+/// If score > threshold_yes => Yes
+/// If score < threshold_no => No
+/// Otherwise => Maybe
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConsensusThresholds {
-    /// Seuil positif au-dessus duquel la décision est "Oui" (défaut : 0.33)
+    /// Positive threshold above which the decision is "Yes" (default: 0.33)
     pub threshold_yes: f64,
-    /// Seuil négatif en dessous duquel la décision est "Non" (défaut : -0.33)
+    /// Negative threshold below which the decision is "No" (default: -0.33)
     pub threshold_no: f64,
 }
 
 impl Default for ConsensusThresholds {
-    /// Seuils par défaut : zone de "Peut-être" entre -0.33 et +0.33,
-    /// couvrant environ le tiers central de l'espace de décision.
+    /// Default thresholds: "Maybe" zone between -0.33 and +0.33,
+    /// covering approximately the central third of the decision space.
     fn default() -> Self {
         Self {
             threshold_yes: 0.33,
@@ -104,75 +104,75 @@ impl Default for ConsensusThresholds {
     }
 }
 
-/// Calcule les poids dynamiques des modules cérébraux selon la neurochimie.
+/// Computes the dynamic weights of brain modules according to the neurochemistry.
 ///
-/// Les poids déterminent l'influence relative de chaque module dans la décision :
-/// - Reptilien : prend le dessus en situation de stress/danger (cortisol,
-///   adrénaline élevés). L'endorphine atténue légèrement son influence.
-/// - Limbique : dominant quand les émotions positives prévalent (dopamine,
-///   sérotonine, ocytocine élevées).
-/// - Néocortex : a une base élevée (raisonnement par défaut) mais est
-///   inhibé par le stress. La noradrénaline (focus) le renforce.
+/// The weights determine the relative influence of each module in the decision:
+/// - Reptilian: takes over in stress/danger situations (high cortisol,
+///   adrenaline). Endorphin slightly attenuates its influence.
+/// - Limbic: dominant when positive emotions prevail (high dopamine,
+///   serotonin, oxytocin).
+/// - Neocortex: has a high base (reasoning by default) but is
+///   inhibited by stress. Noradrenaline (focus) reinforces it.
 ///
-/// Les poids sont normalisés pour que leur somme soit 1.0, avec un minimum
-/// garanti de 0.05 par module (aucun module n'est jamais totalement ignoré).
+/// The weights are normalized so their sum equals 1.0, with a minimum
+/// guaranteed of 0.05 per module (no module is ever completely silenced).
 ///
-/// # Paramètres
-/// - `chemistry` : état neurochimique actuel.
+/// # Parameters
+/// - `chemistry` : current neurochemical state.
 ///
-/// # Retour
-/// Tableau [poids_reptilien, poids_limbique, poids_néocortex] avec somme = 1.0.
+/// # Returns
+/// Array [reptilian_weight, limbic_weight, neocortex_weight] with sum = 1.0.
 pub fn compute_weights(chemistry: &NeuroChemicalState, params: &TunableParams) -> [f64; 3] {
-    // Reptilien : amplifie par le cortisol (stress) et l'adrenaline (urgence).
-    // L'endorphine (resilience) reduit legerement son influence.
+    // Reptilian: amplified by cortisol (stress) and adrenaline (urgency).
+    // Endorphin (resilience) slightly reduces its influence.
     let w_r = params.weight_base_reptilian
         + chemistry.cortisol * params.weight_cortisol_factor
         + chemistry.adrenaline * params.weight_adrenaline_factor
         - chemistry.endorphin * 0.5;
 
-    // Limbique : amplifie par les molecules « sociales et emotionnelles ».
-    // Dopamine (motivation), serotonine (bien-etre) et ocytocine (lien social).
+    // Limbic: amplified by "social and emotional" molecules.
+    // Dopamine (motivation), serotonin (well-being), and oxytocin (social bonding).
     let w_l = params.weight_base_limbic
         + chemistry.dopamine * params.weight_dopamine_factor
         + chemistry.serotonin * 1.0
         + chemistry.oxytocin * params.weight_oxytocin_factor;
 
-    // Neocortex : base elevee car le raisonnement rationnel est
-    // le mode par defaut. Le stress (cortisol + adrenaline) le degrade,
-    // tandis que la serotonine (calme) et la noradrenaline (focus) l'ameliorent.
+    // Neocortex: high base since rational reasoning is the
+    // default mode. Stress (cortisol + adrenaline) degrades it,
+    // while serotonin (calm) and noradrenaline (focus) improve it.
     let w_n = params.weight_base_neocortex
         - chemistry.cortisol * 1.5
         - chemistry.adrenaline * 2.0
         + chemistry.serotonin * 0.5
         + chemistry.noradrenaline * params.weight_noradrenaline_factor;
 
-    // Garantir un minimum de 0.05 par module — aucun module ne doit être
-    // complètement silencié, même en situation extrême
+    // Guarantee a minimum of 0.05 per module — no module should be
+    // completely silenced, even in extreme situations
     let w_r = w_r.max(0.05);
     let w_l = w_l.max(0.05);
     let w_n = w_n.max(0.05);
 
-    // Normaliser pour que la somme = 1.0
+    // Normalize so that the sum = 1.0
     let total = w_r + w_l + w_n;
     [w_r / total, w_l / total, w_n / total]
 }
 
-/// Calcule le consensus à partir des signaux des 3 modules cérébraux.
+/// Computes the consensus from the signals of the 3 brain modules.
 ///
-/// Algorithme :
-/// 1. Calculer les poids dynamiques selon la neurochimie.
-/// 2. Score pondéré : somme(poids_i * signal_i), borné entre -1 et +1.
-/// 3. Décision trivalente : comparaison du score avec les seuils.
-/// 4. Cohérence : 1 - variance des signaux (mesure l'accord entre modules).
+/// Algorithm:
+/// 1. Compute dynamic weights according to neurochemistry.
+/// 2. Weighted score: sum(weight_i * signal_i), bounded between -1 and +1.
+/// 3. Trivalent decision: comparison of the score with the thresholds.
+/// 4. Coherence: 1 - variance of signals (measures agreement between modules).
 ///
-/// # Paramètres
-/// - `signals` : tableau de 3 signaux [reptilien, limbique, néocortex].
-/// - `chemistry` : état chimique actuel (pour le calcul des poids).
-/// - `thresholds` : seuils de décision Oui/Non.
+/// # Parameters
+/// - `signals` : array of 3 signals [reptilian, limbic, neocortex].
+/// - `chemistry` : current chemical state (for weight computation).
+/// - `thresholds` : Yes/No decision thresholds.
 ///
-/// # Retour
-/// Un `ConsensusResult` contenant le score, la décision, les poids,
-/// les signaux et la cohérence.
+/// # Returns
+/// A `ConsensusResult` containing the score, decision, weights,
+/// signals, and coherence.
 pub fn consensus(
     signals: &[ModuleSignal; 3],
     chemistry: &NeuroChemicalState,
@@ -181,13 +181,13 @@ pub fn consensus(
 ) -> ConsensusResult {
     let weights = compute_weights(chemistry, params);
 
-    // Score pondéré : combinaison linéaire des signaux par les poids
+    // Weighted score: linear combination of signals by weights
     let score = weights[0] * signals[0].signal
         + weights[1] * signals[1].signal
         + weights[2] * signals[2].signal;
     let score = score.clamp(-1.0, 1.0);
 
-    // Décision trivalente par comparaison avec les seuils
+    // Trivalent decision by comparison with thresholds
     let decision = if score > thresholds.threshold_yes {
         Decision::Yes
     } else if score < thresholds.threshold_no {
@@ -196,10 +196,10 @@ pub fn consensus(
         Decision::Maybe
     };
 
-    // Cohérence : mesure la concordance des signaux entre modules.
-    // Si les 3 modules sont d'accord (signaux proches), la variance est
-    // faible et la cohérence est élevée. En cas de désaccord profond
-    // (par ex. reptilien dit Non, limbique dit Oui), la cohérence baisse.
+    // Coherence: measures the concordance of signals between modules.
+    // If all 3 modules agree (close signals), the variance is
+    // low and coherence is high. In case of deep disagreement
+    // (e.g. reptilian says No, limbic says Yes), coherence drops.
     let signals_vec = [signals[0].signal, signals[1].signal, signals[2].signal];
     let mean = signals_vec.iter().sum::<f64>() / 3.0;
     let variance = signals_vec.iter().map(|s| (s - mean).powi(2)).sum::<f64>() / 3.0;

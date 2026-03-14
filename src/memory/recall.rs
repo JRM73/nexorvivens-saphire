@@ -1,49 +1,47 @@
-// recall.rs — Types pour la recherche unifiée dans les 3 niveaux de mémoire
+// recall.rs — Types for unified search across the 3 memory levels
 //
-// Ce module définit les types utilisés lors du rappel (recall) de souvenirs
-// à travers les différents niveaux du système mnésique de Saphire.
+// This module defines the types used during memory recall across
+// the different levels of Saphire's mnesic system.
 //
-// Lors d'un rappel, le système peut retrouver des souvenirs provenant de
-// n'importe quel niveau :
-//   - Working   : mémoire de travail (items actuellement actifs en RAM).
-//   - Episodic  : mémoire épisodique (souvenirs récents en PostgreSQL).
-//   - LongTerm  : mémoire à long terme (souvenirs consolidés permanents).
-//   - Founding  : souvenirs fondateurs (identité de base de Saphire).
+// During a recall, the system can retrieve memories from any level:
+//   - Working  : working memory (items currently active in RAM).
+//   - Episodic : episodic memory (recent memories in PostgreSQL).
+//   - LongTerm : long-term memory (consolidated permanent memories).
+//   - Founding : founding memories (Saphire's baseline identity).
 //
-// Le type MemoryLevel permet d'identifier la provenance d'un souvenir
-// retrouvé, ce qui est utile pour l'affichage, le débogage et la
-// pondération des résultats de rappel.
+// The MemoryLevel type identifies the origin of a retrieved memory,
+// which is useful for display, debugging, and weighting of recall results.
 //
-// Dépendances :
-//   - serde : sérialisation pour l'envoi via WebSocket et les API.
+// Dependencies:
+//   - serde: serialization for WebSocket and API output.
 
 use serde::Serialize;
 use crate::neurochemistry::{ChemicalSignature, NeuroChemicalState};
 use crate::db::MemoryRecord;
 
-/// Niveau de mémoire d'où provient un souvenir retrouvé lors d'un rappel.
+/// Memory level from which a recalled memory originates.
 ///
-/// Utilisé pour identifier l'origine d'un souvenir dans les résultats
-/// de recherche unifiée à travers les 3 niveaux mnésiques.
+/// Used to identify the origin of a memory in unified search results
+/// across the 3 mnesic levels.
 #[derive(Debug, Clone, Serialize)]
 pub enum MemoryLevel {
-    /// Mémoire de travail : item actuellement actif dans le tampon de conscience.
+    /// Working memory: item currently active in the consciousness buffer.
     Working,
-    /// Mémoire épisodique : souvenir récent persisté en base de données.
+    /// Episodic memory: recent memory persisted in the database.
     Episodic,
-    /// Mémoire à long terme : souvenir consolidé, permanent et indexé
-    /// par vecteur pour la recherche sémantique.
+    /// Long-term memory: consolidated, permanent memory indexed
+    /// by vector for semantic search.
     LongTerm,
-    /// Souvenir fondateur : memoire initiale programmee qui definit
-    /// l'identite et les valeurs de base de Saphire.
+    /// Founding memory: initial programmed memory that defines
+    /// Saphire's baseline identity and values.
     Founding,
-    /// Archive : lot de souvenirs LTM elagués puis compresses en resume.
-    /// Les archives restent accessibles par recherche vectorielle.
+    /// Archive: batch of pruned LTM memories compressed into a summary.
+    /// Archives remain accessible via vector search.
     Archive,
 }
 
 impl MemoryLevel {
-    /// Retourne un libelle textuel identifiant le niveau de memoire.
+    /// Returns a textual label identifying the memory level.
     pub fn label(&self) -> &str {
         match self {
             MemoryLevel::Working => "working",
@@ -55,17 +53,17 @@ impl MemoryLevel {
     }
 }
 
-/// Re-classe des souvenirs LTM par combinaison de similarite textuelle
-/// et de similarite chimique (state-dependent memory).
+/// Re-ranks LTM memories by combining textual similarity
+/// and chemical similarity (state-dependent memory).
 ///
-/// Un etat chimique similaire a celui de l'encodage facilite le rappel,
-/// comme chez l'humain (memoire dependante de l'etat).
+/// A chemical state similar to the one at encoding facilitates recall,
+/// as in humans (state-dependent memory).
 ///
-/// # Parametres
-/// - `candidates` : souvenirs deja tries par similarite textuelle
-/// - `current_chemistry` : etat chimique courant de Saphire
-/// - `text_weight` : poids de la similarite textuelle (defaut 0.8)
-/// - `chem_weight` : poids de la similarite chimique (defaut 0.2)
+/// # Parameters
+/// - `candidates`: memories already sorted by textual similarity
+/// - `current_chemistry`: Saphire's current chemical state
+/// - `text_weight`: weight of textual similarity (default 0.8)
+/// - `chem_weight`: weight of chemical similarity (default 0.2)
 pub fn recall_with_chemical_context(
     candidates: &mut [MemoryRecord],
     current_chemistry: &NeuroChemicalState,
@@ -75,21 +73,21 @@ pub fn recall_with_chemical_context(
     let current_sig = ChemicalSignature::from(current_chemistry);
     let now = chrono::Utc::now();
 
-    // Recalculer le score comme mix texte + chimie + recence
+    // Recompute the score as a mix of text + chemistry + recency
     for mem in candidates.iter_mut() {
         let chem_sim = mem.chemical_signature
             .as_ref()
             .map(|sig| sig.similarity(&current_sig))
             .unwrap_or(0.5);
 
-        // Ponderation temporelle : bonus pour les souvenirs recents
-        // Decroissance exponentielle : recency = e^(-age_days / 30)
-        // Un souvenir de 0 jours = 1.0, 30 jours = 0.37, 90 jours = 0.05
+        // Temporal weighting: bonus for recent memories
+        // Exponential decay: recency = e^(-age_days / 30)
+        // A 0-day-old memory = 1.0, 30 days = 0.37, 90 days = 0.05
         let age_days = (now - mem.created_at).num_hours() as f64 / 24.0;
         let recency = (-age_days / 30.0).exp();
 
-        // Score final : 70% texte + 15% chimie + 15% recence
-        // (ajuste les poids pour integrer la recence sans casser le ratio)
+        // Final score: 70% text + 15% chemistry + 15% recency
+        // (adjusts weights to integrate recency without breaking the ratio)
         let recency_weight = 0.15;
         let adjusted_text = text_weight * (1.0 - recency_weight);
         let adjusted_chem = chem_weight * (1.0 - recency_weight);
@@ -97,6 +95,6 @@ pub fn recall_with_chemical_context(
             + chem_sim * adjusted_chem
             + recency * recency_weight;
     }
-    // Re-trier par score final decroissant
+    // Re-sort by descending final score
     candidates.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity).unwrap_or(std::cmp::Ordering::Equal));
 }

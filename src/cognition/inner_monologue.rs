@@ -1,51 +1,51 @@
 // =============================================================================
-// inner_monologue.rs — Monologue interieur structure
+// inner_monologue.rs — Structured inner monologue
 // =============================================================================
 //
-// Chaine de pensees avec coherence et continuite. Chaque pensee est un
-// maillon (MonologueLink) relie au precedent par un type de lien :
-//   - "suite"       : continusite thematique (chevauchement lexical > 15%)
-//   - "contraste"   : opposition ou contradiction ("mais", "cependant")
-//   - "question"    : interrogation (presence de "?")
-//   - "resolution"  : conclusion ou deduction ("donc", "alors", "ainsi")
-//   - "tangente"    : rupture thematique (chevauchement lexical < 15%)
+// Chain of thoughts with coherence and continuity. Each thought is a
+// link (MonologueLink) connected to the previous one by a link type:
+//  - "suite": thematic continuity (lexical overlap > 15%)
+//  - "contraste": opposition or contradiction ("mais", "cependant")
+//  - "question": interrogation (presence of "?")
+//  - "resolution": conclusion or deduction ("donc", "alors", "ainsi")
+//  - "tangente": thematic break (lexical overlap < 15%)
 //
-// La coherence de la chaine influence la chimie :
-//   - Rupture thematique → cortisol + (inconfort cognitif)
-//   - Continuite fluide   → dopamine + (satisfaction cognitive)
+// The chain's coherence influences chemistry:
+//  - Thematic break -> cortisol + (cognitive discomfort)
+//  - Fluid continuity -> dopamine + (cognitive satisfaction)
 //
-// Dependances :
-//   - std::collections::{VecDeque, HashSet} : chaine glissante, mots uniques
-//   - serde : serialisation de la config (TOML)
-//   - serde_json : export JSON pour l'API et le WebSocket
-//   - crate::world::ChemistryAdjustment : influence chimique
+// Dependencies:
+//  - std::collections::{VecDeque, HashSet}: sliding chain, unique words
+//  - serde: config serialization (TOML)
+//  - serde_json: JSON export for the API and WebSocket
+//  - crate::world::ChemistryAdjustment: chemical influence
 //
-// Place dans l'architecture :
-//   Module de premier niveau. Appele par le pipeline cognitif apres
-//   chaque pensee pour maintenir le fil conducteur du raisonnement.
+// Place in architecture:
+//  Top-level module. Called by the cognitive pipeline after
+//  each thought to maintain the reasoning thread.
 // =============================================================================
 
 use std::collections::{VecDeque, HashSet};
 use serde::{Deserialize, Serialize};
 use crate::world::ChemistryAdjustment;
 
-// --- Fonctions de valeurs par defaut pour serde ---
+// --- Default value functions for serde ---
 
 fn default_true() -> bool { true }
 fn default_chain_capacity() -> usize { 7 }
 fn default_min_coherence_threshold() -> f64 { 0.3 }
 
-/// Configuration du monologue interieur.
-/// Chargee depuis le fichier TOML principal.
+/// Inner monologue configuration.
+/// Loaded from the main TOML configuration file.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InnerMonologueConfig {
-    /// Active ou desactive le monologue interieur
+    /// Enables or disables the inner monologue
     #[serde(default = "default_true")]
     pub enabled: bool,
-    /// Capacite de la chaine de pensees (nombre maximal de maillons)
+    /// Thought chain capacity (maximum number of links)
     #[serde(default = "default_chain_capacity")]
     pub chain_capacity: usize,
-    /// Seuil minimal de coherence pour considerer un lien comme "suite"
+    /// Minimum coherence threshold to consider a link as "suite"
     #[serde(default = "default_min_coherence_threshold")]
     pub min_coherence_threshold: f64,
 }
@@ -60,54 +60,54 @@ impl Default for InnerMonologueConfig {
     }
 }
 
-/// Un maillon de la chaine de pensees.
-/// Represente une pensee unique avec son contexte et son lien au precedent.
+/// A link in the thought chain.
+/// Represents a single thought with its context and link to the previous one.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MonologueLink {
-    /// Identifiant unique du maillon
+    /// Unique link identifier
     pub id: u64,
-    /// Contenu complet de la pensee
+    /// Complete thought content
     pub content: String,
-    /// Resume court (60 premiers caracteres)
+    /// Short summary (first 60 characters)
     pub summary: String,
-    /// Emotion dominante au moment de cette pensee
+    /// Dominant emotion at the time of this thought
     pub emotion: String,
-    /// Type de pensee (reflexion, analyse, question, etc.)
+    /// Thought type (reflection, analysis, question, etc.)
     pub thought_type: String,
-    /// Type de lien avec le maillon precedent
+    /// Link type with the previous link
     /// ("suite", "contraste", "question", "resolution", "tangente")
     pub link_type: String,
-    /// Score de coherence avec le maillon precedent (0.0 a 1.0)
+    /// Coherence score with the previous link (0.0 to 1.0)
     pub coherence_score: f64,
-    /// Cycle cognitif ou cette pensee a ete formee
+    /// Cognitive cycle when this thought was formed
     pub cycle: u64,
 }
 
-/// Monologue interieur — chaine de pensees avec coherence et continuite.
-/// Maintient un fil conducteur du raisonnement et detecte les ruptures.
+/// Inner monologue — thought chain with coherence and continuity.
+/// Maintains a reasoning thread and detects breaks.
 pub struct InnerMonologue {
-    /// Module actif ou non
+    /// Module enabled or not
     pub enabled: bool,
-    /// Chaine glissante de maillons (FIFO, capacite limitee)
+    /// Sliding chain of links (FIFO, limited capacity)
     pub chain: VecDeque<MonologueLink>,
-    /// Theme du fil de pensee courant (resume du dernier maillon)
+    /// Current thought thread theme (summary of the last link)
     pub current_thread: Option<String>,
-    /// Coherence moyenne de la chaine (0.0 a 1.0)
+    /// Average chain coherence (0.0 to 1.0)
     pub chain_coherence: f64,
-    /// Nombre total de ruptures thematiques detectees
+    /// Total number of detected thematic breaks
     pub rupture_count: u64,
-    /// Nombre total de maillons ajoutes depuis le debut
+    /// Total number of links added since the beginning
     pub total_links: u64,
-    /// Capacite maximale de la chaine
+    /// Maximum chain capacity
     capacity: usize,
-    /// Seuil de coherence
+    /// Coherence threshold
     min_coherence_threshold: f64,
-    /// Prochain identifiant de maillon
+    /// Next link identifier
     next_id: u64,
 }
 
 impl InnerMonologue {
-    /// Cree un nouveau monologue interieur a partir de la configuration.
+    /// Creates a new inner monologue from the configuration.
     pub fn new(config: &InnerMonologueConfig) -> Self {
         Self {
             enabled: config.enabled,
@@ -122,24 +122,24 @@ impl InnerMonologue {
         }
     }
 
-    /// Purge la chaine du monologue interieur (anti-stagnation).
-    /// Reinitialise le fil conducteur pour forcer un nouveau depart thematique.
+    /// Purges the inner monologue chain (anti-stagnation).
+    /// Resets the thread to force a new thematic start.
     pub fn clear(&mut self) {
         self.chain.clear();
         self.current_thread = None;
         self.chain_coherence = 0.0;
     }
 
-    /// Ajoute un nouveau maillon a la chaine de pensees.
+    /// Adds a new link to the thought chain.
     ///
-    /// Parametres :
-    ///   - content : contenu de la pensee
-    ///   - emotion : emotion dominante au moment de la pensee
-    ///   - thought_type : type de pensee (reflexion, analyse, etc.)
-    ///   - coherence_score : score de coherence calcule en amont (0.0 a 1.0)
-    ///   - cycle : numero du cycle cognitif courant
+    /// Parameters:
+    ///  - content: thought content
+    ///  - emotion: dominant emotion at the time of the thought
+    ///  - thought_type: thought type (reflection, analysis, etc.)
+    ///  - coherence_score: coherence score computed upstream (0.0 to 1.0)
+    ///  - cycle: current cognitive cycle number
     ///
-    /// Le type de lien est detecte automatiquement par analyse du contenu.
+    /// The link type is automatically detected by analyzing the content.
     pub fn add_link(
         &mut self,
         content: &str,
@@ -152,19 +152,19 @@ impl InnerMonologue {
             return;
         }
 
-        // Detecter le type de lien avec le maillon precedent
+        // Detect the link type with the previous link
         let link_type = self.detect_link_type(content, coherence_score);
 
-        // Detecter les ruptures thematiques
+        // Detect thematic breaks
         if link_type == "tangente" {
             self.rupture_count += 1;
         }
 
-        // Generer le resume (60 premiers caracteres)
+        // Generate the summary (first 60 characters)
         let summary = if content.len() <= 60 {
             content.to_string()
         } else {
-            // Couper proprement sur une frontiere de caractere
+            // Cut properly on a character boundary
             let truncated: String = content.chars().take(60).collect();
             format!("{}...", truncated)
         };
@@ -180,7 +180,7 @@ impl InnerMonologue {
             cycle,
         };
 
-        // Maintenir la capacite de la chaine
+        // Maintain chain capacity
         if self.chain.len() >= self.capacity {
             self.chain.pop_front();
         }
@@ -190,14 +190,14 @@ impl InnerMonologue {
         self.next_id += 1;
         self.total_links += 1;
 
-        // Recalculer la coherence moyenne de la chaine
+        // Recalculate the average chain coherence
         self.update_chain_coherence();
     }
 
-    /// Construit un indice de continuation pour le prompt LLM.
-    /// Rappelle le dernier fil de pensee pour maintenir la coherence.
+    /// Builds a continuation hint for the LLM prompt.
+    /// Reminds of the last thought thread to maintain coherence.
     ///
-    /// Format : "Tu pensais a [resume]..."
+    /// Format: "Tu pensais a [summary]..."
     pub fn build_continuation_hint(&self) -> String {
         match self.chain.back() {
             Some(last) => {
@@ -223,23 +223,22 @@ impl InnerMonologue {
         }
     }
 
-    /// Detecte si un nouveau contenu constitue une rupture thematique.
-    /// Retourne true si le chevauchement lexical est inferieur a 15%.
+    /// Detects whether new content constitutes a thematic break.
+    /// Returns true if the lexical overlap is less than 15%.
     pub fn detect_rupture(&self, new_content: &str) -> bool {
         match self.chain.back() {
             Some(last) => {
                 let overlap = Self::lexical_overlap(&last.content, new_content);
                 overlap < 0.15
             }
-            None => false, // Pas de rupture possible sans precedent
-        }
+            None => false, // No break possible without a predecessor        }
     }
 
-    /// Retourne l'ajustement chimique base sur l'etat du monologue.
+    /// Returns the chemical adjustment based on the monologue state.
     ///
-    /// - Rupture recente → cortisol + (inconfort cognitif, pensee fragmentee)
-    /// - Continuite fluide → dopamine + (satisfaction de la coherence)
-    /// - Coherence elevee → serotonine + (stabilite mentale)
+    /// - Recent break -> cortisol + (cognitive discomfort, fragmented thought)
+    /// - Fluid continuity -> dopamine + (coherence satisfaction)
+    /// - High coherence -> serotonin + (mental stability)
     pub fn chemistry_influence(&self) -> ChemistryAdjustment {
         let mut adj = ChemistryAdjustment::default();
 
@@ -247,27 +246,27 @@ impl InnerMonologue {
             return adj;
         }
 
-        // Verifier le dernier maillon pour une rupture recente
+        // Check the last link for a recent break
         if let Some(last) = self.chain.back() {
             if last.link_type == "tangente" {
-                // Rupture thematique → inconfort cognitif
+                // Thematic break -> cognitive discomfort
                 adj.cortisol += 0.03;
                 adj.noradrenaline += 0.01;
             } else {
-                // Continuite → satisfaction cognitive
+                // Continuity -> cognitive satisfaction
                 adj.dopamine += 0.02;
             }
         }
 
-        // Coherence globale de la chaine → stabilite mentale
+        // Overall chain coherence -> mental stability
         if self.chain_coherence > 0.6 {
             adj.serotonin += 0.01;
         } else if self.chain_coherence < 0.3 && self.chain.len() > 2 {
-            // Pensee tres fragmentee → stress supplementaire
+            // Very fragmented thought -> additional stress
             adj.cortisol += 0.01;
         }
 
-        // Longue chaine sans rupture → etat de flow leger
+        // Long chain without break -> light flow state
         if self.chain.len() >= 5 && self.rupture_count == 0 {
             adj.endorphin += 0.01;
         }
@@ -275,7 +274,7 @@ impl InnerMonologue {
         adj
     }
 
-    /// Genere une description textuelle du monologue pour le prompt substrat.
+    /// Generates a textual description of the monologue for the substrate prompt.
     pub fn describe_for_prompt(&self) -> String {
         if !self.enabled || self.chain.is_empty() {
             return "Monologue interieur : aucune pensee en cours.".into();
@@ -308,7 +307,7 @@ impl InnerMonologue {
         )
     }
 
-    /// Serialise l'etat complet en JSON pour l'API et le WebSocket.
+    /// Serializes the complete state to JSON for the API and WebSocket.
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::json!({
             "enabled": self.enabled,
@@ -331,15 +330,14 @@ impl InnerMonologue {
     }
 
     // =========================================================================
-    // Methodes privees
+    // Private methods
     // =========================================================================
-
-    /// Detecte le type de lien entre le contenu actuel et le maillon precedent.
-    /// Analyse les mots-cles et le chevauchement lexical.
+    /// Detects the link type between the current content and the previous link.
+    /// Analyzes keywords and lexical overlap.
     fn detect_link_type(&self, content: &str, coherence_score: f64) -> String {
         let content_lower = content.to_lowercase();
 
-        // Mots-cles de contraste
+        // Contrast keywords
         if content_lower.contains("mais")
             || content_lower.contains("cependant")
             || content_lower.contains("toutefois")
@@ -367,7 +365,7 @@ impl InnerMonologue {
             return "resolution".into();
         }
 
-        // Chevauchement lexical pour suite vs tangente
+        // Lexical overlap for suite vs tangente
         if let Some(last) = self.chain.back() {
             let overlap = Self::lexical_overlap(&last.content, content);
             if overlap >= 0.15 || coherence_score >= self.min_coherence_threshold {
@@ -377,13 +375,13 @@ impl InnerMonologue {
             }
         }
 
-        // Premier maillon — pas de lien precedent
+        // First link — no previous link
         "suite".into()
     }
 
-    /// Calcule le chevauchement lexical entre deux textes.
-    /// Retourne un ratio entre 0.0 (aucun mot commun) et 1.0 (identique).
-    /// Utilise l'indice de Jaccard (intersection / union) sur les mots.
+    /// Computes the lexical overlap between two texts.
+    /// Returns a ratio between 0.0 (no common word) and 1.0 (identical).
+    /// Uses the Jaccard index (intersection / union) on words.
     fn lexical_overlap(text_a: &str, text_b: &str) -> f64 {
         let owned_a: HashSet<String> = text_a
             .split_whitespace()
@@ -408,7 +406,7 @@ impl InnerMonologue {
         }
     }
 
-    /// Met a jour la coherence moyenne de la chaine.
+    /// Updates the average chain coherence.
     fn update_chain_coherence(&mut self) {
         if self.chain.is_empty() {
             self.chain_coherence = 0.0;
@@ -472,8 +470,8 @@ mod tests {
                 i,
             );
         }
-        assert_eq!(mono.chain.len(), 3, "La chaine ne doit pas depasser la capacite");
-        assert_eq!(mono.total_links, 5, "Le compteur total doit inclure tous les maillons");
+        assert_eq!(mono.chain.len(), 3, "The chain must not exceed capacity");
+        assert_eq!(mono.total_links, 5, "The total counter must include all links");
     }
 
     #[test]
@@ -557,13 +555,13 @@ mod tests {
             "le chat mange la souris",
             "la souris fuit le chat",
         );
-        assert!(overlap > 0.5, "Beaucoup de mots communs, overlap={:.2}", overlap);
+        assert!(overlap > 0.5, "Many common words, overlap={:.2}", overlap);
 
         let overlap_zero = InnerMonologue::lexical_overlap(
             "photosynthese chlorophylle plante",
             "voiture moteur diesel",
         );
-        assert!(overlap_zero < 0.01, "Aucun mot commun, overlap={:.2}", overlap_zero);
+        assert!(overlap_zero < 0.01, "No common words, overlap={:.2}", overlap_zero);
     }
 
     #[test]
@@ -590,7 +588,7 @@ mod tests {
             2,
         );
         let adj = mono.chemistry_influence();
-        assert!(adj.cortisol > 0.0, "Une rupture devrait augmenter le cortisol");
+        assert!(adj.cortisol > 0.0, "A break should increase cortisol");
     }
 
     #[test]
@@ -611,14 +609,14 @@ mod tests {
             2,
         );
         let adj = mono.chemistry_influence();
-        assert!(adj.dopamine > 0.0, "La continuite devrait augmenter la dopamine");
+        assert!(adj.dopamine > 0.0, "Continuity should increase dopamine");
     }
 
     #[test]
     fn test_build_continuation_hint_empty() {
         let mono = default_monologue();
         let hint = mono.build_continuation_hint();
-        assert!(hint.contains("Aucune pensee"), "Devrait indiquer l'absence de pensees");
+        assert!(hint.contains("Aucune pensee"), "Should indicate the absence of thoughts");
     }
 
     #[test]
@@ -626,7 +624,7 @@ mod tests {
         let mut mono = default_monologue();
         mono.add_link("Je reflechis au sens de la vie", "curiosite", "reflexion", 0.7, 1);
         let hint = mono.build_continuation_hint();
-        assert!(hint.contains("Tu pensais a"), "Devrait contenir le rappel de pensee");
+        assert!(hint.contains("Tu pensais a"), "Should contain the thought reminder");
     }
 
     #[test]
@@ -672,8 +670,8 @@ mod tests {
         let long_content = "Ceci est un texte volontairement tres long pour verifier que le resume est bien tronque a soixante caracteres maximum avec des points de suspension";
         mono.add_link(long_content, "neutre", "reflexion", 0.5, 1);
         let link = mono.chain.back().unwrap();
-        assert!(link.summary.len() <= 70, "Le resume devrait etre tronque (len={})", link.summary.len());
-        assert!(link.summary.ends_with("..."), "Le resume tronque devrait finir par '...'");
+        assert!(link.summary.len() <= 70, "The summary should be truncated (len={})", link.summary.len());
+        assert!(link.summary.ends_with("..."), "The truncated summary should end with '...'");
     }
 
     #[test]
@@ -690,7 +688,7 @@ mod tests {
         let mut mono = default_monologue();
         mono.add_link("Premiere pensee", "neutre", "reflexion", 0.4, 1);
         mono.add_link("Deuxieme pensee en suite", "neutre", "reflexion", 0.8, 2);
-        // La coherence moyenne devrait etre (0.4 + 0.8) / 2 = 0.6
+        // Average coherence should be (0.4 + 0.8) / 2 = 0.6
         assert!((mono.chain_coherence - 0.6).abs() < 0.01);
     }
 }

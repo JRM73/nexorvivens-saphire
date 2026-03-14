@@ -1,13 +1,13 @@
 // =============================================================================
-// db/thoughts.rs — Journal des pensees autonomes
+// db/thoughts.rs — Autonomous thought journal
 // =============================================================================
 
 use super::{SaphireDb, DbError};
 
 impl SaphireDb {
-    /// Enregistre une pensee dans le journal.
-    /// Chaque pensee autonome de l'agent est consignee avec son type,
-    /// son contenu, l'emotion ressentie et les metriques de conscience.
+    /// Records a thought in the journal.
+    /// Each autonomous thought of the agent is logged with its type,
+    /// content, felt emotion, and consciousness metrics.
     #[allow(clippy::too_many_arguments)]
     pub async fn log_thought(
         &self,
@@ -30,7 +30,7 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Compte les occurrences d'un type de pensee dans l'historique.
+    /// Counts occurrences of a thought type in the history.
     pub async fn count_thought_type_occurrences(&self, thought_type: &str) -> Result<i64, DbError> {
         let client = self.pool.get().await?;
         let row = client.query_one(

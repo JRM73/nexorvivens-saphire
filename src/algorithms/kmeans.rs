@@ -1,47 +1,47 @@
 // =============================================================================
-// kmeans.rs — K-Means clustering (partitionnement en K clusters)
+// kmeans.rs — K-Means clustering (partitioning into K clusters)
 // =============================================================================
 //
-// Rôle : Implémente l'algorithme K-Means, un algorithme d'apprentissage non
-//        supervisé qui partitionne un ensemble de points en K groupes (clusters)
-//        en minimisant la distance intra-cluster.
+// Role: Implements the K-Means algorithm, an unsupervised learning algorithm
+//  that partitions a set of points into K groups (clusters) by minimizing
+//  intra-cluster distance.
 //
-// Dépendances :
-//   - rand : génération de nombres aléatoires pour l'initialisation des centroïdes
+// Dependencies:
+//  - rand: random number generation for centroid initialization
 //
-// Place dans l'architecture :
-//   Utilisé par Saphire pour organiser ses souvenirs en catégories
-//   émotionnelles, regrouper des expériences similaires, et structurer
-//   sa mémoire vectorielle. Fait partie du sous-module algorithms/.
+// Place in architecture:
+//  Used by Saphire to organize its memories into emotional categories,
+//  group similar experiences, and structure its vector memory. Part of the
+//  algorithms/ submodule.
 // =============================================================================
 
 use rand::Rng;
 
-/// Effectue le clustering K-Means sur un ensemble de points multidimensionnels.
+/// Performs K-Means clustering on a set of multidimensional points.
 ///
-/// L'algorithme K-Means fonctionne en trois étapes itératives :
-///   1. Initialisation aléatoire de K centroïdes parmi les points existants
-///   2. Assignation de chaque point au centroïde le plus proche (distance euclidienne)
-///   3. Recalcul des centroïdes comme moyenne de leurs membres
-///      Les étapes 2 et 3 sont répétées jusqu'à convergence ou max_iter atteint.
+/// The K-Means algorithm works in three iterative steps:
+///  1. Random initialization of K centroids from existing points
+///  2. Assignment of each point to the nearest centroid (Euclidean distance)
+///  3. Recomputation of centroids as the mean of their members
+///  Steps 2 and 3 are repeated until convergence or max_iter is reached.
 ///
-/// Paramètre `data` : ensemble de points, chaque point est un vecteur de f64
-/// Paramètre `k` : nombre de clusters souhaité
-/// Paramètre `max_iter` : nombre maximum d'itérations de l'algorithme
-/// Retourne : vecteur de labels (indice du cluster assigné) pour chaque point
+/// Parameter `data`: set of points, each point is a Vec<f64>
+/// Parameter `k`: desired number of clusters
+/// Parameter `max_iter`: maximum number of algorithm iterations
+/// Returns: vector of labels (assigned cluster index) for each point
 pub fn kmeans(data: &[Vec<f64>], k: usize, max_iter: usize) -> Vec<usize> {
-    // Gestion des cas limites : données vides ou k nul
+    // Handle edge cases: empty data or zero k
     if data.is_empty() || k == 0 {
         return vec![];
     }
     let n = data.len();
     let dim = data[0].len();
-    // On ne peut pas avoir plus de clusters que de points
+    // Cannot have more clusters than data points
     let k = k.min(n);
 
-    // 1. Initialiser K centroïdes en sélectionnant aléatoirement K points distincts
-    //    Pourquoi des points distincts : éviter les centroïdes dupliqués qui
-    //    produiraient des clusters vides dès le départ
+    // 1. Initialize K centroids by randomly selecting K distinct points
+    //  Why distinct points: to avoid duplicate centroids that would
+    //  produce empty clusters from the start
     let mut rng = rand::thread_rng();
     let mut centroids: Vec<Vec<f64>> = Vec::with_capacity(k);
     let mut used = std::collections::HashSet::new();
@@ -52,40 +52,40 @@ pub fn kmeans(data: &[Vec<f64>], k: usize, max_iter: usize) -> Vec<usize> {
         }
     }
 
-    // Vecteur de labels : labels[i] = indice du cluster assigné au point i
+    // Label vector: labels[i] = index of the cluster assigned to point i
     let mut labels = vec![0usize; n];
 
     for _ in 0..max_iter {
-        // 2. Assigner chaque point au centroïde le plus proche (distance euclidienne)
+        // 2. Assign each point to the nearest centroid (Euclidean distance)
         let mut changed = false;
         for (i, point) in data.iter().enumerate() {
-            // Trouver le centroïde le plus proche
+            // Find the nearest centroid
             let nearest = centroids.iter().enumerate()
                 .map(|(j, c)| (j, euclidean_dist(point, c)))
                 .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
                 .map(|(j, _)| j)
                 .unwrap_or(0);
-            // Détecter si l'assignation a changé (critère d'arrêt)
+            // Detect if the assignment changed (stopping criterion)
             if labels[i] != nearest {
                 labels[i] = nearest;
                 changed = true;
             }
         }
 
-        // Si aucune assignation n'a changé, l'algorithme a convergé
+        // If no assignment changed, the algorithm has converged
         if !changed { break; }
 
-        // 3. Recalculer les centroïdes comme la moyenne des points de chaque cluster
+        // 3. Recompute centroids as the mean of each cluster's points
         for (j, centroid) in centroids.iter_mut().enumerate().take(k) {
-            // Collecter les points appartenant au cluster j
+            // Collect points belonging to cluster j
             let members: Vec<&Vec<f64>> = data.iter().enumerate()
                 .filter(|(i, _)| labels[*i] == j)
                 .map(|(_, p)| p)
                 .collect();
-            // Si le cluster est vide, on garde l'ancien centroide
+            // If the cluster is empty, keep the old centroid
             if members.is_empty() { continue; }
             let count = members.len() as f64;
-            // Nouveau centroide = moyenne des coordonnees de chaque dimension
+            // New centroid = mean of coordinates in each dimension
             *centroid = (0..dim)
                 .map(|d| members.iter().map(|p| p[d]).sum::<f64>() / count)
                 .collect();
@@ -95,13 +95,13 @@ pub fn kmeans(data: &[Vec<f64>], k: usize, max_iter: usize) -> Vec<usize> {
     labels
 }
 
-/// Calcule la distance euclidienne entre deux vecteurs de même dimension.
+/// Computes the Euclidean distance between two vectors of the same dimension.
 ///
-/// Formule : sqrt(sum((ai - bi)^2))
+/// Formula: sqrt(sum((ai - bi)^2))
 ///
-/// Paramètre `a` : premier vecteur
-/// Paramètre `b` : second vecteur
-/// Retourne : la distance euclidienne entre a et b
+/// Parameter `a`: first vector
+/// Parameter `b`: second vector
+/// Returns: the Euclidean distance between a and b
 fn euclidean_dist(a: &[f64], b: &[f64]) -> f64 {
     a.iter().zip(b.iter()).map(|(x, y)| (x - y).powi(2)).sum::<f64>().sqrt()
 }

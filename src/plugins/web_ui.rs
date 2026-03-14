@@ -1,29 +1,29 @@
 // =============================================================================
-// web_ui.rs — Plugin interface web (axum + WebSocket)
+// web_ui.rs — Web interface plugin (axum + WebSocket)
 //
-// Role : Ce plugin gere la communication avec l'interface web via WebSocket.
-// A chaque evenement du cerveau, il serialise l'evenement en JSON et
-// demande sa diffusion a tous les clients WebSocket connectes.
+// Role: This plugin manages communication with the web interface via WebSocket.
+// At each brain event, it serializes the event to JSON and
+// requests its broadcast to all connected WebSocket clients.
 //
-// Dependances :
-//   - super : trait Plugin, BrainEvent, PluginAction (systeme de plugins)
-//   - serde_json : serialisation des evenements en JSON
+// Dependencies:
+//   - super: Plugin trait, BrainEvent, PluginAction (plugin system)
+//   - serde_json: event serialization to JSON
 //
-// Place dans l'architecture :
-//   Ce plugin est enregistre dans le PluginManager au demarrage.
-//   Il fait le pont entre le coeur cognitif (evenements internes) et
-//   l'interface utilisateur web (affichage en temps reel).
-//   La diffusion WebSocket est geree par le serveur axum dans main.rs.
+// Place in architecture:
+//   This plugin is registered in the PluginManager at startup.
+//   It bridges the cognitive core (internal events) and
+//   the web user interface (real-time display).
+//   WebSocket broadcasting is handled by the axum server in main.rs.
 // =============================================================================
 
 use super::{Plugin, BrainEvent, PluginAction};
 
-/// Plugin Web UI (Interface Utilisateur Web).
-/// Reagit a chaque evenement du cerveau en le serialisant en JSON
-/// et en demandant sa diffusion via WebSocket.
+/// Web UI plugin.
+/// Reacts to each brain event by serializing it to JSON
+/// and requesting its broadcast via WebSocket.
 pub struct WebUiPlugin {
-    /// Dernier etat serialise en JSON, conserve pour pouvoir le renvoyer
-    /// aux nouveaux clients qui se connectent (rattrapage d'etat).
+    /// Last state serialized to JSON, kept to be able to send it
+    /// to newly connecting clients (state catch-up).
     last_state_json: String,
 }
 
@@ -34,43 +34,43 @@ impl Default for WebUiPlugin {
 }
 
 impl WebUiPlugin {
-    /// Cree un nouveau plugin WebUI avec un etat initial vide.
+    /// Creates a new WebUI plugin with an empty initial state.
     pub fn new() -> Self {
         Self {
             last_state_json: "{}".into(),
         }
     }
 
-    /// Retourne le dernier etat serialise en JSON.
-    /// Utilise pour envoyer l'etat actuel aux clients qui viennent de se connecter.
+    /// Returns the last state serialized to JSON.
+    /// Used to send the current state to clients that just connected.
     ///
-    /// # Retour
-    /// Reference vers la chaine JSON du dernier etat
+    /// # Returns
+    /// Reference to the JSON string of the last state
     pub fn last_state(&self) -> &str {
         &self.last_state_json
     }
 }
 
 impl Plugin for WebUiPlugin {
-    /// Retourne le nom du plugin.
+    /// Returns the plugin name.
     fn name(&self) -> &str {
         "WebUI"
     }
 
-    /// Reagit a un evenement du cerveau :
-    ///   1. Serialise l'evenement en JSON
-    ///   2. Conserve le JSON comme dernier etat
-    ///   3. Retourne une action WebSocketBroadcast pour diffuser le JSON
+    /// Reacts to a brain event:
+    ///   1. Serializes the event to JSON
+    ///   2. Keeps the JSON as the last state
+    ///   3. Returns a WebSocketBroadcast action to broadcast the JSON
     ///
-    /// Si la serialisation echoue, aucune action n'est renvoyee.
+    /// If serialization fails, no action is returned.
     ///
-    /// # Parametres
-    /// - `event` : l'evenement du cerveau a diffuser
+    /// # Parameters
+    /// - `event`: the brain event to broadcast
     ///
-    /// # Retour
-    /// Un vecteur contenant une action WebSocketBroadcast, ou vide en cas d'erreur
+    /// # Returns
+    /// A vector containing a WebSocketBroadcast action, or empty on error
     fn on_event(&mut self, event: &BrainEvent) -> Vec<PluginAction> {
-        // Serialiser l'evenement en JSON pour le transport WebSocket
+        // Serialize the event to JSON for WebSocket transport
         if let Ok(json) = serde_json::to_string(event) {
             self.last_state_json = json.clone();
             vec![PluginAction::WebSocketBroadcast { data: json }]

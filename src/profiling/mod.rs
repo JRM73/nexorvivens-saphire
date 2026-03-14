@@ -1,28 +1,28 @@
 // =============================================================================
-// profiling/mod.rs — Profilage psychologique dynamique base sur le modele
-//                    Big Five OCEAN (Openness / Conscientiousness / Extraversion /
+// profiling/mod.rs — Dynamic psychological profiling based on the Big Five
+//                    OCEAN model (Openness / Conscientiousness / Extraversion /
 //                    Agreeableness / Neuroticism)
 //
-// Role : Point d'entree du module de profilage. Expose les sous-modules et les
-//        structures de configuration pour le systeme de profilage psychologique
-//        bidirectionnel de Saphire :
-//          - Auto-profilage (self_profiler) : Saphire observe ses propres cycles
-//            cognitifs pour construire son profil OCEAN
-//          - Profilage humain (human_profiler) : Saphire analyse les messages de
-//            l'interlocuteur pour estimer son profil OCEAN
-//          - Adaptation (adaptation) : genere des instructions de style basees sur
-//            le profil de l'humain pour adapter les reponses
-//          - Narratif (narrative) : genere une description textuelle du profil OCEAN
+// Role: Entry point for the profiling module. Exposes sub-modules and
+//       configuration structures for Saphire's bidirectional psychological
+//       profiling system:
+//         - Self-profiling (self_profiler): Saphire observes her own cognitive
+//           cycles to build her OCEAN profile
+//         - Human profiling (human_profiler): Saphire analyzes the interlocutor's
+//           messages to estimate their OCEAN profile
+//         - Adaptation (adaptation): generates style instructions based on
+//           the human's profile to adapt responses
+//         - Narrative (narrative): generates a textual description of the OCEAN profile
 //
-// Dependances :
-//   - serde : serialisation/deserialisation de la configuration
-//   - Sous-modules : ocean, self_profiler, human_profiler, adaptation, narrative
+// Dependencies:
+//   - serde: serialization/deserialization of configuration
+//   - Sub-modules: ocean, self_profiler, human_profiler, adaptation, narrative
 //
-// Place dans l'architecture :
-//   Le profilage est un composant transversal du systeme cognitif de Saphire.
-//   Il est alimente par les resultats NLP (pour le profilage humain) et par les
-//   observations des cycles cognitifs (pour l'auto-profilage). Les profils produits
-//   influencent la generation de reponses via le module d'adaptation.
+// Place in architecture:
+//   Profiling is a cross-cutting component of Saphire's cognitive system.
+//   It is fed by NLP results (for human profiling) and by cognitive cycle
+//   observations (for self-profiling). The resulting profiles influence
+//   response generation via the adaptation module.
 // =============================================================================
 
 pub mod ocean;
@@ -37,38 +37,38 @@ pub use ocean::OceanProfile;
 pub use self_profiler::{SelfProfiler, BehaviorObservation};
 pub use human_profiler::{HumanProfiler, HumanProfile, CommunicationStyle};
 
-/// Configuration du systeme de profilage psychologique.
+/// Configuration of the psychological profiling system.
 ///
-/// Controle les parametres de fonctionnement du profilage pour l'auto-profil
-/// de Saphire et le profil des interlocuteurs humains.
+/// Controls the operating parameters of profiling for Saphire's self-profile
+/// and the profiles of human interlocutors.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProfilingConfig {
-    /// Active ou desactive l'ensemble du systeme de profilage
+    /// Enables or disables the entire profiling system
     pub enabled: bool,
-    /// Active l'auto-profilage (Saphire observe ses propres comportements)
+    /// Enables self-profiling (Saphire observes her own behaviors)
     pub self_profiling: bool,
-    /// Active le profilage des interlocuteurs humains
+    /// Enables profiling of human interlocutors
     pub human_profiling: bool,
-    /// Nombre de cycles cognitifs entre chaque recalcul du profil OCEAN.
-    /// Plus la valeur est basse, plus le profil est reactif aux changements.
+    /// Number of cognitive cycles between each OCEAN profile recalculation.
+    /// The lower the value, the more reactive the profile is to changes.
     pub recompute_interval_cycles: u64,
-    /// Taille maximale du tampon d'observations comportementales.
-    /// Quand le tampon est plein, un recalcul est automatiquement declenche.
+    /// Maximum size of the behavioral observation buffer.
+    /// When the buffer is full, a recalculation is automatically triggered.
     pub observation_buffer_size: usize,
-    /// Taux de melange entre l'ancien et le nouveau profil lors du recalcul.
-    /// 0.3 signifie 30% nouveau + 70% ancien, ce qui lisse les fluctuations.
+    /// Blend rate between old and new profile during recalculation.
+    /// 0.3 means 30% new + 70% old, which smooths fluctuations.
     pub profile_blend_rate: f64,
-    /// Nombre maximal d'instantanes historiques du profil a conserver.
-    /// Permet de suivre l'evolution du profil dans le temps.
+    /// Maximum number of historical profile snapshots to keep.
+    /// Allows tracking profile evolution over time.
     pub history_snapshots: usize,
 }
 
 impl Default for ProfilingConfig {
-    /// Configuration par defaut du profilage.
+    /// Default profiling configuration.
     ///
-    /// Retour : une configuration avec le profilage actif, un recalcul tous les
-    ///          50 cycles, un tampon de 100 observations, un taux de melange de 30%
-    ///          et 30 instantanes historiques.
+    /// Returns: a configuration with profiling active, recalculation every
+    ///          50 cycles, a 100-observation buffer, 30% blend rate,
+    ///          and 30 historical snapshots.
     fn default() -> Self {
         Self {
             enabled: true,

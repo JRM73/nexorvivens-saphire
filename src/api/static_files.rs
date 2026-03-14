@@ -1,12 +1,11 @@
 // =============================================================================
-// api/static_files.rs — Handlers de fichiers statiques
+// api/static_files.rs — Static file handlers
 //
-// Role : Sert les fichiers HTML, CSS, JS et SVG embarques dans le binaire
-// via include_str!() pour l'interface web et le dashboard.
+// Role: Serves HTML, CSS, JS and SVG files embedded in the binary
+// via include_str!() for the web interface and dashboard.
 // =============================================================================
-
-/// Fichiers statiques embarques dans le binaire a la compilation.
-/// Cela evite de dependre de fichiers externes au moment de l'execution.
+/// Static files embedded in the binary at compile time.
+/// This avoids depending on external files at runtime.
 pub const INDEX_HTML: &str = include_str!("../../static/index.html");
 pub const STYLE_CSS: &str = include_str!("../../static/style.css");
 pub const APP_JS: &str = include_str!("../../static/app.js");
@@ -17,7 +16,7 @@ pub const BRAIN_MAP_HTML: &str = include_str!("../../static/brain-map.html");
 pub const FAVICON_SVG: &str = include_str!("../../static/favicon.svg");
 pub const I18N_JS: &str = include_str!("../../static/i18n.js");
 
-// ─── Fichiers de traduction i18n embarques ──────────────────────────────────
+// ─── Embedded i18n translation files ──────────────────────────────────
 pub const I18N_FR: &str = include_str!("../../static/i18n/fr.json");
 pub const I18N_EN: &str = include_str!("../../static/i18n/en.json");
 pub const I18N_DE: &str = include_str!("../../static/i18n/de.json");
@@ -29,52 +28,52 @@ pub const I18N_ZH: &str = include_str!("../../static/i18n/zh.json");
 pub const I18N_JA: &str = include_str!("../../static/i18n/ja.json");
 pub const I18N_AR: &str = include_str!("../../static/i18n/ar.json");
 
-/// Sert la page HTML principale de l'interface web.
+/// Serves the main HTML page of the web interface.
 pub async fn index_handler() -> axum::response::Html<&'static str> {
     axum::response::Html(INDEX_HTML)
 }
 
-/// Sert la feuille de style CSS (Cascading Style Sheets) de l'interface web.
+/// Serves the CSS stylesheet of the web interface.
 pub async fn css_handler() -> impl axum::response::IntoResponse {
     ([(axum::http::header::CONTENT_TYPE, "text/css")], STYLE_CSS)
 }
 
-/// Sert le fichier JavaScript de l'interface web.
+/// Serves the JavaScript file of the web interface.
 pub async fn js_handler() -> impl axum::response::IntoResponse {
     ([(axum::http::header::CONTENT_TYPE, "application/javascript")], APP_JS)
 }
 
-/// Sert le module JavaScript d'authentification.
+/// Serves the authentication JavaScript module.
 pub async fn auth_js_handler() -> impl axum::response::IntoResponse {
     ([(axum::http::header::CONTENT_TYPE, "application/javascript")], AUTH_JS)
 }
 
-/// Sert le favicon SVG (icone d'onglet du navigateur).
+/// Serves the SVG favicon (browser tab icon).
 pub async fn favicon_handler() -> impl axum::response::IntoResponse {
     ([(axum::http::header::CONTENT_TYPE, "image/svg+xml")], FAVICON_SVG)
 }
 
-/// Sert le module JavaScript i18n.
+/// Serves the i18n JavaScript module.
 pub async fn i18n_js_handler() -> impl axum::response::IntoResponse {
     ([(axum::http::header::CONTENT_TYPE, "application/javascript")], I18N_JS)
 }
 
-/// GET /dashboard — Sert la page HTML du dashboard de monitoring.
+/// GET /dashboard — Serves the monitoring dashboard HTML page.
 pub async fn dashboard_handler() -> axum::response::Html<&'static str> {
     axum::response::Html(DASHBOARD_HTML)
 }
 
-/// GET /pipeline-editor — Sert l'editeur visuel du pipeline cognitif.
+/// GET /pipeline-editor — Serves the visual editor for the cognitive pipeline.
 pub async fn pipeline_editor_handler() -> axum::response::Html<&'static str> {
     axum::response::Html(PIPELINE_EDITOR_HTML)
 }
 
-/// GET /brain-map — Sert la carte architecturale du cerveau (mindmap radiale).
+/// GET /brain-map — Serves the brain architecture map (radial mindmap).
 pub async fn brain_map_handler() -> axum::response::Html<&'static str> {
     axum::response::Html(BRAIN_MAP_HTML)
 }
 
-/// GET /i18n/:lang.json — Sert un fichier de traduction embarque.
+/// GET /i18n/:lang.json — Serves an embedded translation file.
 pub async fn i18n_handler(
     axum::extract::Path(lang): axum::extract::Path<String>,
 ) -> impl axum::response::IntoResponse {

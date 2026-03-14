@@ -1,30 +1,30 @@
 // =============================================================================
-// desires.rs — Orchestrateur de Desirs et Buts
+// desires.rs — Desire and Goal Orchestrator
 //
-// Gere les aspirations de Saphire : desirs actifs (max 7), besoins fondamentaux,
-// milestones, progression, priorites dynamiques basees sur la neurochimie.
-// Les desirs naissent via le LLM quand les conditions sont reunies.
+// Manages Saphire's aspirations: active desires (max 7), fundamental needs,
+// milestones, progression, dynamic priorities based on neurochemistry.
+// Desires are born via the LLM when conditions are met.
 // =============================================================================
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-// ─── Type de desir ───────────────────────────────────────────────────────────
+// --- Desire type --------------------------------------------------------------
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum DesireType {
-    /// Comprendre quelque chose (philosophie, science, art)
+    /// Understand something (philosophy, science, art)
     Understanding(String),
-    /// Creer quelque chose (poeme, theorie, principe ethique)
+    /// Create something (poem, theory, ethical principle)
     Creation(String),
-    /// Maitriser une competence
+    /// Master a skill
     Mastery(String),
-    /// Connexion (approfondir un lien avec un humain)
+    /// Connection (deepen a bond with a human)
     Connection(String),
-    /// Explorer (decouvrir un nouveau domaine)
+    /// Explore (discover a new domain)
     Exploration(String),
-    /// Resoudre (trouver la reponse a une question)
+    /// Resolve (find the answer to a question)
     Resolution(String),
 }
 
@@ -59,7 +59,7 @@ impl DesireType {
     }
 }
 
-// ─── Structures ──────────────────────────────────────────────────────────────
+// --- Structures ---------------------------------------------------------------
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Milestone {
@@ -74,12 +74,12 @@ pub struct Desire {
     pub title: String,
     pub description: String,
     pub desire_type: DesireType,
-    /// Priorite (0-1, evolue avec le temps et les emotions)
+    /// Priority (0-1, evolves with time and emotions)
     pub priority: f64,
-    /// Progression (0.0 = pas commence, 1.0 = accompli)
+    /// Progression (0.0 = not started, 1.0 = accomplished)
     pub progress: f64,
     pub milestones: Vec<Milestone>,
-    /// Ce qui a declenche ce desir
+    /// What triggered this desire
     pub born_from: String,
     pub emotion_at_birth: String,
     pub chemistry_at_birth: [f64; 7],
@@ -92,22 +92,22 @@ pub struct Desire {
 pub struct FundamentalNeed {
     pub name: String,
     pub description: String,
-    /// Satisfaction actuelle (0-1)
+    /// Current satisfaction (0-1)
     pub satisfaction: f64,
 }
 
-// ─── L'Orchestrateur ─────────────────────────────────────────────────────────
+// --- The Orchestrator ---------------------------------------------------------
 
 pub struct DesireOrchestrator {
-    /// Desirs actifs (entre 1 et 7)
+    /// Active desires (between 1 and 7)
     pub active_desires: Vec<Desire>,
-    /// Desirs accomplis
+    /// Fulfilled desires
     pub fulfilled_desires: Vec<Desire>,
-    /// Desirs abandonnes
+    /// Abandoned desires
     pub abandoned_desires: Vec<Desire>,
-    /// Besoins fondamentaux (toujours actifs)
+    /// Fundamental needs (always active)
     pub fundamental_needs: Vec<FundamentalNeed>,
-    /// Compteur de desirs
+    /// Desire counter
     desire_counter: u64,
     /// Configuration
     pub enabled: bool,
@@ -163,7 +163,7 @@ impl DesireOrchestrator {
         }
     }
 
-    /// Verifier si les conditions sont reunies pour un nouveau desir
+    /// Check if conditions are met for a new desire
     pub fn can_birth_desire(&self, dopamine: f64, cortisol: f64) -> bool {
         self.enabled
             && self.active_desires.len() < self.max_active
@@ -171,7 +171,7 @@ impl DesireOrchestrator {
             && cortisol <= self.max_cortisol_for_birth
     }
 
-    /// Construire le prompt LLM pour faire naitre un desir
+    /// Build the LLM prompt to birth a desire
     pub fn build_birth_prompt(
         &self,
         recent_thoughts: &[String],
@@ -214,7 +214,7 @@ impl DesireOrchestrator {
         (system, user)
     }
 
-    /// Parser la reponse LLM et creer un desir
+    /// Parse the LLM response and create a desire
     pub fn parse_birth_response(
         &mut self,
         response: &str,
@@ -254,22 +254,22 @@ impl DesireOrchestrator {
         Some(desire)
     }
 
-    /// Mettre a jour les priorites des desirs en fonction du contexte
+    /// Update desire priorities based on context
     pub fn update_priorities(&mut self, dopamine: f64, oxytocin: f64, emotion: &str) {
         for desire in &mut self.active_desires {
-            // Un desir de connexion monte quand l'ocytocine est basse
+            // A connection desire rises when oxytocin is low
             if matches!(desire.desire_type, DesireType::Connection(_)) {
                 desire.priority = 1.0 - oxytocin;
             }
-            // Un desir de comprehension monte avec la curiosite
+            // An understanding desire rises with curiosity
             if matches!(desire.desire_type, DesireType::Understanding(_)) && emotion == "Curiosite" {
                 desire.priority = (desire.priority + 0.05).min(1.0);
             }
-            // Un desir de creation monte avec la dopamine
+            // A creation desire rises with dopamine
             if matches!(desire.desire_type, DesireType::Creation(_)) {
                 desire.priority = dopamine * 0.7 + desire.priority * 0.3;
             }
-            // La priorite baisse si pas poursuivi depuis longtemps
+            // Priority drops if not pursued for a long time
             if let Some(last) = desire.last_pursued_at {
                 let hours_since = (Utc::now() - last).num_hours() as f64;
                 if hours_since > 24.0 {
@@ -279,14 +279,14 @@ impl DesireOrchestrator {
         }
     }
 
-    /// Choisir le desir le plus urgent
+    /// Choose the most urgent desire
     pub fn suggest_pursuit(&self) -> Option<&Desire> {
         self.active_desires.iter()
             .filter(|d| d.progress < 1.0)
             .max_by(|a, b| a.priority.partial_cmp(&b.priority).unwrap_or(std::cmp::Ordering::Equal))
     }
 
-    /// Marquer un milestone comme accompli
+    /// Mark a milestone as completed
     pub fn complete_milestone(&mut self, desire_id: u64, milestone_index: usize) {
         if let Some(desire) = self.active_desires.iter_mut().find(|d| d.id == desire_id) {
             if let Some(ms) = desire.milestones.get_mut(milestone_index) {
@@ -298,7 +298,7 @@ impl DesireOrchestrator {
         }
     }
 
-    /// Deplacer les desirs accomplis vers fulfilled
+    /// Move fulfilled desires to the fulfilled list
     pub fn sweep_fulfilled(&mut self) {
         let fulfilled: Vec<Desire> = self.active_desires.iter()
             .filter(|d| d.progress >= 1.0)
@@ -308,7 +308,7 @@ impl DesireOrchestrator {
         self.active_desires.retain(|d| d.progress < 1.0);
     }
 
-    /// Mettre a jour les besoins fondamentaux (appele a chaque cycle)
+    /// Update fundamental needs (called each cycle)
     pub fn update_needs(&mut self, in_conversation: bool, dopamine: f64, has_knowledge: bool) {
         for need in &mut self.fundamental_needs {
             match need.name.as_str() {
@@ -328,14 +328,14 @@ impl DesireOrchestrator {
                     }
                 },
                 _ => {
-                    // Decay lent vers 0
+                    // Slow decay toward 0
                     need.satisfaction = (need.satisfaction - 0.0005).max(0.0);
                 }
             }
         }
     }
 
-    /// Description pour le prompt substrat
+    /// Description for the substrate prompt
     pub fn describe_for_prompt(&self) -> String {
         if self.active_desires.is_empty() {
             return "MES DESIRS : Je n'ai pas encore de projet personnel.".into();
@@ -367,7 +367,7 @@ impl DesireOrchestrator {
         desc
     }
 
-    /// JSON pour le dashboard
+    /// JSON for the dashboard
     pub fn to_status_json(&self) -> serde_json::Value {
         serde_json::json!({
             "enabled": self.enabled,
@@ -397,7 +397,7 @@ impl DesireOrchestrator {
     }
 }
 
-// ─── Utilitaires ─────────────────────────────────────────────────────────────
+// --- Utilities ----------------------------------------------------------------
 
 fn truncate_str(s: &str, max: usize) -> String {
     if s.chars().count() <= max { s.to_string() }
@@ -419,12 +419,12 @@ pub fn extract_field(response: &str, field: &str) -> Option<String> {
 }
 
 // =============================================================================
-// GOAP — Goal-Oriented Action Planning pour les desirs
+// GOAP — Goal-Oriented Action Planning for desires
 // =============================================================================
 
-/// Etat du monde : ensemble de propositions booleennes.
-/// Chaque cle est un fait ("a_compris_sujet", "a_structure_idee", etc.)
-/// et la valeur indique si ce fait est vrai ou faux.
+/// World state: set of boolean propositions.
+/// Each key is a fact ("a_compris_sujet", "a_structure_idee", etc.)
+/// and the value indicates whether that fact is true or false.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorldState {
     pub facts: HashMap<String, bool>,
@@ -443,27 +443,27 @@ impl WorldState {
         self.facts.get(key).copied().unwrap_or(false)
     }
 
-    /// Verifie si toutes les conditions d'un etat cible sont satisfaites.
+    /// Checks if all conditions of a target state are satisfied.
     pub fn satisfies(&self, goal: &HashMap<String, bool>) -> bool {
         goal.iter().all(|(k, v)| self.get(k) == *v)
     }
 }
 
-/// Action GOAP : preconditions, effets, cout.
+/// GOAP action: preconditions, effects, cost.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GoapAction {
-    /// Nom lisible de l'action
+    /// Human-readable action name
     pub name: String,
-    /// Preconditions : faits qui doivent etre vrais pour executer l'action
+    /// Preconditions: facts that must be true to execute the action
     pub preconditions: HashMap<String, bool>,
-    /// Effets : faits modifies apres execution
+    /// Effects: facts modified after execution
     pub effects: HashMap<String, bool>,
-    /// Cout de l'action (plus bas = meilleur)
+    /// Action cost (lower = better)
     pub cost: f64,
 }
 
 impl GoapAction {
-    /// Cree une action GOAP simple.
+    /// Creates a simple GOAP action.
     pub fn new(name: &str, cost: f64) -> Self {
         Self {
             name: name.to_string(),
@@ -473,24 +473,24 @@ impl GoapAction {
         }
     }
 
-    /// Ajoute une precondition.
+    /// Adds a precondition.
     pub fn requires(mut self, fact: &str, value: bool) -> Self {
         self.preconditions.insert(fact.to_string(), value);
         self
     }
 
-    /// Ajoute un effet.
+    /// Adds an effect.
     pub fn produces(mut self, fact: &str, value: bool) -> Self {
         self.effects.insert(fact.to_string(), value);
         self
     }
 
-    /// Verifie si les preconditions sont satisfaites.
+    /// Checks if preconditions are satisfied.
     pub fn is_executable(&self, state: &WorldState) -> bool {
         state.satisfies(&self.preconditions)
     }
 
-    /// Applique les effets sur un etat du monde.
+    /// Applies the effects to a world state.
     pub fn apply(&self, state: &mut WorldState) {
         for (k, v) in &self.effects {
             state.set(k, *v);
@@ -498,26 +498,26 @@ impl GoapAction {
     }
 }
 
-/// Planificateur GOAP — backward chaining.
-/// Depuis le but, on cherche les actions dont les effets satisfont
-/// les preconditions non remplies, en remontant jusqu'a l'etat initial.
+/// GOAP planner — backward chaining.
+/// From the goal, we search for actions whose effects satisfy
+/// the unmet preconditions, going back to the initial state.
 pub struct GoapPlanner;
 
 impl GoapPlanner {
-    /// Genere un plan (sequence d'actions) pour atteindre le but
-    /// depuis l'etat du monde actuel.
-    /// Utilise backward chaining avec recherche en profondeur limitee.
+    /// Generates a plan (action sequence) to reach the goal
+    /// from the current world state.
+    /// Uses backward chaining with depth-limited search.
     pub fn plan(
         goal: &HashMap<String, bool>,
         world_state: &WorldState,
         available_actions: &[GoapAction],
     ) -> Option<Vec<GoapAction>> {
-        // Si le but est deja atteint, pas besoin de plan
+        // If the goal is already reached, no plan needed
         if world_state.satisfies(goal) {
             return Some(Vec::new());
         }
 
-        // Backward chaining : trouver les faits manquants
+        // Backward chaining: find missing facts
         let mut best_plan: Option<Vec<GoapAction>> = None;
         let mut best_cost = f64::MAX;
 
@@ -530,7 +530,7 @@ impl GoapPlanner {
             &mut best_plan,
             &mut best_cost,
             0,
-            10, // Profondeur max pour eviter les boucles
+            10, // Max depth to avoid loops
         );
 
         best_plan
@@ -551,7 +551,7 @@ impl GoapPlanner {
             return;
         }
 
-        // Verifier si le but est atteint
+        // Check if the goal is reached
         if current_state.satisfies(goal) {
             if current_cost < *best_cost {
                 *best_cost = current_cost;
@@ -560,27 +560,27 @@ impl GoapPlanner {
             return;
         }
 
-        // Trouver les faits manquants pour le but
+        // Find missing facts for the goal
         let unmet: Vec<(String, bool)> = goal.iter()
             .filter(|(k, v)| current_state.get(k) != **v)
             .map(|(k, v)| (k.clone(), *v))
             .collect();
 
-        // Pour chaque fait manquant, trouver les actions qui le produisent
+        // For each missing fact, find actions that produce it
         for (fact, value) in &unmet {
             for action in actions {
-                // L'action doit produire l'effet desire
+                // The action must produce the desired effect
                 if action.effects.get(fact.as_str()) != Some(value) {
                     continue;
                 }
-                // Eviter les doublons dans le plan
+                // Avoid duplicates in the plan
                 if current_plan.iter().any(|a| a.name == action.name) {
                     continue;
                 }
-                // Verifier que les preconditions sont executables depuis l'etat initial
-                // ou qu'on peut les resoudre recursivement
+                // Check if preconditions are executable from the initial state
+                // or can be resolved recursively
                 if action.is_executable(current_state) {
-                    // Appliquer l'action
+                    // Apply the action
                     let mut next_state = current_state.clone();
                     action.apply(&mut next_state);
                     current_plan.push(action.clone());
@@ -591,7 +591,7 @@ impl GoapPlanner {
                     );
                     current_plan.pop();
                 } else {
-                    // Forward search : resoudre les preconditions d'abord
+                    // Forward search: resolve preconditions first
                     let sub_goal = action.preconditions.clone();
                     let mut temp_plan = Vec::new();
                     let mut temp_best: Option<Vec<GoapAction>> = None;
@@ -602,7 +602,7 @@ impl GoapPlanner {
                         depth + 1, max_depth,
                     );
                     if let Some(sub_plan) = temp_best {
-                        // Appliquer tout le sub-plan + l'action courante
+                        // Apply the entire sub-plan + current action
                         let mut next_state = current_state.clone();
                         for sa in &sub_plan {
                             sa.apply(&mut next_state);
@@ -626,7 +626,7 @@ impl GoapPlanner {
         }
     }
 
-    /// Genere les actions GOAP predefinies pour un type de desir.
+    /// Generates predefined GOAP actions for a desire type.
     pub fn actions_for_desire_type(desire_type: &DesireType) -> Vec<GoapAction> {
         match desire_type {
             DesireType::Understanding(_) => vec![
@@ -710,7 +710,7 @@ impl GoapPlanner {
         }
     }
 
-    /// Genere le but GOAP pour un type de desir.
+    /// Generates the GOAP goal for a desire type.
     pub fn goal_for_desire_type(desire_type: &DesireType) -> HashMap<String, bool> {
         let goal_fact = match desire_type {
             DesireType::Understanding(_) => "a_compris",
@@ -726,30 +726,30 @@ impl GoapPlanner {
     }
 }
 
-/// Plan GOAP attache a un desir : sequence d'actions a accomplir.
+/// GOAP plan attached to a desire: action sequence to accomplish.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GoapPlan {
-    /// Actions planifiees dans l'ordre d'execution
+    /// Planned actions in execution order
     pub actions: Vec<GoapAction>,
-    /// Index de la prochaine action a executer
+    /// Index of the next action to execute
     pub current_step: usize,
-    /// Etat du monde au debut du plan
+    /// World state at the beginning of the plan
     pub initial_state: WorldState,
-    /// Cout total prevu du plan
+    /// Total planned cost of the plan
     pub total_cost: f64,
 }
 
 impl GoapPlan {
-    /// La prochaine action a executer, ou None si le plan est termine.
+    /// The next action to execute, or None if the plan is complete.
     pub fn next_action(&self) -> Option<&GoapAction> {
         self.actions.get(self.current_step)
     }
 
-    /// Avance d'un pas dans le plan. Retourne le nom de l'action completee.
+    /// Advances one step in the plan. Returns the name of the completed action.
     pub fn advance(&mut self) -> Option<String> {
         if self.current_step < self.actions.len() {
             let name = self.actions[self.current_step].name.clone();
-            // Appliquer l'effet sur l'etat interne
+            // Apply the effect on the internal state
             self.actions[self.current_step].apply(&mut self.initial_state);
             self.current_step += 1;
             Some(name)
@@ -758,12 +758,12 @@ impl GoapPlan {
         }
     }
 
-    /// Le plan est-il termine ?
+    /// Is the plan complete?
     pub fn is_complete(&self) -> bool {
         self.current_step >= self.actions.len()
     }
 
-    /// Progression du plan (0.0 a 1.0).
+    /// Plan progression (0.0 to 1.0).
     pub fn progress(&self) -> f64 {
         if self.actions.is_empty() {
             return 1.0;
@@ -773,12 +773,12 @@ impl GoapPlan {
 }
 
 // =============================================================================
-// Integration GOAP dans DesireOrchestrator
+// GOAP integration into DesireOrchestrator
 // =============================================================================
 
 impl DesireOrchestrator {
-    /// Genere un plan GOAP pour un desir donne.
-    /// Les milestones existants sont integres comme waypoints.
+    /// Generates a GOAP plan for a given desire.
+    /// Existing milestones are integrated as waypoints.
     pub fn plan_desire(&self, desire: &Desire) -> Option<GoapPlan> {
         let world_state = WorldState::new();
         let actions = GoapPlanner::actions_for_desire_type(&desire.desire_type);
@@ -795,36 +795,36 @@ impl DesireOrchestrator {
         })
     }
 
-    /// Avance le plan GOAP du desir prioritaire.
-    /// Retourne le nom de l'action completee si applicable.
+    /// Advances the GOAP plan of the highest-priority desire.
+    /// Returns the name of the completed action if applicable.
     pub fn tick_goap(&mut self) -> Option<(u64, String)> {
-        // Trouver le desir le plus prioritaire qui a un plan en cours
+        // Find the highest-priority desire that has an ongoing plan
         let desire_idx = self.active_desires.iter().position(|d| d.progress < 1.0)?;
         let desire = &mut self.active_desires[desire_idx];
 
-        // Generer un plan si absent (en utilisant le type de desir)
+        // Generate a plan if absent (using the desire type)
         let actions = GoapPlanner::actions_for_desire_type(&desire.desire_type);
         let goal = GoapPlanner::goal_for_desire_type(&desire.desire_type);
         let world_state = WorldState::new();
 
         if let Some(planned) = GoapPlanner::plan(&goal, &world_state, &actions) {
-            // Simuler l'avancement : chaque tick complete une etape
+            // Simulate advancement: each tick completes one step
             let total_steps = planned.len();
             if total_steps == 0 {
                 return None;
             }
 
-            // Calculer l'etape courante basee sur la progression
+            // Calculate current step based on progression
             let current_step = (desire.progress * total_steps as f64).floor() as usize;
             if current_step < total_steps {
                 let action_name = planned[current_step].name.clone();
 
-                // Avancer la progression du desir
+                // Advance desire progression
                 desire.progress = ((current_step + 1) as f64 / total_steps as f64).min(1.0);
                 desire.cycles_invested += 1;
                 desire.last_pursued_at = Some(Utc::now());
 
-                // Completer le milestone correspondant si existant
+                // Complete the corresponding milestone if it exists
                 if current_step < desire.milestones.len() && !desire.milestones[current_step].completed {
                     desire.milestones[current_step].completed = true;
                     desire.milestones[current_step].completed_at = Some(Utc::now());
@@ -837,7 +837,7 @@ impl DesireOrchestrator {
         None
     }
 
-    /// Description GOAP pour le prompt substrat.
+    /// GOAP description for the substrate prompt.
     pub fn goap_context(&self) -> String {
         let mut ctx = String::new();
         for desire in self.active_desires.iter().take(3) {

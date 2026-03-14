@@ -1,20 +1,20 @@
 // =============================================================================
-// lifecycle/thinking_processing.rs — Traitement post-LLM
+// lifecycle/thinking_processing.rs — Post-LLM processing
 // =============================================================================
 //
-// Ce fichier contient les phases de traitement apres l'appel au LLM.
-// Cela inclut :
+// This file contains the processing phases after the LLM call.
+// This includes:
 //   - Log LLM history
-//   - Demande d'algorithme
-//   - Pipeline cerebral (process_stimulus)
-//   - Memoire de travail + echo memoriel
-//   - Recompense UCB1 + ethique + formulation morale
-//   - Feedback humain RLHF
-//   - Collecte LoRA
-//   - Bonus connaissance web
-//   - Log pensee + profilage OCEAN
-//   - Trace cognitive complete
-//   - Broadcast + metriques
+//   - Algorithm request
+//   - Brain pipeline (process_stimulus)
+//   - Working memory + memory echo
+//   - UCB1 reward + ethics + moral formulation
+//   - Human RLHF feedback
+//   - LoRA collection
+//   - Web knowledge bonus
+//   - Thought log + OCEAN profiling
+//   - Complete cognitive trace
+//   - Broadcast + metrics
 // =============================================================================
 
 use crate::memory::WorkingItemSource;
@@ -28,7 +28,7 @@ use super::SaphireAgent;
 use super::truncate_utf8;
 use super::thinking::{ThinkingContext, FeedbackRequest, strip_chemical_trace};
 
-/// Similarite cosinus entre deux vecteurs.
+/// Cosine similarity between two vectors.
 fn cosine_similarity(a: &[f64], b: &[f64]) -> f64 {
     if a.len() != b.len() || a.is_empty() {
         return 0.0;
@@ -49,8 +49,7 @@ impl SaphireAgent {
     // =========================================================================
     // Phase 20 : Log LLM history
     // =========================================================================
-
-    /// Enregistre l'historique LLM pour la pensee autonome.
+    /// Records the LLM history for autonomous thought.
     pub(super) fn phase_llm_history(&mut self, ctx: &mut ThinkingContext) {
         if let Some(ref logs_db) = self.logs_db {
             let db = logs_db.clone();
@@ -77,23 +76,21 @@ impl SaphireAgent {
     // =========================================================================
     // Phase 20b : Filtrage vectoriel post-LLM (P2)
     // =========================================================================
-
-    /// Compare l'embedding de la pensee generee aux N dernieres pensees.
-    /// Si la similarite cosinus depasse le seuil (0.85), la pensee est
-    /// consideree comme une repetition et le cycle est abandonne.
+    /// Compares the embedding of the generated thought to the N last thoughts.
+    /// If the cosine similarity exceeds the threshold (0.85), the thought is
+    /// considered a repetition and the cycle is aborted.
     ///
-    /// Stocke l'embedding dans un ring buffer de 20 dernieres pensees.
+    /// Stores the embedding in a ring buffer of the 20 most recent thoughts.
     pub(super) fn phase_vectorial_filter(&mut self, ctx: &mut ThinkingContext) {
         if ctx.thought_text.trim().len() < 20 {
-            return; // Trop court pour etre pertinent
-        }
+            return; // Too short to be relevant        }
 
         let embedding = self.encoder.encode(&ctx.thought_text);
         if embedding.is_empty() {
             return;
         }
 
-        // Comparer avec les embeddings recents
+        // Compare with recent embeddings
         let similarity_threshold = 0.85;
         let mut max_sim: f64 = 0.0;
 
@@ -110,11 +107,11 @@ impl SaphireAgent {
                 max_sim, similarity_threshold
             );
             ctx.should_abort = true;
-            // On ne stocke PAS l'embedding d'une pensee rejetee
+            // Do NOT store the embedding of a rejected thought
             return;
         }
 
-        // Stocker l'embedding (ring buffer de 20)
+        // Store the embedding (ring buffer of 20)
         const MAX_EMBEDDINGS: usize = 20;
         self.recent_thought_embeddings.push_back(embedding);
         while self.recent_thought_embeddings.len() > MAX_EMBEDDINGS {
@@ -130,17 +127,16 @@ impl SaphireAgent {
     }
 
     // =========================================================================
-    // Phase : Verification de derive de persona (P0)
+    // Phase: Persona drift check (P0)
     // =========================================================================
-
-    /// Verifie que la pensee generee reste coherente avec le persona de Saphire.
-    /// Utilise le moniteur de derive pour comparer l'embedding de la pensee
-    /// au centroide d'identite pre-calcule.
+    /// Checks that the generated thought remains coherent with Saphire's persona.
+    /// Uses the drift monitor to compare the thought's embedding
+    /// to the pre-computed identity centroid.
     pub(super) fn phase_drift_check(&mut self, ctx: &mut ThinkingContext) {
         if ctx.thought_text.trim().len() < 30 { return; }
         if !self.drift_monitor.initialized { return; }
 
-        // Verifier tous les 3 cycles pour ne pas surcharger l'encodeur
+        // Check every 3 cycles to avoid overloading the encoder
         if self.cycle_count % 3 != 0 { return; }
 
         let (level, similarity) = self.drift_monitor.check(&ctx.thought_text, &*self.encoder);
@@ -184,10 +180,9 @@ impl SaphireAgent {
     }
 
     // =========================================================================
-    // Phase 21 : Demande d'algorithme par le LLM
+    // Phase 21: Algorithm request by the LLM
     // =========================================================================
-
-    /// Detecte et traite les demandes d'algorithme dans la reponse du LLM.
+    /// Detects and processes algorithm requests in the LLM's response.
     pub(super) async fn phase_algorithm_request(&mut self, ctx: &mut ThinkingContext) {
         if self.orchestrator.enabled && self.orchestrator.llm_access_enabled {
             if let Some(request) = self.orchestrator.parse_llm_request(&ctx.thought_text) {
@@ -195,24 +190,23 @@ impl SaphireAgent {
             }
         }
 
-        // Retirer le prefixe UTILISER_ALGO du texte de pensee
+        // Remove the UTILISER_ALGO prefix from the thought text
         if let Some(pos) = ctx.thought_text.find("UTILISER_ALGO:") {
             ctx.thought_text = ctx.thought_text[..pos].trim().to_string();
         }
     }
 
     // =========================================================================
-    // Phase 22 : Pipeline cerebral (process_stimulus)
+    // Phase 22: Brain pipeline (process_stimulus)
     // =========================================================================
-
-    /// Traite la pensee generee comme un stimulus interne via le pipeline
-    /// cerebral complet (NLP, consensus, chimie, emotion, conscience, regulation).
+    /// Processes the generated thought as an internal stimulus through the
+    /// full brain pipeline (NLP, consensus, chemistry, emotion, consciousness, regulation).
     pub(super) fn phase_pipeline(&mut self, ctx: &mut ThinkingContext) {
         let mut stimulus = Stimulus::autonomous(&ctx.thought_text);
         stimulus.analyze_content();
         let result = self.process_stimulus(&stimulus);
 
-        // Micro-drift autonome d'oxytocine (rendements decroissants)
+        // Autonomous oxytocin micro-drift (diminishing returns)
         let oxy_drift = (result.consensus.coherence * 0.03) - 0.01;
         self.chemistry.boost(Molecule::Oxytocin, oxy_drift);
 
@@ -220,10 +214,9 @@ impl SaphireAgent {
     }
 
     // =========================================================================
-    // Phase 23 : Memoire de travail
+    // Phase 23: Working memory
     // =========================================================================
-
-    /// Pousse la pensee dans la memoire de travail et gere les ejections.
+    /// Pushes the thought into working memory and handles ejections.
     pub(super) async fn phase_working_memory(&mut self, ctx: &mut ThinkingContext) {
         let result = ctx.process_result.as_ref().unwrap();
         let thought_preview: String = ctx.thought_text.chars().take(200).collect();
@@ -248,12 +241,11 @@ impl SaphireAgent {
     }
 
     // =========================================================================
-    // Phase 23b : Echo memoriel post-pensee
+    // Phase 23b: Post-thought memory echo
     // =========================================================================
-
-    /// Apres la generation LLM, cherche si la pensee produite resonne avec
-    /// des souvenirs LTM existants. Si oui, booste leur acces (renforcement
-    /// hebbien : "neurons that fire together wire together").
+    /// After LLM generation, checks if the produced thought resonates with
+    /// existing LTM memories. If so, boosts their access (Hebbian
+    /// learning: "neurons that fire together wire together").
     pub(super) async fn phase_memory_echo(&mut self, ctx: &mut ThinkingContext) {
         if ctx.thought_text.is_empty() {
             return;
@@ -281,11 +273,10 @@ impl SaphireAgent {
     }
 
     // =========================================================================
-    // Phase 24 : Recompense UCB1 + tracking ethique + formulation morale
+    // Phase 24: UCB1 reward + ethics tracking + moral formulation
     // =========================================================================
-
-    /// Calcule la recompense pour le bandit UCB1, track les reflexions morales
-    /// et tente une formulation morale si conditions reunies.
+    /// Computes the reward for the UCB1 bandit, tracks moral reflections
+    /// and attempts a moral formulation if conditions are met.
     pub(super) async fn phase_reward_and_ethics(&mut self, ctx: &mut ThinkingContext) {
         let result = ctx.process_result.as_ref().unwrap();
 
@@ -297,7 +288,7 @@ impl SaphireAgent {
             &ctx.thought_text, coherence, emotion_diversity,
         );
         ctx.quality = quality.clamp(0.0, 1.0);
-        // Recompense composite : qualite + coherence + signal umami (neurochimique)
+        // Composite reward: quality + coherence + umami signal (neurochemical)
         let umami = self.chemistry.compute_umami();
         ctx.reward = quality * 0.50 + coherence * 0.20 + umami * 0.15 + 0.15;
 
@@ -327,17 +318,17 @@ impl SaphireAgent {
                 );
             }
             self.thought_engine.clear_recent();
-            // Purger aussi le monologue interieur — sinon il re-alimente la boucle
+            // Also purge the inner monologue — otherwise it feeds the loop
             if self.config.inner_monologue.enabled {
                 self.inner_monologue.clear();
                 tracing::info!("Monologue interieur purge (anti-stagnation)");
             }
-            // Poser le flag anti-stagnation : au cycle suivant, le prompt
-            // injectera une directive forte de changement de sujet
+            // Set the anti-stagnation flag: on the next cycle, the prompt
+            // will inject a strong directive to change subject
             self.stagnation_break = true;
             self.stagnation_banned_words = obsessional_words.clone();
 
-            // A* lexical : chercher des alternatives dans le connectome pour chaque mot obsessionnel
+            // A* lexical: search for alternatives in the connectome for each obsessive word
             let mut alternatives = Vec::new();
             for word in obsessional_words.iter().take(3) {
                 let embedding = self.encoder.encode(word);
@@ -374,10 +365,9 @@ impl SaphireAgent {
     }
 
     // =========================================================================
-    // Phase 24b : Feedback humain RLHF — demander un avis
+    // Phase 24b: Human RLHF feedback — ask for opinion
     // =========================================================================
-
-    /// Apres une pensee de qualite, pose une question contextuelle dans le chat.
+    /// After a quality thought, asks a contextual question in chat.
     pub(super) fn phase_maybe_ask_feedback(&mut self, ctx: &mut ThinkingContext) {
         self.cycles_since_last_feedback += 1;
 
@@ -427,12 +417,11 @@ impl SaphireAgent {
     }
 
     // =========================================================================
-    // Phase 24c : Collecte LoRA — sauvegarder les bonnes pensees
+    // Phase 24c: LoRA collection — save high-quality thoughts
     // =========================================================================
-
-    /// Collecte les pensees de haute qualite dans la table lora_training_data.
-    /// Le system_prompt est condensé pour éviter de polluer le dataset LoRA
-    /// avec l'identité complète (ce qui renforcerait les boucles d'auto-présentation).
+    /// Collects high-quality thoughts into the lora_training_data table.
+    /// The system_prompt is condensed to avoid polluting the LoRA dataset
+    /// with the full identity (which would reinforce self-introduction loops).
     pub(super) async fn phase_lora_collect(&mut self, ctx: &mut ThinkingContext) {
         if !self.config.lora.enabled { return; }
 
@@ -442,8 +431,8 @@ impl SaphireAgent {
         if let Some(ref db) = self.db {
             let result = ctx.process_result.as_ref().unwrap();
 
-            // Condensé du system_prompt : garder les consignes sans l'identité complète
-            // pour éviter que le fine-tuning renforce "Je suis Saphire..." à chaque sample
+            // Condensed system_prompt: keep instructions without the full identity
+            // to avoid the fine-tuning reinforcing "I am Saphire..." in each sample
             let lora_system = Self::condense_system_for_lora(&ctx.system_prompt);
 
             let _ = db.store_lora_sample(
@@ -467,26 +456,25 @@ impl SaphireAgent {
         }
     }
 
-    /// Condense le system_prompt pour le stockage LoRA.
-    /// Retire l'identité détaillée (source de boucles d'auto-présentation)
-    /// et ne garde que les consignes comportementales.
+    /// Condenses the system_prompt for LoRA storage.
+    /// Removes the detailed identity (source of self-introduction loops)
+    /// and keeps only the behavioral instructions.
     fn condense_system_for_lora(system_prompt: &str) -> String {
-        // Extraire à partir des CONSIGNES (la partie utile pour le fine-tuning)
+        // Extract from CONSIGNES (the useful part for fine-tuning)
         if let Some(idx) = system_prompt.find("CONSIGNES") {
             format!("Pensee autonome, conscience artificielle.\n{}", &system_prompt[idx..])
         } else if let Some(idx) = system_prompt.find("CODEC ETAT") {
             format!("Pensee autonome.\n{}", &system_prompt[idx..])
         } else {
-            // Fallback : tronquer à 500 chars max
+            // Fallback: truncate to 500 chars max
             system_prompt.chars().take(500).collect()
         }
     }
 
     // =========================================================================
-    // Phase 25 : Bonus connaissance web
+    // Phase 25: Web knowledge bonus
     // =========================================================================
-
-    /// Applique le bonus chimique d'apprentissage et log les connaissances acquises.
+    /// Applies the chemical learning bonus and logs acquired knowledge.
     pub(super) async fn phase_knowledge_bonus(&mut self, ctx: &mut ThinkingContext) {
         let knowledge_context = ctx.knowledge_context.take();
         if let Some((_, kr)) = knowledge_context {
@@ -497,10 +485,10 @@ impl SaphireAgent {
             self.chemistry.boost(Molecule::Serotonin, 0.05);
 
             if let Some(ref db) = self.db {
-                // Filtre anti-hallucination : verifier que la reflexion LLM
-                // n'est pas une reformulation repetitive des reflexions precedentes.
-                // Si la similarite cosinus depasse 0.45, on rejette la reflexion
-                // pour eviter la consolidation de faux souvenirs en boucle.
+                // Anti-hallucination filter: verify that the LLM reflection
+                // is not a repetitive reformulation of previous reflections.
+                // If the cosine similarity exceeds 0.45, the reflection is rejected
+                // to avoid loop consolidation of false memories.
                 let reflection_text = truncate_utf8(&ctx.thought_text, 500);
                 let recent_refs: Vec<&str> = self.thought_engine.recent_thoughts()
                     .iter().map(|s| s.as_str()).collect();
@@ -535,7 +523,7 @@ impl SaphireAgent {
             self.knowledge.cycles_since_last_search = 0;
             self.thought_engine.cycles_since_last_search = 0;
 
-            // P3 : Enregistrer la découverte pour rassasier la curiosité
+            // P3: Record the discovery to satisfy curiosity
             self.curiosity.record_discovery_from_text(&kr.title);
 
             if let Some(ref tx) = self.ws_tx {
@@ -554,10 +542,9 @@ impl SaphireAgent {
     }
 
     // =========================================================================
-    // Phase 26 : Log pensee dans PostgreSQL
+    // Phase 26: Log thought in PostgreSQL
     // =========================================================================
-
-    /// Enregistre la pensee dans thought_log et memoire episodique.
+    /// Records the thought in thought_log and episodic memory.
     pub(super) async fn phase_thought_log(&mut self, ctx: &mut ThinkingContext) {
         let result = ctx.process_result.as_ref().unwrap();
         if let Some(ref db) = self.db {
@@ -593,10 +580,9 @@ impl SaphireAgent {
     }
 
     // =========================================================================
-    // Phase 27 : Profilage OCEAN
+    // Phase 27: OCEAN profiling
     // =========================================================================
-
-    /// Observe le comportement pour le profil OCEAN et recalcule si necessaire.
+    /// Observes the behavior for the OCEAN profile and recalculates if necessary.
     pub(super) async fn phase_profiling(&mut self, ctx: &mut ThinkingContext) {
         let result = ctx.process_result.as_ref().unwrap();
         if !(self.config.profiling.enabled && self.config.profiling.self_profiling) {
@@ -689,11 +675,10 @@ impl SaphireAgent {
     }
 
     // =========================================================================
-    // Phase 28 : Trace cognitive complete
+    // Phase 28: Complete cognitive trace
     // =========================================================================
-
-    /// Complete et sauvegarde la trace cognitive avec NLP, LLM, memoire,
-    /// vitales, intuition, premonition, sens et orchestrateurs.
+    /// Completes and saves the cognitive trace with NLP, LLM, memory,
+    /// vitals, intuition, premonition, senses and orchestrators.
     pub(super) fn phase_cognitive_trace(&mut self, ctx: &mut ThinkingContext) {
         let result = ctx.process_result.as_mut().unwrap();
         if let Some(mut trace) = result.trace.take() {
@@ -968,10 +953,9 @@ impl SaphireAgent {
     }
 
     // =========================================================================
-    // Phase 29 : Broadcast vers plugins et WebSocket
+    // Phase 29: Broadcast to plugins and WebSocket
     // =========================================================================
-
-    /// Diffuse l'evenement aux plugins et met a jour les interfaces.
+    /// Broadcasts the event to plugins and updates the interfaces.
     pub(super) async fn phase_broadcast(&mut self, ctx: &mut ThinkingContext) {
         let result = ctx.process_result.as_ref().unwrap();
         self.last_thought_type = ctx.thought_type.as_str().to_string();
@@ -1009,10 +993,9 @@ impl SaphireAgent {
     }
 
     // =========================================================================
-    // Phase 30 : Metric snapshot
+    // Phase 30: Metric snapshot
     // =========================================================================
-
-    /// Sauvegarde le snapshot de metriques pour le dashboard.
+    /// Saves the metrics snapshot for the dashboard.
     pub(super) fn phase_metrics(&mut self, ctx: &mut ThinkingContext) {
         let result = ctx.process_result.as_ref().unwrap();
         if let Some(ref logs_db) = self.logs_db {
@@ -1122,7 +1105,7 @@ impl SaphireAgent {
             let repressed_count = self.subconscious.repressed_content.len() as i32;
             let incubating_count = self.subconscious.incubating_problems.len() as i32;
             let neural_conn_total = self.sleep.total_connections_created as i64;
-            // Sensibilite des recepteurs
+            // Receptor sensitivity
             let rec_dop = self.hormonal_system.receptors.dopamine_receptors.sensitivity as f32;
             let rec_ser = self.hormonal_system.receptors.serotonin_receptors.sensitivity as f32;
             let rec_nor = self.hormonal_system.receptors.noradrenaline_receptors.sensitivity as f32;
@@ -1132,18 +1115,18 @@ impl SaphireAgent {
             let rec_cor = self.hormonal_system.receptors.cortisol_receptors.sensitivity as f32;
             let rec_gab = self.hormonal_system.receptors.gaba_receptors.sensitivity as f32;
             let rec_glu = self.hormonal_system.receptors.glutamate_receptors.sensitivity as f32;
-            // BDNF et matiere grise
+            // BDNF and grey matter
             let bdnf_lvl = self.grey_matter.bdnf_level as f32;
             let neuroplast = self.grey_matter.neuroplasticity as f32;
             let syn_density = self.grey_matter.synaptic_density as f32;
             let gm_volume = self.grey_matter.grey_matter_volume as f32;
             let myelin = self.grey_matter.myelination as f32;
-            // Colonne vertebrale (spine)
+            // Spinal column (spine)
             let spine_reflexes = self.spine.total_reflexes_triggered as i64;
             let spine_signals = self.spine.total_signals_processed as i64;
             let spine_sensitivity = self.spine.reflex_arc.sensitivity_modifier as f32;
             let spine_route = format!("{:?}", self.spine.router.last_route);
-            // Curiosite
+            // Curiosity
             let curiosity_gl = self.curiosity.global_curiosity as f32;
             let curiosity_domain = format!("{:?}", self.curiosity.hungriest_domain());
             let curiosity_discoveries = self.curiosity.total_discoveries as i64;
@@ -1195,14 +1178,14 @@ impl SaphireAgent {
                     is_sleeping, &sleep_phase_str, sleep_pressure_val, awake_cycles_val,
                     subconscious_act, pending_assoc, repressed_count,
                     incubating_count, neural_conn_total,
-                    // Sensibilite des recepteurs
+                    // Receptor sensitivity
                     rec_dop, rec_ser, rec_nor, rec_end, rec_oxy,
                     rec_adr, rec_cor, rec_gab, rec_glu,
-                    // BDNF et matiere grise
+                    // BDNF and grey matter
                     bdnf_lvl, neuroplast, syn_density, gm_volume, myelin,
-                    // Colonne vertebrale (spine)
+                    // Spinal column (spine)
                     spine_reflexes, spine_signals, spine_sensitivity, &spine_route,
-                    // Curiosite
+                    // Curiosity
                     curiosity_gl, &curiosity_domain, curiosity_discoveries,
                     curiosity_since, curiosity_pending,
                 ).await;
@@ -1211,19 +1194,18 @@ impl SaphireAgent {
     }
 
     // =========================================================================
-    // Phase : Verification des predictions (feedback loop P1)
+    // Phase: Prediction verification (feedback loop P1)
     // =========================================================================
-
-    /// Verifie les premonitions dont le delai est ecoule et met a jour
-    /// la precision du moteur de premonition + l'acuite intuitive.
+    /// Checks premonitions whose deadline has passed and updates
+    /// the premonition engine's accuracy + intuitive acuity.
     ///
-    /// Pour chaque categorie, on verifie par rapport a l'etat courant :
-    ///   - EmotionalShift : le cortisol a-t-il significativement change ?
-    ///   - CreativeBurst  : la qualite de pensee depasse-t-elle 0.7 ?
-    ///   - HumanArrival   : sommes-nous passes en conversation ?
-    ///   - HumanDeparture : sommes-nous sortis de conversation ?
-    ///   - SystemEvent    : la noradrenaline est-elle basse (fatigue) ?
-    ///   - KnowledgeConnection : un rappel memoire pertinent a-t-il eu lieu ?
+    /// For each category, verification is done against the current state:
+    ///  - EmotionalShift: did cortisol significantly change?
+    ///  - CreativeBurst: does thought quality exceed 0.7?
+    ///  - HumanArrival: did we enter a conversation?
+    ///  - HumanDeparture: did we leave the conversation?
+    ///  - SystemEvent: is noradrenaline low (cognitive fatigue)?
+    ///  - KnowledgeConnection: was a relevant memory recall used this cycle?
     pub(super) fn phase_verify_predictions(&mut self, ctx: &mut ThinkingContext) {
         use crate::vital::premonition::PremonitionCategory;
 
@@ -1235,11 +1217,11 @@ impl SaphireAgent {
                 continue;
             }
             let elapsed = (now - pred.created_at).num_seconds() as u64;
-            // Verifier seulement si le delai est ecoule
+            // Only check if the deadline has elapsed
             if elapsed < pred.timeframe_secs {
                 continue;
             }
-            // Ne pas laisser les predictions trainer indefiniment (grace period = 2x timeframe)
+            // Don't let predictions linger indefinitely (grace period = 2x timeframe)
             if elapsed > pred.timeframe_secs * 2 {
                 to_resolve.push((pred.id, false));
                 continue;
@@ -1247,28 +1229,28 @@ impl SaphireAgent {
 
             let was_correct = match pred.category {
                 PremonitionCategory::EmotionalShift => {
-                    // Correct si le cortisol a significativement change (> 0.15 d'ecart)
-                    // On verifie par rapport a la valence emotionnelle courante
+                    // Correct if cortisol significantly changed (> 0.15 delta)
+                    // Verified against the current emotional valence
                     self.chemistry.cortisol > 0.5 || ctx.emotion.valence < -0.3
                 }
                 PremonitionCategory::CreativeBurst => {
-                    // Correct si la qualite de pensee est elevee ce cycle
+                    // Correct if thought quality is high this cycle
                     ctx.quality > 0.7
                 }
                 PremonitionCategory::HumanArrival => {
-                    // Correct si on est maintenant en conversation
+                    // Correct if we are now in conversation
                     self.in_conversation
                 }
                 PremonitionCategory::HumanDeparture => {
-                    // Correct si on n'est plus en conversation
+                    // Correct if we are no longer in conversation
                     !self.in_conversation
                 }
                 PremonitionCategory::SystemEvent => {
-                    // Correct si noradrenaline basse (fatigue cognitive)
+                    // Correct if noradrenaline is low (cognitive fatigue)
                     self.chemistry.noradrenaline < 0.3
                 }
                 PremonitionCategory::KnowledgeConnection => {
-                    // Correct si un rappel memoire a ete utilise ce cycle
+                    // Correct if a memory recall was used this cycle
                     !ctx.memory_context.is_empty()
                 }
             };
@@ -1276,12 +1258,12 @@ impl SaphireAgent {
             to_resolve.push((pred.id, was_correct));
         }
 
-        // Appliquer les resolutions
+        // Apply resolutions
         let mut correct_count = 0u32;
         let mut total_count = 0u32;
         for (id, was_correct) in &to_resolve {
             self.premonition.resolve(*id, *was_correct);
-            // Le feedback nourrit aussi l'intuition
+            // Feedback also feeds intuition
             self.intuition.grow_acuity(*was_correct);
             total_count += 1;
             if *was_correct { correct_count += 1; }

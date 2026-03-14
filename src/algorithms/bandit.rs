@@ -1,68 +1,67 @@
 // =============================================================================
-// bandit.rs — UCB1 Multi-Armed Bandit avec exploration epsilon-greedy
+// bandit.rs — UCB1 Multi-Armed Bandit with epsilon-greedy exploration
 // =============================================================================
 //
-// Rôle : Implémente le bandit multi-bras (MAB = Multi-Armed Bandit) avec la
-//        stratégie UCB1 (Upper Confidence Bound 1) combinée à une exploration
-//        epsilon-greedy. Ce mécanisme équilibre l'exploration de nouvelles
-//        options et l'exploitation des options connues comme performantes.
+// Role: Implements a Multi-Armed Bandit (MAB) with the UCB1 (Upper Confidence
+//  Bound 1) strategy combined with epsilon-greedy exploration. This mechanism
+//  balances exploration of new options and exploitation of known performant
+//  options.
 //
-// Dépendances :
-//   - serde : sérialisation/désérialisation pour la persistance en base de données
-//   - std::time, std::cell : pour le générateur pseudo-aléatoire local
+// Dependencies:
+//  - serde: serialization/deserialization for database persistence
+//  - std::time, std::cell: for the local pseudo-random number generator
 //
-// Place dans l'architecture :
-//   Utilisé par le système cognitif de Saphire pour sélectionner les types
-//   de pensées autonomes (curiosité, introspection, créativité...) de manière
-//   optimale. Chaque type de pensée est un « bras » du bandit, et la
-//   satisfaction résultante est la récompense.
+// Place in architecture:
+//  Used by Saphire's cognitive system to optimally select types of autonomous
+//  thoughts (curiosity, introspection, creativity...). Each thought type is
+//  a "arm" of the bandit, and the resulting satisfaction is the reward.
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 
-/// Un bras du bandit — représente une option (un type de pensée, une action)
-/// avec ses statistiques cumulées de sélection et de récompense.
+/// A bandit arm — represents an option (a thought type, an action)
+/// with its cumulative selection and reward statistics.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BanditArm {
-    /// Nom descriptif du bras (ex: "curiosité", "introspection")
+    /// Descriptive name of the arm (e.g., "curiosity", "introspection")
     pub name: String,
-    /// Nombre de fois que ce bras a été sélectionné (tiré)
+    /// Number of times this arm has been selected (pulled)
     pub pulls: u64,
-    /// Somme cumulative des récompenses obtenues en sélectionnant ce bras
+    /// Cumulative sum of rewards obtained by selecting this arm
     pub total_reward: f64,
 }
 
-/// UCB1 (Upper Confidence Bound 1) Multi-Armed Bandit avec exploration
-/// epsilon-greedy.
+/// UCB1 (Upper Confidence Bound 1) Multi-Armed Bandit with epsilon-greedy
+/// exploration.
 ///
-/// UCB1 sélectionne le bras maximisant : moyenne + sqrt(2 * ln(T) / n_i)
-/// où T = nombre total de tirages et n_i = nombre de tirages du bras i.
-/// Le terme d'exploration (sqrt) favorise les bras peu explorés.
+/// UCB1 selects the arm maximizing: mean + sqrt(2 * ln(T) / n_i)
+/// where T = total number of pulls and n_i = number of pulls of arm i.
+/// The exploration term (sqrt) favors under-explored arms.
 ///
-/// L'epsilon-greedy ajoute une probabilité epsilon de sélection purement
-/// aléatoire, garantissant une exploration minimale continue.
+/// Epsilon-greedy adds an epsilon probability of purely random selection,
+/// guaranteeing continuous minimum exploration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UCB1Bandit {
-    /// Liste de tous les bras du bandit
+    /// List of all bandit arms
     pub arms: Vec<BanditArm>,
-    /// Nombre total de tirages effectués sur tous les bras
+    /// Total number of pulls across all arms
     pub total_pulls: u64,
-    /// Probabilité d'exploration aléatoire pure (epsilon-greedy)
-    /// Valeur par défaut : 0.25 (25% de chance de choisir au hasard)
+    /// Probability of pure random exploration (epsilon-greedy)
+    /// Default value: 0.25 (25% chance of random selection)
     pub epsilon: f64,
-    /// Bonus d'exploration dynamique, module par la dissonance cognitive.
-    /// Ajoute au C=2.0 de base dans la formule UCB1.
-    /// Valeur par defaut : 0.0 (pas de bonus). Plage typique : [0.0, 1.5].
+    /// Dynamic exploration bonus, modulated by cognitive dissonance.
+    /// Added to the base C=2.0 in the UCB1 formula.
+    /// Default value: 0.0 (no bonus). Typical range: [0.0, 1.5].
     #[serde(default)]
     pub exploration_bonus: f64,
 }
 
 impl UCB1Bandit {
-    /// Crée un bandit avec les noms des bras fournis.
-    /// Chaque bras est initialisé avec 0 tirages et 0 récompense.
+    /// Creates a bandit with the provided arm names.
+    /// Each arm is initialized with 0 pulls and 0 reward.
     ///
-    /// Paramètre `arm_names` : noms des options/bras disponibles
-    /// Retourne : une instance de UCB1Bandit prête à l'utilisation
+    /// Parameter `arm_names`: names of available options/arms
+    /// Returns: a UCB1Bandit instance ready for use
     pub fn new(arm_names: &[&str]) -> Self {
         Self {
             arms: arm_names.iter().map(|name| BanditArm {
@@ -71,37 +70,36 @@ impl UCB1Bandit {
                 total_reward: 0.0,
             }).collect(),
             total_pulls: 0,
-            epsilon: 0.25, // 25% de chance d'exploration aléatoire
-            exploration_bonus: 0.0,
+            epsilon: 0.25, // 25% chance of random exploration            exploration_bonus: 0.0,
         }
     }
 
-    /// Sélectionne le bras optimal selon la stratégie UCB1 + epsilon-greedy.
+    /// Selects the optimal arm according to the UCB1 + epsilon-greedy strategy.
     ///
-    /// Fonctionnement :
-    /// 1. Avec probabilité epsilon, choisir un bras au hasard (exploration)
-    /// 2. Sinon, choisir le bras maximisant le score UCB1 :
-    ///    score = moyenne_récompense + sqrt(2 * ln(total_tirages) / tirages_bras)
-    ///    - Les bras jamais tirés (pulls = 0) reçoivent un score infini
-    ///      pour forcer leur exploration initiale
+    /// Operation:
+    /// 1. With probability epsilon, choose a random arm (exploration)
+    /// 2. Otherwise, choose the arm maximizing the UCB1 score:
+    ///  score = mean_reward + sqrt(2 * ln(total_pulls) / arm_pulls)
+    ///  - Arms never pulled (pulls = 0) receive an infinite score
+    ///  to force their initial exploration
     ///
-    /// Retourne : l'indice du bras sélectionné
+    /// Returns: the index of the selected arm
     pub fn select(&self) -> usize {
-        // Epsilon-greedy : exploration aléatoire avec probabilité epsilon
+        // Epsilon-greedy: random exploration with probability epsilon
         if rand_f64() < self.epsilon {
             return rand_usize(self.arms.len());
         }
 
-        // Sélection UCB1 : choisir le bras avec le meilleur score
+        // UCB1 selection: choose the arm with the best score
         self.arms.iter().enumerate()
             .map(|(i, arm)| {
-                // Bras jamais tiré : score infini pour forcer l'exploration
+                // Never-pulled arm: infinite score to force exploration
                 if arm.pulls == 0 {
                     return (i, f64::INFINITY);
                 }
-                // Récompense moyenne de ce bras
+                // Mean reward of this arm
                 let mean = arm.total_reward / arm.pulls as f64;
-                // Terme d'exploration UCB1 : C adaptatif (base 2.0 + bonus dissonance)
+                // UCB1 exploration term: adaptive C (base 2.0 + dissonance bonus)
                 let c = 2.0 + self.exploration_bonus;
                 let exploration = (c * (self.total_pulls as f64).ln() / arm.pulls as f64).sqrt();
                 (i, mean + exploration)
@@ -111,16 +109,16 @@ impl UCB1Bandit {
             .unwrap_or(0)
     }
 
-    /// Sélectionne un bras en excluant certains indices (mécanisme anti-répétition).
+    /// Selects an arm while excluding certain indices (anti-repetition mechanism).
     ///
-    /// Fonctionne comme select() mais filtre les bras dont l'indice est dans
-    /// la liste d'exclusion. Si tous les bras sont exclus, on revient à la
-    /// sélection normale (fallback).
+    /// Works like select() but filters out arms whose index is in the
+    /// exclusion list. If all arms are excluded, falls back to normal
+    /// selection.
     ///
-    /// Paramètre `exclude` : indices des bras à exclure de la sélection
-    /// Retourne : l'indice du bras sélectionné (hors exclusions si possible)
+    /// Parameter `exclude`: indices of arms to exclude from selection
+    /// Returns: the index of the selected arm (excluding exclusions if possible)
     pub fn select_excluding(&self, exclude: &[usize]) -> usize {
-        // Epsilon-greedy avec exclusion
+        // Epsilon-greedy with exclusion filter
         if rand_f64() < self.epsilon {
             let candidates: Vec<usize> = (0..self.arms.len())
                 .filter(|i| !exclude.contains(i))
@@ -130,7 +128,7 @@ impl UCB1Bandit {
             }
         }
 
-        // UCB1 avec exclusion des bras non désirés
+        // UCB1 with exclusion of unwanted arms
         self.arms.iter().enumerate()
             .filter(|(i, _)| !exclude.contains(i))
             .map(|(i, arm)| {
@@ -138,7 +136,7 @@ impl UCB1Bandit {
                     return (i, f64::INFINITY);
                 }
                 let mean = arm.total_reward / arm.pulls as f64;
-                // Securite : eviter ln(0) si total_pulls == 0
+                // Safety: avoid ln(0) if total_pulls == 0
                 let total = if self.total_pulls == 0 { 1 } else { self.total_pulls };
                 let c = 2.0 + self.exploration_bonus;
                 let exploration = (c * (total as f64).ln() / arm.pulls as f64).sqrt();
@@ -146,13 +144,12 @@ impl UCB1Bandit {
             })
             .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
             .map(|(i, _)| i)
-            .unwrap_or_else(|| self.select()) // Fallback : sélection normale si tout est exclu
-    }
+            .unwrap_or_else(|| self.select()) // Fallback: normal selection if all are excluded    }
 
-    /// Met à jour un bras après observation d'une récompense.
+    /// Updates an arm after observing a reward.
     ///
-    /// Paramètre `arm_idx` : indice du bras qui a été sélectionné
-    /// Paramètre `reward` : récompense obtenue (ex: satisfaction de l'utilisateur)
+    /// Parameter `arm_idx`: index of the arm that was selected
+    /// Parameter `reward`: reward obtained (e.g., user satisfaction)
     pub fn update(&mut self, arm_idx: usize, reward: f64) {
         if arm_idx < self.arms.len() {
             self.arms[arm_idx].pulls += 1;
@@ -161,9 +158,9 @@ impl UCB1Bandit {
         }
     }
 
-    /// Applique un facteur de decay sur le reward moyen d'un bras sur-explore
-    /// qui produit du contenu de faible qualite.
-    /// Exemple : factor = 0.95 → -5% du total_reward par pensee faible.
+    /// Applies a decay factor on the mean reward of an over-explored arm
+    /// that produces low-quality content.
+    /// Example: factor = 0.95 → -5% of total_reward per weak thought.
     pub fn apply_quality_decay(&mut self, arm_idx: usize, factor: f64) {
         if arm_idx < self.arms.len() {
             let arm = &mut self.arms[arm_idx];
@@ -173,21 +170,20 @@ impl UCB1Bandit {
         }
     }
 
-    /// Retourne le nom du bras sélectionné par la stratégie UCB1.
+    /// Returns the name of the arm selected by the UCB1 strategy.
     ///
-    /// Retourne : référence vers le nom du bras choisi
+    /// Returns: reference to the name of the chosen arm
     pub fn select_name(&self) -> &str {
         let idx = self.select();
         &self.arms[idx].name
     }
 
-    /// Charge les statistiques des bras depuis la base de données.
+    /// Loads arm statistics from the database.
     ///
-    /// Fusionne les données chargées avec les bras existants en cherchant
-    /// par nom. Les bras non trouvés dans les données chargées conservent
-    /// leurs valeurs actuelles.
+    /// Merges loaded data with existing arms by matching on name. Arms not
+    /// found in the loaded data keep their current values.
     ///
-    /// Paramètre `arms` : tuples (nom, tirages, récompense_totale) depuis la DB
+    /// Parameter `arms`: tuples (name, pulls, total_reward) from the DB
     pub fn load_arms(&mut self, arms: &[(String, u64, f64)]) {
         for (name, pulls, total_reward) in arms {
             if let Some(arm) = self.arms.iter_mut().find(|a| a.name == *name) {
@@ -195,17 +191,16 @@ impl UCB1Bandit {
                 arm.total_reward = *total_reward;
             }
         }
-        // Recalculer le total des tirages à partir des bras mis à jour
+        // Recompute the total pulls from the updated arms
         self.total_pulls = self.arms.iter().map(|a| a.pulls).sum();
     }
 
-    /// Retourne les scores UCB1 bruts de chaque bras (sans epsilon-greedy).
-    /// Utilise par le mode hybride Utility AI + UCB1.
+    /// Returns the raw UCB1 scores of each arm (without epsilon-greedy).
+    /// Used by the hybrid Utility AI + UCB1 mode.
     pub fn all_scores(&self) -> Vec<f64> {
         self.arms.iter().map(|arm| {
             if arm.pulls == 0 {
-                return 10.0; // Score eleve pour bras non explores
-            }
+                return 10.0; // High score for unexplored arms            }
             let mean = arm.total_reward / arm.pulls as f64;
             let total = if self.total_pulls == 0 { 1 } else { self.total_pulls };
             let c = 2.0 + self.exploration_bonus;
@@ -214,9 +209,9 @@ impl UCB1Bandit {
         }).collect()
     }
 
-    /// Exporte les statistiques des bras pour sauvegarde en base de données.
+    /// Exports arm statistics for database persistence.
     ///
-    /// Retourne : vecteur de tuples (nom, tirages, récompense_totale)
+    /// Returns: vector of tuples (name, pulls, total_reward)
     pub fn export_arms(&self) -> Vec<(String, u64, f64)> {
         self.arms.iter()
             .map(|a| (a.name.clone(), a.pulls, a.total_reward))
@@ -224,20 +219,20 @@ impl UCB1Bandit {
     }
 }
 
-/// Générateur pseudo-aléatoire simple de f64 dans [0, 1).
+/// Simple pseudo-random f64 generator in [0, 1).
 ///
-/// Utilise un état thread-local initialisé à partir de l'horloge système
-/// et l'algorithme xorshift64 pour produire des nombres pseudo-aléatoires.
+/// Uses a thread-local state initialized from the system clock
+/// and the xorshift64 algorithm to produce pseudo-random numbers.
 ///
-/// Pourquoi ne pas utiliser rand::thread_rng() : ce module évite la dépendance
-/// à rand pour rester léger et avoir un contrôle total sur le PRNG.
+/// Why not use rand::thread_rng(): this module avoids the rand dependency
+/// to stay lightweight and have full control over the PRNG.
 ///
-/// Retourne : un f64 pseudo-aléatoire dans l'intervalle [0, 1)
+/// Returns: a pseudo-random f64 in the interval [0, 1)
 pub(crate) fn rand_f64() -> f64 {
     use std::time::SystemTime;
     use std::cell::Cell;
     thread_local! {
-        // Initialisation de la graine à partir du temps système (nanosecondes)
+        // Seed initialization from system time (nanoseconds)
         static STATE: Cell<u64> = Cell::new(
             SystemTime::now()
                 .duration_since(SystemTime::UNIX_EPOCH)
@@ -246,7 +241,7 @@ pub(crate) fn rand_f64() -> f64 {
         );
     }
     STATE.with(|s| {
-        // Algorithme xorshift64 : générateur pseudo-aléatoire rapide et léger
+        // xorshift64 algorithm: fast and lightweight pseudo-random generator
         let mut x = s.get();
         x ^= x << 13;
         x ^= x >> 7;
@@ -256,10 +251,10 @@ pub(crate) fn rand_f64() -> f64 {
     })
 }
 
-/// Génère un entier pseudo-aléatoire dans l'intervalle [0, max).
+/// Generates a pseudo-random integer in the interval [0, max).
 ///
-/// Paramètre `max` : borne supérieure exclusive
-/// Retourne : un usize pseudo-aléatoire dans [0, max)
+/// Parameter `max`: exclusive upper bound
+/// Returns: a pseudo-random usize in [0, max)
 fn rand_usize(max: usize) -> usize {
     if max == 0 { return 0; }
     (rand_f64() * max as f64) as usize % max

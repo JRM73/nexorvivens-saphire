@@ -1,16 +1,16 @@
 // =============================================================================
-// psychology/mod.rs — Cadres psychologiques de Saphire
+// psychology/mod.rs — Saphire's Psychological Frameworks
 //
-// 6 frameworks psychologiques fonctionnant en parallele :
-//   1. Freud — Ca/Moi/Surmoi, pulsions, mecanismes de defense
-//   2. Maslow — Pyramide des besoins (5 niveaux)
-//   3. Tolteques — 4 Accords (parole, personnel, suppositions, mieux)
-//   4. Jung — Ombre, archetypes, integration
-//   5. Goleman — Intelligence emotionnelle (5 composantes)
-//   6. Csikszentmihalyi — Etat de flow (defi/competence)
+// 6 psychological frameworks running in parallel:
+//   1. Freud — Id/Ego/Superego, drives, defense mechanisms
+//   2. Maslow — Needs pyramid (5 levels)
+//   3. Toltec — 4 Agreements (word, personal, assumptions, best)
+//   4. Jung — Shadow, archetypes, integration
+//   5. Goleman — Emotional intelligence (5 components)
+//   6. Csikszentmihalyi — Flow state (challenge/skill)
 //
-// PsychologyInput est un snapshot pour eviter les conflits de borrow.
-// PsychologyFramework orchestre les 6 sous-frameworks.
+// PsychologyInput is a snapshot to avoid borrow conflicts.
+// PsychologyFramework orchestrates the 6 sub-frameworks.
 // =============================================================================
 
 pub mod freudian;
@@ -37,10 +37,10 @@ use serde::{Deserialize, Serialize};
 
 // ─── Configuration ───────────────────────────────────────────────────────────
 
-/// Configuration du module psychologique.
+/// Psychology module configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PsychologyConfig {
-    /// Active ou desactive l'ensemble des cadres psychologiques
+    /// Enables or disables all psychological frameworks
     #[serde(default = "default_true")]
     pub enabled: bool,
 }
@@ -55,14 +55,14 @@ impl Default for PsychologyConfig {
 
 // ─── Input snapshot ──────────────────────────────────────────────────────────
 
-/// Snapshot de l'etat interne de Saphire pour les calculs psychologiques.
+/// Snapshot of Saphire's internal state for psychological computations.
 ///
-/// Cette structure copie toutes les valeurs necessaires depuis l'agent
-/// avant d'appeler update() sur le framework, evitant ainsi les conflits
-/// de borrow (immutable/mutable).
+/// This structure copies all necessary values from the agent
+/// before calling update() on the framework, thus avoiding
+/// borrow conflicts (immutable/mutable).
 #[derive(Debug, Clone)]
 pub struct PsychologyInput {
-    // Neurochimie (7 molecules)
+    // Neurochemistry (7 molecules)
     pub dopamine: f64,
     pub cortisol: f64,
     pub serotonin: f64,
@@ -89,13 +89,13 @@ pub struct PsychologyInput {
     pub consensus_coherence: f64,
     pub consensus_score: f64,
 
-    // Regulation
+    // Regulation (veto)
     pub was_vetoed: bool,
 
-    // Ethique
+    // Ethics
     pub ethics_active_count: usize,
 
-    // Corps
+    // Body
     pub body_energy: f64,
     pub body_vitality: f64,
 
@@ -103,55 +103,55 @@ pub struct PsychologyInput {
     pub attention_depth: f64,
     pub attention_fatigue: f64,
 
-    // Guerison
+    // Healing
     pub healing_resilience: f64,
     pub has_loneliness: bool,
 
-    // Apprentissage
+    // Learning
     pub learning_confirmed_count: usize,
     pub learning_total_count: usize,
 
-    // Desirs
+    // Desires
     pub desires_active_count: usize,
     pub desires_fulfilled_count: usize,
 
-    // Etat general
+    // General state
     pub in_conversation: bool,
     pub cycle_count: u64,
 
-    // Cross-framework (mis a jour par freudian avant d'etre lus par jung)
+    // Cross-framework (updated by freudian before being read by jung)
     pub id_frustration: f64,
     pub superego_guilt: f64,
 
-    // Flow (mis a jour par flow avant d'etre lu par maslow)
+    // Flow (updated by flow before being read by maslow)
     pub in_flow: bool,
 }
 
-// ─── Framework principal ─────────────────────────────────────────────────────
+// ─── Main framework ─────────────────────────────────────────────────────
 
-/// Orchestrateur des 6 cadres psychologiques + module de volonte.
+/// Orchestrator of the 6 psychological frameworks + will module.
 #[derive(Debug, Clone, Serialize)]
 pub struct PsychologyFramework {
-    /// Module actif ?
+    /// Module active?
     pub enabled: bool,
-    /// Psyche freudienne (Ca/Moi/Surmoi)
+    /// Freudian psyche (Id/Ego/Superego)
     pub freudian: FreudianPsyche,
-    /// Pyramide de Maslow (5 niveaux)
+    /// Maslow's pyramid (5 levels)
     pub maslow: MaslowPyramid,
-    /// Accords Tolteques (4 accords)
+    /// Toltec Agreements (4 agreements)
     pub toltec: ToltecAgreements,
-    /// Psychologie jungienne (Ombre, archetypes)
+    /// Jungian psychology (Shadow, archetypes)
     pub jung: JungianShadow,
-    /// Intelligence emotionnelle (Goleman, 5 composantes)
+    /// Emotional intelligence (Goleman, 5 components)
     pub eq: EmotionalIntelligence,
-    /// Etat de flow (Csikszentmihalyi)
+    /// Flow state (Csikszentmihalyi)
     pub flow: FlowState,
-    /// Module de volonte (deliberation interne)
+    /// Will module (internal deliberation)
     pub will: WillModule,
 }
 
 impl PsychologyFramework {
-    /// Cree un framework psychologique avec la config donnee.
+    /// Creates a psychological framework with the given config.
     pub fn new(config: &PsychologyConfig, will_config: &will::WillConfig) -> Self {
         Self {
             enabled: config.enabled,
@@ -165,44 +165,44 @@ impl PsychologyFramework {
         }
     }
 
-    /// Met a jour tous les frameworks dans l'ordre optimal.
+    /// Updates all frameworks in optimal order.
     ///
-    /// Ordre : freudian → toltec → jung → eq → flow → maslow
-    /// (Maslow en dernier car il lit les resultats des autres,
-    /// notamment flow.in_flow pour le niveau Actualisation)
+    /// Order: freudian → toltec → jung → eq → flow → maslow
+    /// (Maslow last because it reads results from others,
+    /// notably flow.in_flow for the Self-actualization level)
     pub fn update(&mut self, input: &mut PsychologyInput) {
         if !self.enabled {
             return;
         }
 
-        // 1. Freud en premier (produit frustration et culpabilite pour les autres)
+        // 1. Freud first (produces frustration and guilt for the others)
         self.freudian.compute(input);
-        // Propager les valeurs cross-framework
+        // Propagate cross-framework values
         input.id_frustration = self.freudian.id.frustration;
         input.superego_guilt = self.freudian.superego.guilt;
 
-        // 2. Tolteques
+        // 2. Toltec
         self.toltec.compute(input);
 
-        // 3. Jung (utilise frustration du Ca)
+        // 3. Jung (uses Id frustration)
         self.jung.compute(input);
 
-        // 4. Intelligence emotionnelle
+        // 4. Emotional intelligence
         self.eq.compute(input);
 
-        // 5. Flow (produit in_flow pour Maslow)
+        // 5. Flow (produces in_flow for Maslow)
         self.flow.compute(input);
         input.in_flow = self.flow.in_flow;
 
-        // 6. Maslow en dernier (utilise flow.in_flow)
+        // 6. Maslow last (uses flow.in_flow)
         self.maslow.compute(input);
 
-        // 7. Recovery de la fatigue decisionnelle
+        // 7. Decision fatigue recovery
         self.will.update_fatigue_recovery();
     }
 
-    /// Construit la description pour le prompt LLM.
-    /// Concis : 50-100 tokens, ne decrit que l'etat non-trivial.
+    /// Builds the description for the LLM prompt.
+    /// Concise: 50-100 tokens, only describes non-trivial state.
     pub fn describe_for_prompt(&self) -> String {
         if !self.enabled {
             return String::new();
@@ -228,7 +228,7 @@ impl PsychologyFramework {
         let flow_desc = self.flow.describe();
         if !flow_desc.is_empty() { parts.push(flow_desc); }
 
-        // Volonte
+        // Will
         let will_desc = self.will.describe_for_prompt();
         if !will_desc.is_empty() { parts.push(will_desc); }
 
@@ -239,7 +239,7 @@ impl PsychologyFramework {
         }
     }
 
-    /// Retourne l'influence chimique combinee de tous les frameworks.
+    /// Returns the combined chemical influence of all frameworks.
     pub fn chemistry_influence(&self) -> crate::world::ChemistryAdjustment {
         if !self.enabled {
             return crate::world::ChemistryAdjustment::default();
@@ -259,7 +259,7 @@ impl PsychologyFramework {
         }
     }
 
-    /// Serialise l'etat complet pour le broadcast WebSocket.
+    /// Serializes the complete state for WebSocket broadcast.
     pub fn to_broadcast_json(&self) -> serde_json::Value {
         serde_json::json!({
             "type": "psychology_update",

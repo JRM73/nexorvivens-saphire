@@ -1,22 +1,22 @@
 // =============================================================================
-// nlp/stagnation.rs — Detection de stagnation thematique (utilitaire partage)
+// nlp/stagnation.rs — Thematic stagnation detection (shared utility)
 // =============================================================================
 //
-// Role : Detecte si un ensemble de textes recents (pensees, reponses)
-//        tourne autour du meme theme de facon obsessionnelle.
-//        Utilise par thinking.rs, conversation.rs et llm.rs.
+// Role: Detects whether a set of recent texts (thoughts, responses) are
+//       revolving around the same theme obsessively.
+//       Used by thinking.rs, conversation.rs, and llm.rs.
 //
-// Algorithme :
-//   1. Extraire les mots-cles significatifs (> 4 chars) de chaque texte
-//   2. Compter combien de textes contiennent chaque mot-cle
-//   3. Si un mot apparait dans > 60% des textes = mot "obsessionnel"
-//   4. Si >= 3 mots obsessionnels = stagnation detectee
+// Algorithm:
+//   1. Extract significant keywords (> 4 chars) from each text
+//   2. Count how many texts contain each keyword
+//   3. If a word appears in > 60% of texts = "obsessional" word
+//   4. If >= 3 obsessional words = stagnation detected
 // =============================================================================
 
 use std::collections::{HashMap, HashSet};
 
-/// Extrait les mots-cles significatifs (> `min_len` caracteres) d'un texte.
-/// Retourne un HashSet de mots en minuscules, dedupliques.
+/// Extracts significant keywords (> `min_len` characters) from a text.
+/// Returns a HashSet of lowercase, deduplicated words.
 pub fn extract_keywords(text: &str, min_len: usize) -> HashSet<String> {
     text.to_lowercase()
         .split(|c: char| !c.is_alphanumeric())
@@ -25,15 +25,15 @@ pub fn extract_keywords(text: &str, min_len: usize) -> HashSet<String> {
         .collect()
 }
 
-/// Detecte si les textes fournis sont en stagnation thematique.
+/// Detects whether the provided texts are in thematic stagnation.
 ///
-/// Parametres :
-/// - `texts` : les textes a analyser (prend les 3 derniers)
-/// - `min_word_len` : longueur minimale des mots-cles (typiquement 4)
-/// - `presence_ratio` : ratio de presence pour qu'un mot soit "obsessionnel" (typiquement 0.6)
-/// - `min_obsessional` : nombre minimum de mots obsessionnels pour declarer stagnation (typiquement 3)
+/// Parameters:
+/// - `texts`: the texts to analyze (takes the last 3)
+/// - `min_word_len`: minimum keyword length (typically 4)
+/// - `presence_ratio`: presence ratio for a word to be "obsessional" (typically 0.6)
+/// - `min_obsessional`: minimum number of obsessional words to declare stagnation (typically 3)
 ///
-/// Retourne : (stagnation_detectee, mots_obsessionnels)
+/// Returns: (stagnation_detected, obsessional_words)
 pub fn detect_stagnation(
     texts: &[&str],
     min_word_len: usize,
@@ -44,14 +44,14 @@ pub fn detect_stagnation(
         return (false, vec![]);
     }
 
-    // Prendre les 3 derniers textes
+    // Take the last 3 texts
     let last3: Vec<&&str> = texts.iter().rev().take(3).collect();
 
     let kw_sets: Vec<HashSet<String>> = last3.iter()
         .map(|t| extract_keywords(t, min_word_len))
         .collect();
 
-    // Compter combien de textes contiennent chaque mot
+    // Count how many texts contain each word
     let mut word_freq: HashMap<String, usize> = HashMap::new();
     for kw_set in &kw_sets {
         for w in kw_set {
@@ -73,11 +73,11 @@ pub fn detect_stagnation(
 }
 
 // =============================================================================
-// Detection semantique — similarite cosinus sur vecteurs TF
+// Semantic detection — cosine similarity on TF vectors
 // =============================================================================
 
-/// Construit un vecteur de frequence de termes (TF) pour un texte.
-/// Retourne un HashMap mot → frequence normalisee.
+/// Builds a term frequency (TF) vector for a text.
+/// Returns a HashMap of word -> normalized frequency.
 fn build_tf_vector(text: &str, min_word_len: usize) -> HashMap<String, f64> {
     let words: Vec<String> = text.to_lowercase()
         .split(|c: char| !c.is_alphanumeric())
@@ -94,14 +94,14 @@ fn build_tf_vector(text: &str, min_word_len: usize) -> HashMap<String, f64> {
     for w in &words {
         *freq.entry(w.clone()).or_insert(0.0) += 1.0;
     }
-    // Normaliser par le nombre total de mots
+    // Normalize by total word count
     for v in freq.values_mut() {
         *v /= total;
     }
     freq
 }
 
-/// Calcule la similarite cosinus entre deux vecteurs TF.
+/// Computes the cosine similarity between two TF vectors.
 fn cosine_similarity(a: &HashMap<String, f64>, b: &HashMap<String, f64>) -> f64 {
     if a.is_empty() || b.is_empty() {
         return 0.0;
@@ -111,7 +111,7 @@ fn cosine_similarity(a: &HashMap<String, f64>, b: &HashMap<String, f64>) -> f64 
     let mut norm_a = 0.0;
     let mut norm_b = 0.0;
 
-    // Iterer sur les cles du plus petit vecteur pour le dot product
+    // Iterate over the smaller vector's keys for the dot product
     for (word, va) in a {
         norm_a += va * va;
         if let Some(vb) = b.get(word) {
@@ -130,18 +130,18 @@ fn cosine_similarity(a: &HashMap<String, f64>, b: &HashMap<String, f64>) -> f64 
     }
 }
 
-/// Detecte la stagnation semantique par similarite cosinus des vecteurs TF.
+/// Detects semantic stagnation via cosine similarity of TF vectors.
 ///
-/// Contrairement a detect_stagnation() qui compare des mots exacts,
-/// cette fonction detecte les reformulations avec synonymes en mesurant
-/// la proximite des distributions de mots entre textes consecutifs.
+/// Unlike detect_stagnation() which compares exact words, this function
+/// detects rephrasing with synonyms by measuring the proximity of word
+/// distributions between consecutive texts.
 ///
-/// Parametres :
-/// - `texts` : les textes a analyser (prend les 4 derniers)
-/// - `min_word_len` : longueur minimale des mots (typiquement 4)
-/// - `similarity_threshold` : seuil de similarite moyenne (typiquement 0.55)
+/// Parameters:
+/// - `texts`: the texts to analyze (takes the last 4)
+/// - `min_word_len`: minimum word length (typically 4)
+/// - `similarity_threshold`: average similarity threshold (typically 0.55)
 ///
-/// Retourne : (stagnation_semantique, similarite_moyenne)
+/// Returns: (semantic_stagnation, average_similarity)
 pub fn detect_semantic_stagnation(
     texts: &[&str],
     min_word_len: usize,
@@ -151,16 +151,16 @@ pub fn detect_semantic_stagnation(
         return (false, 0.0);
     }
 
-    // Prendre les 4 derniers textes (ou moins si pas assez)
+    // Take the last 4 texts (or fewer if not enough)
     let n = texts.len().min(4);
     let last_n: Vec<&&str> = texts.iter().rev().take(n).collect();
 
-    // Construire les vecteurs TF
+    // Build TF vectors
     let tf_vectors: Vec<HashMap<String, f64>> = last_n.iter()
         .map(|t| build_tf_vector(t, min_word_len))
         .collect();
 
-    // Calculer la similarite cosinus entre paires consecutives
+    // Compute cosine similarity between consecutive pairs
     let mut total_sim = 0.0;
     let mut pairs = 0;
     for i in 0..tf_vectors.len() - 1 {
@@ -183,7 +183,7 @@ mod tests {
 
     #[test]
     fn test_semantic_stagnation_similar_texts() {
-        // Textes qui reformulent la meme idee avec des mots partiellement partages
+        // Texts that rephrase the same idea with partially shared words
         let texts = vec![
             "La conscience humaine reste un profond mystere pour la science moderne",
             "Cette conscience profonde reste encore un mystere total pour notre science",

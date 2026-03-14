@@ -1,34 +1,33 @@
 // =============================================================================
-// knowledge/custom_rss.rs — Client RSS generique configurable
+// knowledge/custom_rss.rs — Configurable generic RSS client
 // =============================================================================
 //
-// Role : Permet a l'utilisateur de configurer des flux RSS personnalises
-//        dans saphire.toml. Saphire les parcourt periodiquement pour
-//        decouvrir du contenu nouveau et diversifie.
+// Purpose: Allows the user to configure custom RSS feeds in saphire.toml.
+//          Saphire periodically browses them to discover new and diverse content.
 //
-// Configuration dans saphire.toml :
+// Configuration in saphire.toml:
 //   [knowledge.sources]
 //   custom_rss = true
 //
 //   [knowledge.custom_rss_feeds]
 //   urls = ["https://example.com/feed.xml", "https://other.com/rss"]
 //
-// Format RSS :
-//   - Standard RSS 2.0 : <item><title>...<description>...<link>...</item>
-//   - Le contenu peut etre dans CDATA
-//   - Les descriptions peuvent contenir du HTML
+// RSS Format:
+//   - Standard RSS 2.0: <item><title>...<description>...<link>...</item>
+//   - Content may be in CDATA
+//   - Descriptions may contain HTML
 //
-// Score de pertinence : 0.70
+// Relevance score: 0.70
 // =============================================================================
 
 use chrono::Utc;
 use super::{WebKnowledge, KnowledgeResult, KnowledgeError};
 
 impl WebKnowledge {
-    /// Recuperer les articles recents depuis les flux RSS configures.
+    /// Retrieve recent articles from configured RSS feeds.
     ///
-    /// Parcourt tous les URLs de custom_rss_feeds et extrait les articles.
-    /// Prend les 2 premiers articles de chaque flux (max 6 au total).
+    /// Iterates over all custom_rss_feeds URLs and extracts articles.
+    /// Takes the first 2 articles from each feed (max 6 total).
     pub fn search_custom_rss(&self) -> Result<Vec<KnowledgeResult>, KnowledgeError> {
         let feed_urls = &self.config.custom_rss_feeds.urls;
 
@@ -40,8 +39,8 @@ impl WebKnowledge {
         let mut results = Vec::new();
 
         for feed_url in feed_urls.iter().take(5) {
-            // Note : les RSS custom ne sont pas dans ALLOWED_DOMAINS
-            // On fait confiance a l'utilisateur qui les a configures
+            // Note: custom RSS feeds are not in ALLOWED_DOMAINS
+            // We trust the user who configured them
 
             let response = match self.http_client
                 .get(feed_url)
@@ -62,11 +61,11 @@ impl WebKnowledge {
                 }
             };
 
-            // Determiner le nom de la source depuis le titre du flux
+            // Determine the source name from the feed title
             let feed_title = Self::extract_tag(&response, "title")
                 .map(|t| Self::strip_cdata(&t))
                 .unwrap_or_else(|| {
-                    // Extraire le domaine de l'URL comme nom
+                    // Extract the domain from the URL as a name
                     feed_url
                         .split("//")
                         .nth(1)
@@ -77,17 +76,17 @@ impl WebKnowledge {
 
             let source_name = format!("RSS: {}", feed_title);
 
-            // Parser les items (RSS 2.0 : <item>, Atom : <entry>)
+            // Parse items (RSS 2.0: <item>, Atom: <entry>)
             let is_atom = response.contains("<feed") && response.contains("<entry>");
 
             if is_atom {
-                // Format Atom
+                // Atom format
                 for entry in response.split("<entry>").skip(1).take(2) {
                     let title = Self::extract_tag(entry, "title")
                         .map(|t| Self::strip_cdata(&t))
                         .unwrap_or_default();
 
-                    // Lien Atom : <link href="..." />
+                    // Atom link: <link href="..." />
                     let link = if let Some(href_start) = entry.find("href=\"") {
                         let rest = &entry[href_start + 6..];
                         if let Some(href_end) = rest.find('"') {
@@ -123,7 +122,7 @@ impl WebKnowledge {
                     }
                 }
             } else {
-                // Format RSS 2.0
+                // RSS 2.0 format
                 for item in response.split("<item>").skip(1).take(2) {
                     let title = Self::extract_tag(item, "title")
                         .map(|t| Self::strip_cdata(&t))

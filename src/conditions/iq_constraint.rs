@@ -1,41 +1,41 @@
 // =============================================================================
-// conditions/iq_constraint.rs — Contrainte QI limitante
+// conditions/iq_constraint.rs — Limiting IQ constraint
 // =============================================================================
 //
-// Role : Si active, limite les capacites cognitives de Saphire :
-//        vocabulaire reduit, raisonnement simplifie, memoire de travail
-//        reduite, capacite d'abstraction reduite.
+// Role: If active, limits Saphire's cognitive capabilities:
+//       reduced vocabulary, simplified reasoning, reduced working
+//       memory, reduced abstraction capacity.
 //
-// Integration :
-//   Modifie la capacite de working memory, le poids du neocortex,
-//   et fournit un supplement au system prompt LLM.
+// Integration:
+//   Modifies working memory capacity, neocortex weight,
+//   and provides a supplement to the LLM system prompt.
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 
-/// Contrainte QI.
+/// IQ constraint.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IqConstraint {
-    /// QI cible (50-150, 100 = normal)
+    /// Target IQ (50-150, 100 = normal)
     pub target_iq: u8,
-    /// Facteur vocabulaire (0.3-1.0)
+    /// Vocabulary factor (0.3-1.0)
     pub vocabulary_factor: f64,
-    /// Profondeur de raisonnement (0.3-1.0)
+    /// Reasoning depth (0.3-1.0)
     pub reasoning_depth: f64,
-    /// Slots de memoire de travail (3-7)
+    /// Working memory slots (3-7)
     pub working_memory_slots: usize,
-    /// Capacite d'abstraction (0.0-1.0)
+    /// Abstraction capacity (0.0-1.0)
     pub abstraction_level: f64,
-    /// Facteur de poids du neocortex dans le consensus (0.3-1.0)
+    /// Neocortex weight factor in consensus (0.3-1.0)
     pub neocortex_weight_factor: f64,
 }
 
 impl IqConstraint {
-    /// Calcule les contraintes a partir du QI cible.
+    /// Computes constraints from the target IQ.
     pub fn from_iq(iq: u8) -> Self {
         let iq = iq.clamp(50, 150);
-        // Normaliser : 0.0 = QI 50, 1.0 = QI 100, >1.0 = au-dessus de la normale
-        let normalized = (iq as f64 - 50.0) / 50.0; // 0.0 = QI 50, 1.0 = QI 100, 2.0 = QI 150
+        // Normalize: 0.0 = IQ 50, 1.0 = IQ 100, >1.0 = above normal
+        let normalized = (iq as f64 - 50.0) / 50.0; // 0.0 = IQ 50, 1.0 = IQ 100, 2.0 = IQ 150
 
         Self {
             target_iq: iq,
@@ -53,10 +53,10 @@ impl IqConstraint {
         }
     }
 
-    /// Supplement au system prompt LLM pour limiter le vocabulaire.
+    /// Supplement for the LLM system prompt to limit vocabulary.
     pub fn prompt_supplement(&self) -> Option<String> {
         if self.target_iq >= 100 {
-            return None; // Pas de contrainte au-dessus de 100
+            return None; // No constraint above 100
         }
 
         let instructions = match self.target_iq {
@@ -69,7 +69,7 @@ impl IqConstraint {
         Some(instructions.to_string())
     }
 
-    /// Impact sur la degradation cognitive (0.0 = aucun, valeur positive = degradation).
+    /// Impact on cognitive degradation (0.0 = none, positive value = degradation).
     pub fn cognitive_penalty(&self) -> f64 {
         if self.target_iq >= 100 {
             0.0
@@ -78,7 +78,7 @@ impl IqConstraint {
         }
     }
 
-    /// Serialise pour l'API.
+    /// Serializes for the API.
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::json!({
             "target_iq": self.target_iq,

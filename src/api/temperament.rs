@@ -1,8 +1,8 @@
 // =============================================================================
 // api/temperament.rs — Endpoint temperament emergent
 //
-// Role : Expose les traits de temperament deduits (timidite, courage, etc.)
-// via GET /api/temperament pour le dashboard.
+// Role: Expose les traits de temperament deduits (timidite, courage, etc.)
+// via GET /api/temperament for the dashboard.
 // =============================================================================
 
 use axum::extract::State;

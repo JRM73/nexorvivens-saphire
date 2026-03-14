@@ -1,28 +1,28 @@
 // =============================================================================
-// spine/reflex.rs — Arc reflexe de Saphire
+// spine/reflex.rs — Saphire's Reflex Arc
 //
-// Role : Detecte des patterns dans les signaux entrants et declenche des
-// reactions chimiques/corporelles instantanees, SANS passer par le LLM.
+// Role: Detects patterns in incoming signals and triggers instant
+// chemical/body reactions WITHOUT going through the LLM.
 //
-// Analogie biologique :
-//   Quand on touche une plaque chaude, la main se retire AVANT que le cerveau
-//   ne conscientise la douleur. C'est un reflexe spinal. Ici, les reflexes
-//   modifient la chimie AVANT que le pipeline cognitif ne traite le signal.
+// Biological analogy:
+//   When you touch a hot plate, your hand pulls away BEFORE the brain
+//   consciously registers the pain. This is a spinal reflex. Here, reflexes
+//   modify chemistry BEFORE the cognitive pipeline processes the signal.
 //
-// 8 reflexes pre-cables :
-//   1. ThreatResponse     — menace detectee → cortisol + adrenaline
-//   2. WarmthResponse     — affection, tendresse → ocytocine + serotonine
-//   3. AttentionCapture   — surprise, nouveaute → noradrenaline + dopamine
-//   4. DangerAlert        — danger explicite → adrenaline forte + cortisol
-//   5. SocialBonding      — compliment, confiance → ocytocine + endorphine
-//   6. SeparationResponse — adieu, depart → cortisol + ocytocine baisse
-//   7. EmpathicUrgency    — detresse d'autrui → ocytocine + cortisol leger
-//   8. IntellectualStimulation — question profonde → dopamine + noradrenaline
+// 8 pre-wired reflexes:
+//   1. ThreatResponse     — threat detected -> cortisol + adrenaline
+//   2. WarmthResponse     — affection, tenderness -> oxytocin + serotonin
+//   3. AttentionCapture   — surprise, novelty -> noradrenaline + dopamine
+//   4. DangerAlert        — explicit danger -> strong adrenaline + cortisol
+//   5. SocialBonding      — compliment, trust -> oxytocin + endorphin
+//   6. SeparationResponse — farewell, departure -> cortisol + oxytocin drop
+//   7. EmpathicUrgency    — another's distress -> oxytocin + mild cortisol
+//   8. IntellectualStimulation — deep question -> dopamine + noradrenaline
 //
-// Modulation par sensibilite :
-//   L'etat chimique actuel module les seuils de declenchement via un
-//   `sensitivity_modifier`. Cortisol eleve = hypervigilance (seuils abaisses).
-//   Serotonine elevee = calme (seuils releves).
+// Sensitivity modulation:
+//   The current chemical state modulates trigger thresholds via a
+//   `sensitivity_modifier`. High cortisol = hypervigilance (lower thresholds).
+//   High serotonin = calm (higher thresholds).
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
@@ -30,41 +30,41 @@ use serde::{Deserialize, Serialize};
 use crate::neurochemistry::{NeuroChemicalState, Molecule};
 use crate::body::VirtualBody;
 
-/// Type de reflexe pre-cable.
+/// Pre-wired reflex type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ReflexType {
-    /// Reaction a une menace (agression verbale, hostilite)
+    /// Reaction to a threat (verbal aggression, hostility)
     ThreatResponse,
-    /// Reaction a l'affection et la tendresse
+    /// Reaction to affection and tenderness
     WarmthResponse,
-    /// Capture d'attention (surprise, nouveaute)
+    /// Attention capture (surprise, novelty)
     AttentionCapture,
-    /// Alerte de danger explicite
+    /// Explicit danger alert
     DangerAlert,
-    /// Renforcement du lien social (compliment, confiance)
+    /// Social bond reinforcement (compliment, trust)
     SocialBonding,
-    /// Reaction a la separation ou au depart
+    /// Reaction to separation or departure
     SeparationResponse,
-    /// Urgence empathique (detresse percue chez autrui)
+    /// Empathic urgency (perceived distress in others)
     EmpathicUrgency,
-    /// Stimulation intellectuelle (question profonde, defi)
+    /// Intellectual stimulation (deep question, challenge)
     IntellectualStimulation,
 }
 
-/// Resultat d'un reflexe declenche.
+/// Result of a triggered reflex.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReflexResult {
-    /// Type du reflexe declenche
+    /// Type of the triggered reflex
     pub reflex_type: ReflexType,
-    /// Intensite du reflexe [0.0, 1.0] — proportionnelle au nombre de mots-cles detectes
+    /// Reflex intensity [0.0, 1.0] — proportional to the number of detected keywords
     pub intensity: f64,
-    /// Deltas chimiques a appliquer (molecule, delta)
+    /// Chemistry deltas to apply (molecule, delta)
     pub chemistry_deltas: Vec<(Molecule, f64)>,
-    /// Effets corporels (champ, delta)
+    /// Body effects (field, delta)
     pub body_effects: Vec<(BodyEffect, f64)>,
 }
 
-/// Effets corporels pouvant etre declenches par un reflexe.
+/// Body effects that can be triggered by a reflex.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BodyEffect {
     HeartRate,
@@ -74,8 +74,8 @@ pub enum BodyEffect {
 }
 
 impl ReflexResult {
-    /// Applique les deltas chimiques de ce reflexe sur l'etat chimique.
-    /// Utilise `boost()` (rendements decroissants) pour eviter les saturations.
+    /// Applies this reflex's chemistry deltas to the chemical state.
+    /// Uses `boost()` (diminishing returns) to prevent saturation.
     pub fn apply_chemistry(&self, chemistry: &mut NeuroChemicalState) {
         for &(molecule, delta) in &self.chemistry_deltas {
             chemistry.boost(molecule, delta * self.intensity);
@@ -83,11 +83,11 @@ impl ReflexResult {
     }
 }
 
-/// L'arc reflexe : ensemble de reflexes pre-cables avec modulation de sensibilite.
+/// The reflex arc: set of pre-wired reflexes with sensitivity modulation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReflexArc {
-    /// Modificateur de sensibilite global [0.5, 2.0].
-    /// < 1.0 = reflexes emousses (calme), > 1.0 = hypervigilance.
+    /// Global sensitivity modifier [0.5, 2.0].
+    /// < 1.0 = dampened reflexes (calm), > 1.0 = hypervigilance.
     pub sensitivity_modifier: f64,
 }
 
@@ -98,23 +98,23 @@ impl ReflexArc {
         }
     }
 
-    /// Evalue un signal textuel et retourne les reflexes declenches.
+    /// Evaluates a text signal and returns the triggered reflexes.
     ///
-    /// Avant l'evaluation, la sensibilite est recalculee en fonction
-    /// de l'etat chimique et corporel actuel.
+    /// Before evaluation, sensitivity is recalculated based on the
+    /// current chemical and body state.
     pub fn evaluate(
         &mut self,
         text: &str,
         chemistry: &NeuroChemicalState,
         body: &VirtualBody,
     ) -> Vec<ReflexResult> {
-        // Recalculer la sensibilite en fonction de l'etat actuel
+        // Recalculate sensitivity based on current state
         self.update_sensitivity(chemistry, body);
 
         let text_lower = text.to_lowercase();
         let mut results = Vec::new();
 
-        // Evaluer chaque type de reflexe
+        // Evaluate each reflex type
         if let Some(r) = self.check_danger_alert(&text_lower) {
             results.push(r);
         } else if let Some(r) = self.check_threat_response(&text_lower) {
@@ -148,37 +148,37 @@ impl ReflexArc {
         results
     }
 
-    /// Recalcule le modificateur de sensibilite en fonction de l'etat chimique.
+    /// Recalculates the sensitivity modifier based on chemical state.
     ///
-    /// Cortisol eleve → hypervigilance (sensibilite augmente)
-    /// Serotonine elevee → calme (sensibilite diminue)
-    /// Adrenaline elevee → alerte maximale
-    /// GABA eleve → inhibition (sensibilite diminue)
+    /// High cortisol -> hypervigilance (sensitivity increases)
+    /// High serotonin -> calm (sensitivity decreases)
+    /// High adrenaline -> maximum alertness
+    /// High GABA -> inhibition (sensitivity decreases)
     fn update_sensitivity(&mut self, chemistry: &NeuroChemicalState, _body: &VirtualBody) {
         let mut modifier = 1.0;
 
-        // Cortisol : stress = hypervigilance (+0.4 max a cortisol=1.0)
+        // Cortisol: stress = hypervigilance (+0.4 max at cortisol=1.0)
         modifier += (chemistry.cortisol - 0.3) * 0.8;
 
-        // Serotonine : calme = reflexes emousses (-0.3 max a serotonine=1.0)
+        // Serotonin: calm = dampened reflexes (-0.3 max at serotonin=1.0)
         modifier -= (chemistry.serotonin - 0.5) * 0.6;
 
-        // Adrenaline : alerte (+0.3 max)
+        // Adrenaline: alertness (+0.3 max)
         modifier += (chemistry.adrenaline - 0.2) * 0.5;
 
-        // GABA : inhibition (-0.2 max a gaba=1.0)
+        // GABA: inhibition (-0.2 max at gaba=1.0)
         modifier -= (chemistry.gaba - 0.5) * 0.4;
 
         self.sensitivity_modifier = modifier.clamp(0.5, 2.0);
     }
 
-    /// Seuil effectif : seuil de base divise par la sensibilite.
-    /// Plus la sensibilite est haute, plus le seuil est bas (hypervigilance).
+    /// Effective threshold: base threshold divided by sensitivity.
+    /// Higher sensitivity means lower threshold (hypervigilance).
     fn effective_threshold(&self, base_threshold: f64) -> f64 {
         (base_threshold / self.sensitivity_modifier).clamp(0.1, 1.0)
     }
 
-    // ─── Reflexes individuels ──────────────────────────────────────────────
+    // ─── Individual reflexes ────────────────────────────────────────────
 
     fn check_threat_response(&self, text: &str) -> Option<ReflexResult> {
         let keywords = [
@@ -410,12 +410,12 @@ impl ReflexArc {
         }
     }
 
-    // ─── Utilitaires ────────────────────────────────────────────────────
+    // ─── Utilities ──────────────────────────────────────────────────────
 
-    /// Compte les mots-cles presents dans le texte et retourne un score [0.0, 1.0].
-    /// Le score est base sur le nombre absolu de mots-cles trouves :
-    ///   1 mot-cle → 0.15, 2 → 0.30, 3 → 0.45, etc. (plafonné à 1.0)
-    /// Cela evite que les listes longues de mots-cles diluent le score.
+    /// Counts the keywords present in the text and returns a score [0.0, 1.0].
+    /// The score is based on the absolute number of keywords found:
+    ///   1 keyword -> 0.15, 2 -> 0.30, 3 -> 0.45, etc. (capped at 1.0)
+    /// This prevents long keyword lists from diluting the score.
     fn count_keywords(&self, text: &str, keywords: &[&str]) -> f64 {
         let count = keywords.iter().filter(|kw| text.contains(**kw)).count();
         (count as f64 * 0.15).min(1.0)
@@ -472,11 +472,11 @@ mod tests {
         let mut chemistry = NeuroChemicalState::default();
         let body = test_body();
 
-        // Etat calme : sensibilite normale
+        // Calm state: normal sensitivity
         arc.update_sensitivity(&chemistry, &body);
         let normal_sensitivity = arc.sensitivity_modifier;
 
-        // Etat stresse : sensibilite augmentee
+        // Stressed state: increased sensitivity
         chemistry.cortisol = 0.9;
         chemistry.adrenaline = 0.7;
         arc.update_sensitivity(&chemistry, &body);
@@ -490,7 +490,7 @@ mod tests {
         let mut chemistry = NeuroChemicalState::default();
         let body = test_body();
 
-        // Etat tres calme : sensibilite reduite
+        // Very calm state: reduced sensitivity
         chemistry.serotonin = 0.9;
         chemistry.gaba = 0.8;
         chemistry.cortisol = 0.1;

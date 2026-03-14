@@ -1,5 +1,5 @@
 // =============================================================================
-// simulation/ — Algorithmes de simulation (behavior tree, influence map, etc.)
+// simulation/ — Simulation algorithms (behavior tree, influence map, etc.)
 // =============================================================================
 
 pub mod behavior_tree;

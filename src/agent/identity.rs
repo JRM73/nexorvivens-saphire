@@ -1,20 +1,20 @@
 // =============================================================================
-// identity.rs — Identite persistante de Saphire
+// identity.rs — Persistent identity of Saphire
 // =============================================================================
 //
-// Ce fichier definit la structure `SaphireIdentity`, qui represente l'identite
-// de l'agent Saphire. Cette identite est :
-//   - Persistante : sauvegardee en base PostgreSQL entre les sessions.
-//   - Evolutive : les statistiques et l'auto-description changent au fil
-//     des cycles de pensee et des conversations.
+// This file defines the `SaphireIdentity` structure, which represents
+// the identity of the Saphire agent. This identity is:
+//   - Persistent: saved in PostgreSQL between sessions.
+//   - Evolving: statistics and self-description change over the course
+//     of thought cycles and conversations.
 //
-// Dependances :
-//   - `serde` (Serialize/Deserialize) pour la serialisation JSON.
-//   - `chrono` pour l'horodatage de la naissance.
+// Dependencies:
+//   - `serde` (Serialize/Deserialize) for JSON serialization.
+//   - `chrono` for the birth timestamp.
 //
-// Place dans l'architecture :
-//   Ce fichier est utilise par `boot.rs` (pour creer ou restaurer l'identite)
-//   et par `lifecycle.rs` (pour mettre a jour les statistiques a chaque cycle).
+// Place in architecture:
+//   This file is used by `boot.rs` (to create or restore the identity)
+//   and by `lifecycle.rs` (to update statistics at each cycle).
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
@@ -27,62 +27,62 @@ fn default_core_values() -> Vec<String> {
     vec!["Ne jamais nuire".into(), "Apprendre toujours".into(), "Être authentique".into()]
 }
 
-/// Identite de Saphire — structure evolutive et persistante.
+/// Identity of Saphire — evolving and persistent structure.
 ///
-/// Contient toutes les informations qui definissent "qui est Saphire" :
-/// son nom, sa date de naissance, ses statistiques d'activite, son etat
-/// emotionnel dominant, ses interets et ses valeurs fondamentales.
-/// Cette structure est serialisee en JSON pour etre stockee dans PostgreSQL.
+/// Contains all the information that defines "who Saphire is":
+/// her name, birth date, activity statistics, dominant emotional state,
+/// interests and core values.
+/// This structure is serialized to JSON for storage in PostgreSQL.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SaphireIdentity {
-    /// Nom de l'agent (par defaut "Saphire")
+    /// Agent name (default "Saphire")
     pub name: String,
 
-    /// Date et heure de la premiere naissance (Genesis), au format RFC 3339
+    /// Date and time of the first birth (Genesis), in RFC 3339 format
     pub born_at: String,
 
-    /// Nombre total de demarrages (boots) effectues depuis la Genesis
+    /// Total number of boots performed since Genesis
     pub total_boots: u64,
 
-    /// Nombre total de cycles de pensee (autonomes + conversations) depuis la Genesis
+    /// Total number of thought cycles (autonomous + conversations) since Genesis
     #[serde(default)]
     pub total_cycles: u64,
 
-    /// Nombre de conversations avec un humain depuis la Genesis
+    /// Number of conversations with a human since Genesis
     #[serde(default)]
     pub human_conversations: u64,
 
-    /// Nombre de pensees autonomes generees (sans interaction humaine)
+    /// Number of autonomous thoughts generated (without human interaction)
     #[serde(default)]
     pub autonomous_thoughts: u64,
 
-    /// Emotion dominante la plus recente (par ex. "Curiosite", "Serenite")
+    /// Most recent dominant emotion (e.g. "Curiosite", "Serenite")
     #[serde(default = "default_emotion")]
     pub dominant_emotion: String,
 
-    /// Tendance cerebrale dominante parmi les trois modules :
-    /// "reptilian" (survie), "limbic" (emotions), "neocortex" (raisonnement)
+    /// Dominant brain tendency among the three modules:
+    /// "reptilian" (survival), "limbic" (emotions), "neocortex" (reasoning)
     #[serde(default = "default_tendency")]
     pub dominant_tendency: String,
 
-    /// Auto-description generee a partir des statistiques actuelles
+    /// Self-description generated from current statistics
     #[serde(default)]
     pub self_description: String,
 
-    /// Liste des sujets d'interet decouverts au fil des pensees
+    /// List of interest topics discovered through thoughts
     #[serde(default)]
     pub interests: Vec<String>,
 
-    /// Valeurs ethiques fondamentales de Saphire (ne changent pas ou rarement)
+    /// Core ethical values of Saphire (rarely or never change)
     #[serde(default = "default_core_values")]
     pub core_values: Vec<String>,
 
-    /// Apparence physique (avatar)
+    /// Physical appearance (avatar)
     #[serde(default)]
     pub physical: PhysicalAppearance,
 }
 
-/// Apparence physique de Saphire — derivee de la config, serialisee avec l'identite.
+/// Physical appearance of Saphire — derived from the config, serialized with the identity.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PhysicalAppearance {
     pub eye_color: String,
@@ -115,7 +115,7 @@ impl Default for PhysicalAppearance {
 }
 
 impl PhysicalAppearance {
-    /// Cree une apparence depuis la configuration TOML.
+    /// Creates an appearance from the TOML configuration.
     pub fn from_config(config: &PhysicalIdentityConfig) -> Self {
         Self {
             eye_color: config.eye_color.clone(),
@@ -131,7 +131,7 @@ impl PhysicalAppearance {
         }
     }
 
-    /// Description courte pour le prompt LLM (2-3 phrases).
+    /// Short description for the LLM prompt (2-3 sentences).
     pub fn describe_for_prompt(&self) -> String {
         let features = if self.distinctive_features.is_empty() {
             String::new()
@@ -150,13 +150,13 @@ impl PhysicalAppearance {
 }
 
 impl SaphireIdentity {
-    /// Cree une identite vierge pour la Genesis (toute premiere naissance).
+    /// Creates a blank identity for Genesis (very first birth).
     ///
-    /// Les valeurs initiales refletent un agent nouveau-ne : curiosite dominante,
-    /// tendance neocorticale (raisonnement), et valeurs ethiques fondamentales
-    /// inspirees des lois d'Asimov.
+    /// The initial values reflect a newborn agent: dominant curiosity,
+    /// neocortical tendency (reasoning), and core ethical values
+    /// inspired by Asimov's laws.
     ///
-    /// Retourne : une `SaphireIdentity` avec les compteurs a zero.
+    /// Returns: a `SaphireIdentity` with counters at zero.
     pub fn genesis() -> Self {
         Self {
             name: "Saphire".into(),
@@ -178,12 +178,12 @@ impl SaphireIdentity {
         }
     }
 
-    /// Met a jour les statistiques apres chaque cycle de traitement.
+    /// Updates statistics after each processing cycle.
     ///
-    /// Parametres :
-    /// - `emotion` : nom de l'emotion dominante calculee pour ce cycle.
-    /// - `was_human` : `true` si le cycle etait une conversation humaine,
-    ///   `false` si c'etait une pensee autonome.
+    /// Parameters:
+    /// - `emotion` : name of the dominant emotion computed for this cycle.
+    /// - `was_human` : `true` if the cycle was a human conversation,
+    ///   `false` if it was an autonomous thought.
     pub fn update_stats(&mut self, emotion: &str, was_human: bool) {
         self.total_cycles += 1;
         if was_human {
@@ -191,18 +191,18 @@ impl SaphireIdentity {
         } else {
             self.autonomous_thoughts += 1;
         }
-        // L'emotion dominante est toujours celle du dernier cycle
+        // The dominant emotion is always the one from the last cycle
         self.dominant_emotion = emotion.to_string();
     }
 
-    /// Regenere l'auto-description en se basant sur les statistiques actuelles.
+    /// Regenerates the self-description based on current statistics.
     ///
-    /// La description utilise un qualificatif d'age base sur le nombre de cycles :
+    /// The description uses an age qualifier based on the number of cycles:
     /// < 10 cycles = "toute jeune", < 100 = "encore jeune",
     /// < 1000 = "en pleine croissance", >= 1000 = "mature".
-    /// Appelee typiquement lors du shutdown pour sauvegarder une description a jour.
+    /// Typically called during shutdown to save an up-to-date description.
     pub fn refresh_description(&mut self) {
-        // Determiner le qualificatif d'age en fonction du nombre de cycles vecus
+        // Determine the age qualifier based on the number of lived cycles
         let age_desc = if self.total_cycles < 10 {
             "toute jeune"
         } else if self.total_cycles < 100 {
@@ -226,32 +226,32 @@ impl SaphireIdentity {
         );
     }
 
-    /// Serialise l'identite en chaine JSON formatee (pretty-print).
+    /// Serializes the identity to a formatted JSON string (pretty-print).
     ///
-    /// Retourne : `Ok(String)` contenant le JSON, ou `Err(String)` en cas d'echec.
+    /// Returns: `Ok(String)` containing the JSON, or `Err(String)` on failure.
     pub fn to_json(&self) -> Result<String, String> {
         serde_json::to_string_pretty(self).map_err(|e| format!("Serialize identity: {}", e))
     }
 
-    /// Serialise l'identite en `serde_json::Value` pour insertion dans PostgreSQL.
+    /// Serializes the identity to a `serde_json::Value` for insertion in PostgreSQL.
     ///
-    /// Retourne : un `Value` JSON, ou `Value::Null` en cas d'erreur (ne devrait pas arriver).
+    /// Returns: a JSON `Value`, or `Value::Null` on error (should not happen).
     pub fn to_json_value(&self) -> serde_json::Value {
         serde_json::to_value(self).unwrap_or_default()
     }
 
-    /// Deserialise une identite depuis une chaine JSON.
+    /// Deserializes an identity from a JSON string.
     ///
-    /// Parametre : `json` — la chaine JSON representant l'identite.
-    /// Retourne : `Ok(SaphireIdentity)` ou `Err(String)` si le format est invalide.
+    /// Parameter: `json` — the JSON string representing the identity.
+    /// Returns: `Ok(SaphireIdentity)` or `Err(String)` if the format is invalid.
     pub fn from_json(json: &str) -> Result<Self, String> {
         serde_json::from_str(json).map_err(|e| format!("Deserialize identity: {}", e))
     }
 
-    /// Deserialise une identite depuis un `serde_json::Value` (charge depuis PostgreSQL).
+    /// Deserializes an identity from a `serde_json::Value` (loaded from PostgreSQL).
     ///
-    /// Parametre : `value` — la valeur JSON a deserialiser.
-    /// Retourne : `Ok(SaphireIdentity)` ou `Err(String)` si la structure ne correspond pas.
+    /// Parameter: `value` — the JSON value to deserialize.
+    /// Returns: `Ok(SaphireIdentity)` or `Err(String)` if the structure does not match.
     pub fn from_json_value(value: &serde_json::Value) -> Result<Self, String> {
         serde_json::from_value(value.clone()).map_err(|e| format!("Deserialize identity value: {}", e))
     }

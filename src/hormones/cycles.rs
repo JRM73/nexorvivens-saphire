@@ -1,44 +1,44 @@
 // =============================================================================
-// hormones/cycles.rs — Cycles hormonaux (circadien, ultradian)
+// hormones/cycles.rs — Hormonal cycles (circadian, ultradian)
 //
-// Role : Simule les rythmes biologiques qui pilotent les niveaux hormonaux.
-//   - Circadien (~24h simule) : melatonine (pic nuit), cortisol (pic matin)
-//   - Ultradian (~90 cycles) : fluctuations de testosterone
+// Purpose: Simulates biological rhythms that drive hormonal levels.
+//   - Circadian (~simulated 24h): melatonin (night peak), cortisol (morning peak)
+//   - Ultradian (~90 cycles): testosterone fluctuations
 //
-// La vitesse du cycle circadien est configurable (circadian_cycle_real_seconds).
-// Par defaut, 1h reelle = 1 "jour" simule complet.
+// The circadian cycle speed is configurable (circadian_cycle_real_seconds).
+// By default, 1 real hour = 1 complete simulated "day".
 // =============================================================================
 
 use crate::config::HormonesConfig;
 use super::HormonalState;
 
-/// Avance la phase circadienne et ajuste les niveaux hormonaux.
+/// Advances the circadian phase and adjusts hormonal levels.
 ///
-/// Phase : 0.0 = minuit, 0.25 = 6h, 0.5 = midi, 0.75 = 18h, 1.0 = minuit.
+/// Phase: 0.0 = midnight, 0.25 = 6am, 0.5 = noon, 0.75 = 6pm, 1.0 = midnight.
 ///
-/// - Melatonine : pic vers 0.0 (minuit), creux vers 0.5 (midi)
-///   Courbe : 0.7 * (1 + cos(2*PI*phase)) / 2 + 0.05
-/// - Cortisol_h : pic vers 0.25 (6h matin), creux vers 0.75 (18h soir)
-///   Courbe : 0.5 * (1 + cos(2*PI*(phase - 0.25))) / 2 + 0.15
+/// - Melatonin: peak around 0.0 (midnight), trough around 0.5 (noon)
+///   Curve: 0.7 * (1 + cos(2*PI*phase)) / 2 + 0.05
+/// - Cortisol_h: peak around 0.25 (6am), trough around 0.75 (6pm)
+///   Curve: 0.5 * (1 + cos(2*PI*(phase - 0.25))) / 2 + 0.15
 pub fn tick_circadian(state: &mut HormonalState, phase: &mut f64, config: &HormonesConfig) {
-    // Avancer la phase en fonction de thought_interval implicite (~15s par cycle)
-    // circadian_cycle_real_seconds = combien de secondes reelles pour 1 jour simule
+    // Advance the phase based on implicit thought_interval (~15s per cycle)
+    // circadian_cycle_real_seconds = how many real seconds for 1 simulated day
     let phase_increment = 15.0 / config.circadian_cycle_real_seconds as f64;
     *phase = (*phase + phase_increment) % 1.0;
 
     let two_pi = std::f64::consts::TAU;
 
-    // Melatonine : pic a minuit (phase=0.0), creux a midi (phase=0.5)
+    // Melatonin: peak at midnight (phase=0.0), trough at noon (phase=0.5)
     let melatonin_target = 0.7 * (1.0 + (two_pi * *phase).cos()) / 2.0 + 0.05;
-    // Convergence douce vers la cible
+    // Smooth convergence toward the target
     state.melatonin += (melatonin_target - state.melatonin) * 0.05;
 
-    // Cortisol hormonal : pic a 6h (phase=0.25), creux a 18h (phase=0.75)
+    // Hormonal cortisol: peak at 6am (phase=0.25), trough at 6pm (phase=0.75)
     let cortisol_target = 0.5 * (1.0 + (two_pi * (*phase - 0.25)).cos()) / 2.0 + 0.15;
     state.cortisol_h += (cortisol_target - state.cortisol_h) * 0.05;
 
-    // Insuline : legere montee post-prandiale (3 repas simules)
-    // Pics vers 0.33 (8h), 0.54 (13h), 0.79 (19h)
+    // Insulin: slight postprandial rise (3 simulated meals)
+    // Peaks around 0.33 (8am), 0.54 (1pm), 0.79 (7pm)
     let insulin_base = 0.50;
     let meal_effect = 0.15 * (
         gauss(*phase, 0.33, 0.03) +
@@ -49,22 +49,22 @@ pub fn tick_circadian(state: &mut HormonalState, phase: &mut f64, config: &Hormo
     state.insulin += (insulin_target - state.insulin) * 0.03;
 }
 
-/// Cycles ultradiens : fluctuations de testosterone (~90 cycles).
+/// Ultradian cycles: testosterone fluctuations (~90 cycles).
 ///
-/// La testosterone oscille autour de son niveau courant avec une amplitude
-/// de ~0.08 et une periode de 90 cycles. Convergence douce (3% par cycle).
+/// Testosterone oscillates around its current level with an amplitude
+/// of ~0.08 and a period of 90 cycles. Smooth convergence (3% per cycle).
 pub fn tick_ultradian(state: &mut HormonalState, cycle: u64) {
     let two_pi = std::f64::consts::TAU;
-    // Phase dans le cycle de 90 steps
+    // Phase within the 90-step cycle
     let phase_90 = (cycle as f64 % 90.0) / 90.0;
-    // Cible oscillante autour de 0.5 (baseline)
+    // Oscillating target around 0.5 (baseline)
     let target = 0.50 + 0.08 * (two_pi * phase_90).sin();
     let target_clamped = target.clamp(0.2, 0.8);
-    // Convergence douce (3% par cycle)
+    // Smooth convergence (3% per cycle)
     state.testosterone += (target_clamped - state.testosterone) * 0.03;
 }
 
-/// Fonction gaussienne pour simuler les pics post-prandiaux.
+/// Gaussian function to simulate postprandial peaks.
 fn gauss(x: f64, mean: f64, sigma: f64) -> f64 {
     let diff = x - mean;
     (-diff * diff / (2.0 * sigma * sigma)).exp()
@@ -78,13 +78,13 @@ mod tests {
     fn test_circadian_melatonin_high_at_midnight() {
         let config = HormonesConfig::default();
         let mut state = HormonalState::default();
-        let mut phase = 0.0; // minuit
-        // Simuler quelques cycles a minuit
+        let mut phase = 0.0; // midnight
+        // Simulate a few cycles at midnight
         for _ in 0..50 {
             tick_circadian(&mut state, &mut phase, &config);
         }
-        // La melatonine devrait etre elevee pres de minuit
-        // (phase aura avance un peu mais reste proche de 0)
+        // Melatonin should be elevated near midnight
+        // (phase will have advanced slightly but remains close to 0)
         assert!(state.melatonin > 0.3, "Melatonin should be elevated near midnight: {}", state.melatonin);
     }
 
@@ -101,11 +101,11 @@ mod tests {
     fn test_ultradian_oscillation() {
         let mut state = HormonalState::default();
         let initial = state.testosterone;
-        // Simuler 90 cycles
+        // Simulate 90 cycles
         for c in 0..90 {
             tick_ultradian(&mut state, c);
         }
-        // La testosterone devrait avoir change
+        // Testosterone should have changed
         let diff = (state.testosterone - initial).abs();
         assert!(diff > 0.0, "Testosterone should oscillate, diff={}", diff);
         assert!(state.testosterone >= 0.2 && state.testosterone <= 0.8);

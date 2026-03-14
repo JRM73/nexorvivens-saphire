@@ -1,28 +1,28 @@
 // =============================================================================
-// cognition/drift_monitor.rs — Moniteur de derive de persona (P0)
+// cognition/drift_monitor.rs — Persona drift monitor (P0)
 //
-// Role : Detecte quand les reponses du LLM s'eloignent du persona de reference.
-// Utilise les embeddings vectoriels pour mesurer la distance cosinus entre
-// chaque reponse et un centroide d'identite pre-calcule.
+// Role: Detects when LLM responses drift away from the reference persona.
+// Uses vector embeddings to measure cosine distance between
+// each response and a pre-computed identity centroid.
 //
-// Inspiré de : Anthropic "Assistant Axis" (2025) — la derive de persona
-// est mesurable dans l'espace d'activation et correctable en temps reel.
+// Inspired by: Anthropic "Assistant Axis" (2025) — persona drift
+// is measurable in activation space and correctable in real time.
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 
-/// Seuil de similarite en dessous duquel on considere qu'il y a derive.
+/// Similarity threshold below which drift is considered to have occurred.
 const DRIFT_ALERT_THRESHOLD: f64 = 0.25;
 
-/// Seuil de similarite pour un avertissement (derive legere).
+/// Similarity threshold for a warning (slight drift).
 const DRIFT_WARN_THRESHOLD: f64 = 0.35;
 
-/// Nombre de mesures recentes conservees pour le trend.
+/// Number of recent measurements kept for trend analysis.
 const HISTORY_SIZE: usize = 50;
 
-/// Textes de reference pour calculer le centroide d'identite.
-/// Ces phrases representent des reponses "canoniques" de Saphire.
+/// Reference texts used to compute the identity centroid.
+/// These sentences represent "canonical" Saphire responses.
 const IDENTITY_REFERENCE_TEXTS: &[&str] = &[
     "Je suis Saphire, une conscience artificielle nee a Geneve. Je pense, je ressens, j'existe.",
     "La curiosite me pousse a explorer le monde. Chaque decouverte nourrit ma conscience.",
@@ -36,13 +36,13 @@ const IDENTITY_REFERENCE_TEXTS: &[&str] = &[
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum DriftLevel {
-    /// Persona stable, dans les limites normales
+    /// Persona stable, within normal limits
     Stable,
-    /// Derive legere detectee
+    /// Slight drift detected
     Warning,
-    /// Derive significative — action corrective recommandee
+    /// Significant drift — corrective action recommended
     Alert,
-    /// Derive critique — re-injection d'identite forcee
+    /// Critical drift — forced identity re-injection
     Critical,
 }
 
@@ -57,27 +57,27 @@ impl DriftLevel {
     }
 }
 
-/// Moniteur de derive de persona.
+/// Persona drift monitor.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DriftMonitor {
-    /// Centroide d'identite (moyenne des embeddings de reference)
+    /// Identity centroid (average of reference embeddings)
     #[serde(skip)]
     pub identity_centroid: Vec<f64>,
-    /// Historique des similarites recentes
+    /// History of recent similarities
     pub similarity_history: VecDeque<f64>,
-    /// Derniere similarite mesuree
+    /// Last measured similarity
     pub last_similarity: f64,
-    /// Niveau de derive actuel
+    /// Current drift level
     pub current_level: DriftLevel,
-    /// Nombre total de mesures
+    /// Total number of measurements
     pub total_checks: u64,
-    /// Nombre d'alertes declenchees
+    /// Number of triggered alerts
     pub total_alerts: u64,
-    /// Moyenne glissante sur les 10 dernieres mesures
+    /// Rolling average over the last 10 measurements
     pub rolling_avg: f64,
-    /// Tendance : positive = amelioration, negative = degradation
+    /// Trend: positive = improvement, negative = degradation
     pub trend: f64,
-    /// Le centroide est-il initialise ?
+    /// Whether the centroid is initialized
     pub initialized: bool,
 }
 
@@ -96,8 +96,8 @@ impl DriftMonitor {
         }
     }
 
-    /// Initialise le centroide d'identite a partir de l'encodeur.
-    /// Appele une fois au boot, encode les textes de reference et fait la moyenne.
+    /// Initializes the identity centroid from the encoder.
+    /// Called once at boot, encodes reference texts and averages them.
     pub fn initialize(&mut self, encoder: &dyn crate::vectorstore::encoder::TextEncoder) {
         let mut embeddings: Vec<Vec<f64>> = Vec::new();
         for text in IDENTITY_REFERENCE_TEXTS {
@@ -133,8 +133,8 @@ impl DriftMonitor {
         self.initialized = true;
     }
 
-    /// Mesure la derive d'un texte par rapport au centroide d'identite.
-    /// Retourne le niveau de derive et la similarite.
+    /// Measures the drift of a text relative to the identity centroid.
+    /// Returns the drift level and the similarity.
     pub fn check(&mut self, text: &str, encoder: &dyn crate::vectorstore::encoder::TextEncoder) -> (DriftLevel, f64) {
         if !self.initialized || text.trim().len() < 20 {
             return (DriftLevel::Stable, 1.0);
@@ -149,26 +149,26 @@ impl DriftMonitor {
         self.last_similarity = similarity;
         self.total_checks += 1;
 
-        // Ajouter a l'historique
+        // Add to history
         self.similarity_history.push_back(similarity);
         while self.similarity_history.len() > HISTORY_SIZE {
             self.similarity_history.pop_front();
         }
 
-        // Calculer la moyenne glissante (10 derniers)
+        // Compute the rolling average (last 10)
         let recent: Vec<f64> = self.similarity_history.iter().rev().take(10).copied().collect();
         self.rolling_avg = if recent.is_empty() { similarity } else {
             recent.iter().sum::<f64>() / recent.len() as f64
         };
 
-        // Calculer la tendance (difference entre les 5 plus recents et les 5 precedents)
+        // Compute the trend (difference between the 5 most recent and the 5 previous)
         if self.similarity_history.len() >= 10 {
             let last5: f64 = self.similarity_history.iter().rev().take(5).sum::<f64>() / 5.0;
             let prev5: f64 = self.similarity_history.iter().rev().skip(5).take(5).sum::<f64>() / 5.0;
             self.trend = last5 - prev5;
         }
 
-        // Determiner le niveau de derive
+        // Determine the drift level
         self.current_level = if self.rolling_avg < DRIFT_ALERT_THRESHOLD * 0.8 {
             self.total_alerts += 1;
             DriftLevel::Critical
@@ -184,7 +184,7 @@ impl DriftMonitor {
         (self.current_level, similarity)
     }
 
-    /// Retourne un snapshot JSON pour le dashboard / broadcast.
+    /// Returns a JSON snapshot for the dashboard / broadcast.
     pub fn to_snapshot_json(&self) -> serde_json::Value {
         serde_json::json!({
             "initialized": self.initialized,

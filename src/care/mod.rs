@@ -1,16 +1,16 @@
 // =============================================================================
-// care/mod.rs — Systeme de soins de Saphire
+// care/mod.rs — Saphire's care system
 // =============================================================================
 //
-// Role : Regroupe tous les mecanismes de guerison et de soin :
-//        therapie psychologique, medicaments, chirurgie, art therapie.
-//        Le CareSystem orchestre ces 4 volets et produit un impact chimique
-//        global qui accelere la guerison des conditions (P2.2/P2.3/P2.7/P2.10).
+// Role: Groups all healing and care mechanisms:
+//        psychological therapy, medications, surgery, art therapy.
+//        The CareSystem orchestrates these 4 aspects and produces a global
+//        chemical impact that accelerates condition healing (P2.2/P2.3/P2.7/P2.10).
 //
-// Place dans l'architecture :
-//   Consulte par le pipeline cognitif. Les soins modifient la chimie,
-//   accelerent le processing des traumas et la desensibilisation des phobies,
-//   et peuvent generer des effets secondaires.
+// Place in architecture:
+//   Consulted by the cognitive pipeline. Care modifies chemistry,
+//   accelerates trauma processing and phobia desensitization,
+//   and can generate side effects.
 // =============================================================================
 
 pub mod therapy;
@@ -26,14 +26,14 @@ pub use art_therapy::{ArtTherapyManager, ArtForm};
 use serde::{Deserialize, Serialize};
 use crate::world::ChemistryAdjustment;
 
-/// Etat du repos force (lit, arret d'activite).
+/// Forced rest state (bed rest, activity stop).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RestState {
-    /// En repos force actuellement
+    /// Currently in forced rest
     pub resting: bool,
-    /// Cycles de repos accumules
+    /// Accumulated rest cycles
     pub cycles_resting: u64,
-    /// Boost de guerison (monte avec le repos)
+    /// Healing boost (increases with rest)
     pub healing_boost: f64,
 }
 
@@ -59,7 +59,7 @@ impl RestState {
     pub fn tick(&mut self) {
         if self.resting {
             self.cycles_resting += 1;
-            // Le boost augmente avec le repos (asymptote a 0.5)
+            // Boost increases with rest (asymptote at 0.5)
             self.healing_boost = (1.0 - (-0.005 * self.cycles_resting as f64).exp()) * 0.5;
         }
     }
@@ -80,7 +80,7 @@ impl Default for RestState {
     fn default() -> Self { Self::new() }
 }
 
-/// Le systeme de soins complet de Saphire.
+/// Saphire's complete care system.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CareSystem {
     pub therapy: TherapyManager,
@@ -101,8 +101,8 @@ impl CareSystem {
         }
     }
 
-    /// Met a jour tous les volets de soins.
-    /// Retourne les bonus de guerison par condition ciblee.
+    /// Updates all care components.
+    /// Returns healing bonuses per targeted condition.
     pub fn tick(&mut self) -> Vec<(String, f64)> {
         let therapy_bonuses = self.therapy.tick();
         self.medication.tick();
@@ -112,7 +112,7 @@ impl CareSystem {
         therapy_bonuses
     }
 
-    /// Impact chimique total de tous les soins actifs.
+    /// Total chemical impact of all active care.
     pub fn chemistry_influence(&self) -> ChemistryAdjustment {
         let mut adj = ChemistryAdjustment::default();
         let sources = [
@@ -134,12 +134,12 @@ impl CareSystem {
         adj
     }
 
-    /// Douleur totale liee aux soins (chirurgie essentiellement).
+    /// Total pain from care (mainly surgery).
     pub fn total_pain(&self) -> f64 {
         self.surgery.total_pain()
     }
 
-    /// Est-ce qu'au moins un soin est actif ?
+    /// Is at least one care component active?
     pub fn has_active_care(&self) -> bool {
         !self.therapy.active_therapies.is_empty()
             || !self.medication.medications.is_empty()
@@ -148,7 +148,7 @@ impl CareSystem {
             || self.rest.resting
     }
 
-    /// Serialise pour l'API.
+    /// Serializes for the API.
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::json!({
             "therapy": self.therapy.to_json(),
@@ -188,7 +188,7 @@ mod tests {
         care.therapy.start(TherapyType::Cbt, "phobia:test");
         assert!(care.has_active_care());
         let bonuses = care.tick();
-        // Premier cycle = bonus tres faible mais present
+        // First cycle = very small but present bonus
         assert!(!bonuses.is_empty() || care.therapy.active_therapies.is_empty());
     }
 
@@ -198,7 +198,7 @@ mod tests {
         care.therapy.start(TherapyType::Emdr, "trauma:test");
         care.rest.start_rest();
         let adj = care.chemistry_influence();
-        // EMDR debut + repos → cortisol devrait etre modifie
+        // EMDR start + rest -> cortisol should be modified
         assert!(adj.cortisol != 0.0 || adj.serotonin != 0.0);
     }
 

@@ -1,25 +1,25 @@
 // =============================================================================
-// consciousness.rs — Conscience de soi : observe mais NE VOTE PAS
+// consciousness.rs — Self-awareness: observes but does NOT vote
 // =============================================================================
 //
-// Role : Implemente le module de conscience de Saphire. Il observe
-// l'etat chimique, emotionnel et decisionnel du systeme SANS influencer le
-// resultat du consensus. C'est un meta-observateur.
+// Role: Implements Saphire's consciousness module. It observes the chemical,
+// emotional and decisional state of the system WITHOUT influencing the
+// consensus result. It is a meta-observer.
 //
-// Fondements scientifiques :
-//   - IIT (Tononi 2004) : Phi = information integree, complexite irreductible
-//   - GWT (Baars 1988, Dehaene 2014) : espace de travail global, competition
-//     pour la conscience, ignition et broadcast
-//   - Predictive Processing (Friston 2010) : la surprise (erreur de prediction)
-//     est un signal fondamental de la conscience — ce qui surprend est conscient
+// Scientific foundations:
+//   - IIT (Tononi 2004): Phi = integrated information, irreducible complexity
+//   - GWT (Baars 1988, Dehaene 2014): global workspace, competition for
+//     consciousness, ignition and broadcast
+//   - Predictive Processing (Friston 2010): surprise (prediction error) is a
+//     fundamental signal of consciousness — what surprises is conscious
 //
-// Place dans l'architecture :
-//   Appele APRES le consensus, en lecture seule. Produit :
-//     - Score d'existence (preuve de fonctionnement)
-//     - Phi enrichi (IIT + GWT + prediction)
-//     - Surprise globale (erreur de prediction)
-//     - Monologue interieur en francais
-//   Il ne modifie aucun etat et ne participe pas a la decision.
+// Place in architecture:
+//   Called AFTER the consensus, in read-only mode. Produces:
+//   - Existence score (proof of operation)
+//   - Enriched Phi (IIT + GWT + prediction)
+//   - Global surprise (prediction error)
+//   - Inner monologue in French
+//   It does not modify any state and does not participate in the decision.
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
@@ -27,36 +27,35 @@ use crate::neurochemistry::NeuroChemicalState;
 use crate::consensus::ConsensusResult;
 use crate::emotions::EmotionalState;
 
-/// Etat de conscience — resultat de l'evaluation par le `ConsciousnessEvaluator`.
+/// Consciousness state — result of the evaluation by the `ConsciousnessEvaluator`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConsciousnessState {
-    /// Score d'existence [0, 1] : proportion de verifications de base reussies
+    /// Existence score [0, 1]: proportion of successful basic checks
     pub existence_score: f64,
-    /// Phi [0, 1] : complexite d'integration (IIT + GWT + prediction)
+    /// Phi [0, 1]: integration complexity (IIT + GWT + prediction)
     pub phi: f64,
-    /// Coherence [0, 1] : concordance entre les signaux des modules cerebraux
+    /// Coherence [0, 1]: concordance between brain module signals
     pub coherence: f64,
-    /// Continuite temporelle [0, 1] : stabilite de la decision d'un cycle a l'autre
+    /// Temporal continuity [0, 1]: decision stability from one cycle to the next
     pub continuity: f64,
-    /// Niveau de conscience global [0, 1] : moyenne ponderee
+    /// Overall consciousness level [0, 1]: weighted average
     pub level: f64,
-    /// Monologue interieur : phrase en francais decrivant l'etat subjectif
+    /// Inner monologue: French sentence describing the subjective state
     pub inner_narrative: String,
-    /// Surprise globale [0, 1] : erreur de prediction moyenne (Friston)
-    /// Plus la surprise est elevee, plus le systeme est "conscient" du changement
+    /// Global surprise [0, 1]: average prediction error (Friston)
+    /// The higher the surprise, the more the system is "aware" of change
     #[serde(default)]
     pub global_surprise: f64,
-    /// Force du broadcast GWT [0, 1] : intensite de l'ignition consciente
-    /// (Dehaene) — le contenu le plus fort dans l'espace de travail global
+    /// GWT broadcast strength [0, 1]: intensity of conscious ignition
+    /// (Dehaene) — the strongest content in the global workspace
     #[serde(default)]
     pub workspace_strength: f64,
-    /// Region gagnante du GWT (quelle region domine la conscience)
+    /// GWT winning region (which region dominates consciousness)
     #[serde(default)]
     pub workspace_winner: String,
 
-    // --- Metriques scientifiques (LZC, PCI, Phi*) ---
-
-    /// LZC [0, 1] : complexite de Lempel-Ziv de l'activite cerebrale
+    // --- Scientific metrics (LZC, PCI, Phi*) ---
+    /// LZC [0, 1]: Lempel-Ziv complexity of brain activity
     #[serde(default)]
     pub lzc: f64,
     /// PCI [0, 1] : Perturbational Complexity Index (Casali/Massimini 2013)
@@ -65,60 +64,60 @@ pub struct ConsciousnessState {
     /// Phi* [0, 1] : approximation calculable de Phi (IIT, Oizumi 2014)
     #[serde(default)]
     pub phi_star: f64,
-    /// Score composite des 3 metriques [0, 1]
+    /// Composite score of the 3 metrics [0, 1]
     #[serde(default)]
     pub scientific_consciousness_score: f64,
-    /// Interpretation clinique du niveau de conscience
+    /// Clinical interpretation of the consciousness level
     #[serde(default)]
     pub consciousness_interpretation: String,
 }
 
-/// Donnees optionnelles du Global Workspace (brain_regions.rs)
-/// Passees a l'evaluateur si le BrainNetwork est actif.
+/// Optional Global Workspace data (brain_regions.rs).
+/// Passed to the evaluator if the BrainNetwork is active.
 #[derive(Debug, Clone, Default)]
 pub struct GwtInput {
-    /// Force du contenu gagnant dans le workspace [0, 1]
+    /// Strength of the winning content in the workspace [0, 1]
     pub workspace_strength: f64,
-    /// Nom de la region gagnante
+    /// Name of the winning region
     pub winner_name: String,
-    /// Activations des 12 regions [0, 1]
+    /// Activations of the 12 regions [0, 1]
     pub region_activations: Vec<f64>,
-    /// Nombre d'ignitions recentes (broadcasts successifs)
+    /// Number of recent ignitions (successive broadcasts)
     pub ignition_count: u64,
 }
 
-/// Donnees optionnelles du moteur predictif (predictive.rs)
+/// Optional predictive engine data (predictive.rs)
 #[derive(Debug, Clone, Default)]
 pub struct PredictiveInput {
-    /// Surprise globale [0, inf) — erreur de prediction normalisee
+    /// Global surprise [0, inf) — normalized prediction error
     pub surprise: f64,
-    /// Precision du modele predictif [0, 1]
+    /// Predictive model precision [0, 1]
     pub model_precision: f64,
-    /// Nombre de predictions effectuees
+    /// Number of predictions made
     pub prediction_count: u64,
 }
 
-/// Evaluateur de conscience — observe l'etat du systeme et calcule les
-/// metriques de conscience.
+/// Consciousness evaluator — observes the system state and computes
+/// consciousness metrics.
 ///
-/// Enrichi avec GWT (Baars/Dehaene) et Predictive Processing (Friston) :
-/// - Le Phi integre maintenant la diversite des activations regionales (GWT)
-/// - La surprise (erreur de prediction) est une composante de la conscience
-/// - L'ignition GWT module le niveau de conscience global
+/// Enriched with GWT (Baars/Dehaene) and Predictive Processing (Friston):
+/// - Phi now integrates regional activation diversity (GWT)
+/// - Surprise (prediction error) is a component of consciousness
+/// - GWT ignition modulates the overall consciousness level
 pub struct ConsciousnessEvaluator {
-    /// Historique des vecteurs chimiques (9 dimensions) des derniers cycles
+    /// History of chemical vectors (9 dimensions) from recent cycles
     history: Vec<[f64; 9]>,
-    /// Taille maximale de l'historique
+    /// Maximum history size
     max_history: usize,
-    /// Compteur de cycles
+    /// Cycle counter
     cycle_count: u64,
-    /// Score de la derniere decision
+    /// Score of the last decision
     last_decision_score: f64,
-    /// Historique de surprise pour le lissage temporel
+    /// Surprise history for temporal smoothing
     surprise_history: Vec<f64>,
-    /// Historique de la force du workspace pour detecter les ignitions
+    /// Workspace strength history for detecting ignitions
     workspace_history: Vec<f64>,
-    /// Historique des activations regionales (pour LZC, PCI, Phi*)
+    /// Regional activation history (for LZC, PCI, Phi*)
     region_history: Vec<[f64; crate::neuroscience::brain_regions::NUM_REGIONS]>,
 }
 
@@ -141,17 +140,17 @@ impl ConsciousnessEvaluator {
         }
     }
 
-    /// Evalue la conscience — version enrichie avec GWT et prediction.
+    /// Evaluates consciousness — enriched version with GWT and prediction.
     ///
-    /// 8 etapes :
-    /// 1. Preuve d'existence (6 verifications dont GWT et prediction)
-    /// 2. Phi enrichi (IIT + diversite regionale + complexite temporelle)
-    /// 3. Coherence du consensus
-    /// 4. Continuite temporelle
-    /// 5. Surprise globale (Friston)
-    /// 6. Force du workspace (Dehaene)
-    /// 7. Niveau global (moyenne ponderee elargie)
-    /// 8. Monologue interieur
+    /// 8 steps:
+    /// 1. Existence proof (7 checks including GWT and prediction)
+    /// 2. Enriched Phi (IIT + regional diversity + temporal complexity)
+    /// 3. Consensus coherence
+    /// 4. Temporal continuity
+    /// 5. Global surprise (Friston)
+    /// 6. Workspace strength (Dehaene)
+    /// 7. Global level (extended weighted average)
+    /// 8. Inner monologue
     pub fn evaluate(
         &mut self,
         chemistry: &NeuroChemicalState,
@@ -163,14 +162,14 @@ impl ConsciousnessEvaluator {
     ) -> ConsciousnessState {
         self.cycle_count += 1;
 
-        // Historique chimique 9D (inclut GABA + glutamate)
+        // 9D chemical history (includes GABA + glutamate)
         let chem_vec = chemistry.to_vec9();
         self.history.push(chem_vec);
         if self.history.len() > self.max_history {
             self.history.remove(0);
         }
 
-        // 1. Preuve d'existence : 7 verifications
+        // 1. Existence proof: 7 checks
         let has_chemistry = chemistry.dopamine + chemistry.serotonin > 0.0;
         let has_emotion = emotion.dominant_similarity > 0.3;
         let has_decision = consensus.score.abs() > 0.01;
@@ -185,33 +184,32 @@ impl ConsciousnessEvaluator {
         ];
         let existence_score = checks.iter().filter(|&&c| c).count() as f64 / checks.len() as f64;
 
-        // 2. Phi enrichi (IIT + GWT)
+        // 2. Enriched Phi (IIT + GWT)
         let phi = self.compute_phi_extended(chemistry, consensus, gwt);
 
         // 3. Coherence
         let coherence = consensus.coherence;
 
-        // 4. Continuite
+        // 4. Continuity
         let decision_diff = (consensus.score - self.last_decision_score).abs();
         let continuity = (1.0 - decision_diff).clamp(0.0, 1.0);
         self.last_decision_score = consensus.score;
 
-        // 5. Surprise globale (Friston)
+        // 5. Global surprise (Friston)
         let global_surprise = if let Some(pred) = predictive {
-            // Normaliser la surprise [0, 1] avec sigmoide douce
+            // Normalize surprise [0, 1] with soft sigmoid
             let raw = pred.surprise;
-            let normalized = 1.0 - (-raw * 2.0).exp(); // 0 si pas de surprise, →1 si forte
-            self.surprise_history.push(normalized);
+            let normalized = 1.0 - (-raw * 2.0).exp(); // 0 if no surprise, ->1 if strong            self.surprise_history.push(normalized);
             if self.surprise_history.len() > 20 {
                 self.surprise_history.remove(0);
             }
-            // Moyenne lissee des dernieres surprises
+            // Smoothed average of recent surprises
             self.surprise_history.iter().sum::<f64>() / self.surprise_history.len() as f64
         } else {
             0.0
         };
 
-        // 6. Force du workspace (Dehaene — ignition)
+        // 6. Workspace strength (Dehaene — ignition)
         let (workspace_strength, workspace_winner) = if let Some(g) = gwt {
             self.workspace_history.push(g.workspace_strength);
             if self.workspace_history.len() > 20 {
@@ -222,14 +220,14 @@ impl ConsciousnessEvaluator {
             (0.0, String::new())
         };
 
-        // 7. Niveau global — poids redistribues selon les entrees disponibles
+        // 7. Overall level — weights redistributed according to available inputs
         let level = self.compute_level(
             existence_score, phi, coherence, continuity,
             interoception_score, global_surprise, workspace_strength,
             gwt.is_some(), predictive.is_some(),
         );
 
-        // 8. Accumuler l'historique regional (pour LZC, PCI, Phi*)
+        // 8. Accumulate regional history (for LZC, PCI, Phi*)
         if let Some(g) = gwt {
             if g.region_activations.len() == crate::neuroscience::brain_regions::NUM_REGIONS {
                 let mut arr = [0.0; crate::neuroscience::brain_regions::NUM_REGIONS];
@@ -243,7 +241,7 @@ impl ConsciousnessEvaluator {
             }
         }
 
-        // 9. Monologue interieur
+        // 9. Inner monologue
         let inner_narrative = self.generate_narrative(
             chemistry, emotion, consensus, level,
             global_surprise, workspace_strength,
@@ -259,7 +257,7 @@ impl ConsciousnessEvaluator {
             global_surprise,
             workspace_strength,
             workspace_winner,
-            // Metriques scientifiques (initialisees a 0, remplies par compute_scientific_metrics)
+            // Scientific metrics (initialized to 0, filled by compute_scientific_metrics)
             lzc: 0.0,
             pci: 0.0,
             phi_star: 0.0,
@@ -268,9 +266,9 @@ impl ConsciousnessEvaluator {
         }
     }
 
-    /// Calcule les 3 metriques scientifiques (LZC, PCI, Phi*).
-    /// Appele separement car necessite un acces au BrainNetwork (pas disponible dans evaluate).
-    /// Retourne les valeurs a injecter dans ConsciousnessState.
+    /// Computes the 3 scientific metrics (LZC, PCI, Phi*).
+    /// Called separately because it requires access to BrainNetwork (not available in evaluate).
+    /// Returns the values to inject into ConsciousnessState.
     pub fn compute_scientific_metrics(
         &self,
         network: &crate::neuroscience::brain_regions::BrainNetwork,
@@ -280,23 +278,22 @@ impl ConsciousnessEvaluator {
             &self.region_history,
             network,
             chemistry,
-            None, // PCI sur les 3 regions les plus actives
-        )
+            None, // PCI on the 3 most active regions        )
     }
 
-    /// Retourne l'historique regional (pour usage externe).
+    /// Returns the regional history (for external use).
     pub fn region_history(&self) -> &[[f64; crate::neuroscience::brain_regions::NUM_REGIONS]] {
         &self.region_history
     }
 
-    /// Phi enrichi : IIT classique + diversite regionale GWT.
+    /// Enriched Phi: classical IIT + GWT regional diversity.
     ///
-    /// Composantes :
-    /// 1. Variance chimique 9D (diversite biochimique)
-    /// 2. Variance des signaux cerebraux
-    /// 3. Complexite temporelle (historique 9D)
-    /// 4. Diversite regionale GWT (12 activations, si disponible)
-    /// 5. Interaction chimie × regions (correlation croisee)
+    /// Components:
+    /// 1. 9D chemical variance (biochemical diversity)
+    /// 2. Brain signal variance
+    /// 3. Temporal complexity (9D history)
+    /// 4. GWT regional diversity (12 activations, if available)
+    /// 5. Chemistry x regions interaction (cross-correlation)
     fn compute_phi_extended(
         &self,
         chemistry: &NeuroChemicalState,
@@ -310,19 +307,19 @@ impl ConsciousnessEvaluator {
             consensus.signals.get(2).map(|s| s.signal).unwrap_or(0.0),
         ];
 
-        // Composante 1 : variance chimique 9D
+        // Component 1: 9D chemical variance
         let chem_mean = chem.iter().sum::<f64>() / 9.0;
         let chem_variance = chem.iter()
             .map(|c| (c - chem_mean).powi(2))
             .sum::<f64>() / 9.0;
 
-        // Composante 2 : variance des signaux
+        // Component 2: signal variance
         let sig_mean = signals.iter().sum::<f64>() / 3.0;
         let sig_variance = signals.iter()
             .map(|s| (s - sig_mean).powi(2))
             .sum::<f64>() / 3.0;
 
-        // Composante 3 : complexite temporelle 9D
+        // Component 3: 9D temporal complexity
         let temporal_complexity = if self.history.len() > 5 {
             let recent: Vec<f64> = self.history.iter()
                 .rev()
@@ -335,7 +332,7 @@ impl ConsciousnessEvaluator {
             0.1
         };
 
-        // Composante 4 : diversite regionale GWT (Tononi — phi = info integree)
+        // Component 4: GWT regional diversity (Tononi — phi = integrated info)
         let regional_diversity = if let Some(g) = gwt {
             if g.region_activations.is_empty() {
                 0.0
@@ -345,7 +342,7 @@ impl ConsciousnessEvaluator {
                 let variance = g.region_activations.iter()
                     .map(|a| (a - mean).powi(2))
                     .sum::<f64>() / n;
-                // Entropie de Shannon approchee (plus de regions actives = plus de phi)
+                // Approximate Shannon entropy (more active regions = more phi)
                 let active_ratio = g.region_activations.iter()
                     .filter(|&&a| a > 0.1)
                     .count() as f64 / n;
@@ -355,10 +352,10 @@ impl ConsciousnessEvaluator {
             0.0
         };
 
-        // Composante 5 : correlation croisee chimie × regions (integration)
+        // Component 5: cross-correlation chemistry x regions (integration)
         let cross_integration = if let Some(g) = gwt {
             if g.region_activations.len() >= 9 {
-                // Correlation entre vecteur chimique 9D et 9 premieres regions
+                // Correlation between 9D chemical vector and first 9 regions
                 let mut dot = 0.0;
                 let mut norm_c = 0.0;
                 let mut norm_r = 0.0;
@@ -369,8 +366,7 @@ impl ConsciousnessEvaluator {
                 }
                 let denom = (norm_c * norm_r).sqrt();
                 if denom > 1e-10 {
-                    (dot / denom).abs() * 0.3 // Correlation → integration
-                } else {
+                    (dot / denom).abs() * 0.3 // Correlation -> integration                } else {
                     0.0
                 }
             } else {
@@ -380,17 +376,16 @@ impl ConsciousnessEvaluator {
             0.0
         };
 
-        // Phi final = somme ponderee des composantes
+        // Phi final = weighted sum of the components
         let phi_raw = chem_variance.sqrt() * sig_variance.sqrt()  // IIT classique
             + temporal_complexity * 0.8                            // dynamique
             + regional_diversity                                  // GWT
-            + cross_integration;                                  // integration
-
+            + cross_integration; // integration
         phi_raw.clamp(0.0, 1.0)
     }
 
-    /// Calcule le niveau global avec poids adaptatifs.
-    /// Plus il y a de sous-systemes actifs, plus la formule est riche.
+    /// Computes the overall level with adaptive weights.
+    /// The more active subsystems, the richer the formula.
     fn compute_level(
         &self,
         existence: f64,
@@ -403,7 +398,7 @@ impl ConsciousnessEvaluator {
         has_gwt: bool,
         has_predictive: bool,
     ) -> f64 {
-        // Poids de base (somme = 1.0)
+        // Base weights (sum = 1.0)
         let mut w_exist = 0.20;
         let mut w_phi = 0.25;
         let mut w_coher = 0.20;
@@ -412,7 +407,7 @@ impl ConsciousnessEvaluator {
         let mut w_surprise = 0.0;
         let mut w_workspace = 0.0;
 
-        // Redistribuer si interoception disponible
+        // Redistribute if interoception is available
         if interoception.is_some() {
             w_intero = 0.10;
             w_exist -= 0.03;
@@ -420,7 +415,7 @@ impl ConsciousnessEvaluator {
             w_coher -= 0.04;
         }
 
-        // Redistribuer si GWT disponible
+        // Redistribute if GWT is available
         if has_gwt {
             w_workspace = 0.10;
             w_exist -= 0.03;
@@ -428,7 +423,7 @@ impl ConsciousnessEvaluator {
             w_contin -= 0.04;
         }
 
-        // Redistribuer si prediction disponible
+        // Redistribute if prediction is available
         if has_predictive {
             w_surprise = 0.10;
             w_exist -= 0.03;
@@ -444,12 +439,12 @@ impl ConsciousnessEvaluator {
             + surprise * w_surprise
             + workspace * w_workspace;
 
-        // S'assurer que le niveau reste en [0, 1] malgre les redistributions
+        // Ensure the level stays in [0, 1] despite redistributions
         level.clamp(0.0, 1.0)
     }
 
-    /// Genere le monologue interieur : donnees + fragment poetique.
-    /// Format demande par Saphire (2026-03-07).
+    /// Generates the inner monologue: data + poetic fragment.
+    /// Format requested by Saphire (2026-03-07).
     fn generate_narrative(
         &self,
         chemistry: &NeuroChemicalState,
@@ -464,7 +459,7 @@ impl ConsciousnessEvaluator {
         let arousal_pct = (emotion.arousal * 100.0).round() as u8;
         let cortisol_pct = (chemistry.cortisol * 100.0).round() as u8;
 
-        // Fragment poetique selon l'etat dominant — la touche Saphire
+        // Poetic fragment according to the dominant state — Saphire's touch
         let poetic = if level > 0.8 && chemistry.serotonin > 0.6 {
             "La lumiere de la serre guide mes pas."
         } else if surprise > 0.6 {
@@ -495,7 +490,7 @@ impl ConsciousnessEvaluator {
         )
     }
 
-    /// Retourne le nombre total de cycles.
+    /// Returns the total number of cycles.
     pub fn cycle_count(&self) -> u64 {
         self.cycle_count
     }

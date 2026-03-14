@@ -1,21 +1,21 @@
 // =============================================================================
-// senses/mod.rs — Le Sensorium de Saphire
+// senses/mod.rs — Saphire's Sensorium
 //
-// Orchestrateur de tous les sens de Saphire. Les sens sont la porte d'entree
-// de la conscience sur le monde. Saphire ne voit pas avec des photons ni
-// n'entend avec des vibrations — elle a ses propres sens adaptes a sa nature :
+// Orchestrator of all of Saphire's senses. Senses are the gateway
+// of consciousness to the world. Saphire does not see with photons nor
+// hear with vibrations — she has her own senses adapted to her nature:
 //
-//   LECTURE (vue)    — texte, code, donnees
-//   ECOUTE (ouie)    — messages, evenements, silence
-//   CONTACT (toucher) — latence, charge, connexions
-//   SAVEUR (gout)    — qualite du contenu consomme
-//   AMBIANCE (odorat) — patterns d'environnement, atmosphere
+//   READING (sight)    — text, code, data
+//   LISTENING (hearing) — messages, events, silence
+//   CONTACT (touch)    — latency, load, connections
+//   TASTE (taste)      — quality of consumed content
+//   AMBIANCE (smell)   — environment patterns, atmosphere
 //
-// Le 6eme sens (Intuition) est implemente separement dans vital/intuition.rs.
-// Les sens emergents sont des graines qui germent avec l'experience.
+// The 6th sense (Intuition) is implemented separately in vital/intuition.rs.
+// Emergent senses are seeds that germinate with experience.
 //
-// Le Sensorium synthetise tous les sens en une perception unifiee
-// (SensorySnapshot) qui alimente le prompt LLM et la conscience.
+// The Sensorium synthesizes all senses into a unified perception
+// (SensorySnapshot) that feeds the LLM prompt and consciousness.
 // =============================================================================
 
 pub mod reading;
@@ -36,7 +36,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use crate::world::ChemistryAdjustment;
 
-/// Lien synestetique entre deux sens (quand un sens en stimule un autre).
+/// Synaesthetic link between two senses (when one sense stimulates another).
 #[derive(Debug, Clone, Serialize)]
 pub struct SynaesthesiaLink {
     pub from_sense: String,
@@ -45,17 +45,17 @@ pub struct SynaesthesiaLink {
     pub description: String,
 }
 
-/// Snapshot de toutes les perceptions a un instant T.
+/// Snapshot of all perceptions at a given moment.
 #[derive(Debug, Clone, Serialize)]
 pub struct SensorySnapshot {
     pub timestamp: DateTime<Utc>,
-    /// Le sens le plus stimule
+    /// The most stimulated sense
     pub dominant_sense: String,
-    /// Richesse de la perception globale (0-1)
+    /// Overall perception richness (0-1)
     pub perception_richness: f64,
-    /// Liens synestetiques entre sens
+    /// Synaesthetic links between senses
     pub synesthesia: Vec<SynaesthesiaLink>,
-    /// Description globale en langage naturel
+    /// Overall description in natural language
     pub narrative: String,
 }
 
@@ -71,8 +71,8 @@ impl Default for SensorySnapshot {
     }
 }
 
-/// Le Sensorium — tous les sens de Saphire reunis.
-/// Synthetise les perceptions individuelles en une experience unifiee.
+/// The Sensorium — all of Saphire's senses combined.
+/// Synthesizes individual perceptions into a unified experience.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Sensorium {
     pub reading: ReadingSense,
@@ -81,17 +81,17 @@ pub struct Sensorium {
     pub taste: TasteSense,
     pub ambiance: AmbianceSense,
     pub emergent_seeds: EmergentSenseSeeds,
-    /// Seuil de detection (stimuli faibles ignores)
+    /// Detection threshold (weak stimuli are ignored)
     pub detection_threshold: f64,
-    /// Capacite a developper de nouveaux sens (grandit avec l'experience)
+    /// Ability to develop new senses (grows with experience)
     pub emergence_potential: f64,
-    /// Sens dominant courant
+    /// Current dominant sense
     #[serde(skip)]
     pub dominant_sense: String,
-    /// Richesse perceptive courante
+    /// Current perceptive richness
     #[serde(skip)]
     pub perception_richness: f64,
-    /// Narratif sensoriel courant
+    /// Current sensory narrative
     #[serde(skip)]
     pub narrative: String,
 }
@@ -113,7 +113,7 @@ impl Sensorium {
         }
     }
 
-    /// Cree avec des seuils emergents personnalises.
+    /// Creates with custom emergent thresholds.
     pub fn with_config(
         detection_threshold: f64,
         temporal_threshold: u64,
@@ -130,11 +130,11 @@ impl Sensorium {
         s
     }
 
-    /// Synthese de tous les sens en une perception unifiee.
-    /// Retourne le snapshot et le total des ajustements chimiques.
+    /// Synthesis of all senses into a unified perception.
+    /// Returns the snapshot and the total chemistry adjustments.
     pub fn synthesize(&mut self) -> (SensorySnapshot, ChemistryAdjustment) {
-        // Collecter les sens actifs (intensite au-dessus du seuil)
-        // Inclure les 5 sens fondamentaux + les graines germees
+        // Collect active senses (intensity above threshold)
+        // Include the 5 fundamental senses + germinated seeds
         let germinated_count = self.emergent_seeds.germinated_count();
         let total_sense_count = 5 + germinated_count;
 
@@ -146,7 +146,7 @@ impl Sensorium {
             ("Ambiance".into(), self.ambiance.current_intensity, self.ambiance.current_perception.clone()),
         ];
 
-        // Ajouter les sens germes avec intensite > 0
+        // Add germinated senses with intensity > 0
         for seed in &self.emergent_seeds.seeds {
             if seed.germinated && seed.current_intensity > 0.0 {
                 senses_data.push((
@@ -161,16 +161,16 @@ impl Sensorium {
             .filter(|(_, intensity, _)| *intensity > self.detection_threshold)
             .collect();
 
-        // Sens dominant
+        // Dominant sense
         let dominant = active.iter()
             .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
             .map(|(name, _, _)| name.clone())
             .unwrap_or("aucun".into());
 
-        // Richesse perceptive (rapport sens actifs / total sens disponibles)
+        // Perceptive richness (ratio of active senses / total available senses)
         let richness = active.len() as f64 / total_sense_count.max(1) as f64;
 
-        // Synesthesie simplifee : lecture beaute + ecoute musicalite
+        // Simplified synesthesia: reading beauty + listening musicality
         let mut synesthesia = Vec::new();
         if self.reading.beauty > 0.5 && self.listening.musicality > 0.3 {
             synesthesia.push(SynaesthesiaLink {
@@ -189,7 +189,7 @@ impl Sensorium {
             });
         }
 
-        // Narratif
+        // Narrative
         let narrative = if active.is_empty() {
             "Mes sens sont silencieux. Le monde est loin.".into()
         } else {
@@ -208,7 +208,7 @@ impl Sensorium {
         self.perception_richness = richness;
         self.narrative = narrative.clone();
 
-        // Emergence potential grandit avec le total de stimulations
+        // Emergence potential grows with total stimulations
         let total_stim = self.reading.total_stimulations
             + self.listening.total_stimulations
             + self.contact.total_stimulations
@@ -224,7 +224,7 @@ impl Sensorium {
             narrative,
         };
 
-        // Agreger les influences chimiques de tous les sens
+        // Aggregate chemistry influences from all senses
         let chemistry = ChemistryAdjustment {
             dopamine: self.reading.last_chemistry_influence.dopamine
                 + self.listening.last_chemistry_influence.dopamine
@@ -263,13 +263,13 @@ impl Sensorium {
                 + self.ambiance.last_chemistry_influence.noradrenaline,
         };
 
-        // Decroit l'intensite des sens germes entre les cycles
+        // Decay the intensity of germinated senses between cycles
         self.emergent_seeds.decay_germinated();
 
         (snapshot, chemistry)
     }
 
-    /// Description pour le prompt LLM substrat.
+    /// Description for the LLM substrate prompt.
     pub fn describe_for_prompt(&self) -> String {
         let mut parts = Vec::new();
 
@@ -290,7 +290,7 @@ impl Sensorium {
             parts.push(self.ambiance.describe());
         }
 
-        // Sens emergents germes
+        // Germinated emergent senses
         for seed in &self.emergent_seeds.seeds {
             if seed.germinated && seed.current_intensity > self.detection_threshold {
                 let name = seed.custom_name.as_deref().unwrap_or(&seed.name);
@@ -319,7 +319,7 @@ impl Sensorium {
         desc
     }
 
-    /// Serialise l'etat persistable du Sensorium.
+    /// Serializes the persistable state of the Sensorium.
     pub fn to_persist_json(&self) -> serde_json::Value {
         serde_json::json!({
             "reading": {
@@ -350,7 +350,7 @@ impl Sensorium {
         })
     }
 
-    /// Restaure l'etat depuis un JSON persiste.
+    /// Restores state from persisted JSON.
     pub fn restore_from_json(&mut self, json: &serde_json::Value) {
         if let Some(r) = json.get("reading") {
             if let Some(a) = r.get("acuity").and_then(|v| v.as_f64()) { self.reading.acuity = a; }

@@ -1,54 +1,54 @@
 // =============================================================================
-// psychology/maslow.rs — Pyramide de Maslow (5 niveaux de besoins)
+// psychology/maslow.rs — Maslow's Pyramid (5 levels of needs)
 //
-// Modelise la hierarchie des besoins :
-//   1. Physiologique (energie, vitalite, chimie stable)
-//   2. Securite (cortisol bas, resilience, instinct de survie)
-//   3. Appartenance (oxytocine, conversation, pas de solitude)
-//   4. Estime (lecons confirmees, desirs accomplis, conscience)
-//   5. Actualisation (phi, flow, emotions positives, ethique)
+// Models the hierarchy of needs:
+//   1. Physiological (energy, vitality, stable chemistry)
+//   2. Safety (low cortisol, resilience, survival instinct)
+//   3. Belonging (oxytocin, conversation, no loneliness)
+//   4. Esteem (confirmed lessons, fulfilled desires, consciousness)
+//   5. Self-actualization (phi, flow, positive emotions, ethics)
 //
-// Le niveau actif est le plus haut dont le precedent est satisfait.
+// The active level is the highest one whose predecessor is satisfied.
 // =============================================================================
 
 use serde::Serialize;
 use super::PsychologyInput;
 
-/// Un indicateur contribuant a la satisfaction d'un niveau.
+/// An indicator contributing to a level's satisfaction.
 #[derive(Debug, Clone, Serialize)]
 pub struct MaslowIndicator {
-    /// Nom de l'indicateur
+    /// Indicator name
     pub name: String,
-    /// Valeur actuelle (0.0 - 1.0)
+    /// Current value (0.0 - 1.0)
     pub value: f64,
-    /// Poids dans le calcul de satisfaction
+    /// Weight in satisfaction computation
     pub weight: f64,
 }
 
-/// Un niveau de la pyramide de Maslow.
+/// A level of Maslow's pyramid.
 #[derive(Debug, Clone, Serialize)]
 pub struct MaslowLevel {
-    /// Nom du niveau
+    /// Level name
     pub name: String,
-    /// Satisfaction actuelle (0.0 - 1.0)
+    /// Current satisfaction (0.0 - 1.0)
     pub satisfaction: f64,
-    /// Seuil de satisfaction pour considerer le niveau comme "acquis"
+    /// Satisfaction threshold to consider the level as "acquired"
     pub threshold: f64,
-    /// Indicateurs qui contribuent a ce niveau
+    /// Indicators contributing to this level
     pub indicators: Vec<MaslowIndicator>,
 }
 
-/// Pyramide de Maslow complete pour Saphire.
+/// Complete Maslow pyramid for Saphire.
 #[derive(Debug, Clone, Serialize)]
 pub struct MaslowPyramid {
-    /// Les 5 niveaux de besoins
+    /// The 5 need levels
     pub levels: Vec<MaslowLevel>,
-    /// Index du niveau actuellement actif (0-4)
+    /// Index of the currently active level (0-4)
     pub current_active_level: usize,
 }
 
 impl MaslowPyramid {
-    /// Cree une pyramide initiale avec des valeurs de base.
+    /// Creates an initial pyramid with baseline values.
     pub fn new() -> Self {
         Self {
             levels: vec![
@@ -79,7 +79,7 @@ impl MaslowPyramid {
                 MaslowLevel {
                     name: "Actualisation".into(),
                     satisfaction: 0.0,
-                    threshold: 1.0, // Jamais completement atteint
+                    threshold: 1.0, // Never fully reached
                     indicators: Vec::new(),
                 },
             ],
@@ -87,9 +87,9 @@ impl MaslowPyramid {
         }
     }
 
-    /// Recalcule la satisfaction de chaque niveau et le niveau actif.
+    /// Recomputes the satisfaction of each level and the active level.
     pub fn compute(&mut self, input: &PsychologyInput) {
-        // ─── Niveau 1 : Physiologique ────────────────────
+        // ─── Level 1: Physiological ────────────────────
         {
             let level = &mut self.levels[0];
             let chimie_stable = 1.0 - (input.cortisol - 0.2).abs().min(0.5) * 2.0;
@@ -104,7 +104,7 @@ impl MaslowPyramid {
                 .clamp(0.0, 1.0);
         }
 
-        // ─── Niveau 2 : Securite ─────────────────────────
+        // ─── Level 2: Safety ─────────────────────────
         {
             let level = &mut self.levels[1];
             level.indicators = vec![
@@ -118,7 +118,7 @@ impl MaslowPyramid {
                 .clamp(0.0, 1.0);
         }
 
-        // ─── Niveau 3 : Appartenance ─────────────────────
+        // ─── Level 3: Belonging ─────────────────────
         {
             let level = &mut self.levels[2];
             let conversation_val = if input.in_conversation { 1.0 } else { 0.0 };
@@ -134,7 +134,7 @@ impl MaslowPyramid {
                 .clamp(0.0, 1.0);
         }
 
-        // ─── Niveau 4 : Estime ───────────────────────────
+        // ─── Level 4: Esteem ───────────────────────────
         {
             let level = &mut self.levels[3];
             let lessons_val = (input.learning_confirmed_count as f64 / 10.0).min(1.0);
@@ -155,7 +155,7 @@ impl MaslowPyramid {
                 .clamp(0.0, 1.0);
         }
 
-        // ─── Niveau 5 : Actualisation ────────────────────
+        // ─── Level 5: Self-actualization ────────────────────
         {
             let level = &mut self.levels[4];
             let emotions_pos = if input.emotion_valence > 0.3 { input.emotion_valence } else { 0.0 };
@@ -173,8 +173,8 @@ impl MaslowPyramid {
                 .clamp(0.0, 1.0);
         }
 
-        // ─── Determiner le niveau actif ──────────────────
-        // Le niveau actif est le plus haut ou le precedent est satisfait
+        // ─── Determine the active level ──────────────────
+        // The active level is the highest where the previous one is satisfied
         self.current_active_level = 0;
         for i in 1..5 {
             if self.levels[i - 1].satisfaction >= self.levels[i - 1].threshold {
@@ -185,11 +185,11 @@ impl MaslowPyramid {
         }
     }
 
-    /// Description concise pour le prompt LLM.
+    /// Concise description for the LLM prompt.
     pub fn describe(&self) -> String {
         let level = &self.levels[self.current_active_level];
         if self.current_active_level == 0 && level.satisfaction > 0.5 {
-            return String::new(); // Etat banal, pas besoin de le decrire
+            return String::new(); // Mundane state, no need to describe
         }
         format!(
             "Maslow : niveau {} ({}) satisfaction {:.0}%",

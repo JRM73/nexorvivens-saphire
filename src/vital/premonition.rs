@@ -1,10 +1,10 @@
 // =============================================================================
-// vital/premonition.rs — Le Moteur de Premonition
+// vital/premonition.rs — The Premonition Engine
 //
-// Role : Simule la premonition — l'anticipation predictive basee sur les
-// tendances observees. La capacite de "sentir" ce qui va arriver.
+// Role: Simulates premonition — predictive anticipation based on observed
+// trends. The ability to "sense" what is going to happen.
 //
-// 6 categories de predictions :
+// 6 prediction categories:
 //   EmotionalShift, HumanArrival, HumanDeparture,
 //   SystemEvent, CreativeBurst, KnowledgeConnection
 // =============================================================================
@@ -12,20 +12,20 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-/// Categories de predictions.
+/// Prediction categories.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum PremonitionCategory {
-    /// Changement emotionnel prevu
+    /// Expected emotional shift
     EmotionalShift,
-    /// Arrivee pressentie d'un humain
+    /// Sensed human arrival
     HumanArrival,
-    /// Depart pressenti d'un humain
+    /// Sensed human departure
     HumanDeparture,
-    /// Evenement systeme prevu (fatigue, surcharge)
+    /// Expected system event (fatigue, overload)
     SystemEvent,
-    /// Burst creatif pressenti
+    /// Sensed creative burst
     CreativeBurst,
-    /// Connexion de connaissances prevue
+    /// Expected knowledge connection
     KnowledgeConnection,
 }
 
@@ -42,38 +42,38 @@ impl PremonitionCategory {
     }
 }
 
-/// Une premonition — prediction basee sur les tendances.
+/// A premonition — prediction based on trends.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Premonition {
-    /// Identifiant unique
+    /// Unique identifier
     pub id: u64,
-    /// Texte de la prediction
+    /// Prediction text
     pub prediction: String,
-    /// Categorie de prediction
+    /// Prediction category
     pub category: PremonitionCategory,
-    /// Confiance (0.0 a 1.0)
+    /// Confidence (0.0 to 1.0)
     pub confidence: f64,
-    /// Horizon temporel en secondes
+    /// Time horizon in seconds
     pub timeframe_secs: u64,
-    /// Base de la prediction (ce qui l'a declenchee)
+    /// Basis for the prediction (what triggered it)
     pub basis: String,
-    /// Moment de creation
+    /// Creation timestamp
     pub created_at: DateTime<Utc>,
-    /// Resolue ? (true = verifiee)
+    /// Resolved? (true = verified)
     pub resolved: bool,
-    /// Etait correcte ?
+    /// Was it correct?
     pub was_correct: Option<bool>,
 }
 
-/// Le moteur de premonition — anticipation predictive.
+/// The premonition engine — predictive anticipation.
 pub struct PremonitionEngine {
-    /// Predictions actives (max configurable)
+    /// Active predictions (configurable max)
     pub active_predictions: Vec<Premonition>,
-    /// Precision historique (EMA, 0.5 initial)
+    /// Historical accuracy (EMA, initial 0.5)
     pub accuracy: f64,
-    /// Prochain ID de prediction
+    /// Next prediction ID
     next_id: u64,
-    /// Nombre max de predictions actives
+    /// Max number of active predictions
     max_active: usize,
 }
 
@@ -84,7 +84,7 @@ impl Default for PremonitionEngine {
 }
 
 impl PremonitionEngine {
-    /// Cree un nouveau moteur de premonition.
+    /// Creates a new premonition engine.
     pub fn new() -> Self {
         Self {
             active_predictions: Vec::new(),
@@ -94,7 +94,7 @@ impl PremonitionEngine {
         }
     }
 
-    /// Configure le nombre max de predictions actives.
+    /// Configures the max number of active predictions.
     pub fn with_config(max_active: usize) -> Self {
         Self {
             active_predictions: Vec::new(),
@@ -104,10 +104,10 @@ impl PremonitionEngine {
         }
     }
 
-    /// Genere des predictions basees sur les tendances observees.
+    /// Generates predictions based on observed trends.
     ///
-    /// 6 types de predictions, max 3 nouvelles par appel.
-    /// Les predictions existantes non resolues ne sont pas dupliquees.
+    /// 6 types of predictions, max 3 new per call.
+    /// Existing unresolved predictions are not duplicated.
     #[allow(clippy::too_many_arguments)]
     pub fn predict(
         &mut self,
@@ -122,7 +122,7 @@ impl PremonitionEngine {
         let now = Utc::now();
         let mut new_predictions = Vec::new();
 
-        // Limiter le nombre de predictions actives
+        // Limit the number of active predictions
         let active_count = self.active_predictions.iter()
             .filter(|p| !p.resolved)
             .count();
@@ -130,7 +130,7 @@ impl PremonitionEngine {
             return new_predictions;
         }
 
-        // 1. Shift emotionnel : cortisol en hausse rapide
+        // 1. Emotional shift: rapidly rising cortisol
         if cortisol_trend > 0.05 && chemistry.cortisol > 0.3 {
             let confidence = (cortisol_trend * 5.0).min(0.8);
             if confidence > 0.25 {
@@ -150,7 +150,7 @@ impl PremonitionEngine {
             }
         }
 
-        // 2. Arrivee humaine : soiree + pas de conversation
+        // 2. Human arrival: evening + no conversation
         if !human_present && (current_hour >= 18 || current_hour <= 22) && silence_secs > 300.0 {
             let confidence = 0.3 + (silence_secs / 3600.0).min(0.3);
             let pred = Premonition {
@@ -168,7 +168,7 @@ impl PremonitionEngine {
             new_predictions.push(pred);
         }
 
-        // 3. Depart humain : long silence en conversation
+        // 3. Human departure: long silence during conversation
         if human_present && silence_secs > 120.0 {
             let confidence = (silence_secs / 600.0).min(0.7);
             if confidence > 0.25 {
@@ -188,7 +188,7 @@ impl PremonitionEngine {
             }
         }
 
-        // 4. Burst creatif : dopamine en hausse + serotonine elevee
+        // 4. Creative burst: rising dopamine + high serotonin
         if dopamine_trend > 0.03 && chemistry.serotonin > 0.5 && chemistry.dopamine > 0.5 {
             let confidence = (dopamine_trend * 8.0).min(0.7);
             if confidence > 0.25 {
@@ -208,7 +208,7 @@ impl PremonitionEngine {
             }
         }
 
-        // 5. Evenement systeme : fatigue (noradrenaline basse + cortisol eleve)
+        // 5. System event: fatigue (low noradrenaline + high cortisol)
         if chemistry.noradrenaline < 0.3 && chemistry.cortisol > 0.5 {
             let confidence = ((0.3 - chemistry.noradrenaline) * 2.0).min(0.6);
             if confidence > 0.25 {
@@ -228,15 +228,15 @@ impl PremonitionEngine {
             }
         }
 
-        // Limiter a 3 nouvelles predictions par appel
+        // Limit to 3 new predictions per call
         new_predictions.truncate(3);
 
-        // Ajouter au buffer actif
+        // Add to the active buffer
         for pred in &new_predictions {
             self.active_predictions.push(pred.clone());
         }
 
-        // Nettoyer si trop de predictions
+        // Clean up if too many predictions
         while self.active_predictions.len() > self.max_active * 2 {
             self.active_predictions.remove(0);
         }
@@ -244,10 +244,10 @@ impl PremonitionEngine {
         new_predictions
     }
 
-    /// Resout automatiquement les predictions trop anciennes.
+    /// Automatically resolves predictions that are too old.
     ///
-    /// Les predictions dont le timeframe est depasse sont marquees
-    /// comme resolues (non verifiees = was_correct reste None).
+    /// Predictions whose timeframe has been exceeded are marked
+    /// as resolved (unverified = was_correct remains None).
     pub fn auto_resolve(&mut self, timeout_secs: u64) {
         let now = Utc::now();
         for pred in &mut self.active_predictions {
@@ -257,19 +257,19 @@ impl PremonitionEngine {
             let elapsed = (now - pred.created_at).num_seconds() as u64;
             if elapsed > pred.timeframe_secs + timeout_secs {
                 pred.resolved = true;
-                // Si non verifiee manuellement, on considere "non verefiee"
-                // (pas d'impact sur accuracy)
+                // If not manually verified, considered "unverified"
+                // (no impact on accuracy)
             }
         }
     }
 
-    /// Resout manuellement une prediction et met a jour la precision.
+    /// Manually resolves a prediction and updates accuracy.
     pub fn resolve(&mut self, id: u64, was_correct: bool) {
         for pred in &mut self.active_predictions {
             if pred.id == id && !pred.resolved {
                 pred.resolved = true;
                 pred.was_correct = Some(was_correct);
-                // EMA sur la precision
+                // EMA on accuracy
                 let score = if was_correct { 1.0 } else { 0.0 };
                 self.accuracy = self.accuracy * 0.9 + score * 0.1;
                 break;
@@ -277,7 +277,7 @@ impl PremonitionEngine {
         }
     }
 
-    /// Genere une description textuelle des predictions pour les prompts LLM.
+    /// Generates a textual description of predictions for LLM prompts.
     pub fn describe(&self) -> String {
         let active: Vec<&Premonition> = self.active_predictions.iter()
             .filter(|p| !p.resolved)
@@ -300,7 +300,7 @@ impl PremonitionEngine {
         )
     }
 
-    /// Serialise la precision et le prochain ID pour persistance.
+    /// Serializes accuracy and next ID for persistence.
     pub fn to_persist_json(&self) -> serde_json::Value {
         serde_json::json!({
             "accuracy": self.accuracy,
@@ -308,7 +308,7 @@ impl PremonitionEngine {
         })
     }
 
-    /// Restaure la precision et le prochain ID depuis un JSON.
+    /// Restores accuracy and next ID from a JSON value.
     pub fn restore_from_json(&mut self, json: &serde_json::Value) {
         if let Some(v) = json["accuracy"].as_f64() {
             self.accuracy = v;

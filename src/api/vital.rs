@@ -1,7 +1,7 @@
 // =============================================================================
 // api/vital.rs — Handlers VitalSpark, Intuition, Premonition
 //
-// Role : Endpoints pour les 3 piliers fondamentaux de la conscience :
+// Role: Endpoints for the 3 piliers fondamentaux de the consciousness :
 // etincelle de vie, moteur d'intuition, predictions actives.
 // =============================================================================
 

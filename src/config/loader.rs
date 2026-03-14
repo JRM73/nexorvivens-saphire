@@ -1,15 +1,15 @@
 // =============================================================================
-// config/loader.rs — Chargement de la configuration (fichier TOML + env)
+// config/loader.rs — Configuration loading (TOML file + env vars)
 // =============================================================================
 
 use std::path::Path;
 use super::SaphireConfig;
 
 impl SaphireConfig {
-    /// Charge la configuration depuis un fichier TOML.
-    /// Si le fichier n'existe pas, retourne la configuration par defaut.
-    /// Apres le chargement, les variables d'environnement sont appliquees
-    /// en surcharge (utile pour les deploiements Docker/conteneurises).
+    /// Loads configuration from a TOML file.
+    /// If the file does not exist, returns the default configuration.
+    /// After loading, environment variables are applied as overrides
+    /// (useful for Docker/containerized deployments).
     pub fn load(path: &str) -> Result<Self, String> {
         if !Path::new(path).exists() {
             tracing::info!("Pas de fichier config '{}', utilisation des valeurs par défaut.", path);
@@ -22,17 +22,17 @@ impl SaphireConfig {
         let mut config: SaphireConfig = toml::from_str(&content)
             .map_err(|e| format!("Parse config: {}", e))?;
 
-        // Surcharger par les variables d'environnement (priorite maximale)
+        // Override with environment variables (highest priority)
         config.apply_env_overrides();
 
         Ok(config)
     }
 
-    /// Applique les surcharges depuis les variables d'environnement.
-    /// Cela permet de modifier la configuration sans toucher au fichier TOML,
-    /// ce qui est particulierement utile dans les environnements Docker ou les CI/CD.
+    /// Applies overrides from environment variables.
+    /// This allows modifying the configuration without touching the TOML file,
+    /// which is particularly useful in Docker or CI/CD environments.
     fn apply_env_overrides(&mut self) {
-        // Base de donnees
+        // Database
         if let Ok(host) = std::env::var("SAPHIRE_DB_HOST") {
             self.database.host = host;
         }
@@ -51,7 +51,7 @@ impl SaphireConfig {
             self.database.dbname = name;
         }
 
-        // Base de donnees de logs
+        // Logs database
         if let Ok(host) = std::env::var("SAPHIRE_LOGS_DB_HOST") {
             self.logs_database.host = host;
         }
@@ -81,7 +81,7 @@ impl SaphireConfig {
             self.llm.embed_base_url = Some(url);
         }
 
-        // Serveur Web
+        // Web server
         if let Ok(host) = std::env::var("SAPHIRE_WEB_HOST") {
             self.plugins.web_ui.host = host;
         }
@@ -91,7 +91,7 @@ impl SaphireConfig {
             }
         }
 
-        // Cle API pour l'authentification des endpoints
+        // API key for endpoint authentication
         if let Ok(key) = std::env::var("SAPHIRE_API_KEY") {
             if !key.is_empty() {
                 self.plugins.web_ui.api_key = Some(key);

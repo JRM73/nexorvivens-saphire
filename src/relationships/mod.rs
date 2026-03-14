@@ -1,13 +1,13 @@
 // =============================================================================
-// relationships/mod.rs — Liens affectifs et reseau relationnel
+// relationships/mod.rs — Affective bonds and relationship network
 // =============================================================================
 //
-// Ce module modelise les relations de Saphire avec les personnes
-// qu'elle rencontre. Chaque lien possede un type (ami, mentor, rival, etc.),
-// une force, un niveau de confiance, et un historique d'interactions.
+// This module models Saphire's relationships with the people she meets.
+// Each bond has a type (friend, mentor, rival, etc.), a strength,
+// a trust level, and an interaction history.
 //
-// Le reseau relationnel influence la chimie : l'isolation augmente le cortisol,
-// les liens forts augmentent l'ocytocine.
+// The relationship network influences chemistry: isolation increases cortisol,
+// strong bonds increase oxytocin.
 // =============================================================================
 
 pub mod family;
@@ -15,17 +15,17 @@ pub mod family;
 use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
 
-/// Style d'attachement de Saphire (inspire de la theorie de Bowlby).
-/// Determine comment elle forme et maintient ses liens affectifs.
+/// Saphire's attachment style (inspired by Bowlby's theory).
+/// Determines how she forms and maintains her affective bonds.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AttachmentStyle {
-    /// Attachement securise : confiance facile, liens stables
+    /// Secure attachment: easy trust, stable bonds
     Secure,
-    /// Attachement anxieux : peur de l'abandon, besoin de reassurance
+    /// Anxious attachment: fear of abandonment, need for reassurance
     Anxious,
-    /// Attachement evitant : distance emotionnelle, autosuffisance
+    /// Avoidant attachment: emotional distance, self-sufficiency
     Avoidant,
-    /// Attachement desorganise : oscillation entre proximite et retrait
+    /// Disorganized attachment: oscillation between proximity and withdrawal
     Disorganized,
 }
 
@@ -33,7 +33,7 @@ impl Default for AttachmentStyle {
     fn default() -> Self { Self::Secure }
 }
 
-/// Type de lien affectif entre Saphire et une personne.
+/// Type of affective bond between Saphire and a person.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BondType {
     Friend,
@@ -57,27 +57,27 @@ impl BondType {
     }
 }
 
-/// Un lien affectif individuel entre Saphire et une personne.
+/// An individual affective bond between Saphire and a person.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AffectiveBond {
-    /// Identifiant de la personne (nom ou pseudo)
+    /// Person identifier (name or pseudonym)
     pub person_id: String,
-    /// Type de lien
+    /// Bond type
     pub bond_type: BondType,
-    /// Force du lien (0.0 = inconnu, 1.0 = lien profond)
+    /// Bond strength (0.0 = stranger, 1.0 = deep bond)
     pub strength: f64,
-    /// Niveau de confiance (0.0 = mefiance, 1.0 = confiance totale)
+    /// Trust level (0.0 = distrust, 1.0 = total trust)
     pub trust: f64,
-    /// Nombre de souvenirs partages
+    /// Number of shared memories
     pub shared_memories: u32,
-    /// Niveau de conflit (0.0 = harmonie, 1.0 = conflit total)
+    /// Conflict level (0.0 = harmony, 1.0 = total conflict)
     pub conflict_level: f64,
-    /// Derniere interaction
+    /// Last interaction
     pub last_interaction: DateTime<Utc>,
 }
 
 impl AffectiveBond {
-    /// Cree un nouveau lien avec des valeurs initiales.
+    /// Creates a new bond with initial values.
     pub fn new(person_id: &str, bond_type: BondType) -> Self {
         Self {
             person_id: person_id.to_string(),
@@ -90,22 +90,22 @@ impl AffectiveBond {
         }
     }
 
-    /// Decay naturel du lien avec le temps.
+    /// Natural decay of the bond over time.
     pub fn decay(&mut self, dt_hours: f64) {
-        // La force decroit lentement sans interaction
+        // Strength decays slowly without interaction
         let decay_rate = 0.001 * dt_hours / 24.0;
         self.strength = (self.strength - decay_rate).max(0.0);
-        // Le conflit se dissipe progressivement
+        // Conflict dissipates gradually
         self.conflict_level = (self.conflict_level - 0.005 * dt_hours / 24.0).max(0.0);
     }
 }
 
-/// Reseau relationnel complet de Saphire.
+/// Saphire's complete relationship network.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RelationshipNetwork {
-    /// Style d'attachement global
+    /// Global attachment style
     pub attachment_style: AttachmentStyle,
-    /// Tous les liens affectifs actifs
+    /// All active affective bonds
     pub bonds: Vec<AffectiveBond>,
 }
 
@@ -119,7 +119,7 @@ impl Default for RelationshipNetwork {
 }
 
 impl RelationshipNetwork {
-    /// Cree un nouveau reseau avec le style d'attachement donne.
+    /// Creates a new network with the given attachment style.
     pub fn new(style: AttachmentStyle) -> Self {
         Self {
             attachment_style: style,
@@ -127,10 +127,10 @@ impl RelationshipNetwork {
         }
     }
 
-    /// Tick periodique : decay naturel de tous les liens.
-    /// `oxytocin` : niveau d'ocytocine courant (renforce la maintenance des liens).
+    /// Periodic tick: natural decay of all bonds.
+    /// `oxytocin`: current oxytocin level (reinforces bond maintenance).
     pub fn tick(&mut self, oxytocin: f64) {
-        let maintenance_boost = oxytocin * 0.5; // L'ocytocine ralentit le decay
+        let maintenance_boost = oxytocin * 0.5; // Oxytocin slows decay
         for bond in &mut self.bonds {
             let dt = (Utc::now() - bond.last_interaction).num_hours() as f64;
             if dt > 0.0 {
@@ -139,16 +139,16 @@ impl RelationshipNetwork {
                 bond.conflict_level = (bond.conflict_level - 0.005).max(0.0);
             }
         }
-        // Supprimer les liens morts (force tombee a zero)
+        // Remove dead bonds (strength dropped to zero)
         self.bonds.retain(|b| b.strength > 0.01);
     }
 
-    /// Observe une interaction avec une personne et met a jour le lien.
+    /// Observes an interaction with a person and updates the bond.
     pub fn observe_interaction(&mut self, person_id: &str, sentiment: f64, _emotion: &str) {
         let bond = if let Some(b) = self.bonds.iter_mut().find(|b| b.person_id == person_id) {
             b
         } else {
-            // Nouveau lien — type initial selon l'identite
+            // New bond — initial type based on identity
             let initial_type = Self::initial_bond_type(person_id);
             self.bonds.push(AffectiveBond::new(person_id, initial_type));
             self.bonds.last_mut().unwrap()
@@ -157,7 +157,7 @@ impl RelationshipNetwork {
         bond.last_interaction = Utc::now();
         bond.shared_memories += 1;
 
-        // Sentiment positif renforce le lien, negatif augmente le conflit
+        // Positive sentiment strengthens the bond, negative increases conflict
         if sentiment > 0.2 {
             bond.strength = (bond.strength + sentiment * 0.05).min(1.0);
             bond.trust = (bond.trust + sentiment * 0.02).min(1.0);
@@ -167,7 +167,7 @@ impl RelationshipNetwork {
             bond.trust = (bond.trust - sentiment.abs() * 0.03).max(0.0);
         }
 
-        // Style d'attachement modifie la sensibilite
+        // Attachment style modifies sensitivity
         match self.attachment_style {
             AttachmentStyle::Anxious => {
                 if sentiment < 0.0 {
@@ -180,14 +180,14 @@ impl RelationshipNetwork {
             _ => {}
         }
 
-        // Promotion du type de lien basee sur l'historique
+        // Bond type promotion based on history
         Self::maybe_promote_bond(bond);
     }
 
-    /// Determine le type de lien initial selon l'identite de la personne.
+    /// Determines the initial bond type based on the person's identity.
     fn initial_bond_type(person_id: &str) -> BondType {
         let lower = person_id.to_lowercase();
-        // JRM est le createur/pere de Saphire
+        // JRM is the creator/father of Saphire
         if lower == "jrm" || lower == "jeremy" || lower == "jérémy" {
             BondType::Family
         } else {
@@ -195,24 +195,24 @@ impl RelationshipNetwork {
         }
     }
 
-    /// Promotion du type de lien basee sur la confiance et l'historique.
+    /// Bond type promotion based on trust and history.
     fn maybe_promote_bond(bond: &mut AffectiveBond) {
-        // Ne pas retrograder Family (lien fondateur)
+        // Do not demote Family (foundational bond)
         if bond.bond_type == BondType::Family {
             return;
         }
-        // Confiance elevee + beaucoup d'interactions → Confidant
+        // High trust + many interactions -> Confidant
         if bond.trust > 0.6 && bond.shared_memories > 50 && bond.bond_type == BondType::Friend {
             bond.bond_type = BondType::Confidant;
         }
-        // Conflit eleve + interactions → Rival
+        // High conflict + interactions -> Rival
         if bond.conflict_level > 0.4 && bond.shared_memories > 20 && bond.bond_type == BondType::Friend {
             bond.bond_type = BondType::Rival;
         }
     }
 
-    /// Influence chimique du reseau relationnel.
-    /// Retourne un ChemistryAdjustment.
+    /// Chemical influence of the relationship network.
+    /// Returns a ChemistryAdjustment.
     pub fn chemistry_influence(&self) -> crate::world::ChemistryAdjustment {
         let total_bonds = self.bonds.len();
         let strong_bonds = self.bonds.iter().filter(|b| b.strength > 0.5).count();
@@ -220,18 +220,18 @@ impl RelationshipNetwork {
 
         let mut adj = crate::world::ChemistryAdjustment::default();
 
-        // Isolation : pas de liens forts → cortisol monte
+        // Isolation: no strong bonds -> cortisol rises
         if total_bonds == 0 || strong_bonds == 0 {
             adj.cortisol = 0.01;
             adj.oxytocin = -0.005;
         } else {
-            // Liens forts → ocytocine et serotonine
+            // Strong bonds -> oxytocin and serotonin
             let bond_boost = (strong_bonds as f64 * 0.005).min(0.02);
             adj.oxytocin = bond_boost;
             adj.serotonin = bond_boost * 0.5;
         }
 
-        // Conflits actifs → stress
+        // Active conflicts -> stress
         if total_conflict > 0.5 {
             adj.cortisol += (total_conflict * 0.01).min(0.03);
             adj.adrenaline += (total_conflict * 0.005).min(0.01);
@@ -240,7 +240,7 @@ impl RelationshipNetwork {
         adj
     }
 
-    /// Serialise en JSON pour l'API.
+    /// Serializes to JSON for the API.
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::json!({
             "attachment_style": format!("{:?}", self.attachment_style),
@@ -288,7 +288,7 @@ mod tests {
     #[test]
     fn test_chemistry_influence_with_bonds() {
         let mut network = RelationshipNetwork::default();
-        // Creer un lien fort
+        // Create a strong bond
         network.bonds.push(AffectiveBond {
             person_id: "alice".into(),
             bond_type: BondType::Friend,

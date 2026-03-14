@@ -1,108 +1,99 @@
 // =============================================================================
-// algorithms/mod.rs — Bibliothèque ML/DL + catalogue de 48 algorithmes
+// algorithms/mod.rs — ML/DL library + catalog of 48 algorithms
 // =============================================================================
 //
-// Rôle : Ce module est le point d'entrée du sous-système d'algorithmes de Saphire.
-//        Il déclare et réexporte les sous-modules spécialisés (régression linéaire,
-//        K-Means, Naive Bayes, bandits, PCA, détection d'anomalies) et contient
-//        le catalogue complet des algorithmes connus par Saphire.
+// Role: This module is the entry point of Saphire's algorithm subsystem.
+//  It declares and re-exports specialized submodules (linear regression,
+//  K-Means, Naive Bayes, bandits, PCA, anomaly detection) and contains
+//  the complete catalog of algorithms known to Saphire.
 //
-// Dépendances :
-//   - serde : sérialisation/désérialisation des structures pour la persistance
+// Dependencies:
+//  - serde: serialization/deserialization of structures for persistence
 //
-// Place dans l'architecture :
-//   Ce module constitue la couche « intelligence algorithmique » de Saphire.
-//   Il est utilisé par le cerveau (brain.rs) et le pipeline (pipeline.rs) pour
-//   effectuer des analyses, des prédictions et des classifications sur les données
-//   cognitives internes de l'agent.
+// Place in architecture:
+//  This module constitutes Saphire's "algorithmic intelligence" layer.
+//  It is used by the brain (brain.rs) and the pipeline (pipeline.rs) to
+//  perform analyses, predictions, and classifications on the agent's
+//  internal cognitive data.
 // =============================================================================
-
-// --- Sous-modules d'algorithmes implémentés ---
-pub mod kmeans;             // K-Means : partitionnement en clusters
-pub mod naive_bayes;        // Naive Bayes : classification probabiliste de texte
-pub mod bandit;             // UCB1 (Upper Confidence Bound) : bandit multi-bras
-pub mod pca;                // PCA (Principal Component Analysis) : réduction de dimensionnalité
-pub mod anomaly;            // Détection d'anomalies par Z-Score
-
-// --- Orchestrateur d'algorithmes ---
-pub mod orchestrator;       // Pont entre le LLM et les algorithmes
-pub mod catalog;            // Catalogue des fiches d'algorithmes (le Vidal)
-pub mod implementations;    // Implementations du trait AlgorithmExecutor
-
+// --- Implemented algorithm submodules ---
+pub mod kmeans; // K-Means: cluster partitioningpub mod naive_bayes; // Naive Bayes: probabilistic text classificationpub mod bandit;             // UCB1 (Upper Confidence Bound): multi-armed bandit
+pub mod pca; // PCA (Principal Component Analysis): dimensionality reductionpub mod anomaly; // Z-Score anomaly detection
+// --- Algorithm orchestrator ---
+pub mod orchestrator; // Bridge between the LLM and the algorithmspub mod catalog; // Catalog of algorithm sheets (the Vidal)pub mod implementations; // Implementations of the AlgorithmExecutor trait
 use serde::{Deserialize, Serialize};
 
-/// Catégorie d'algorithme — permet de classer chaque algorithme du catalogue
-/// selon son paradigme d'apprentissage ou sa famille algorithmique.
+/// Algorithm category — classifies each algorithm in the catalog
+/// according to its learning paradigm or algorithmic family.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum AlgoCategory {
-    /// Apprentissage supervisé : le modèle apprend à partir de paires (entrée, sortie)
+    /// Supervised learning: the model learns from (input, output) pairs
     Supervised,
-    /// Apprentissage non supervisé : le modèle découvre des structures sans étiquettes
+    /// Unsupervised learning: the model discovers structures without labels
     Unsupervised,
-    /// Apprentissage par renforcement : le modèle optimise une récompense cumulative
+    /// Reinforcement learning: the model optimizes a cumulative reward
     Reinforcement,
-    /// Algorithmes d'optimisation : recherche du minimum/maximum d'une fonction
+    /// Optimization algorithms: searching for the minimum/maximum of a function
     Optimization,
-    /// Réduction de dimensionnalité : projeter les données dans un espace de dimension inférieure
+    /// Dimensionality reduction: projecting data into a lower-dimensional space
     DimensionalityReduction,
-    /// Méthodes d'ensemble : combinaison de plusieurs modèles pour améliorer la robustesse
+    /// Ensemble methods: combining multiple models to improve robustness
     Ensemble,
-    /// Apprentissage profond (Deep Learning) : réseaux de neurones multi-couches
+    /// Deep Learning: multi-layer neural networks
     DeepLearning,
-    /// NLP (Natural Language Processing) = Traitement Automatique du Langage Naturel
+    /// NLP (Natural Language Processing)
     NLP,
-    /// Séries temporelles : analyse et prédiction de données indexées dans le temps
+    /// Time series: analysis and prediction of time-indexed data
     TimeSeries,
-    /// Modèles probabilistes : raisonnement basé sur les lois de probabilité
+    /// Probabilistic models: reasoning based on probability theory
     Probabilistic,
 }
 
-/// Un algorithme dans la bibliothèque — fiche descriptive complète d'un algorithme
-/// connu par Saphire, qu'il soit implémenté ou simplement référencé.
+/// An algorithm in the library — complete descriptive sheet for an algorithm
+/// known to Saphire, whether implemented or merely referenced.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Algorithm {
-    /// Identifiant unique court (ex: "lin_reg", "kmeans")
+    /// Short unique identifier (e.g., "lin_reg", "kmeans")
     pub id: String,
-    /// Nom lisible en français (ex: "Régression Linéaire")
+    /// Human-readable name (e.g., "Linear Regression")
     pub name: String,
-    /// Catégorie de l'algorithme (supervisé, non supervisé, etc.)
+    /// Algorithm category (supervised, unsupervised, etc.)
     pub category: AlgoCategory,
-    /// Description concise du fonctionnement de l'algorithme
+    /// Concise description of the algorithm's operation
     pub description: String,
-    /// Cas d'utilisation typiques de cet algorithme
+    /// Typical use cases for this algorithm
     pub use_cases: Vec<String>,
-    /// Limitations connues de cet algorithme
+    /// Known limitations of this algorithm
     pub limitations: Vec<String>,
-    /// Complexité algorithmique (ex: "O(n*k*d)" pour K-Means)
+    /// Algorithmic complexity (e.g., "O(n*k*d)" for K-Means)
     pub complexity: String,
-    /// Nombre minimum de points de données requis pour un fonctionnement fiable
+    /// Minimum number of data points required for reliable operation
     pub min_data_points: usize,
-    /// Indique si l'algorithme est effectivement implémenté dans Saphire
+    /// Whether the algorithm is actually implemented in Saphire
     pub implemented: bool,
-    /// Mots-clés pour la recherche dans le catalogue
+    /// Keywords for catalog search
     pub tags: Vec<String>,
-    /// Pertinence cognitive : comment cet algorithme sert le fonctionnement mental de Saphire
+    /// Cognitive relevance: how this algorithm serves Saphire's mental operation
     pub cognitive_relevance: String,
 }
 
-/// La bibliothèque complète — contient le catalogue de tous les algorithmes
-/// référencés par Saphire, avec des méthodes de recherche et de recommandation.
+/// The complete library — contains the catalog of all algorithms referenced
+/// by Saphire, with search and recommendation methods.
 pub struct AlgoLibrary {
-    /// Liste de tous les algorithmes du catalogue
+    /// List of all algorithms in the catalog
     pub algorithms: Vec<Algorithm>,
 }
 
 impl AlgoLibrary {
-    /// Construit le catalogue complet des algorithmes connus par Saphire.
+    /// Builds the complete catalog of algorithms known to Saphire.
     ///
-    /// Retourne une instance de AlgoLibrary contenant tous les algorithmes,
-    /// organisés par catégorie (supervisé, non supervisé, renforcement,
-    /// optimisation, deep learning, NLP, séries temporelles, probabiliste).
+    /// Returns an AlgoLibrary instance containing all algorithms,
+    /// organized by category (supervised, unsupervised, reinforcement,
+    /// optimization, deep learning, NLP, time series, probabilistic).
     pub fn build_catalog() -> Self {
         let algorithms = vec![
             // ═══ SUPERVISED ═══
-            // Algorithmes qui apprennent à partir de paires (entrée, sortie connue)
-
+            // Algorithms that learn from (input, known output) pairs
             algo("lin_reg", "Régression Linéaire", AlgoCategory::Supervised,
                 "Relation linéaire features→target. Simple, interprétable.", 20, true,
                 &["régression", "prédiction", "linéaire"],
@@ -132,8 +123,7 @@ impl AlgoLibrary {
                 &["probabilité", "Bayes", "texte"],
                 "Analyse rapide du sentiment textuel"),
             // ═══ UNSUPERVISED ═══
-            // Algorithmes qui découvrent des structures cachées dans les données
-
+            // Algorithms that discover hidden structures in data
             algo("kmeans", "K-Means Clustering", AlgoCategory::Unsupervised,
                 "Partitionne en K clusters par distance.", 30, true,
                 &["clustering", "partitionnement"],
@@ -143,8 +133,7 @@ impl AlgoLibrary {
                 &["clustering", "densité", "outliers"],
                 "Détecter les souvenirs traumatiques isolés"),
             // ═══ DIMENSIONALITY REDUCTION ═══
-            // Algorithmes qui réduisent le nombre de dimensions tout en préservant l'information
-
+            // Algorithms that reduce the number of dimensions while preserving information
             algo("pca", "PCA", AlgoCategory::DimensionalityReduction,
                 "Projette sur les axes de variance maximale.", 20, true,
                 &["réduction", "variance", "visualisation"],
@@ -154,8 +143,7 @@ impl AlgoLibrary {
                 &["visualisation", "non-linéaire", "2D"],
                 "Cartographie visuelle de l'âme"),
             // ═══ REINFORCEMENT ═══
-            // Algorithmes qui optimisent une politique d'action par essai-erreur
-
+            // Algorithms that optimize an action policy through trial-and-error
             algo("mab", "Multi-Armed Bandit (UCB1)", AlgoCategory::Reinforcement,
                 "Équilibre exploration/exploitation.", 10, true,
                 &["bandit", "exploration", "exploitation"],
@@ -165,8 +153,7 @@ impl AlgoLibrary {
                 &["RL", "Q-value", "état-action"],
                 "Optimisation à long terme du comportement"),
             // ═══ OPTIMIZATION ═══
-            // Algorithmes de recherche du minimum ou maximum d'une fonction objectif
-
+            // Algorithms for finding the minimum or maximum of an objective function
             algo("gradient_descent", "Descente de Gradient", AlgoCategory::Optimization,
                 "Optimise en suivant le gradient négatif.", 1, true,
                 &["gradient", "optimisation", "backpropagation"],
@@ -184,8 +171,7 @@ impl AlgoLibrary {
                 &["Bayésien", "GP", "hyperparamètres"],
                 "Trouver les meilleurs paramètres cognitifs"),
             // ═══ DEEP LEARNING ═══
-            // Réseaux de neurones profonds à plusieurs couches
-
+            // Deep multi-layer neural networks
             algo("mlp", "Perceptron Multi-Couches", AlgoCategory::DeepLearning,
                 "Réseau feedforward. Le micro-NN de Saphire (17→16→4).", 10, true,
                 &["réseau", "feedforward", "backprop"],
@@ -207,8 +193,7 @@ impl AlgoLibrary {
                 &["génératif", "adversaire", "synthèse"],
                 "Imagination : générer des situations fictives"),
             // ═══ NLP ═══
-            // Traitement Automatique du Langage Naturel
-
+            // Natural Language Processing
             algo("tfidf", "TF-IDF", AlgoCategory::NLP,
                 "Pondération statistique des mots.", 5, true,
                 &["texte", "fréquence", "vectorisation"],
@@ -222,8 +207,7 @@ impl AlgoLibrary {
                 &["sentiment", "lexique", "polarité"],
                 "Perception émotionnelle du texte"),
             // ═══ TIME SERIES ═══
-            // Analyse de données séquentielles ordonnées dans le temps
-
+            // Analysis of sequentially ordered time-indexed data
             algo("ema", "Moyenne Mobile Exponentielle", AlgoCategory::TimeSeries,
                 "Lissage pondérant les récentes observations.", 1, true,
                 &["lissage", "temporel", "moyenne mobile"],
@@ -233,8 +217,7 @@ impl AlgoLibrary {
                 &["anomalie", "écart-type", "alerte"],
                 "Conscience des changements anormaux"),
             // ═══ PROBABILISTIC ═══
-            // Modèles fondés sur la théorie des probabilités
-
+            // Models based on probability theory
             algo("hmm", "Modèle de Markov Caché", AlgoCategory::Probabilistic,
                 "États cachés avec transitions probabilistes.", 100, false,
                 &["Markov", "caché", "séquentiel"],
@@ -248,33 +231,33 @@ impl AlgoLibrary {
         AlgoLibrary { algorithms }
     }
 
-    /// Cherche des algorithmes par texte dans le catalogue.
+    /// Searches for algorithms by text in the catalog.
     ///
-    /// Effectue une recherche pondérée sur plusieurs champs :
-    /// - Nom de l'algorithme (poids 3.0)
-    /// - Tags / mots-clés (poids 2.0)
-    /// - Cas d'utilisation (poids 1.5)
-    /// - Description (poids 1.0)
-    /// - Pertinence cognitive (poids 1.0)
+    /// Performs a weighted search across multiple fields:
+    /// - Algorithm name (weight 3.0)
+    /// - Tags / keywords (weight 2.0)
+    /// - Use cases (weight 1.5)
+    /// - Description (weight 1.0)
+    /// - Cognitive relevance (weight 1.0)
     ///
-    /// Paramètre `query` : texte de recherche (insensible à la casse)
-    /// Retourne : liste d'algorithmes triés par score de pertinence décroissant
+    /// Parameter `query`: search text (case-insensitive)
+    /// Returns: list of algorithms sorted by descending relevance score
     pub fn search(&self, query: &str) -> Vec<&Algorithm> {
         let query_lower = query.to_lowercase();
         let mut results: Vec<(&Algorithm, f64)> = self.algorithms.iter()
             .map(|algo| {
                 let mut score = 0.0;
-                // Score élevé si le nom contient la requête
+                // High score if the name contains the query
                 if algo.name.to_lowercase().contains(&query_lower) { score += 3.0; }
-                // Score moyen si un tag correspond
+                // Medium score if a tag matches
                 for tag in &algo.tags {
                     if tag.to_lowercase().contains(&query_lower) { score += 2.0; }
                 }
-                // Score pour les cas d'utilisation
+                // Score for use cases
                 for uc in &algo.use_cases {
                     if uc.to_lowercase().contains(&query_lower) { score += 1.5; }
                 }
-                // Score pour la description et la pertinence cognitive
+                // Score for description and cognitive relevance
                 if algo.description.to_lowercase().contains(&query_lower) { score += 1.0; }
                 if algo.cognitive_relevance.to_lowercase().contains(&query_lower) { score += 1.0; }
                 (algo, score)
@@ -282,19 +265,19 @@ impl AlgoLibrary {
             .filter(|(_, score)| *score > 0.0)
             .collect();
 
-        // Trier par score décroissant
+        // Sort by descending score
         results.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
         results.into_iter().map(|(a, _)| a).collect()
     }
 
-    /// Recommande des algorithmes adaptés à un problème donné.
+    /// Recommends algorithms suited to a given problem.
     ///
-    /// Combine la recherche textuelle avec un filtre sur le nombre minimum
-    /// de points de données requis par l'algorithme.
+    /// Combines text search with a filter on the minimum number of
+    /// data points required by the algorithm.
     ///
-    /// Paramètre `problem` : description du problème à résoudre
-    /// Paramètre `data_points` : nombre de points de données disponibles
-    /// Retourne : les 3 meilleurs algorithmes compatibles
+    /// Parameter `problem`: description of the problem to solve
+    /// Parameter `data_points`: number of available data points
+    /// Returns: the top 3 compatible algorithms
     pub fn recommend(&self, problem: &str, data_points: usize) -> Vec<&Algorithm> {
         self.search(problem).into_iter()
             .filter(|a| a.min_data_points <= data_points)
@@ -302,25 +285,25 @@ impl AlgoLibrary {
             .collect()
     }
 
-    /// Liste tous les algorithmes effectivement implémentés dans Saphire.
+    /// Lists all algorithms actually implemented in Saphire.
     ///
-    /// Retourne : références vers les algorithmes dont le champ `implemented` est vrai
+    /// Returns: references to algorithms whose `implemented` field is true
     pub fn implemented(&self) -> Vec<&Algorithm> {
         self.algorithms.iter().filter(|a| a.implemented).collect()
     }
 }
 
-/// Fonction utilitaire pour construire un Algorithm de manière concise.
+/// Utility function to concisely build an Algorithm instance.
 ///
-/// Paramètre `id` : identifiant court unique
-/// Paramètre `name` : nom lisible
-/// Paramètre `category` : catégorie algorithmique
-/// Paramètre `description` : description du fonctionnement
-/// Paramètre `min_data_points` : nombre minimum de données requises
-/// Paramètre `implemented` : vrai si implémenté dans Saphire
-/// Paramètre `tags` : mots-clés de recherche
-/// Paramètre `cognitive_relevance` : utilité cognitive pour Saphire
-/// Retourne : une instance complète d'Algorithm
+/// Parameter `id`: short unique identifier
+/// Parameter `name`: human-readable name
+/// Parameter `category`: algorithmic category
+/// Parameter `description`: description of the operation
+/// Parameter `min_data_points`: minimum data required
+/// Parameter `implemented`: true if implemented in Saphire
+/// Parameter `tags`: search keywords
+/// Parameter `cognitive_relevance`: cognitive utility for Saphire
+/// Returns: a complete Algorithm instance
 #[allow(clippy::too_many_arguments)]
 fn algo(
     id: &str, name: &str, category: AlgoCategory, description: &str,

@@ -1,8 +1,8 @@
 // =============================================================================
-// api/subconscious.rs — Endpoints REST pour le subconscient et connexions
+// api/subconscious.rs — Endpoints REST for the subconscious et connexions
 //
-// Role : Expose les endpoints pour consulter le subconscient, les associations,
-// les insights, et les connexions neuronales.
+// Role: Expose les endpoints for consulter le subconscious, les associations,
+// les insights, et les neural connections.
 // =============================================================================
 
 use std::collections::HashMap;
@@ -11,7 +11,7 @@ use axum::response::IntoResponse;
 
 use super::state::AppState;
 
-/// GET /api/subconscious/status — Etat complet du subconscient.
+/// GET /api/subconscious/status — Etat complete du subconscious.
 pub async fn api_subconscious_status(
     State(state): State<AppState>,
 ) -> impl IntoResponse {
@@ -62,7 +62,7 @@ pub async fn api_subconscious_insights(
     }))
 }
 
-/// GET /api/connections/list — Connexions neuronales (pagine depuis la DB).
+/// GET /api/connections/list — Connexions neuronales (pagine from the DB).
 pub async fn api_connections_list(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -84,7 +84,7 @@ pub async fn api_connections_list(
     }
 }
 
-/// GET /api/connections/stats — Stats des connexions neuronales.
+/// GET /api/connections/stats — Stats des neural connections.
 pub async fn api_connections_stats(
     State(state): State<AppState>,
 ) -> impl IntoResponse {
@@ -99,7 +99,7 @@ pub async fn api_connections_stats(
     }
 }
 
-/// GET /api/metrics/sleep — Pression, phases, qualite sur le temps.
+/// GET /api/metrics/sleep — Pression, phases, quality over time.
 pub async fn api_metrics_sleep(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -115,7 +115,7 @@ pub async fn api_metrics_sleep(
     }
 }
 
-/// GET /api/metrics/subconscious — Activation, associations, insights sur le temps.
+/// GET /api/metrics/subconscious — Activation, associations, insights over time.
 pub async fn api_metrics_subconscious(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,

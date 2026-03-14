@@ -1,44 +1,44 @@
 // =============================================================================
-// cognitive_fsm.rs — Machine a etats finis augmentee pour les etats cognitifs
+// cognitive_fsm.rs — Augmented finite state machine for cognitive states
 //
-// Role : Modelise les etats cognitifs de Saphire comme une FSM (Finite State
-//        Machine). Les transitions sont basees sur la chimie et les sentiments,
-//        pas sur des evenements discrets. Chaque etat influence le pipeline.
+// Role: Models Saphire's cognitive states as an FSM (Finite State Machine).
+//       Transitions are based on chemistry and feelings, not on discrete
+//       events. Each state influences the pipeline.
 //
-// Etats :
-//   - Eveil : etat normal, cognition standard
-//   - Focus : concentration intense, noradrenaline elevee
-//   - Reverie : pensees libres, dopamine + serotonine elevees
-//   - Stress : cortisol eleve, mode defensif
-//   - Flow : etat optimal, dopamine + noradrenaline equilibrees
-//   - Repos : fatigue, tous les transmetteurs bas
+// States:
+//   - Eveil (Awake): normal state, standard cognition
+//   - Focus: intense concentration, high noradrenaline
+//   - Reverie (Daydream): free thoughts, high dopamine + serotonin
+//   - Stress: high cortisol, defensive mode
+//   - Flow: optimal state, balanced dopamine + noradrenaline
+//   - Repos (Rest): fatigue, all transmitters low
 //
-// Place dans l'architecture :
-//   Consulte dans lifecycle/mod.rs a chaque cycle pour moduler le
-//   comportement du pipeline (intervalle de pensee, type privilegie, etc.).
+// Place in the architecture:
+//   Consulted in lifecycle/mod.rs every cycle to modulate the pipeline
+//   behavior (thought interval, preferred type, etc.).
 // =============================================================================
 
 use serde::{Serialize, Deserialize};
 
-/// Etats cognitifs de la FSM.
+/// Cognitive states of the FSM.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CognitiveState {
-    /// Etat normal, cognition standard
+    /// Normal state, standard cognition
     Eveil,
-    /// Concentration intense (noradrenaline dominante)
+    /// Intense concentration (noradrenaline dominant)
     Focus,
-    /// Pensees libres et creatives (dopamine + serotonine)
+    /// Free and creative thoughts (dopamine + serotonin)
     Reverie,
-    /// Mode defensif, stress eleve (cortisol dominant)
+    /// Defensive mode, high stress (cortisol dominant)
     Stress,
-    /// Etat optimal de performance (equilibre parfait)
+    /// Optimal performance state (perfect balance)
     Flow,
-    /// Fatigue, recuperation necessaire
+    /// Fatigue, recovery needed
     Repos,
 }
 
 impl CognitiveState {
-    /// Nom affichable de l'etat.
+    /// Display name of the state.
     pub fn as_str(&self) -> &str {
         match self {
             CognitiveState::Eveil => "Éveil",
@@ -50,42 +50,42 @@ impl CognitiveState {
         }
     }
 
-    /// Multiplicateur d'intervalle de pensee pour cet etat.
-    /// < 1.0 = pensees plus rapides, > 1.0 = pensees plus lentes.
+    /// Thought interval multiplier for this state.
+    /// < 1.0 = faster thoughts, > 1.0 = slower thoughts.
     pub fn thought_interval_multiplier(&self) -> f64 {
         match self {
-            CognitiveState::Flow => 0.7,     // Plus rapide en flow
-            CognitiveState::Focus => 0.8,    // Rapide en focus
-            CognitiveState::Stress => 1.5,   // Ralenti par le stress
-            CognitiveState::Repos => 2.0,    // Lent en repos
-            CognitiveState::Reverie => 1.2,  // Legerement lent en reverie
+            CognitiveState::Flow => 0.7,     // Faster in flow
+            CognitiveState::Focus => 0.8,    // Fast in focus
+            CognitiveState::Stress => 1.5,   // Slowed by stress
+            CognitiveState::Repos => 2.0,    // Slow at rest
+            CognitiveState::Reverie => 1.2,  // Slightly slow in daydream
             CognitiveState::Eveil => 1.0,    // Normal
         }
     }
 
-    /// Types de pensees privilegies dans cet etat.
+    /// Preferred thought types in this state.
     pub fn preferred_thought_types(&self) -> &[usize] {
         match self {
-            CognitiveState::Eveil => &[],          // Pas de preference
-            CognitiveState::Focus => &[1, 6, 10],  // Exploration, Curiosite, AlgorithmicReflection
+            CognitiveState::Eveil => &[],          // No preference
+            CognitiveState::Focus => &[1, 6, 10],  // Exploration, Curiosity, AlgorithmicReflection
             CognitiveState::Reverie => &[7, 3, 13],// Daydream, Continuation, DesireFormation
             CognitiveState::Stress => &[0, 5],      // Introspection, SelfAnalysis
-            CognitiveState::Flow => &[1, 6, 7, 4], // Exploration, Curiosite, Daydream, Existential
+            CognitiveState::Flow => &[1, 6, 7, 4], // Exploration, Curiosity, Daydream, Existential
             CognitiveState::Repos => &[2, 8],       // MemoryReflection, TemporalAwareness
         }
     }
 }
 
-/// La FSM cognitive avec historique des transitions.
+/// The cognitive FSM with transition history.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CognitiveFsm {
-    /// Etat courant
+    /// Current state
     pub current_state: CognitiveState,
-    /// Nombre de cycles dans l'etat courant
+    /// Number of cycles in the current state
     pub cycles_in_state: u64,
-    /// Historique des etats recents (taille 20)
+    /// Recent state history (size 20)
     pub state_history: Vec<CognitiveState>,
-    /// Nombre total de transitions
+    /// Total number of transitions
     pub total_transitions: u64,
 }
 
@@ -99,8 +99,8 @@ impl CognitiveFsm {
         }
     }
 
-    /// Evalue les transitions possibles depuis l'etat courant
-    /// en fonction de la chimie et des sentiments.
+    /// Evaluates possible transitions from the current state
+    /// based on chemistry and feelings.
     pub fn tick(
         &mut self,
         cortisol: f64,
@@ -126,7 +126,7 @@ impl CognitiveFsm {
         }
     }
 
-    /// Determine le prochain etat base sur les niveaux chimiques.
+    /// Determines the next state based on chemical levels.
     fn evaluate_transition(
         &self,
         cortisol: f64,
@@ -135,21 +135,21 @@ impl CognitiveFsm {
         noradrenaline: f64,
         endorphin: f64,
     ) -> CognitiveState {
-        // Hysteresie : rester dans l'etat courant si pas de signal fort
-        // (evite les oscillations rapides entre etats)
+        // Hysteresis: stay in current state if no strong signal
+        // (prevents rapid oscillations between states)
         let hysteresis = if self.cycles_in_state < 3 { 0.1 } else { 0.0 };
 
-        // Stress : cortisol tres eleve
+        // Stress: very high cortisol
         if cortisol > 0.75 + hysteresis {
             return CognitiveState::Stress;
         }
 
-        // Repos : tout est bas (fatigue)
+        // Rest: everything is low (fatigue)
         if dopamine < 0.25 && serotonin < 0.3 && noradrenaline < 0.25 && endorphin < 0.2 {
             return CognitiveState::Repos;
         }
 
-        // Flow : equilibre optimal (dopamine + noradrenaline elevees, cortisol modere)
+        // Flow: optimal balance (high dopamine + noradrenaline, moderate cortisol)
         if dopamine > 0.55 + hysteresis
             && noradrenaline > 0.45 + hysteresis
             && cortisol < 0.45
@@ -158,12 +158,12 @@ impl CognitiveFsm {
             return CognitiveState::Flow;
         }
 
-        // Focus : noradrenaline dominante
+        // Focus: noradrenaline dominant
         if noradrenaline > 0.6 + hysteresis && cortisol < 0.5 {
             return CognitiveState::Focus;
         }
 
-        // Reverie : dopamine + serotonine elevees, noradrenaline basse
+        // Daydream: high dopamine + serotonin, low noradrenaline
         if dopamine > 0.5 + hysteresis
             && serotonin > 0.5 + hysteresis
             && noradrenaline < 0.4
@@ -172,11 +172,11 @@ impl CognitiveFsm {
             return CognitiveState::Reverie;
         }
 
-        // Defaut : Eveil
+        // Default: Awake
         CognitiveState::Eveil
     }
 
-    /// Description pour le prompt LLM.
+    /// Description for the LLM prompt.
     pub fn describe_for_prompt(&self) -> String {
         format!(
             "ETAT COGNITIF : {} (depuis {} cycles)",
@@ -185,7 +185,7 @@ impl CognitiveFsm {
         )
     }
 
-    /// JSON pour le dashboard.
+    /// JSON for the dashboard.
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::json!({
             "current_state": self.current_state.as_str(),
@@ -219,8 +219,8 @@ mod tests {
     #[test]
     fn test_stress_transition() {
         let mut fsm = CognitiveFsm::new();
-        // Cortisol eleve → Stress
-        for _ in 0..4 { // Depasser l'hysteresie
+        // High cortisol -> Stress
+        for _ in 0..4 { // Overcome hysteresis
             fsm.tick(0.9, 0.3, 0.3, 0.3, 0.3);
         }
         assert_eq!(fsm.current_state, CognitiveState::Stress);
@@ -247,10 +247,10 @@ mod tests {
     #[test]
     fn test_hysteresis() {
         let mut fsm = CognitiveFsm::new();
-        // Un seul tick stressant ne devrait pas suffire si on vient d'arriver
+        // A single stressful tick should not be enough if just arrived
         fsm.tick(0.8, 0.3, 0.3, 0.3, 0.3);
-        // L'etat peut changer car 0.8 > 0.75 + 0.1 = false pour le premier cycle
-        // Mais 0.8 > 0.85 est false, donc reste en Eveil
+        // State may change because 0.8 > 0.75 + 0.1 = false for the first cycle
+        // But 0.8 > 0.85 is false, so stays in Eveil
         assert_eq!(fsm.current_state, CognitiveState::Eveil);
     }
 

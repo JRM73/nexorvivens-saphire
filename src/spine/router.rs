@@ -1,9 +1,9 @@
 // =============================================================================
-// spine/router.rs — Routage des signaux vers le bon traitement
+// spine/router.rs — Signal routing to the appropriate processing path
 //
-// Role : Decide si un signal doit etre traite par reflexe seul, pipeline
-// accelere, ou pipeline complet. Le routeur ne traite pas le signal lui-meme,
-// il indique a l'appelant quelle voie emprunter.
+// Role: Decides whether a signal should be handled by reflex only,
+// accelerated pipeline, or full pipeline. The router does not process the
+// signal itself — it tells the caller which path to take.
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
@@ -11,24 +11,24 @@ use serde::{Deserialize, Serialize};
 use super::classifier::SignalPriority;
 use super::reflex::ReflexResult;
 
-/// Decision de routage pour un signal.
+/// Routing decision for a signal.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RouteDecision {
-    /// Reflexe seul : la chimie est deja modifiee, pas besoin du pipeline.
-    /// Utilisable uniquement pour les signaux systeme ou les reflexes purs.
+    /// Reflex only: chemistry already modified, pipeline not needed.
+    /// Only usable for system signals or pure reflexes.
     ReflexOnly,
-    /// Pipeline complet : toutes les 24 phases.
+    /// Full pipeline: all 24 phases.
     FullPipeline,
-    /// Pipeline avec indication d'urgence (l'appelant peut prioriser).
+    /// Pipeline with urgency indication (caller may prioritize).
     UrgentPipeline,
-    /// Pas de traitement immediat : file d'attente.
+    /// No immediate processing: queued.
     Deferred,
 }
 
-/// Routeur de signaux.
+/// Signal router.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SignalRouter {
-    /// Derniere decision de routage (pour monitoring)
+    /// Last routing decision (for monitoring)
     pub last_route: Option<RouteDecision>,
 }
 
@@ -39,13 +39,13 @@ impl SignalRouter {
         }
     }
 
-    /// Decide du routage en fonction de la priorite et des reflexes.
+    /// Decides routing based on priority and reflexes.
     ///
-    /// - Reflex + source system → ReflexOnly
-    /// - Reflex + source humain → UrgentPipeline (on veut quand meme repondre)
-    /// - Urgent → UrgentPipeline
-    /// - Normal → FullPipeline
-    /// - Background → Deferred
+    /// - Reflex + system source -> ReflexOnly
+    /// - Reflex + human source -> UrgentPipeline (still want to respond)
+    /// - Urgent -> UrgentPipeline
+    /// - Normal -> FullPipeline
+    /// - Background -> Deferred
     pub fn decide(
         &mut self,
         priority: &SignalPriority,
@@ -53,9 +53,9 @@ impl SignalRouter {
     ) -> RouteDecision {
         let decision = match priority {
             SignalPriority::Reflex => {
-                // Si des reflexes ont ete declenches mais qu'on est en mode Reflex,
-                // on fait quand meme passer par le pipeline pour generer une reponse.
-                // Le ReflexOnly est reserve aux signaux systeme sans contenu textuel.
+                // If reflexes were triggered but we are in Reflex mode,
+                // still route through the pipeline to generate a response.
+                // ReflexOnly is reserved for system signals with no text content.
                 if reflexes.is_empty() {
                     RouteDecision::ReflexOnly
                 } else {

@@ -1,12 +1,12 @@
 // =============================================================================
-// db/ethics.rs — Ethique personnelle (couche 2)
+// db/ethics.rs — Personal ethics (layer 2)
 // =============================================================================
 
 use chrono::{DateTime, Utc};
 use super::{SaphireDb, DbError};
 
 impl SaphireDb {
-    /// Charge tous les principes ethiques personnels depuis la DB.
+    /// Loads all personal ethical principles from the DB.
     pub async fn load_personal_ethics(&self) -> Result<Vec<(i64, String, String, String, String, i64, String, i64, i64, bool, DateTime<Utc>)>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -35,7 +35,7 @@ impl SaphireDb {
         Ok(results)
     }
 
-    /// Sauvegarde un nouveau principe ethique personnel. Retourne l'ID.
+    /// Saves a new personal ethical principle. Returns the ID.
     pub async fn save_personal_principle(
         &self,
         title: &str,
@@ -54,7 +54,7 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Enregistre une entree dans l'historique des modifications ethiques.
+    /// Records an entry in the ethics modification history.
     #[allow(clippy::too_many_arguments)]
     pub async fn save_ethics_history(
         &self,
@@ -75,7 +75,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Incremente le compteur d'invocations d'un principe ethique.
+    /// Increments the invocation counter of an ethical principle.
     pub async fn update_principle_invocation(&self, id: i64) -> Result<(), DbError> {
         let client = self.pool.get().await?;
         client.execute(
@@ -85,7 +85,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Met a jour le statut actif/inactif d'un principe ethique.
+    /// Updates the active/inactive status of an ethical principle.
     pub async fn update_principle_status(&self, id: i64, is_active: bool) -> Result<(), DbError> {
         let client = self.pool.get().await?;
         client.execute(

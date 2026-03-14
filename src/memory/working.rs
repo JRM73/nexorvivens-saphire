@@ -1,53 +1,53 @@
-// working.rs — Mémoire de travail (RAM uniquement, 7 items max, loi de Miller)
+// working.rs — Working memory (RAM only, 7 items max, Miller's law)
 //
-// Ce module implémente la mémoire de travail de Saphire, inspirée du modèle
-// cognitif humain. La mémoire de travail est un tampon à capacité limitée
-// (par défaut 7 éléments, selon la loi de Miller : 7 ± 2) qui stocke les
-// informations immédiatement pertinentes pour le cycle cognitif en cours.
+// This module implements Saphire's working memory, inspired by the human
+// cognitive model. Working memory is a limited-capacity buffer (default
+// 7 elements, per Miller's law: 7 +/- 2) that stores information
+// immediately relevant to the current cognitive cycle.
 //
-// Caractéristiques :
-//   - Volatile : stockée uniquement en RAM, jamais persistée directement.
-//   - Décroissance : chaque item perd de la pertinence à chaque cycle.
-//   - Éjection : quand un item atteint une pertinence de 0 ou que la capacité
-//     est dépassée, il est éjecté et transféré vers la mémoire épisodique.
+// Characteristics:
+//   - Volatile: stored only in RAM, never directly persisted.
+//   - Decay: each item loses relevance at each cycle.
+//   - Eviction: when an item reaches 0 relevance or capacity is exceeded,
+//     it is evicted and transferred to episodic memory.
 //
-// Dépendances :
-//   - VecDeque (std) : file à double extrémité pour un accès efficace.
-//   - chrono : horodatage de la création des items.
-//   - serde : sérialisation pour l'envoi via WebSocket au tableau de bord.
+// Dependencies:
+//   - VecDeque (std): double-ended queue for efficient access.
+//   - chrono: timestamping of item creation.
+//   - serde: serialization for WebSocket dashboard output.
 
 use std::collections::VecDeque;
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 use crate::neurochemistry::ChemicalSignature;
 
-/// Source d'un élément en mémoire de travail.
+/// Source of a working memory element.
 ///
-/// Chaque variante identifie l'origine de l'information et contient soit
-/// le contenu textuel (String), soit l'identifiant en base (i64) du
-/// souvenir rappelé.
+/// Each variant identifies the origin of the information and contains either
+/// the textual content (String) or the database identifier (i64) of the
+/// recalled memory.
 #[derive(Debug, Clone, Serialize)]
 pub enum WorkingItemSource {
-    /// Message reçu de l'utilisateur humain.
+    /// Message received from the human user.
     UserMessage(String),
-    /// Pensée générée en interne par le système cognitif de Saphire.
+    /// Thought generated internally by Saphire's cognitive system.
     OwnThought(String),
-    /// Réponse produite par le LLM (Large Language Model = Grand Modèle de Langage).
+    /// Response produced by the LLM.
     LlmResponse(String),
-    /// Connaissance acquise depuis le web.
+    /// Knowledge acquired from the web.
     WebKnowledge(String),
-    /// Souvenir rappelé depuis la mémoire épisodique (contient l'ID en DB).
+    /// Memory recalled from episodic memory (contains the DB ID).
     EpisodicRecall(i64),
-    /// Souvenir rappelé depuis la mémoire à long terme (contient l'ID en DB).
+    /// Memory recalled from long-term memory (contains the DB ID).
     LongTermRecall(i64),
 }
 
 impl WorkingItemSource {
-    /// Retourne un libellé textuel identifiant le type de source.
-    /// Utilisé pour la sérialisation JSON et l'affichage dans le tableau de bord.
+    /// Returns a textual label identifying the source type.
+    /// Used for JSON serialization and dashboard display.
     ///
-    /// # Retour
-    /// Une chaîne statique décrivant le type de source (ex : "user_message").
+    /// # Returns
+    /// A static string describing the source type (e.g., "user_message").
     pub fn label(&self) -> &str {
         match self {
             WorkingItemSource::UserMessage(_) => "user_message",
@@ -59,72 +59,72 @@ impl WorkingItemSource {
         }
     }
 
-    /// Retourne une icône Unicode correspondant au type de source.
-    /// Utilisée dans le résumé de contexte et le tableau de bord WebSocket.
+    /// Returns a Unicode icon corresponding to the source type.
+    /// Used in the context summary and the WebSocket dashboard.
     ///
-    /// # Retour
-    /// Une chaîne statique contenant un émoji Unicode.
+    /// # Returns
+    /// A static string containing a Unicode emoji.
     pub fn icon(&self) -> &str {
         match self {
-            WorkingItemSource::UserMessage(_) => "\u{1f4ac}",   // bulle de parole
-            WorkingItemSource::OwnThought(_) => "\u{1f4ad}",    // bulle de pensée
-            WorkingItemSource::LlmResponse(_) => "\u{1f9e0}",   // cerveau
-            WorkingItemSource::WebKnowledge(_) => "\u{1f4da}",   // livres
-            WorkingItemSource::EpisodicRecall(_) => "\u{1f4dd}", // mémo
-            WorkingItemSource::LongTermRecall(_) => "\u{1f48e}", // gemme
+            WorkingItemSource::UserMessage(_) => "\u{1f4ac}",   // speech bubble
+            WorkingItemSource::OwnThought(_) => "\u{1f4ad}",    // thought bubble
+            WorkingItemSource::LlmResponse(_) => "\u{1f9e0}",   // brain
+            WorkingItemSource::WebKnowledge(_) => "\u{1f4da}",   // books
+            WorkingItemSource::EpisodicRecall(_) => "\u{1f4dd}", // memo
+            WorkingItemSource::LongTermRecall(_) => "\u{1f48e}", // gem
         }
     }
 }
 
-/// Un élément stocké dans la mémoire de travail.
+/// An element stored in working memory.
 ///
-/// Chaque item représente une unité d'information active dans la « conscience »
-/// de Saphire. Sa pertinence décroît au fil des cycles cognitifs.
+/// Each item represents a unit of information active in Saphire's
+/// "consciousness." Its relevance decays over cognitive cycles.
 #[derive(Debug, Clone, Serialize)]
 pub struct WorkingItem {
-    /// Identifiant unique séquentiel au sein de la mémoire de travail.
+    /// Unique sequential identifier within working memory.
     pub id: u64,
-    /// Contenu textuel de l'item (message, pensée, connaissance, etc.).
+    /// Textual content of the item (message, thought, knowledge, etc.).
     pub content: String,
-    /// Origine de cet item (message utilisateur, pensée interne, rappel, etc.).
+    /// Origin of this item (user message, internal thought, recall, etc.).
     pub source: WorkingItemSource,
-    /// Score de pertinence actuel, entre 0.0 (oublié) et 1.0 (très pertinent).
-    /// Décroît de `decay_rate` à chaque cycle cognitif.
+    /// Current relevance score, between 0.0 (forgotten) and 1.0 (highly relevant).
+    /// Decays by `decay_rate` at each cognitive cycle.
     pub relevance: f64,
-    /// Horodatage UTC de la création de cet item.
+    /// UTC timestamp of this item's creation.
     pub created_at: DateTime<Utc>,
-    /// État émotionnel de Saphire au moment de la création de cet item.
+    /// Saphire's emotional state at the time this item was created.
     pub emotion_at_creation: String,
-    /// Signature chimique au moment de la creation de cet item.
+    /// Chemical signature at the time this item was created.
     pub chemical_signature: ChemicalSignature,
 }
 
-/// Mémoire de travail — tampon de conscience à capacité limitée.
+/// Working memory — limited-capacity consciousness buffer.
 ///
-/// Fonctionne comme une file à priorité basée sur la pertinence. Quand la
-/// capacité maximale est atteinte, l'item le moins pertinent est éjecté
-/// et peut être récupéré pour transfert vers la mémoire épisodique.
+/// Functions as a priority queue based on relevance. When maximum
+/// capacity is reached, the least relevant item is evicted and can
+/// be recovered for transfer to episodic memory.
 pub struct WorkingMemory {
-    /// File à double extrémité contenant les items actifs.
+    /// Double-ended queue containing active items.
     items: VecDeque<WorkingItem>,
-    /// Capacité maximale (nombre d'items, typiquement 7).
+    /// Maximum capacity (number of items, typically 7).
     max_capacity: usize,
-    /// Compteur séquentiel pour l'attribution des identifiants d'items.
+    /// Sequential counter for item identifier assignment.
     next_id: u64,
-    /// Taux de décroissance de la pertinence appliqué à chaque cycle.
+    /// Relevance decay rate applied at each cycle.
     decay_rate: f64,
 }
 
 impl WorkingMemory {
-    /// Crée une nouvelle mémoire de travail.
+    /// Creates a new working memory.
     ///
-    /// # Paramètres
-    /// - `capacity` : nombre maximal d'items simultanés (typiquement 7).
-    /// - `decay_rate` : quantité soustraite à la pertinence de chaque item
-    ///   à chaque cycle cognitif (ex : 0.05 = perte de 5% par cycle).
+    /// # Parameters
+    /// - `capacity`: maximum number of simultaneous items (typically 7).
+    /// - `decay_rate`: amount subtracted from each item's relevance
+    ///   at each cognitive cycle (e.g., 0.05 = 5% loss per cycle).
     ///
-    /// # Retour
-    /// Une instance de WorkingMemory vide, prête à recevoir des items.
+    /// # Returns
+    /// An empty WorkingMemory instance, ready to receive items.
     pub fn new(capacity: usize, decay_rate: f64) -> Self {
         Self {
             items: VecDeque::with_capacity(capacity),
@@ -134,21 +134,21 @@ impl WorkingMemory {
         }
     }
 
-    /// Ajoute un nouvel élément dans la mémoire de travail.
+    /// Adds a new element to working memory.
     ///
-    /// Si la mémoire est pleine, l'item ayant la pertinence la plus basse
-    /// est éjecté pour faire de la place. L'item éjecté est retourné afin
-    /// que l'appelant puisse le transférer vers la mémoire épisodique.
+    /// If memory is full, the item with the lowest relevance is evicted
+    /// to make room. The evicted item is returned so that the caller
+    /// can transfer it to episodic memory.
     ///
-    /// Le nouvel item commence avec une pertinence de 1.0 (maximale).
+    /// The new item starts with a relevance of 1.0 (maximum).
     ///
-    /// # Paramètres
-    /// - `content` : contenu textuel de l'item.
-    /// - `source` : origine de l'information (message, pensée, rappel, etc.).
-    /// - `emotion` : état émotionnel actuel de Saphire.
+    /// # Parameters
+    /// - `content`: textual content of the item.
+    /// - `source`: origin of the information (message, thought, recall, etc.).
+    /// - `emotion`: Saphire's current emotional state.
     ///
-    /// # Retour
-    /// `Some(WorkingItem)` si un item a été éjecté, `None` sinon.
+    /// # Returns
+    /// `Some(WorkingItem)` if an item was evicted, `None` otherwise.
     pub fn push(
         &mut self,
         content: String,
@@ -168,9 +168,9 @@ impl WorkingMemory {
         self.next_id += 1;
 
         let ejected = if self.items.len() >= self.max_capacity {
-            // Éjecter l'élément le moins pertinent pour respecter la capacité.
-            // On recherche l'index de l'item avec le score de pertinence minimal
-            // via un parcours linéaire (la file est petite, max ~7 éléments).
+            // Evict the least relevant element to respect capacity.
+            // We search for the index of the item with the minimum relevance score
+            // via a linear scan (the queue is small, max ~7 elements).
             if let Some(min_idx) = self.items.iter()
                 .enumerate()
                 .min_by(|a, b| a.1.relevance.partial_cmp(&b.1.relevance).unwrap())
@@ -188,22 +188,22 @@ impl WorkingMemory {
         ejected
     }
 
-    /// Applique la décroissance de pertinence sur tous les items.
+    /// Applies relevance decay to all items.
     ///
-    /// Appelée à chaque cycle cognitif. Chaque item perd `decay_rate` de
-    /// pertinence. Les items dont la pertinence tombe à 0 ou moins sont
-    /// automatiquement retirés et retournés pour transfert épisodique.
+    /// Called at each cognitive cycle. Each item loses `decay_rate` of
+    /// relevance. Items whose relevance drops to 0 or below are
+    /// automatically removed and returned for episodic transfer.
     ///
-    /// # Retour
-    /// Liste des items éjectés (pertinence tombée à 0).
+    /// # Returns
+    /// List of evicted items (relevance dropped to 0).
     pub fn decay(&mut self) -> Vec<WorkingItem> {
         let mut ejected = Vec::new();
-        // Appliquer la décroissance à chaque item, sans descendre en dessous de 0.
+        // Apply decay to each item, without going below 0.
         for item in &mut self.items {
             item.relevance = (item.relevance - self.decay_rate).max(0.0);
         }
-        // Retirer les items dont la pertinence est tombée à zéro.
-        // On utilise une boucle while car les indices changent après chaque retrait.
+        // Remove items whose relevance has fallen to zero.
+        // We use a while loop because indices change after each removal.
         while let Some(pos) = self.items.iter().position(|item| item.relevance <= 0.0) {
             if let Some(item) = self.items.remove(pos) {
                 ejected.push(item);
@@ -212,34 +212,34 @@ impl WorkingMemory {
         ejected
     }
 
-    /// Renforce la pertinence d'un item spécifique (augmentation de 0.3).
+    /// Reinforces the relevance of a specific item (increase of 0.3).
     ///
-    /// Utilisé quand un item redevient pertinent dans le contexte courant
-    /// (par exemple, quand l'utilisateur revient sur un sujet déjà évoqué).
-    /// La pertinence est plafonnée à 1.0.
+    /// Used when an item becomes relevant again in the current context
+    /// (for example, when the user returns to a previously discussed topic).
+    /// Relevance is capped at 1.0.
     ///
-    /// # Paramètres
-    /// - `id` : identifiant de l'item à renforcer.
+    /// # Parameters
+    /// - `id`: identifier of the item to reinforce.
     pub fn reinforce(&mut self, id: u64) {
         if let Some(item) = self.items.iter_mut().find(|i| i.id == id) {
             item.relevance = (item.relevance + 0.3).min(1.0);
         }
     }
 
-    /// Génère un résumé textuel du contenu actuel de la mémoire de travail.
+    /// Generates a textual summary of the current working memory contents.
     ///
-    /// Les items sont triés par pertinence décroissante pour que le LLM
-    /// voie les informations les plus pertinentes en premier.
+    /// Items are sorted by descending relevance so that the LLM sees
+    /// the most relevant information first.
     ///
-    /// # Retour
-    /// Une chaîne formatée avec chaque item précédé de son icône de source,
-    /// ou une chaîne vide si la mémoire de travail est vide.
+    /// # Returns
+    /// A formatted string with each item preceded by its source icon,
+    /// or an empty string if working memory is empty.
     pub fn context_summary(&self) -> String {
         if self.items.is_empty() {
             return String::new();
         }
 
-        // Trier par pertinence décroissante pour prioriser les items les plus importants.
+        // Sort by descending relevance to prioritize the most important items.
         let mut sorted: Vec<&WorkingItem> = self.items.iter().collect();
         sorted.sort_by(|a, b| b.relevance.partial_cmp(&a.relevance).unwrap());
 
@@ -250,30 +250,30 @@ impl WorkingMemory {
         summary
     }
 
-    /// Vide entièrement la mémoire de travail et retourne tous les items.
+    /// Completely empties working memory and returns all items.
     ///
-    /// Utilisé lors d'un transfert massif vers la mémoire épisodique
-    /// (par exemple lors du « sommeil » de Saphire).
+    /// Used during a bulk transfer to episodic memory
+    /// (for example, during Saphire's "sleep").
     ///
-    /// # Retour
-    /// Vecteur contenant tous les items retirés.
+    /// # Returns
+    /// Vector containing all removed items.
     pub fn drain_all(&mut self) -> Vec<WorkingItem> {
         self.items.drain(..).collect()
     }
 
-    /// Vide uniquement les items liés à la conversation (messages utilisateur
-    /// et réponses LLM), tout en conservant les pensées internes, connaissances
-    /// web et rappels mémoriels.
+    /// Flushes only conversation-related items (user messages and LLM
+    /// responses), while preserving internal thoughts, web knowledge,
+    /// and memory recalls.
     ///
-    /// Appelée en fin de conversation pour nettoyer le contexte conversationnel
-    /// sans perdre les réflexions de fond.
+    /// Called at the end of a conversation to clean up the conversational
+    /// context without losing background reflections.
     ///
-    /// # Retour
-    /// Vecteur des items conversationnels éjectés (pour transfert épisodique).
+    /// # Returns
+    /// Vector of evicted conversational items (for episodic transfer).
     pub fn flush_conversation(&mut self) -> Vec<WorkingItem> {
         let mut ejected = Vec::new();
         let mut keep = VecDeque::new();
-        // Séparer les items conversationnels (à éjecter) des items internes (à garder).
+        // Separate conversational items (to evict) from internal items (to keep).
         for item in self.items.drain(..) {
             match &item.source {
                 WorkingItemSource::UserMessage(_) | WorkingItemSource::LlmResponse(_) => {
@@ -286,39 +286,38 @@ impl WorkingMemory {
         ejected
     }
 
-    /// Retourne le nombre d'éléments actuellement en mémoire de travail.
+    /// Returns the number of elements currently in working memory.
     pub fn len(&self) -> usize {
         self.items.len()
     }
 
-    /// Retourne vrai si la mémoire de travail ne contient aucun item.
+    /// Returns true if working memory contains no items.
     pub fn is_empty(&self) -> bool {
         self.items.is_empty()
     }
 
-    /// Retourne la capacité maximale configurée.
+    /// Returns the configured maximum capacity.
     pub fn capacity(&self) -> usize {
         self.max_capacity
     }
 
-    /// Retourne une référence en lecture seule vers les items actuels.
+    /// Returns a read-only reference to the current items.
     pub fn items(&self) -> &VecDeque<WorkingItem> {
         &self.items
     }
 
-    /// Produit une structure JSON destinée à être envoyée via WebSocket
-    /// au tableau de bord de visualisation en temps réel.
+    /// Produces a JSON structure intended to be sent via WebSocket
+    /// to the real-time visualization dashboard.
     ///
-    /// Chaque item est sérialisé avec un aperçu du contenu tronqué à 100
-    /// caractères, son type de source, son icône, sa pertinence et l'émotion
-    /// associée. Le JSON inclut aussi la capacité totale et le nombre d'items
-    /// utilisés.
+    /// Each item is serialized with a content preview truncated to 100
+    /// characters, its source type, icon, relevance, and associated emotion.
+    /// The JSON also includes the total capacity and number of used items.
     ///
-    /// # Retour
-    /// Un objet `serde_json::Value` prêt à être sérialisé en JSON.
+    /// # Returns
+    /// A `serde_json::Value` object ready to be serialized to JSON.
     pub fn ws_data(&self) -> serde_json::Value {
         let items: Vec<serde_json::Value> = self.items.iter().map(|item| {
-            // Tronquer le contenu à 100 caractères pour l'affichage dans le dashboard.
+            // Truncate content to 100 characters for dashboard display.
             let content_preview: String = if item.content.len() > 100 {
                 let preview: String = item.content.chars().take(100).collect();
                 format!("{}...", preview)

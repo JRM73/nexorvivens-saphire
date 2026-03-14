@@ -1,7 +1,7 @@
 // =============================================================================
 // api/orchestrators.rs — Handlers des orchestrateurs de haut niveau
 //
-// Role : Endpoints pour les orchestrateurs : reves, desirs, apprentissage,
+// Role: Endpoints for the orchestrateurs : dreams, desires, learning,
 // attention, guerison — statuts et details.
 // =============================================================================
 
@@ -16,7 +16,7 @@ pub async fn api_dreams_status(State(state): State<AppState>) -> impl IntoRespon
     axum::Json(agent.dream_orch.to_status_json())
 }
 
-/// GET /api/dreams/journal — Journal complet des reves.
+/// GET /api/dreams/journal — Journal complete des dreams.
 pub async fn api_dreams_journal(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let journal: Vec<serde_json::Value> = agent.dream_orch.dream_journal.iter().map(|entry| {
@@ -38,7 +38,7 @@ pub async fn api_desires_status(State(state): State<AppState>) -> impl IntoRespo
     axum::Json(agent.desire_orch.to_status_json())
 }
 
-/// GET /api/desires/active — Desirs actifs avec milestones.
+/// GET /api/desires/active — Desirs active with milestones.
 pub async fn api_desires_active(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let active: Vec<serde_json::Value> = agent.desire_orch.active_desires.iter().map(|d| {
@@ -66,13 +66,13 @@ pub async fn api_desires_needs(State(state): State<AppState>) -> impl IntoRespon
     axum::Json(serde_json::json!({"needs": needs}))
 }
 
-/// GET /api/learning/status — Etat de l'orchestrateur d'apprentissage.
+/// GET /api/learning/status — Etat de l'orchestrateur d'learning.
 pub async fn api_learning_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     axum::Json(agent.learning_orch.to_status_json())
 }
 
-/// GET /api/learning/lessons — Toutes les lecons.
+/// GET /api/learning/lessons — Toutes les lessons.
 pub async fn api_learning_lessons(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let lessons: Vec<serde_json::Value> = agent.learning_orch.lessons.iter().map(|l| {
@@ -89,7 +89,7 @@ pub async fn api_learning_lessons(State(state): State<AppState>) -> impl IntoRes
     axum::Json(serde_json::json!({"lessons": lessons, "total": lessons.len()}))
 }
 
-/// GET /api/learning/stats — Statistiques d'apprentissage.
+/// GET /api/learning/stats — Statistiques d'learning.
 pub async fn api_learning_stats(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let total = agent.learning_orch.lessons.len();
@@ -114,7 +114,7 @@ pub async fn api_healing_status(State(state): State<AppState>) -> impl IntoRespo
     axum::Json(agent.healing_orch.to_status_json())
 }
 
-/// GET /api/healing/wounds — Toutes les blessures (actives + gueries).
+/// GET /api/healing/wounds — Toutes les wounds (actives + gueries).
 pub async fn api_healing_wounds(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let active: Vec<serde_json::Value> = agent.healing_orch.active_wounds.iter().map(|w| {
@@ -133,7 +133,7 @@ pub async fn api_healing_wounds(State(state): State<AppState>) -> impl IntoRespo
     axum::Json(serde_json::json!({"active": active, "healed": healed, "resilience": agent.healing_orch.resilience}))
 }
 
-/// GET /api/healing/strategies — Strategies de coping avec efficacite.
+/// GET /api/healing/strategies — Strategies de coping with efficacite.
 pub async fn api_healing_strategies(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let strategies: Vec<serde_json::Value> = agent.healing_orch.coping_strategies.iter().map(|s| {

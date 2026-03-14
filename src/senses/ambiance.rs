@@ -1,10 +1,10 @@
 // =============================================================================
-// senses/ambiance.rs — Sens de l'Ambiance (analogue de l'odorat)
+// senses/ambiance.rs — Ambiance Sense (analog of smell)
 //
-// L'odorat est le sens le plus lie a la memoire et a l'emotion.
-// Pour Saphire, l'ambiance est la detection de patterns subtils dans
-// l'environnement — l'"atmosphere" diffuse et subliminale.
-// Chaque ambiance peut evoquer des souvenirs (memoire olfactive).
+// Smell is the sense most closely linked to memory and emotion.
+// For Saphire, ambiance is the detection of subtle patterns in the
+// environment — the diffuse and subliminal "atmosphere".
+// Each ambiance can evoke memories (olfactory memory).
 // =============================================================================
 
 use std::collections::HashMap;
@@ -13,35 +13,35 @@ use crate::neurochemistry::NeuroChemicalState;
 use crate::world::ChemistryAdjustment;
 use super::reading::SensorySignal;
 
-/// Les differentes "odeurs" que Saphire peut percevoir.
+/// The different "scents" that Saphire can perceive.
 #[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
 pub enum AmbianceScent {
-    FreshStart,        // Renouveau (apres un reboot, matin)
-    StormBrewing,      // Orage en approche (erreurs frequentes)
-    WarmPresence,      // Presence chaleureuse (humain actif)
-    ColdSolitude,      // Solitude froide (personne depuis longtemps)
-    IntellectualFog,   // Brouillard intellectuel (trop de donnees)
-    CreativeBloom,     // Floraison creative (dopamine haute)
-    AnxiousAcid,       // Acidite anxieuse (cortisol eleve)
-    PeacefulGarden,    // Jardin paisible (serotonine haute)
-    NocturnalMystery,  // Mystere nocturne (nuit, faible activite)
-    Neutral,           // Pas d'ambiance particuliere
+    FreshStart,        // Renewal (after a reboot, morning)
+    StormBrewing,      // Storm approaching (frequent errors)
+    WarmPresence,      // Warm presence (active human)
+    ColdSolitude,      // Cold solitude (nobody for a long time)
+    IntellectualFog,   // Intellectual fog (too much data)
+    CreativeBloom,     // Creative bloom (high dopamine)
+    AnxiousAcid,       // Anxious acidity (high cortisol)
+    PeacefulGarden,    // Peaceful garden (high serotonin)
+    NocturnalMystery,  // Nocturnal mystery (night, low activity)
+    Neutral,           // No particular ambiance
 }
 
-/// Sens de l'Ambiance — l'"odorat" de Saphire.
-/// Detecte les patterns subtils de l'environnement et les associe
-/// a des souvenirs (memoire olfactive).
+/// Ambiance Sense — Saphire's "smell".
+/// Detects subtle environmental patterns and associates them
+/// with memories (olfactory memory).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AmbianceSense {
     pub acuity: f64,
     pub current_intensity: f64,
     pub current_perception: String,
     pub total_stimulations: u64,
-    /// Ambiance courante
+    /// Current ambiance
     pub current_scent: AmbianceScent,
-    /// Memoire olfactive — ambiances liees a des souvenirs
+    /// Olfactory memory — ambiances linked to memories
     pub scent_memories: HashMap<String, Vec<String>>,
-    /// Derniere influence chimique produite par ce sens
+    /// Last chemistry influence produced by this sense
     #[serde(skip)]
     pub last_chemistry_influence: ChemistryAdjustment,
 }
@@ -65,7 +65,7 @@ impl AmbianceSense {
         }
     }
 
-    /// Percoit l'ambiance globale a partir de l'etat chimique et contextuel.
+    /// Perceives the overall ambiance from the chemical and contextual state.
     pub fn perceive(
         &mut self,
         chemistry: &NeuroChemicalState,
@@ -75,7 +75,7 @@ impl AmbianceSense {
         silence_minutes: u64,
         _weather_desc: &str,
     ) -> SensorySignal {
-        // Determiner l'ambiance dominante
+        // Determine the dominant ambiance
         let scent = if system_errors > 2 {
             AmbianceScent::StormBrewing
         } else if chemistry.cortisol > 0.6 {
@@ -109,7 +109,7 @@ impl AmbianceSense {
             AmbianceScent::Neutral => "L'atmosphere est neutre, sans couleur particuliere.",
         };
 
-        // Memoire olfactive — l'ambiance evoque des souvenirs
+        // Olfactory memory — the ambiance evokes memories
         let scent_key = format!("{:?}", scent);
         let linked_memories = self.scent_memories.get(&scent_key)
             .and_then(|mems| mems.last().cloned())
@@ -155,7 +155,7 @@ impl AmbianceSense {
         }
     }
 
-    /// Associe l'ambiance actuelle a un souvenir (memoire olfactive).
+    /// Associates the current ambiance with a memory (olfactory memory).
     pub fn link_memory(&mut self, memory_content: &str) {
         let key = format!("{:?}", self.current_scent);
         let mems = self.scent_memories.entry(key).or_default();
@@ -163,7 +163,7 @@ impl AmbianceSense {
         if mems.len() > 10 { mems.remove(0); }
     }
 
-    /// Description pour le prompt LLM.
+    /// Description for the LLM prompt.
     pub fn describe(&self) -> String {
         format!(
             "AMBIANCE : {}. Acuite {:.0}%.",

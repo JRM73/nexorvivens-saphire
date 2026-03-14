@@ -1,9 +1,9 @@
 // =============================================================================
-// lifecycle/sleep_algorithms.rs — Algorithmes pendant le sommeil et vectorisation
+// lifecycle/sleep_algorithms.rs — Algorithms during sleep and vectorization
 //
-// Role : Execute les algorithmes ML pendant les phases de sommeil (K-Means,
-// PCA, cosine similarity, association rules, sentiment) et vectorise les
-// reves, connexions neuronales et insights subconscients dans pgvector.
+// Role: Executes ML algorithms during sleep phases (K-Means,
+// PCA, cosine similarity, association rules, sentiment) and vectorizes
+// dreams, neural connections and subconscious insights in pgvector.
 // =============================================================================
 
 use crate::algorithms::orchestrator::AlgorithmInput;
@@ -13,9 +13,8 @@ use crate::psychology::subconscious::SubconsciousInsight;
 use super::SaphireAgent;
 
 impl SaphireAgent {
-    // ─── Algorithmes par phase de sommeil ────────────────────────────
-
-    /// Sommeil leger : K-Means sur souvenirs episodiques + anomaly detection chimie
+    // ─── Algorithms by sleep phase ────────────────────────────
+    /// Light sleep: K-Means on episodic memories + chemistry anomaly detection
     pub(super) async fn sleep_light_algorithms(&mut self) {
         if !self.config.sleep.algorithms.enabled || !self.orchestrator.enabled {
             return;
@@ -23,11 +22,11 @@ impl SaphireAgent {
 
         let algo_cfg = self.config.sleep.algorithms.clone();
 
-        // K-Means sur souvenirs episodiques recents
+        // K-Means on recent episodic memories
         if let Some(ref db) = self.db {
             match db.recent_episodic(100).await {
                 Ok(episodes) if episodes.len() >= 10 => {
-                    // Construire des vecteurs 5D : emotion_numeric, intensity, satisfaction, strength, access/10
+                    // Build 5D vectors: emotion_numeric, intensity, satisfaction, strength, access/10
                     let vectors: Vec<Vec<f64>> = episodes.iter().map(|ep| {
                         vec![
                             Self::emotion_to_numeric(&ep.emotion),
@@ -62,7 +61,7 @@ impl SaphireAgent {
             }
         }
 
-        // IsolationForest sur historique chimique
+        // IsolationForest on chemical history
         if self.chemistry_history.len() >= 10 {
             let vectors: Vec<Vec<f64>> = self.chemistry_history.iter()
                 .map(|h| h.to_vec())
@@ -93,7 +92,7 @@ impl SaphireAgent {
         }
     }
 
-    /// Sommeil profond : PCA chimie + cosine similarity connexions + association rules
+    /// Deep sleep: PCA chemistry + cosine similarity connections + association rules
     pub(super) async fn sleep_deep_algorithms(&mut self) {
         if !self.config.sleep.algorithms.enabled || !self.orchestrator.enabled {
             return;
@@ -102,7 +101,7 @@ impl SaphireAgent {
         let algo_cfg = self.config.sleep.algorithms.clone();
         let vec_cfg = self.config.subconscious.vectors.clone();
 
-        // PCA sur historique chimique (>=30 points, 7D -> 3 composantes)
+        // PCA on chemical history (>=30 points, 7D -> 3 components)
         if self.chemistry_history.len() >= 30 {
             let vectors: Vec<Vec<f64>> = self.chemistry_history.iter()
                 .map(|h| h.to_vec())
@@ -123,15 +122,15 @@ impl SaphireAgent {
             }
         }
 
-        // Cosine similarity entre souvenirs LTM recents → creer des connexions
-        // Collecter les souvenirs d'abord pour eviter les conflits de borrow
+        // Cosine similarity between recent LTM memories → create connections
+        // Collect memories first to avoid borrow conflicts
         let memories_opt = if let Some(ref db) = self.db {
             db.recent_memories(50).await.ok()
         } else { None };
 
         if let Some(memories) = memories_opt {
             if memories.len() >= 5 {
-                // Encoder chaque souvenir
+                // Encode each memory
                 let encoded: Vec<(i64, Vec<f64>, String)> = memories.iter().map(|m| {
                     let vec = self.encoder.encode(&m.text_summary);
                     (m.id, vec, m.text_summary.clone())
@@ -141,7 +140,7 @@ impl SaphireAgent {
                 let max_conn = algo_cfg.deep_max_connections_per_phase;
                 let mut conn_count = 0u64;
 
-                // Collecter les connexions a creer
+                // Collect connections to create
                 let mut connections_to_make: Vec<(usize, usize, f64, &str)> = Vec::new();
                 for i in 0..encoded.len() {
                     if connections_to_make.len() as u64 >= max_conn { break; }
@@ -156,7 +155,7 @@ impl SaphireAgent {
                     }
                 }
 
-                // Inserer les connexions
+                // Insert the connections
                 for (i, j, sim, link_type) in connections_to_make {
                     if let Some(ref db) = self.db {
                         match db.insert_neural_connection(
@@ -169,7 +168,7 @@ impl SaphireAgent {
                                     c.connections_created += 1;
                                 }
                                 self.sleep.total_connections_created += 1;
-                                // Vectoriser la connexion
+                                // Vectorize the connection
                                 if vec_cfg.enabled && vec_cfg.vectorize_connections {
                                     self.vectorize_neural_connection(
                                         &encoded[i].2, &encoded[j].2, link_type, conn_id,
@@ -192,7 +191,7 @@ impl SaphireAgent {
             }
         }
 
-        // Association rules sur episodes recents
+        // Association rules on recent episodes
         let episodes_opt = if let Some(ref db) = self.db {
             db.recent_episodic(200).await.ok()
         } else { None };
@@ -221,7 +220,7 @@ impl SaphireAgent {
         }
     }
 
-    /// REM : analyse de sentiment sur les reves recents
+    /// REM: sentiment analysis on recent dreams
     pub(super) async fn sleep_rem_algorithms(&mut self) {
         if !self.config.sleep.algorithms.enabled || !self.orchestrator.enabled {
             return;
@@ -229,7 +228,7 @@ impl SaphireAgent {
 
         let min_dreams = self.config.sleep.algorithms.rem_sentiment_min_dreams;
 
-        // Sentiment sur les reves du journal
+        // Sentiment on dreams from the journal
         let dream_count = self.dream_orch.dream_journal.len();
         if dream_count >= min_dreams {
             let texts: Vec<String> = self.dream_orch.dream_journal.iter()
@@ -253,9 +252,8 @@ impl SaphireAgent {
         }
     }
 
-    // ─── Algorithmes subconscient eveille ────────────────────────────
-
-    /// DBSCAN sur souvenirs episodiques (tous les 100 cycles)
+    // ─── Subconscious algorithms (awake) ────────────────────────────
+    /// DBSCAN on episodic memories (every 100 cycles)
     pub(super) async fn subconscious_dbscan(&mut self) {
         if !self.orchestrator.enabled { return; }
 
@@ -283,7 +281,7 @@ impl SaphireAgent {
 
                     match self.orchestrator.execute_auto("dbscan", input) {
                         Ok(output) => {
-                            // Si beaucoup de bruit, generer un insight
+                            // If lots of noise, generate an insight
                             if let Some(noise) = output.structured_result.get("noise_count")
                                 .and_then(|v| v.as_u64())
                             {
@@ -314,7 +312,7 @@ impl SaphireAgent {
         }
     }
 
-    /// IsolationForest sur chimie (tous les 100 cycles, offset 50)
+    /// IsolationForest on chemistry (every 100 cycles, offset 50)
     pub(super) async fn subconscious_isolation_forest(&mut self) {
         if !self.orchestrator.enabled { return; }
 
@@ -357,9 +355,8 @@ impl SaphireAgent {
         }
     }
 
-    // ─── Vectorisation ───────────────────────────────────────────────
-
-    /// Vectorise un reve (pendant le sommeil REM)
+    // ─── Vectorization ───────────────────────────────────────────────
+    /// Vectorizes a dream (during REM sleep)
     pub(super) async fn vectorize_dream(&mut self, narrative: &str, emotion: &str) {
         if !self.config.subconscious.vectors.enabled
             || !self.config.subconscious.vectors.vectorize_dreams
@@ -401,7 +398,7 @@ impl SaphireAgent {
         }
     }
 
-    /// Vectorise une connexion neuronale (pendant le sommeil profond)
+    /// Vectorizes a neural connection (during deep sleep)
     pub(super) async fn vectorize_neural_connection(
         &mut self, a_text: &str, b_text: &str, link_type: &str, conn_id: i64,
     ) {
@@ -432,7 +429,7 @@ impl SaphireAgent {
         }
     }
 
-    /// Vectorise un insight du subconscient
+    /// Vectorizes a subconscious insight
     pub(super) async fn vectorize_insight(&mut self, content: &str, source: &str) {
         if !self.config.subconscious.vectors.enabled
             || !self.config.subconscious.vectors.vectorize_insights
@@ -464,7 +461,7 @@ impl SaphireAgent {
         }
     }
 
-    /// Vectorise une image mentale vivace (vividness >= 0.6)
+    /// Vectorizes a vivid mental image (vividness >= 0.6)
     pub(super) async fn vectorize_mental_image(
         &mut self, description: &str, vividness: f64,
         imagery_type: &str, concept: &str,
@@ -518,9 +515,8 @@ impl SaphireAgent {
         }
     }
 
-    // ─── Utilitaires ─────────────────────────────────────────────────
-
-    /// Convertit un nom d'emotion en valeur numerique pour clustering
+    // ─── Utilities ─────────────────────────────────────────────────
+    /// Converts an emotion name to a numeric value for clustering
     fn emotion_to_numeric(emotion: &str) -> f64 {
         match emotion.to_lowercase().as_str() {
             "joie" | "joy" => 0.9,

@@ -1,21 +1,21 @@
 // =============================================================================
-// ethics/formulation.rs — Formulation et verification des principes ethiques
+// ethics/formulation.rs — Ethical principle formulation and verification
 //
-// Role : Fournit les prompts LLM pour que Saphire puisse :
-//   1. Formuler un nouveau principe ethique personnel
-//   2. Verifier la compatibilite avec les couches 0 (droit suisse) et 1 (Asimov)
+// Purpose: Provides LLM prompts so Saphire can:
+//   1. Formulate a new personal ethical principle
+//   2. Verify compatibility with layers 0 (Swiss law) and 1 (Asimov)
 //
-// Le format de reponse attendu est structure pour un parsing fiable.
-// Si Saphire n'a rien a formuler, elle peut repondre RIEN_A_AJOUTER.
+// The expected response format is structured for reliable parsing.
+// If Saphire has nothing to formulate, she can respond RIEN_A_AJOUTER.
 //
-// Dependances : Aucune directe (les prompts sont des chaines de caracteres).
+// Dependencies: None direct (prompts are plain strings).
 //
-// Place dans l'architecture :
-//   Utilise par lifecycle.rs dans attempt_moral_formulation() pour construire
-//   les prompts et parser les reponses du LLM.
+// Place in the architecture:
+//   Used by lifecycle.rs in attempt_moral_formulation() to build
+//   prompts and parse LLM responses.
 // =============================================================================
 
-/// Principe parse depuis la reponse du LLM.
+/// Principle parsed from the LLM response.
 #[derive(Debug, Clone)]
 pub struct ParsedPrinciple {
     pub title: String,
@@ -24,13 +24,13 @@ pub struct ParsedPrinciple {
     pub born_from: String,
 }
 
-/// Construit le prompt LLM demandant a Saphire de formuler UN principe ethique.
+/// Builds the LLM prompt asking Saphire to formulate ONE ethical principle.
 ///
-/// Parametres :
-/// - `recent_reflections` : les dernieres reflexions morales de Saphire
-/// - `existing_principles` : les principes personnels deja formules
-/// - `emotion` : emotion dominante actuelle
-/// - `cycle_count` : age en cycles
+/// Parameters:
+/// - `recent_reflections`: Saphire's latest moral reflections
+/// - `existing_principles`: personal principles already formulated
+/// - `emotion`: current dominant emotion
+/// - `cycle_count`: age in cycles
 pub fn build_formulation_prompt(
     recent_reflections: &[String],
     existing_principles: &[String],
@@ -81,12 +81,12 @@ pub fn build_formulation_prompt(
     )
 }
 
-/// Parse la reponse du LLM pour en extraire un principe structure.
-/// Retourne None si la reponse contient RIEN_A_AJOUTER ou si le format est invalide.
+/// Parses the LLM response to extract a structured principle.
+/// Returns None if the response contains RIEN_A_AJOUTER or if the format is invalid.
 pub fn parse_moral_formulation(response: &str) -> Option<ParsedPrinciple> {
     let response = response.trim();
 
-    // Verifier si Saphire n'a rien a ajouter
+    // Check if Saphire has nothing to add
     if response.contains("RIEN_A_AJOUTER") || response.contains("RIEN_À_AJOUTER") {
         return None;
     }
@@ -96,7 +96,7 @@ pub fn parse_moral_formulation(response: &str) -> Option<ParsedPrinciple> {
     let reasoning = extract_field(response, "PARCE_QUE:").unwrap_or_default();
     let born_from = extract_field(response, "NE_DE:").or_else(|| extract_field(response, "NÉ_DE:")).unwrap_or_default();
 
-    // Validation minimale : titre et contenu doivent etre non vides
+    // Minimal validation: title and content must be non-empty
     if title.is_empty() || content.is_empty() {
         return None;
     }
@@ -109,7 +109,7 @@ pub fn parse_moral_formulation(response: &str) -> Option<ParsedPrinciple> {
     })
 }
 
-/// Extrait la valeur d'un champ "LABEL: valeur" dans un texte multi-lignes.
+/// Extracts the value of a "LABEL: value" field from multi-line text.
 fn extract_field(text: &str, label: &str) -> Option<String> {
     for line in text.lines() {
         let trimmed = line.trim();
@@ -123,9 +123,9 @@ fn extract_field(text: &str, label: &str) -> Option<String> {
     None
 }
 
-/// Construit le prompt LLM de verification de compatibilite avec les couches 0-1.
+/// Builds the LLM compatibility verification prompt against layers 0-1.
 ///
-/// Parametre : `principle_content` — l'enonce du principe a verifier.
+/// Parameter: `principle_content` — the principle statement to verify.
 pub fn build_compatibility_prompt(principle_content: &str) -> String {
     format!(
         "Tu es un verificateur ethique. Verifie si le principe suivant est COMPATIBLE\n\
@@ -151,8 +151,8 @@ pub fn build_compatibility_prompt(principle_content: &str) -> String {
     )
 }
 
-/// Parse la reponse du LLM de verification de compatibilite.
-/// Retourne true si le principe est compatible.
+/// Parses the LLM compatibility verification response.
+/// Returns true if the principle is compatible.
 pub fn parse_compatibility_response(response: &str) -> bool {
     let response = response.trim().to_uppercase();
     response.contains("COMPATIBLE") && !response.starts_with("INCOMPATIBLE")

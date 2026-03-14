@@ -1,25 +1,25 @@
 // =============================================================================
-// knowledge/internet_archive.rs — Client Internet Archive (archives web)
+// knowledge/internet_archive.rs — Internet Archive client (web archives)
 // =============================================================================
 //
-// Role : Recherche de documents sur Internet Archive via l'API de recherche.
-//        Permet a Saphire d'acceder a des livres, articles et documents
-//        historiques numerises.
+// Purpose: Searches documents on Internet Archive via the search API.
+//          Allows Saphire to access digitized books, articles and
+//          historical documents.
 //
-// API : https://archive.org/advancedsearch.php?q=...&output=json
-//       Retourne du JSON avec response.docs[].title, description, etc.
+// API: https://archive.org/advancedsearch.php?q=...&output=json
+//      Returns JSON with response.docs[].title, description, etc.
 //
-// Score de pertinence : 0.70
+// Relevance score: 0.70
 // =============================================================================
 
 use chrono::Utc;
 use super::{WebKnowledge, KnowledgeResult, KnowledgeError};
 
 impl WebKnowledge {
-    /// Cherche des documents sur Internet Archive.
+    /// Search for documents on Internet Archive.
     ///
-    /// Utilise l'API de recherche avancee (JSON).
-    /// Filtre les resultats pour garder textes et livres.
+    /// Uses the advanced search API (JSON).
+    /// Filters results to keep texts and books.
     pub fn search_internet_archive(&self, query: &str) -> Result<Vec<KnowledgeResult>, KnowledgeError> {
         let encoded = Self::url_encode(query);
         let url = format!(
@@ -52,7 +52,7 @@ impl WebKnowledge {
             let creator = doc["creator"].as_str().unwrap_or("Inconnu");
             let media_type = doc["mediatype"].as_str().unwrap_or("unknown");
 
-            // Extraire la description (peut etre un tableau ou une chaine)
+            // Extract the description (may be an array or a string)
             let description = if let Some(desc) = doc["description"].as_str() {
                 desc.to_string()
             } else if let Some(arr) = doc["description"].as_array() {

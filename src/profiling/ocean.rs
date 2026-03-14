@@ -1,64 +1,64 @@
 // =============================================================================
-// ocean.rs — Modele OCEAN (Big Five) : OceanProfile, DimensionScore et
-//            sous-facettes des 5 dimensions de personnalite
+// ocean.rs — OCEAN (Big Five) model: OceanProfile, DimensionScore and
+//            sub-facets of the 5 personality dimensions
 //
-// Role : Definit les structures de donnees centrales du profilage psychologique
-//        selon le modele Big Five (OCEAN) :
-//          O = Openness (Ouverture a l'experience)
-//          C = Conscientiousness (Rigueur / Conscience professionnelle)
-//          E = Extraversion
-//          A = Agreeableness (Agreabilite / Amabilite)
-//          N = Neuroticism (Nevrosisme / Sensibilite emotionnelle)
+// Role: Defines the central data structures for psychological profiling
+//       according to the Big Five (OCEAN) model:
+//         O = Openness (to experience)
+//         C = Conscientiousness
+//         E = Extraversion
+//         A = Agreeableness
+//         N = Neuroticism (emotional sensitivity)
 //
-//        Chaque dimension est decomposee en 6 sous-facettes conformement au
-//        modele NEO-PI-R de Costa & McCrae.
+//       Each dimension is decomposed into 6 sub-facets following the
+//       NEO-PI-R model by Costa & McCrae.
 //
-// Dependances :
-//   - chrono : horodatage du moment de calcul du profil
-//   - serde : serialisation/deserialisation pour la persistance et le WebSocket
-//   - serde_json : generation de donnees JSON pour l'interface WebSocket
+// Dependencies:
+//   - chrono: timestamping of profile computation
+//   - serde: serialization/deserialization for persistence and WebSocket
+//   - serde_json: JSON data generation for the WebSocket interface
 //
-// Place dans l'architecture :
-//   Structure de donnees partagee entre self_profiler (auto-profil de Saphire),
-//   human_profiler (profil des humains), adaptation (generation de style) et
-//   narrative (description textuelle). C'est le coeur du systeme de profilage.
+// Place in architecture:
+//   Data structure shared between self_profiler (Saphire's self-profile),
+//   human_profiler (human profiles), adaptation (style generation) and
+//   narrative (textual description). It is the core of the profiling system.
 // =============================================================================
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-/// Profil psychologique complet selon le modele Big Five OCEAN.
+/// Complete psychological profile according to the Big Five OCEAN model.
 ///
-/// Contient les 5 dimensions de personnalite, chacune avec un score global,
-/// 6 sous-facettes, une tendance et une volatilite. Inclut aussi des metadonnees
-/// (date de calcul, nombre de points de donnees, confiance).
+/// Contains the 5 personality dimensions, each with a global score,
+/// 6 sub-facets, a trend and a volatility. Also includes metadata
+/// (computation date, number of data points, confidence).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OceanProfile {
-    /// Ouverture a l'experience : curiosite intellectuelle, imagination, sensibilite esthetique
+    /// Openness to experience: intellectual curiosity, imagination, aesthetic sensitivity
     pub openness: DimensionScore,
-    /// Rigueur : auto-discipline, sens du devoir, ordre, prudence
+    /// Conscientiousness: self-discipline, sense of duty, order, prudence
     pub conscientiousness: DimensionScore,
-    /// Extraversion : sociabilite, assertivite, recherche de stimulation
+    /// Extraversion: sociability, assertiveness, stimulation seeking
     pub extraversion: DimensionScore,
-    /// Agreabilite : confiance, altruisme, cooperation, empathie
+    /// Agreeableness: trust, altruism, cooperation, empathy
     pub agreeableness: DimensionScore,
-    /// Nevrosisme : anxiete, irritabilite, vulnerabilite au stress
+    /// Neuroticism: anxiety, irritability, vulnerability to stress
     pub neuroticism: DimensionScore,
-    /// Horodatage du dernier calcul du profil
+    /// Timestamp of the last profile computation
     pub computed_at: DateTime<Utc>,
-    /// Nombre total de points de donnees (observations) utilises pour construire ce profil.
-    /// Plus ce nombre est eleve, plus le profil est fiable.
+    /// Total number of data points (observations) used to build this profile.
+    /// The higher this number, the more reliable the profile.
     pub data_points: u64,
-    /// Score de confiance dans [0.0, 1.0] indiquant la fiabilite du profil.
-    /// Augmente avec le nombre de points de donnees (sature a 500 observations).
+    /// Confidence score in [0.0, 1.0] indicating profile reliability.
+    /// Increases with the number of data points (saturates at 500 observations).
     pub confidence: f64,
 }
 
 impl Default for OceanProfile {
-    /// Profil OCEAN par defaut : toutes les dimensions a 0.5 (neutre).
+    /// Default OCEAN profile: all dimensions at 0.5 (neutral).
     ///
-    /// Un profil neutre est le point de depart avant toute observation.
-    /// La confiance est a 0.0 car aucune donnee n'a encore ete collectee.
+    /// A neutral profile is the starting point before any observation.
+    /// Confidence is at 0.0 because no data has been collected yet.
     fn default() -> Self {
         Self {
             openness: DimensionScore::new(0.5),
@@ -73,37 +73,37 @@ impl Default for OceanProfile {
     }
 }
 
-/// Score detaille d'une dimension OCEAN.
+/// Detailed score of an OCEAN dimension.
 ///
-/// Chaque dimension est decrite par un score global, 6 sous-facettes,
-/// une tendance (direction du changement) et une volatilite (amplitude
-/// des variations recentes).
+/// Each dimension is described by a global score, 6 sub-facets,
+/// a trend (direction of change) and a volatility (amplitude
+/// of recent variations).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DimensionScore {
-    /// Score global de la dimension dans [0.0, 1.0].
-    /// 0.0 = extremement bas, 0.5 = neutre, 1.0 = extremement haut.
+    /// Global score of the dimension in [0.0, 1.0].
+    /// 0.0 = extremely low, 0.5 = neutral, 1.0 = extremely high.
     pub score: f64,
-    /// Les 6 sous-facettes de la dimension, chacune dans [0.0, 1.0].
-    /// L'ordre correspond aux constantes *_FACETS definies ci-dessous.
+    /// The 6 sub-facets of the dimension, each in [0.0, 1.0].
+    /// The order corresponds to the *_FACETS constants defined below.
     pub facets: [f64; 6],
-    /// Tendance dans [-1.0, +1.0] : direction du changement entre
-    /// l'ancien et le nouveau score. Positif = en hausse, negatif = en baisse.
+    /// Trend in [-1.0, +1.0]: direction of change between
+    /// old and new score. Positive = rising, negative = declining.
     pub trend: f64,
-    /// Volatilite dans [0.0, 1.0] : amplitude absolue du changement
-    /// entre l'ancien et le nouveau score. Eleve = instable.
+    /// Volatility in [0.0, 1.0]: absolute amplitude of change
+    /// between old and new score. High = unstable.
     pub volatility: f64,
 }
 
 impl DimensionScore {
-    /// Cree un nouveau score de dimension avec une valeur initiale uniforme.
+    /// Creates a new dimension score with a uniform initial value.
     ///
-    /// Toutes les sous-facettes sont initialisees a la meme valeur que le score global.
-    /// La tendance et la volatilite sont a zero (pas encore de changement observe).
+    /// All sub-facets are initialized to the same value as the global score.
+    /// Trend and volatility are at zero (no change observed yet).
     ///
-    /// Parametres :
-    ///   - initial : la valeur initiale dans [0.0, 1.0] pour le score et les facettes
+    /// Parameters:
+    ///   - initial: the initial value in [0.0, 1.0] for the score and facets
     ///
-    /// Retour : un DimensionScore initialise
+    /// Returns: an initialized DimensionScore
     pub fn new(initial: f64) -> Self {
         Self {
             score: initial,
@@ -114,15 +114,15 @@ impl DimensionScore {
     }
 }
 
-/// Noms des 6 sous-facettes de la dimension Ouverture (Openness).
+/// Names of the 6 sub-facets of the Openness dimension.
 ///
-/// Basees sur le modele NEO-PI-R :
-///   [0] Imagination : capacite a creer des scenarios mentaux
-///   [1] Curiosite intellectuelle : attrait pour les idees nouvelles
-///   [2] Sensibilite esthetique : appreciation de l'art et de la beaute
-///   [3] Aventurisme : gout pour l'exploration et la decouverte
-///   [4] Profondeur emotionnelle : richesse de la vie emotionnelle interieure
-///   [5] Liberalisme intellectuel : ouverture aux idees non conventionnelles
+/// Based on the NEO-PI-R model:
+///   [0] Imagination: ability to create mental scenarios
+///   [1] Intellectual curiosity: attraction to new ideas
+///   [2] Aesthetic sensitivity: appreciation of art and beauty
+///   [3] Adventurism: taste for exploration and discovery
+///   [4] Emotional depth: richness of inner emotional life
+///   [5] Intellectual liberalism: openness to unconventional ideas
 pub const OPENNESS_FACETS: [&str; 6] = [
     "Imagination",
     "Curiosite intellectuelle",
@@ -132,14 +132,14 @@ pub const OPENNESS_FACETS: [&str; 6] = [
     "Liberalisme intellectuel",
 ];
 
-/// Noms des 6 sous-facettes de la dimension Rigueur (Conscientiousness).
+/// Names of the 6 sub-facets of the Conscientiousness dimension.
 ///
-///   [0] Auto-efficacite : confiance dans ses capacites a accomplir des taches
-///   [1] Ordre : besoin de structure et d'organisation
-///   [2] Sens du devoir : respect des regles et des engagements
-///   [3] Ambition : motivation a atteindre des objectifs eleves
-///   [4] Auto-discipline : capacite a perseverer malgre les distractions
-///   [5] Prudence : reflexion avant l'action, evitement des risques
+///   [0] Self-efficacy: confidence in one's ability to accomplish tasks
+///   [1] Order: need for structure and organization
+///   [2] Sense of duty: respect for rules and commitments
+///   [3] Ambition: motivation to achieve high goals
+///   [4] Self-discipline: ability to persevere despite distractions
+///   [5] Prudence: thinking before acting, risk avoidance
 pub const CONSCIENTIOUSNESS_FACETS: [&str; 6] = [
     "Auto-efficacite",
     "Ordre",
@@ -149,14 +149,14 @@ pub const CONSCIENTIOUSNESS_FACETS: [&str; 6] = [
     "Prudence",
 ];
 
-/// Noms des 6 sous-facettes de la dimension Extraversion.
+/// Names of the 6 sub-facets of the Extraversion dimension.
 ///
-///   [0] Chaleur sociale : capacite a creer des liens affectifs
-///   [1] Gregarite : attrait pour la compagnie et les groupes
-///   [2] Assertivite : confiance et dominance dans les interactions
-///   [3] Niveau d'activite : rythme general d'action et d'energie
-///   [4] Recherche de stimulation : attrait pour l'excitation et la nouveaute
-///   [5] Emotions positives : tendance a eprouver de la joie et de l'enthousiasme
+///   [0] Social warmth: ability to create emotional bonds
+///   [1] Gregariousness: attraction to company and groups
+///   [2] Assertiveness: confidence and dominance in interactions
+///   [3] Activity level: general pace of action and energy
+///   [4] Stimulation seeking: attraction to excitement and novelty
+///   [5] Positive emotions: tendency to experience joy and enthusiasm
 pub const EXTRAVERSION_FACETS: [&str; 6] = [
     "Chaleur sociale",
     "Gregarite",
@@ -166,14 +166,14 @@ pub const EXTRAVERSION_FACETS: [&str; 6] = [
     "Emotions positives",
 ];
 
-/// Noms des 6 sous-facettes de la dimension Agreabilite (Agreeableness).
+/// Names of the 6 sub-facets of the Agreeableness dimension.
 ///
-///   [0] Confiance : tendance a croire en la bienveillance des autres
-///   [1] Sincerite : franchise et authenticite dans les interactions
-///   [2] Altruisme : preoccupation pour le bien-etre d'autrui
-///   [3] Cooperation : recherche de compromis et d'harmonie
-///   [4] Modestie : humilite et absence de pretention
-///   [5] Sensibilite sociale : empathie et conscience des emotions d'autrui
+///   [0] Trust: tendency to believe in others' benevolence
+///   [1] Sincerity: frankness and authenticity in interactions
+///   [2] Altruism: concern for others' well-being
+///   [3] Cooperation: seeking compromise and harmony
+///   [4] Modesty: humility and absence of pretension
+///   [5] Social sensitivity: empathy and awareness of others' emotions
 pub const AGREEABLENESS_FACETS: [&str; 6] = [
     "Confiance",
     "Sincerite",
@@ -183,14 +183,14 @@ pub const AGREEABLENESS_FACETS: [&str; 6] = [
     "Sensibilite sociale",
 ];
 
-/// Noms des 6 sous-facettes de la dimension Nevrosisme (Neuroticism).
+/// Names of the 6 sub-facets of the Neuroticism dimension.
 ///
-///   [0] Anxiete : tendance a l'inquietude et a la tension
-///   [1] Irritabilite : propension a la colere et a l'agacement
-///   [2] Depressivite : tendance a la tristesse et au decouragement
-///   [3] Conscience de soi : sensibilite au regard des autres
-///   [4] Impulsivite : difficulte a controler les pulsions
-///   [5] Vulnerabilite : sensibilite au stress et difficulte a faire face
+///   [0] Anxiety: tendency toward worry and tension
+///   [1] Irritability: propensity for anger and annoyance
+///   [2] Depressiveness: tendency toward sadness and discouragement
+///   [3] Self-consciousness: sensitivity to others' judgment
+///   [4] Impulsivity: difficulty controlling urges
+///   [5] Vulnerability: sensitivity to stress and difficulty coping
 pub const NEUROTICISM_FACETS: [&str; 6] = [
     "Anxiete",
     "Irritabilite",
@@ -201,13 +201,13 @@ pub const NEUROTICISM_FACETS: [&str; 6] = [
 ];
 
 impl OceanProfile {
-    /// Identifie le trait dominant du profil OCEAN.
+    /// Identifies the dominant trait of the OCEAN profile.
     ///
-    /// Compare les scores globaux des 5 dimensions et retourne le nom
-    /// (en francais) de la dimension la plus elevee.
+    /// Compares the global scores of the 5 dimensions and returns the name
+    /// (in French) of the highest dimension.
     ///
-    /// Retour : une chaine de caracteres statique decrivant le trait dominant
-    ///          (ex: "l'Ouverture", "la Rigueur", "l'Extraversion", etc.)
+    /// Returns: a static string describing the dominant trait
+    ///          (e.g.: "l'Ouverture", "la Rigueur", "l'Extraversion", etc.)
     pub fn dominant_trait(&self) -> &str {
         let scores = [
             (self.openness.score, "l'Ouverture"),
@@ -222,13 +222,13 @@ impl OceanProfile {
             .unwrap_or("indetermine")
     }
 
-    /// Genere les donnees JSON du profil OCEAN pour transmission par WebSocket.
+    /// Generates JSON data of the OCEAN profile for WebSocket transmission.
     ///
-    /// Produit un objet JSON contenant les 5 dimensions avec leurs scores,
-    /// sous-facettes, tendances et volatilites, plus les metadonnees globales
-    /// (confiance, nombre de points, trait dominant).
+    /// Produces a JSON object containing the 5 dimensions with their scores,
+    /// sub-facets, trends and volatilities, plus global metadata
+    /// (confidence, data points count, dominant trait).
     ///
-    /// Retour : un serde_json::Value representant le profil complet en JSON
+    /// Returns: a serde_json::Value representing the complete profile in JSON
     pub fn ws_data(&self) -> serde_json::Value {
         serde_json::json!({
             "openness": {

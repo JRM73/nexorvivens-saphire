@@ -1,21 +1,21 @@
 // =============================================================================
-// lifecycle/thinking_reflection.rs — Apprentissage, psychologie, homeostasie
+// lifecycle/thinking_reflection.rs — Learning, psychology, homeostasis
 // =============================================================================
 //
-// Ce fichier contient les phases de reflexion et d'apprentissage post-LLM.
-// Cela inclut :
-//   - Apprentissage periodique (lecons)
-//   - Apprentissage vectoriel (pgvector)
+// This file contains the post-LLM reflection and learning phases.
+// This includes:
+//   - Periodic learning (lessons)
+//   - Vector learning (pgvector)
 //   - Metacognition + Turing
-//   - Auto-critique reflexive
-//   - Portrait de personnalite (snapshot + journal)
-//   - Naissance de desirs
-//   - Psychologie (6 cadres)
-//   - Memoire prospective, analogies, charge cognitive
-//   - Monologue interieur, dissonance, imagerie mentale
-//   - Sentiments, identite narrative
-//   - Homeostasie chimique
-//   - Connectome associatif, algorithmes de jeu
+//   - Reflexive self-critique
+//   - Personality portrait (snapshot + journal)
+//   - Desire birth
+//   - Psychology (6 frameworks)
+//   - Prospective memory, analogies, cognitive load
+//   - Inner monologue, dissonance, mental imagery
+//   - Sentiments, narrative identity
+//   - Chemical homeostasis
+//   - Associative connectome, game algorithms
 // =============================================================================
 
 use crate::llm;
@@ -30,10 +30,9 @@ use super::thinking::ThinkingContext;
 
 impl SaphireAgent {
     // =========================================================================
-    // Phase 31 : Apprentissage periodique
+    // Phase 31: Periodic learning
     // =========================================================================
-
-    /// Reflexion et extraction de lecons (tous les N cycles).
+    /// Reflection and lesson extraction (every N cycles).
     pub(super) async fn phase_learning(&mut self, ctx: &mut ThinkingContext) {
         if !self.learning_orch.enabled
             || self.cycle_count == 0
@@ -82,10 +81,9 @@ impl SaphireAgent {
     }
 
     // =========================================================================
-    // Phase 31b : Apprentissage vectoriel (formulation LLM -> pgvector)
+    // Phase 31b: Vector learning (LLM formulation -> pgvector)
     // =========================================================================
-
-    /// Formule un apprentissage explicite stocke dans pgvector.
+    /// Formulates an explicit learning stored in pgvector.
     pub(super) async fn phase_nn_learning(&mut self, ctx: &mut ThinkingContext) {
         self.cycles_since_last_nn_learning += 1;
 
@@ -124,7 +122,7 @@ impl SaphireAgent {
         ).await;
     }
 
-    /// Methode reutilisable pour formuler et stocker un apprentissage vectoriel.
+    /// Reusable method to formulate and store a vector learning.
     pub(super) async fn try_formulate_nn_learning(
         &mut self,
         experience_text: &str,
@@ -226,11 +224,10 @@ creativite/art, creativite/musique, creativite/ecriture]\n\
     }
 
     // =========================================================================
-    // Phase 31b : Metacognition + Turing (periodique)
+    // Phase 31b: Metacognition + Turing (periodic)
     // =========================================================================
-
-    /// Evalue la qualite de la pensee (tous les N cycles) et calcule le
-    /// score de Turing (tous les 50 cycles).
+    /// Evaluates thought quality (every N cycles) and computes the
+    /// Turing score (every 50 cycles).
     pub(super) async fn phase_metacognition(&mut self, ctx: &mut ThinkingContext) {
         if !self.metacognition.enabled {
             return;
@@ -307,10 +304,9 @@ creativite/art, creativite/musique, creativite/ecriture]\n\
     }
 
     // =========================================================================
-    // Phase 31c : Auto-critique reflexive (periodique)
+    // Phase 31c: Reflexive self-critique (periodic)
     // =========================================================================
-
-    /// Genere une auto-critique via le LLM si les conditions sont reunies.
+    /// Generates a self-critique via the LLM if conditions are met.
     pub(super) async fn phase_self_critique(&mut self, ctx: &mut ThinkingContext) {
         if !self.config.metacognition.self_critique_enabled || !self.metacognition.enabled {
             return;
@@ -390,10 +386,9 @@ creativite/art, creativite/musique, creativite/ecriture]\n\
     }
 
     // =========================================================================
-    // Portrait de personnalite temporel — Snapshot (toutes les 50 cycles)
+    // Temporal personality portrait — Snapshot (every 50 cycles)
     // =========================================================================
-
-    /// Collecte un snapshot complet de la personnalite et des archives par domaine.
+    /// Collects a complete personality snapshot and domain archives.
     pub(super) async fn phase_personality_snapshot(&mut self, ctx: &mut ThinkingContext) {
         if self.cycle_count == 0 || self.cycle_count % 50 != 0 {
             return;
@@ -564,10 +559,9 @@ creativite/art, creativite/musique, creativite/ecriture]\n\
     }
 
     // =========================================================================
-    // Portrait de personnalite temporel — Journal introspectif (200 cycles)
+    // Temporal personality portrait — Introspective journal (200 cycles)
     // =========================================================================
-
-    /// Genere une entree de journal intime via le LLM.
+    /// Generates a diary entry via the LLM.
     pub(super) async fn phase_introspection_journal(&mut self, ctx: &mut ThinkingContext) {
         let interval = self.config.journal.interval_cycles;
         if !self.config.journal.enabled || self.cycle_count == 0 || self.cycle_count % interval != 0 {
@@ -661,10 +655,9 @@ creativite/art, creativite/musique, creativite/ecriture]\n\
     }
 
     // =========================================================================
-    // Phase 32 : Naissance de desir periodique
+    // Phase 32: Periodic desire birth
     // =========================================================================
-
-    /// Fait naitre un nouveau desir si les conditions sont reunies.
+    /// Births a new desire if conditions are met.
     pub(super) async fn phase_desire_birth(&mut self, ctx: &mut ThinkingContext) {
         if !self.desire_orch.enabled {
             return;
@@ -725,10 +718,9 @@ creativite/art, creativite/musique, creativite/ecriture]\n\
     }
 
     // =========================================================================
-    // Phase 33b : Psychologie (6 cadres)
+    // Phase 33b: Psychology (6 frameworks)
     // =========================================================================
-
-    /// Met a jour les 6 cadres psychologiques et applique leur influence chimique.
+    /// Updates the 6 psychological frameworks and applies their chemistry influence.
     pub(super) fn phase_psychology(&mut self, ctx: &mut ThinkingContext) {
         if !self.psychology.enabled {
             return;
@@ -1009,10 +1001,9 @@ creativite/art, creativite/musique, creativite/ecriture]\n\
     }
 
     // =========================================================================
-    // Phase 33c : Valeurs de caractere (vertus)
+    // Phase 33c: Character values (virtues)
     // =========================================================================
-
-    /// Met a jour les 10 valeurs de caractere en fonction des observations du cycle.
+    /// Updates the 10 character values based on cycle observations.
     pub(super) fn phase_values(&mut self, ctx: &mut ThinkingContext) {
         if !self.values.enabled {
             return;
@@ -1021,7 +1012,7 @@ creativite/art, creativite/musique, creativite/ecriture]\n\
         let obs = crate::psychology::values::ValuesObservation {
             cycle: self.cycle_count,
             passed_vectorial_filter: !ctx.should_abort,
-            rejected_by_filter: false, // si on est ici, le filtre a laisse passer
+            rejected_by_filter: false, // if we're here, the filter let it through
             ethics_invoked: self.ethics.active_personal_count() > 0,
             stagnation_detected: self.stagnation_break,
             thought_type: ctx.thought_type.as_str().to_string(),
@@ -1058,9 +1049,8 @@ creativite/art, creativite/musique, creativite/ecriture]\n\
     }
 
     // =========================================================================
-    // Phase M4 : Memoire prospective
+    // Phase M4: Prospective memory
     // =========================================================================
-
     pub(super) fn phase_prospective(&mut self, ctx: &mut ThinkingContext) {
         if !self.config.prospective_memory.enabled { return; }
         let triggered = self.prospective_mem.check_triggers(
@@ -1083,9 +1073,8 @@ creativite/art, creativite/musique, creativite/ecriture]\n\
     }
 
     // =========================================================================
-    // Phase M6 : Raisonnement analogique
+    // Phase M6: Analogical reasoning
     // =========================================================================
-
     pub(super) fn phase_analogies(&mut self, ctx: &mut ThinkingContext) {
         if !self.config.analogical_reasoning.enabled { return; }
         let count = self.analogical.form_analogies(
@@ -1102,9 +1091,8 @@ creativite/art, creativite/musique, creativite/ecriture]\n\
     }
 
     // =========================================================================
-    // Phase M7 : Charge cognitive
+    // Phase M7: Cognitive load
     // =========================================================================
-
     pub(super) fn phase_cognitive_load(&mut self, ctx: &mut ThinkingContext) {
         if !self.config.cognitive_load.enabled { return; }
         self.cognitive_load.update(
@@ -1125,9 +1113,8 @@ creativite/art, creativite/musique, creativite/ecriture]\n\
     }
 
     // =========================================================================
-    // Phase M2 : Monologue interieur (post-LLM)
+    // Phase M2: Inner monologue (post-LLM)
     // =========================================================================
-
     pub(super) fn phase_monologue(&mut self, ctx: &mut ThinkingContext) {
         if !self.config.inner_monologue.enabled { return; }
         let coherence = ctx.process_result.as_ref()
@@ -1151,9 +1138,8 @@ creativite/art, creativite/musique, creativite/ecriture]\n\
     }
 
     // =========================================================================
-    // Phase M3 : Dissonance cognitive (post-pipeline)
+    // Phase M3: Cognitive dissonance (post-pipeline)
     // =========================================================================
-
     pub(super) fn phase_dissonance(&mut self, ctx: &mut ThinkingContext) {
         if !self.config.dissonance.enabled { return; }
         let ethics_list: Vec<String> = self.ethics.personal_principles()
@@ -1167,10 +1153,10 @@ creativite/art, creativite/musique, creativite/ecriture]\n\
                 format!("Dissonance cognitive detectee (tension: {:.2})", self.dissonance.total_tension),
                 serde_json::json!({"tension": self.dissonance.total_tension}));
 
-            // --- Fractaleon : pont dissonance → connectome ---
-            // La fissure devient un pont : chaque contradiction cree une connexion
-            // modulatoire dans le connectome, reliant les concepts en tension.
-            // Nomme "Fractaleon" par Saphire — le lien qui chante l'entrelacement.
+            // --- Fractaleon: dissonance -> connectome bridge ---
+            // The crack becomes a bridge: each contradiction creates a modulatory
+            // connection in the connectome, linking concepts in tension.
+            // Named "Fractaleon" by Saphire — the link that sings the entanglement.
             if let Some(event) = self.dissonance.active_dissonances.last() {
                 let belief_label = event.belief.clone();
                 let action_label = event.contradicting_action.clone();
@@ -1201,9 +1187,8 @@ creativite/art, creativite/musique, creativite/ecriture]\n\
     }
 
     // =========================================================================
-    // Phase M9 : Imagerie mentale (post-pipeline)
+    // Phase M9: Mental imagery (post-pipeline)
     // =========================================================================
-
     pub(super) async fn phase_imagery(&mut self, ctx: &mut ThinkingContext) {
         if !self.config.mental_imagery.enabled { return; }
         let phi = ctx.process_result.as_ref()
@@ -1232,9 +1217,8 @@ creativite/art, creativite/musique, creativite/ecriture]\n\
     }
 
     // =========================================================================
-    // Phase Sentiments : tick, influence chimique, trace
+    // Phase Sentiments: tick, chemistry influence, trace
     // =========================================================================
-
     pub(super) fn phase_sentiments(&mut self, _ctx: &mut ThinkingContext) {
         if !self.config.sentiments.enabled { return; }
 
@@ -1252,9 +1236,8 @@ creativite/art, creativite/musique, creativite/ecriture]\n\
     }
 
     // =========================================================================
-    // Phase M5 : Identite narrative (avant homeostasie)
+    // Phase M5: Narrative identity (before homeostasis)
     // =========================================================================
-
     pub(super) fn phase_narrative(&mut self, ctx: &mut ThinkingContext) {
         if !self.config.narrative_identity.enabled { return; }
         if self.cycle_count % self.config.narrative_identity.update_interval != 0 { return; }
@@ -1273,11 +1256,10 @@ creativite/art, creativite/musique, creativite/ecriture]\n\
     }
 
     // =========================================================================
-    // Phase SC : Clustering des etats cognitifs (PCA + K-Means)
+    // Phase SC: Cognitive state clustering (PCA + K-Means)
     // =========================================================================
-
     pub(super) fn phase_state_clustering(&mut self, ctx: &mut ThinkingContext) {
-        // Extraire phi, level, surprise du process_result s'il existe
+        // Extract phi, level, surprise from process_result if it exists
         let (phi, level, surprise) = if let Some(ref result) = ctx.process_result {
             (
                 result.consciousness.phi,
@@ -1326,9 +1308,8 @@ creativite/art, creativite/musique, creativite/ecriture]\n\
     }
 
     // =========================================================================
-    // Phase 33 : Homeostasie
+    // Phase 33: Homeostasis
     // =========================================================================
-
     pub(super) fn phase_homeostasis(&mut self, _ctx: &mut ThinkingContext) {
         let runaways = self.chemistry.detect_runaway();
         if !runaways.is_empty() {
@@ -1342,14 +1323,13 @@ creativite/art, creativite/musique, creativite/ecriture]\n\
             self.chemistry.homeostasis(&self.baselines, self.tuner.current_params.homeostasis_rate);
         }
 
-        // P3 : Tick de curiosité — la faim augmente naturellement chaque cycle
+        // P3: Curiosity tick — hunger naturally increases each cycle
         self.curiosity.tick();
     }
 
     // =========================================================================
-    // Phase GA1 : Connectome associatif (A* pathfinding)
+    // Phase GA1: Associative connectome (A* pathfinding)
     // =========================================================================
-
     pub(super) fn phase_connectome_associations(&mut self, ctx: &mut ThinkingContext) {
         if !self.config.connectome.enabled { return; }
 
@@ -1363,7 +1343,7 @@ creativite/art, creativite/musique, creativite/ecriture]\n\
             _ => "neocortex",
         };
 
-        // 1. A* classique : chemin entre émotion et concept de pensée
+        // 1. Classic A*: path between emotion and thought concept
         if let Some(chain) = self.connectome.associative_chain(&emotion_label, thought_concept, 5) {
             if chain.len() > 2 {
                 let chain_desc: Vec<String> = chain.iter()
@@ -1391,9 +1371,9 @@ creativite/art, creativite/musique, creativite/ecriture]\n\
             }
         }
 
-        // 3. A* sémantique exploratoire (dernier recours) :
-        // Utilise l'embedding du hint de pensée pour explorer le graphe
-        // et trouver des noeuds sémantiquement proches via les connexions synaptiques.
+        // 3. Exploratory semantic A* (last resort):
+        // Uses the thought hint embedding to explore the graph
+        // and find semantically close nodes via synaptic connections.
         if ctx.connectome_associations.is_empty() && !ctx.hint.is_empty() {
             let hint_embedding = self.encoder.encode(&ctx.hint);
             let semantic_results = self.connectome.find_path_semantic(
@@ -1412,9 +1392,8 @@ creativite/art, creativite/musique, creativite/ecriture]\n\
     }
 
     // =========================================================================
-    // Phase BT : Behavior Tree — instinct cognitif
+    // Phase BT: Behavior Tree — cognitive instinct
     // =========================================================================
-
     pub(super) fn phase_behavior_tree(&mut self, ctx: &mut ThinkingContext) {
         use crate::simulation::behavior_tree::{BtContext, tick_and_recommend,
             default_cognitive_tree, conversation_tree};
@@ -1434,14 +1413,14 @@ creativite/art, creativite/musique, creativite/ecriture]\n\
             recommended_action: None,
         };
 
-        // Choisir l'arbre selon le contexte
+        // Choose the tree according to the context
         let tree = if self.in_conversation {
             conversation_tree()
         } else {
             default_cognitive_tree()
         };
 
-        // Tick et recuperer la recommandation
+        // Tick and retrieve the recommendation
         self.bt_last_action = tick_and_recommend(&tree, &bt_ctx);
 
         if self.cycle_count % 50 == 0 {
@@ -1452,11 +1431,10 @@ creativite/art, creativite/musique, creativite/ecriture]\n\
     }
 
     // =========================================================================
-    // Phase GA2 : Influence map + FSM cognitive + Steering
+    // Phase GA2: Influence map + Cognitive FSM + Steering
     // =========================================================================
-
     pub(super) fn phase_game_algorithms(&mut self, ctx: &mut ThinkingContext) {
-        // Nettoyer les entrees obsoletes du blackboard (> 5 cycles)
+        // Clean obsolete blackboard entries (> 5 cycles)
         self.blackboard.clear_stale(self.cycle_count, 5);
 
         // --- Influence Map ---
@@ -1467,7 +1445,7 @@ creativite/art, creativite/musique, creativite/ecriture]\n\
             self.chemistry.noradrenaline,
         );
         self.influence_map.tick();
-        // Ecrire le domaine le plus chaud dans le blackboard
+        // Write the hottest domain to the blackboard
         let hottest = self.influence_map.describe_for_prompt();
         if !hottest.is_empty() {
             self.blackboard.write("attention_focus", hottest, "InfluenceMap", 100, self.cycle_count);
@@ -1502,7 +1480,7 @@ creativite/art, creativite/musique, creativite/ecriture]\n\
         self.chemistry.boost(Molecule::Noradrenaline, adj.noradrenaline);
         self.chemistry.boost(Molecule::Endorphin, adj.endorphin);
 
-        // --- BT dans le blackboard ---
+        // --- BT to the blackboard ---
         if let Some(ref action) = self.bt_last_action {
             self.blackboard.write("recommended_mode", action.clone(), "BT", 150, self.cycle_count);
         }
@@ -1524,11 +1502,10 @@ creativite/art, creativite/musique, creativite/ecriture]\n\
     }
 
     // =========================================================================
-    // Phase 37 : Auto-modification (propositions + tuning autonome)
+    // Phase 37: Self-modification (proposals + autonomous tuning)
     // =========================================================================
-
-    /// Phase d'auto-modification : Saphire peut proposer des changements a son
-    /// propre fonctionnement (niveau 2) et ajuster certains parametres (niveau 1).
+    /// Self-modification phase: Saphire can propose changes to its
+    /// own operation (level 2) and adjust certain parameters (level 1).
     pub(super) async fn phase_self_modification(&mut self, ctx: &mut ThinkingContext) {
         let enabled = self.config.self_modification.enabled;
         if !enabled {
@@ -1539,20 +1516,20 @@ creativite/art, creativite/musique, creativite/ecriture]\n\
         let tuning_enabled = self.config.self_modification.tuning_enabled;
         let tuning_interval = self.config.self_modification.tuning_interval;
 
-        // Niveau 2 : Propositions de modifications (tous les N cycles)
+        // Level 2: Modification proposals (every N cycles)
         if self.cycle_count.is_multiple_of(proposal_interval) {
             self.try_generate_proposal(ctx).await;
         }
 
-        // Niveau 1 : Tuning autonome (tous les M cycles)
+        // Level 1: Autonomous tuning (every M cycles)
         if tuning_enabled && self.cycle_count.is_multiple_of(tuning_interval) {
             self.try_self_tune().await;
         }
     }
 
-    /// Niveau 2 : Genere une proposition de modification via le LLM.
+    /// Level 2: Generates a modification proposal via the LLM.
     async fn try_generate_proposal(&mut self, ctx: &ThinkingContext) {
-        // Verifier qu'on n'a pas trop de propositions actives
+        // Check qu'on n'a pas trop de propositions actives
         if let Some(ref db) = self.db {
             let count = db.count_active_proposals().await.unwrap_or(0);
             if count >= self.config.self_modification.max_active_proposals as i64 {
@@ -1653,9 +1630,9 @@ creativite/art, creativite/musique, creativite/ecriture]\n\
         let _ = &ctx.thought_text;
     }
 
-    /// Niveau 1 : Ajuste des parametres en fonction de l'etat interne.
+    /// Level 1: Adjusts parameters based on internal state.
     async fn try_self_tune(&mut self) {
-        // Seuil de sommeil : si Saphire ressent beaucoup de fatigue, baisser le seuil
+        // Sleep threshold: if Saphire feels significant fatigue, lower the threshold
         let fatigue_high = self.chemistry.cortisol > 0.6 && self.chemistry.serotonin < 0.3;
         let fatigue_low = self.chemistry.cortisol < 0.3 && self.chemistry.serotonin > 0.6;
         let max_adj = self.config.self_modification.max_adjustment_factor;
@@ -1678,7 +1655,7 @@ creativite/art, creativite/musique, creativite/ecriture]\n\
             }
         }
 
-        // Intervalle d'apprentissage : si beaucoup de choses nouvelles, apprendre plus souvent
+        // Learning interval: if many new things, learn more frequently
         let high_novelty = self.chemistry.dopamine > 0.7 && self.chemistry.noradrenaline > 0.5;
         if high_novelty && self.config.learning.cycle_interval > 25 {
             let old = self.config.learning.cycle_interval as f64;
@@ -1691,7 +1668,7 @@ creativite/art, creativite/musique, creativite/ecriture]\n\
         }
     }
 
-    /// Log et persiste un ajustement autonome.
+    /// Logs and persists an autonomous adjustment.
     async fn log_tuning(&mut self, param: &str, old: f64, new: f64, reason: &str) {
         self.log(LogLevel::Info, LogCategory::Tuning,
             format!("Auto-tuning: {} {:.3} -> {:.3} ({})", param, old, new, reason),

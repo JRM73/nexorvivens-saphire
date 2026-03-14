@@ -1,70 +1,68 @@
 // =============================================================================
-// cognition/map_sync.rs — MAP : Modulateur Adaptatif de Proprioception
+// cognition/map_sync.rs — MAP: Adaptive Proprioception Modulator
 // =============================================================================
 //
-// Synchronise le Sensorium (5 sens) avec le BrainNetwork (12 regions)
-// et le Connectome (graphe neuronal) en temps reel.
+// Synchronizes the Sensorium (5 senses) with the BrainNetwork (12 regions)
+// and the Connectome (neural graph) in real time.
 //
-// Probleme resolu : le Sensorium se met a jour tot dans le cycle (phase_senses)
-// mais le BrainNetwork ne reagit que bien plus tard (process_stimulus).
-// Le MAP comble ce decalage en propageant immediatement les donnees sensorielles
-// vers le reseau cerebral et le connectome.
+// Problem solved: the Sensorium updates early in the cycle (phase_senses)
+// but the BrainNetwork only reacts much later (process_stimulus).
+// The MAP bridges this gap by immediately propagating sensory data
+// to the brain network and the connectome.
 //
-// La "tension du reseau" mesure l'ecart entre ce que les sens percoivent
-// et comment le cerveau reagit — un indicateur de coherence interne.
+// "Network tension" measures the gap between what the senses perceive
+// and how the brain reacts — an indicator of internal coherence.
 // =============================================================================
 
 use std::collections::VecDeque;
 
-/// Indices des regions cerebrales mappees aux sens
-/// (memes constantes que dans brain_regions.rs)
+/// Brain region indices mapped to senses
+/// (same constants as in brain_regions.rs)
 const TEMPORAL: usize = 9;
 const INSULA: usize = 4;
 const OFC: usize = 8;
 
-/// Mapping anatomique : chaque sens est associe a une region dominante
+/// Anatomical mapping: each sense is associated with a dominant region
 const SENSE_TO_REGION: [usize; 5] = [
-    TEMPORAL,  // lecture → cortex temporal (stream ventral)
-    TEMPORAL,  // ecoute → cortex temporal (cortex auditif)
-    INSULA,    // contact → insula (interoception)
-    OFC,       // saveur → cortex orbitofrontal (gustatif)
-    OFC,       // ambiance → cortex orbitofrontal (olfactif)
+    TEMPORAL,  // reading -> temporal cortex (ventral stream)
+    TEMPORAL,  // listening -> temporal cortex (auditory cortex)
+    INSULA, // touch -> insula (interoception)    OFC, // taste -> orbitofrontal cortex (gustatory)    OFC,       // ambiance -> orbitofrontal cortex (olfactory)
 ];
 
-/// Resultat d'une synchronisation MAP
+/// Result of a MAP synchronization
 #[derive(Debug, Clone)]
 pub struct MapSyncResult {
-    /// Tension du reseau : ecart moyen entre perception et reaction cerebrale
+    /// Network tension: average gap between perception and brain response
     pub network_tension: f64,
-    /// Region dominante apres synchronisation
+    /// Dominant region after synchronization
     pub dominant_region: String,
-    /// Force du workspace global apres synchronisation
+    /// Overall workspace strength after synchronization
     pub workspace_strength: f64,
 }
 
-/// Modulateur Adaptatif de Proprioception
+/// Adaptive Proprioception Modulator
 ///
-/// Synchronise trois systemes en temps reel :
-/// 1. Sensorium → BrainNetwork (propagation des intensites sensorielles)
-/// 2. BrainNetwork → Connectome (propagation des labels actifs)
-/// 3. Mesure de la tension reseau (ecart perception/reaction)
+/// Synchronizes three systems in real time:
+/// 1. Sensorium -> BrainNetwork (sensory intensity propagation)
+/// 2. BrainNetwork -> Connectome (active label propagation)
+/// 3. Network tension measurement (perception/reaction gap)
 pub struct MapSync {
-    /// Module actif ou non
+    /// Module enabled or not
     pub enabled: bool,
-    /// Tension du reseau : ecart entre Sensorium et BrainNetwork
+    /// Network tension: gap between Sensorium and BrainNetwork
     pub network_tension: f64,
-    /// Dernier cycle synchronise
+    /// Last synchronized cycle
     pub last_sync_cycle: u64,
-    /// Historique des tensions (max 50, pour tendance)
+    /// Tension history (max 50, for trend analysis)
     pub tension_history: VecDeque<f64>,
-    /// Region dominante apres derniere synchronisation
+    /// Dominant region after last synchronization
     pub dominant_region: String,
-    /// Force du workspace apres derniere synchronisation
+    /// Workspace strength after last synchronization
     pub workspace_strength: f64,
 }
 
 impl MapSync {
-    /// Cree un nouveau MAP actif
+    /// Creates a new active MAP
     pub fn new(enabled: bool) -> Self {
         Self {
             enabled,
@@ -76,16 +74,16 @@ impl MapSync {
         }
     }
 
-    /// Calcule la tension du reseau : ecart moyen entre intensites sensorielles
-    /// et activations des regions cerebrales correspondantes.
+    /// Computes the network tension: average gap between sensory intensities
+    /// and activations of corresponding brain regions.
     ///
-    /// La tension est basse (~5-15%) en regime normal et monte en transition.
+    /// Tension is low (~5-15%) in normal regime and rises during transitions.
     pub fn compute_tension(
         &mut self,
         sensory_input: &[f64; 5],
         brain_network: &crate::neuroscience::brain_regions::BrainNetwork,
     ) -> MapSyncResult {
-        // Calculer l'ecart moyen entre chaque sens et sa region mappee
+        // Compute the average gap between each sense and its mapped region
         let mut total_diff = 0.0;
         let mut count = 0;
         for (i, &intensity) in sensory_input.iter().enumerate() {
@@ -99,7 +97,7 @@ impl MapSync {
 
         let tension = if count > 0 { total_diff / count as f64 } else { 0.0 };
 
-        // Stocker dans l'historique
+        // Store in history
         self.tension_history.push_back(tension);
         if self.tension_history.len() > 50 {
             self.tension_history.pop_front();
@@ -116,7 +114,7 @@ impl MapSync {
         }
     }
 
-    /// Ligne de proprioception pour le prompt LLM
+    /// Proprioception line for the LLM prompt
     pub fn proprioception_line(&self) -> String {
         if !self.enabled {
             return String::new();
@@ -136,7 +134,7 @@ impl MapSync {
         )
     }
 
-    /// Donnees JSON pour le broadcast WebSocket
+    /// JSON data for WebSocket broadcast
     pub fn to_broadcast_json(&self) -> serde_json::Value {
         serde_json::json!({
             "enabled": self.enabled,

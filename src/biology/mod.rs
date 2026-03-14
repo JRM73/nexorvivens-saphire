@@ -1,5 +1,5 @@
 // =============================================================================
-// biology/ — Modules biologiques (nutrition, matiere grise, champs)
+// biology/ — Biological modules (nutrition, grey matter, fields)
 // =============================================================================
 
 pub mod nutrition;

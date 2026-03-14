@@ -1,17 +1,17 @@
 // =============================================================================
-// db/learnings.rs — CRUD pour les apprentissages vectoriels du NN
+// db/learnings.rs — CRUD for NN vectorial learnings
 // =============================================================================
 //
-// Traces d'apprentissage formulees par le LLM et stockees avec embedding
-// vectoriel dans pgvector. Complementaire au NN (implicite) : ici c'est
-// de l'apprentissage episodique explicite, requetable par similarite.
+// Learning traces formulated by the LLM and stored with vectorial embeddings
+// in pgvector. Complementary to the NN (implicit): here this is explicit
+// episodic learning, queryable by similarity.
 // =============================================================================
 
 use super::{SaphireDb, DbError};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-/// Un apprentissage retrouve depuis la base (avec similarite optionnelle).
+/// A learning retrieved from the database (with optional similarity score).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NnLearningRecord {
     pub id: i64,
@@ -29,7 +29,7 @@ pub struct NnLearningRecord {
 }
 
 impl SaphireDb {
-    /// Stocke un apprentissage avec son embedding vectoriel.
+    /// Stores a learning with its vectorial embedding.
     pub async fn store_nn_learning(
         &self,
         embedding: &[f32],
@@ -55,7 +55,7 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Recherche les apprentissages similaires par distance cosinus.
+    /// Searches for similar learnings by cosine distance.
     pub async fn search_similar_learnings(
         &self,
         embedding: &[f32],
@@ -100,7 +100,7 @@ impl SaphireDb {
         Ok(results)
     }
 
-    /// Incremente le compteur d'acces et met a jour last_accessed_at.
+    /// Increments the access counter and updates last_accessed_at.
     pub async fn boost_learning_access(&self, id: i64) -> Result<(), DbError> {
         let client = self.pool.get().await?;
         client.execute(
@@ -113,7 +113,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Renforce un apprentissage (confidence +0.05, strength reset a 1.0).
+    /// Reinforces a learning (confidence +0.05, strength reset to 1.0).
     pub async fn reinforce_learning(&self, id: i64) -> Result<(), DbError> {
         let client = self.pool.get().await?;
         client.execute(
@@ -128,8 +128,8 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Decroissance naturelle de la force des apprentissages.
-    /// Les apprentissages souvent consultes resistent mieux a l'oubli.
+    /// Natural decay of learning strength.
+    /// Frequently accessed learnings resist forgetting better.
     pub async fn decay_learnings(&self, rate: f64) -> Result<u64, DbError> {
         let client = self.pool.get().await?;
         let affected = client.execute(
@@ -144,7 +144,7 @@ impl SaphireDb {
         Ok(affected)
     }
 
-    /// Supprime les apprentissages les plus faibles si le quota est depasse.
+    /// Removes the weakest learnings if the quota is exceeded.
     pub async fn prune_learnings(&self, max_count: i64) -> Result<u64, DbError> {
         let client = self.pool.get().await?;
         let count: i64 = client.query_one(
@@ -170,7 +170,7 @@ impl SaphireDb {
         Ok(affected)
     }
 
-    /// Compte le nombre total d'apprentissages.
+    /// Counts the total number of learnings.
     pub async fn count_learnings(&self) -> Result<i64, DbError> {
         let client = self.pool.get().await?;
         let row = client.query_one(
@@ -180,7 +180,7 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Efface tous les apprentissages vectoriels (utilise par FullReset).
+    /// Clears all vectorial learnings (used by FullReset).
     pub async fn clear_nn_learnings(&self) -> Result<i64, DbError> {
         let client = self.pool.get().await?;
         let row = client.query_one(
@@ -189,7 +189,7 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Charge les N apprentissages les plus recents.
+    /// Loads the N most recent learnings.
     pub async fn load_recent_learnings(&self, limit: i64) -> Result<Vec<NnLearningRecord>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(

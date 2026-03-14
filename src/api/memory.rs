@@ -1,9 +1,9 @@
 // =============================================================================
 // api/memory.rs — Handlers memoire (working, episodique, LTM, fondateurs, stats)
 //
-// Role : Endpoints pour consulter les 3 niveaux de memoire de l'agent :
-// memoire de travail, souvenirs episodiques, memoire a long terme,
-// souvenirs fondateurs et statistiques memorielles.
+// Role: Endpoints for consulter les 3 niveaux de memoire de l'agent :
+// memoire de travail, memories episodic, memoire a long terme,
+// memories fondateurs et statistiques memorielles.
 // =============================================================================
 
 use std::collections::HashMap;
@@ -12,19 +12,19 @@ use axum::response::IntoResponse;
 
 use super::state::AppState;
 
-/// GET /api/memory — Retourne les donnees de la memoire (souvenirs recents, etc.).
+/// GET /api/memory — Returns the data de la memoire (memories recents, etc.).
 pub async fn api_get_memory(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     axum::Json(agent.memory_data())
 }
 
-/// GET /api/memory/working — Retourne le contenu de la memoire de travail.
+/// GET /api/memory/working — Returns le contenu de la working memory.
 pub async fn api_get_working_memory(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     axum::Json(agent.memory_data())
 }
 
-/// GET /api/memory/episodic — Liste les souvenirs episodiques.
+/// GET /api/memory/episodic — Liste the memories episodic.
 pub async fn api_list_episodic(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -42,7 +42,7 @@ pub async fn api_list_episodic(
     }
 }
 
-/// GET /api/memory/episodic/:id — Recupere un souvenir episodique.
+/// GET /api/memory/episodic/:id — Recupere un memory episodic.
 pub async fn api_get_episodic_by_id(
     State(state): State<AppState>,
     axum::extract::Path(id): axum::extract::Path<i64>,
@@ -59,7 +59,7 @@ pub async fn api_get_episodic_by_id(
     }
 }
 
-/// GET /api/memory/ltm — Liste les souvenirs a long terme.
+/// GET /api/memory/ltm — Liste the memories a long terme.
 pub async fn api_list_ltm(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -77,7 +77,7 @@ pub async fn api_list_ltm(
     }
 }
 
-/// GET /api/memory/ltm/:id — Recupere un souvenir LTM par ID.
+/// GET /api/memory/ltm/:id — Recupere un memory LTM par ID.
 pub async fn api_get_ltm_by_id(
     State(state): State<AppState>,
     axum::extract::Path(id): axum::extract::Path<i64>,
@@ -94,7 +94,7 @@ pub async fn api_get_ltm_by_id(
     }
 }
 
-/// GET /api/memory/founding — Liste les souvenirs fondateurs.
+/// GET /api/memory/founding — Liste the memories fondateurs.
 pub async fn api_list_founding(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     if let Some(ref db) = agent.db {

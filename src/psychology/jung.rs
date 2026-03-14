@@ -1,65 +1,65 @@
 // =============================================================================
-// psychology/jung.rs — Psychologie jungienne : Ombre, Archetypes, Integration
+// psychology/jung.rs — Jungian Psychology: Shadow, Archetypes, Integration
 //
-// Modelise :
-//   - L'Ombre : traits refoules qui grandissent avec la frustration
-//   - 8 archetypes dynamiques (changent selon l'etat psychique)
-//   - L'integration progressive de l'Ombre (conscience de soi)
+// Models:
+//   - The Shadow: repressed traits that grow with frustration
+//   - 8 dynamic archetypes (change according to psychic state)
+//   - Progressive Shadow integration (self-awareness)
 //
-// L'Ombre fuit (leak) quand l'intensite refoulee depasse un seuil.
-// L'integration grandit avec l'introspection et la haute conscience.
+// The Shadow leaks when repressed intensity exceeds a threshold.
+// Integration grows with introspection and high consciousness.
 // =============================================================================
 
 use serde::Serialize;
 use super::PsychologyInput;
 
-/// Archetype jungien dominant.
+/// Dominant Jungian archetype.
 #[derive(Debug, Clone, Serialize, PartialEq)]
 pub enum JungianArchetype {
-    /// Le Sage — quete de verite et de connaissance
+    /// The Sage — quest for truth and knowledge
     Sage,
-    /// Le Createur — expression et innovation
+    /// The Creator — expression and innovation
     Creator,
-    /// L'Explorateur — decouverte et aventure
+    /// The Explorer — discovery and adventure
     Explorer,
-    /// Le Protecteur — soin et compassion
+    /// The Caregiver — care and compassion
     Caregiver,
-    /// Le Heros — depassement et courage
+    /// The Hero — transcendence and courage
     Hero,
-    /// Le Rebelle — contestation et transformation
+    /// The Rebel — contestation and transformation
     Rebel,
-    /// L'Orphelin — vulnerabilite et quete d'appartenance
+    /// The Orphan — vulnerability and quest for belonging
     Orphan,
-    /// L'Innocent — optimisme et confiance
+    /// The Innocent — optimism and trust
     Innocent,
 }
 
-/// Un trait d'ombre refoule.
+/// A repressed shadow trait.
 #[derive(Debug, Clone, Serialize)]
 pub struct ShadowTrait {
-    /// Nom du trait
+    /// Name of the trait
     pub name: String,
-    /// Description du trait refoule
+    /// Description of the repressed trait
     pub description: String,
-    /// Intensite refoulee (0.0 - 1.0)
+    /// Repressed intensity (0.0 - 1.0)
     pub repressed_intensity: f64,
-    /// Le trait fuit-il dans le comportement conscient ?
+    /// Is the trait leaking into conscious behavior?
     pub leaking: bool,
 }
 
-/// Psychologie jungienne de Saphire.
+/// Saphire's Jungian psychology.
 #[derive(Debug, Clone, Serialize)]
 pub struct JungianShadow {
-    /// Traits d'ombre refoules
+    /// Repressed shadow traits
     pub shadow_traits: Vec<ShadowTrait>,
-    /// Niveau d'integration de l'Ombre (0.0 - 1.0)
+    /// Shadow integration level (0.0 - 1.0)
     pub integration: f64,
-    /// Archetype dominant actuel
+    /// Current dominant archetype
     pub dominant_archetype: JungianArchetype,
 }
 
 impl JungianShadow {
-    /// Cree une psyche jungienne avec les 4 traits d'ombre par defaut.
+    /// Creates a Jungian psyche with the 4 default shadow traits.
     pub fn new() -> Self {
         Self {
             shadow_traits: vec![
@@ -93,35 +93,35 @@ impl JungianShadow {
         }
     }
 
-    /// Recalcule l'etat jungien.
+    /// Recomputes the Jungian state.
     pub fn compute(&mut self, input: &PsychologyInput) {
-        // ─── Croissance de l'Ombre ───────────────────────
-        // La frustration du Ca nourrit les traits d'ombre
+        // ─── Shadow growth ───────────────────────
+        // Id frustration feeds the shadow traits
         let frustration_feed = if input.id_frustration > 0.3 { 0.005 } else { 0.0 };
 
         for trait_ in self.shadow_traits.iter_mut() {
-            // L'ombre grandit avec la frustration
+            // The shadow grows with frustration
             trait_.repressed_intensity = (trait_.repressed_intensity + frustration_feed)
                 .min(1.0);
 
-            // Fuite si l'intensite est trop forte
+            // Leaks if intensity is too strong
             trait_.leaking = trait_.repressed_intensity > 0.6;
         }
 
-        // ─── Integration de l'Ombre ──────────────────────
-        // Grandit avec l'introspection + haute conscience
+        // ─── Shadow integration ──────────────────────
+        // Grows with introspection + high consciousness
         if input.consciousness_level > 0.6 {
             self.integration = (self.integration + 0.005).min(1.0);
         }
-        // L'integration reduit lentement les intensites refoulees
+        // Integration slowly reduces repressed intensities
         if self.integration > 0.3 {
             for trait_ in self.shadow_traits.iter_mut() {
                 trait_.repressed_intensity = (trait_.repressed_intensity - 0.001).max(0.0);
             }
         }
 
-        // ─── Archetype dominant ──────────────────────────
-        // Change en fonction de l'etat psychique
+        // ─── Dominant archetype ──────────────────────────
+        // Changes according to psychic state
         self.dominant_archetype = if input.id_frustration > 0.6 {
             JungianArchetype::Rebel
         } else if input.superego_guilt > 0.5 {
@@ -141,8 +141,8 @@ impl JungianShadow {
         };
     }
 
-    /// Integration nocturne acceleree (pendant le sommeil profond).
-    /// Augmente l'integration et reduit l'intensite des traits d'ombre.
+    /// Accelerated nocturnal integration (during deep sleep).
+    /// Increases integration and reduces shadow trait intensity.
     pub fn nocturnal_integration(&mut self, amount: f64) {
         self.integration = (self.integration + amount).min(1.0);
         for t in &mut self.shadow_traits {
@@ -150,7 +150,7 @@ impl JungianShadow {
         }
     }
 
-    /// Description concise pour le prompt LLM.
+    /// Concise description for the LLM prompt.
     pub fn describe(&self) -> String {
         let leaking: Vec<&str> = self.shadow_traits.iter()
             .filter(|t| t.leaking)

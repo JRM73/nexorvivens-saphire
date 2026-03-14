@@ -1,5 +1,5 @@
 // =============================================================================
-// lifecycle/factory_reset.rs — Reset aux valeurs d'usine (3 niveaux)
+// lifecycle/factory_reset.rs — Reset to factory defaults (multiple levels)
 // =============================================================================
 
 use crate::logging::{LogLevel, LogCategory};
@@ -7,8 +7,8 @@ use crate::logging::{LogLevel, LogCategory};
 use super::SaphireAgent;
 
 impl SaphireAgent {
-    /// Helper synchrone : remet les 7 molecules aux baselines d'usine.
-    /// Retourne la liste des changements effectues.
+    /// Synchronous helper: resets the 7 molecules to factory baselines.
+    /// Returns the list of changes made.
     pub(super) fn apply_chemistry_reset(&mut self, factory: &crate::factory::FactoryDefaults) -> Vec<serde_json::Value> {
         let baselines = factory.reset_chemistry();
         let labels = ["dopamine", "cortisol", "serotonin", "adrenaline",
@@ -35,7 +35,7 @@ impl SaphireAgent {
         self.chemistry.endorphin = baselines[5];
         self.chemistry.noradrenaline = baselines[6];
 
-        // Aussi remettre les baselines
+        // Also reset the baselines
         self.baselines.dopamine = baselines[0];
         self.baselines.cortisol = baselines[1];
         self.baselines.serotonin = baselines[2];
@@ -47,12 +47,12 @@ impl SaphireAgent {
         changes
     }
 
-    /// Helper synchrone : remet les parametres de fonctionnement aux valeurs d'usine.
-    /// Inclut le reset chimie. Retourne la liste des changements.
+    /// Synchronous helper: resets operational parameters to factory defaults.
+    /// Includes chemistry reset. Returns the list of changes.
     pub(super) fn apply_parameters_reset(&mut self, factory: &crate::factory::FactoryDefaults) -> Vec<serde_json::Value> {
         let params = factory.reset_parameters();
 
-        // Reset chimie (inclus dans parametres)
+        // Reset chemistry (included in parameters)
         let mut changes = self.apply_chemistry_reset(factory);
 
         // Homeostasis
@@ -96,7 +96,7 @@ impl SaphireAgent {
             self.config.llm.max_tokens = params.max_tokens;
         }
 
-        // Memoire
+        // Memory
         let old_decay = self.config.memory.episodic_decay_rate;
         if (old_decay - params.episodic_decay).abs() > 0.001 {
             changes.push(serde_json::json!({
@@ -130,7 +130,7 @@ impl SaphireAgent {
             ResetLevel::SensesOnly => {
                 let mut c = Vec::new();
                 let params = factory.reset_parameters();
-                // Reset acuites des 5 sens
+                // Reset acuity of the 5 senses
                 self.sensorium.reading.acuity = params.reading_initial_acuity;
                 c.push(serde_json::json!({"param": "reading_acuity", "old": "?", "new": params.reading_initial_acuity}));
                 self.sensorium.listening.acuity = params.listening_initial_acuity;
@@ -141,7 +141,7 @@ impl SaphireAgent {
                 c.push(serde_json::json!({"param": "taste_acuity", "old": "?", "new": params.taste_initial_acuity}));
                 self.sensorium.ambiance.acuity = params.ambiance_initial_acuity;
                 c.push(serde_json::json!({"param": "ambiance_acuity", "old": "?", "new": params.ambiance_initial_acuity}));
-                // Reset stimulation des graines emergentes (pas de-germer)
+                // Reset stimulation of emergent seeds (do not un-germinate)
                 self.sensorium.emergent_seeds.reset_stimulation();
                 c.push(serde_json::json!({"param": "emergent_seeds_stimulation", "old": "?", "new": 0}));
                 tracing::info!("Factory reset: sens remis aux valeurs initiales ({} changements)", c.len());
@@ -193,26 +193,26 @@ impl SaphireAgent {
             }
             ResetLevel::SleepOnly => {
                 let mut c = Vec::new();
-                // Reset pression de sommeil
+                // Reset sleep pressure
                 let old_pressure = self.sleep.drive.sleep_pressure;
                 self.sleep.drive.sleep_pressure = 0.0;
                 self.sleep.drive.cycles_since_last_sleep = 0;
                 self.sleep.drive.sleep_forced = false;
                 c.push(serde_json::json!({"param": "sleep_pressure", "old": old_pressure, "new": 0.0}));
-                // Reset fatigues
+                // Reset fatigue levels
                 let old_dec = self.psychology.will.decision_fatigue;
                 self.psychology.will.decision_fatigue = 0.0;
                 self.attention_orch.reset_fatigue();
                 c.push(serde_json::json!({"param": "decision_fatigue", "old": old_dec, "new": 0.0}));
                 c.push(serde_json::json!({"param": "attention_fatigue", "old": "reset", "new": 0.0}));
-                // NE TOUCHE PAS : sleep_history, neural_connections, subconscient
+                // DO NOT TOUCH: sleep_history, neural_connections, subconscious
                 tracing::info!("Factory reset: sommeil reinitialise ({} changements)", c.len());
                 c
             }
             ResetLevel::BiologyReset => {
                 let mut c = Vec::new();
 
-                // Reset recepteurs hormonal_system (sensibilite=1.0, tolerance=0.0)
+                // Reset hormonal_system receptors (sensitivity=1.0, tolerance=0.0)
                 self.hormonal_system.receptors = crate::hormones::receptors::ReceptorSystem::new(&self.config.hormones);
                 c.push(serde_json::json!({"param": "hormonal_receptors", "old": "reset", "new": "sensitivity=1.0, tolerance=0.0"}));
 
@@ -233,10 +233,10 @@ impl SaphireAgent {
                 c
             }
             ResetLevel::FullReset => {
-                // Reset parametres (inclut chimie)
+                // Reset parameters (includes chemistry)
                 let mut c = self.apply_parameters_reset(&factory);
 
-                // Reset sens
+                // Reset senses
                 let params = factory.reset_parameters();
                 self.sensorium.reading.acuity = params.reading_initial_acuity;
                 self.sensorium.listening.acuity = params.listening_initial_acuity;
@@ -254,11 +254,11 @@ impl SaphireAgent {
                 self.premonition.active_predictions.clear();
                 c.push(serde_json::json!({"param": "intuition_premonition", "old": "reset", "new": "initial"}));
 
-                // Desactiver ethique personnelle
+                // Deactivate personal ethics
                 let ethics_count = self.ethics.deactivate_all_personal();
                 c.push(serde_json::json!({"param": "personal_ethics", "old": ethics_count, "new": "deactivated"}));
 
-                // Effacer les souvenirs episodiques (LTM et founding preserves)
+                // Clear episodic memories (LTM and founding memories preserved)
                 if let Some(ref db) = self.db {
                     match db.clear_episodic_memories().await {
                         Ok(n) => {
@@ -270,7 +270,7 @@ impl SaphireAgent {
                         Err(e) => tracing::warn!("Erreur clear episodic: {}", e),
                     }
 
-                    // Effacer les apprentissages vectoriels (nn_learnings)
+                    // Clear vector learnings (nn_learnings)
                     match db.clear_nn_learnings().await {
                         Ok(n) => {
                             c.push(serde_json::json!({
@@ -283,7 +283,7 @@ impl SaphireAgent {
                 }
                 self.cycles_since_last_nn_learning = 0;
 
-                // Reset psychologie
+                // Reset psychology
                 let config = &self.config.psychology;
                 let will_config = &self.config.will;
                 self.psychology = crate::psychology::PsychologyFramework::new(config, will_config);
@@ -299,11 +299,11 @@ impl SaphireAgent {
                 self.metacognition.check_interval = self.config.metacognition.check_interval;
                 c.push(serde_json::json!({"param": "metacognition", "old": "reset", "new": "initial"}));
 
-                // Reset sentiments (etats affectifs durables)
+                // Reset sentiments (lasting affective states)
                 self.sentiments.reset();
                 c.push(serde_json::json!({"param": "sentiments", "old": "reset", "new": "initial"}));
 
-                // Reset modules biologiques innes
+                // Reset innate biological modules
                 self.nutrition = crate::biology::nutrition::NutritionSystem::new(&self.config.nutrition);
                 c.push(serde_json::json!({"param": "nutrition", "old": "reset", "new": "initial"}));
                 self.grey_matter = crate::biology::grey_matter::GreyMatterSystem::new(&self.config.grey_matter);
@@ -311,7 +311,7 @@ impl SaphireAgent {
                 self.em_fields = crate::biology::fields::ElectromagneticFields::new(&self.config.fields);
                 c.push(serde_json::json!({"param": "em_fields", "old": "reset", "new": "initial"}));
 
-                // Reset recepteurs (sensibilite=1.0, tolerance=0.0)
+                // Reset receptors (sensitivity=1.0, tolerance=0.0)
                 self.hormonal_system.receptors = crate::hormones::receptors::ReceptorSystem::new(&self.config.hormones);
                 c.push(serde_json::json!({"param": "hormonal_receptors", "old": "reset", "new": "sensitivity=1.0, tolerance=0.0"}));
                 self.receptor_bank = crate::neuroscience::receptors::ReceptorBank::new();
@@ -327,11 +327,11 @@ impl SaphireAgent {
                 self.config.memory.recall_vectors_threshold = 0.30;
                 c.push(serde_json::json!({"param": "memory_recall", "old": "reset", "new": "defaults"}));
 
-                // Reset colonne vertebrale (reflexes)
+                // Reset spinal cord (reflexes)
                 self.spine = crate::spine::SpinalCord::new();
                 c.push(serde_json::json!({"param": "spine", "old": "reset", "new": "initial"}));
 
-                // Reset curiosite
+                // Reset curiosity
                 self.curiosity = crate::cognition::curiosity::CuriosityDrive::new();
                 c.push(serde_json::json!({"param": "curiosity", "old": "reset", "new": "initial"}));
 
@@ -340,7 +340,7 @@ impl SaphireAgent {
                 self.drift_monitor.initialize(&*self.encoder);
                 c.push(serde_json::json!({"param": "drift_monitor", "old": "reset", "new": "re-initialized"}));
 
-                // Reset compteurs
+                // Reset counters
                 self.cycle_count = 0;
                 self.last_consolidation_cycle = 0;
 
@@ -349,7 +349,7 @@ impl SaphireAgent {
             }
         };
 
-        // Notifier le frontend
+        // Notify the frontend
         if let Some(ref tx) = self.ws_tx {
             let msg = serde_json::json!({
                 "type": "factory_reset_done",
@@ -371,7 +371,7 @@ impl SaphireAgent {
         })
     }
 
-    /// Retourne les differences entre les valeurs actuelles et les valeurs d'usine.
+    /// Returns the differences between current values and factory defaults.
     pub fn factory_diff(&self) -> serde_json::Value {
         use crate::factory::FactoryDefaults;
 
@@ -383,7 +383,7 @@ impl SaphireAgent {
         let params = factory.reset_parameters();
         let mut diffs = Vec::new();
 
-        // Comparer chimie
+        // Compare chemistry
         let labels = ["dopamine", "cortisol", "serotonin", "adrenaline",
                       "oxytocin", "endorphin", "noradrenaline"];
         let current = [
@@ -403,7 +403,7 @@ impl SaphireAgent {
             }
         }
 
-        // Comparer parametres
+        // Compare parameters
         let checks: Vec<(&str, f64, f64)> = vec![
             ("homeostasis_rate", self.config.feedback.homeostasis_rate, params.homeostasis_rate),
             ("threshold_yes", self.config.consensus.threshold_yes, params.threshold_yes),
@@ -424,7 +424,7 @@ impl SaphireAgent {
             }
         }
 
-        // Comparer BDNF
+        // Compare BDNF
         let bdnf_diff = self.grey_matter.bdnf_level - params.bdnf_homeostasis_baseline;
         if bdnf_diff.abs() > 0.001 {
             diffs.push(serde_json::json!({

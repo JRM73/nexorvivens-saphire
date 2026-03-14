@@ -1,7 +1,7 @@
 // =============================================================================
-// api/drift.rs — Endpoint API pour le moniteur de derive de persona
+// api/drift.rs — Endpoint API for the moniteur de derive de persona
 //
-// Role : Expose l'etat du drift monitor de Saphire (similarite au centroide
+// Role: Expose l'etat du drift monitor de Saphire (similarity au centroide
 // d'identite, tendance, alertes) via un endpoint HTTP GET protege.
 // =============================================================================
 

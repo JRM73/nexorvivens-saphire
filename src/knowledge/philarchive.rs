@@ -1,27 +1,27 @@
 // =============================================================================
-// knowledge/philarchive.rs — Client PhilArchive (philosophie academique)
+// knowledge/philarchive.rs — PhilArchive client (academic philosophy)
 // =============================================================================
 //
-// Role : Recherche d'articles de philosophie academique sur PhilArchive,
-//        un depot ouvert d'articles de philosophie (companion de PhilPapers).
+// Purpose: Searches academic philosophy articles on PhilArchive,
+//          an open repository for philosophy papers (companion to PhilPapers).
 //
-// API : https://philarchive.org/oai.pl?verb=... (OAI-PMH) ou recherche HTML.
-//       On utilise la recherche HTML simple car l'API OAI est moins pratique
-//       pour la recherche par mots-cles.
+// API: https://philarchive.org/oai.pl?verb=... (OAI-PMH) or HTML search.
+//      We use simple HTML search since the OAI API is less practical
+//      for keyword-based searches.
 //
-// Methode : scraping leger de la page de recherche
-//           https://philarchive.org/s/<query>
+// Method: lightweight scraping of the search page
+//         https://philarchive.org/s/<query>
 //
-// Score de pertinence : 0.80
+// Relevance score: 0.80
 // =============================================================================
 
 use chrono::Utc;
 use super::{WebKnowledge, KnowledgeResult, KnowledgeError};
 
 impl WebKnowledge {
-    /// Cherche des articles de philosophie sur PhilArchive.
+    /// Search for philosophy articles on PhilArchive.
     ///
-    /// Utilise la page de recherche HTML et extrait les resultats.
+    /// Uses the HTML search page and extracts results.
     pub fn search_philarchive(&self, query: &str) -> Result<Vec<KnowledgeResult>, KnowledgeError> {
         let encoded = Self::url_encode(query);
         let url = format!("https://philarchive.org/s/{}", encoded);
@@ -40,13 +40,13 @@ impl WebKnowledge {
         let max_chars = self.config.max_content_chars;
         let mut results = Vec::new();
 
-        // Parser les resultats : chercher les blocs d'entrees
-        // PhilArchive utilise des <span class="title">...</span> et
-        // <span class="abstract">...</span> dans ses resultats
+        // Parse results: look for entry blocks
+        // PhilArchive uses <span class="title">...</span> and
+        // <span class="abstract">...</span> in its results
         for entry in body.split("class=\"entryList\"").skip(1).take(1) {
-            // Extraire les items individuels
+            // Extract individual items
             for item in entry.split("class=\"philtitle\"").skip(1).take(3) {
-                // Extraire le titre (dans <a ...>TITRE</a>)
+                // Extract the title (inside <a ...>TITLE</a>)
                 let title = if let Some(a_start) = item.find('>') {
                     let rest = &item[a_start + 1..];
                     if let Some(a_end) = rest.find("</a>") {
@@ -58,7 +58,7 @@ impl WebKnowledge {
                     continue;
                 };
 
-                // Extraire le lien
+                // Extract the link
                 let link = if let Some(href_start) = item.find("href=\"") {
                     let rest = &item[href_start + 6..];
                     if let Some(href_end) = rest.find('"') {
@@ -75,7 +75,7 @@ impl WebKnowledge {
                     String::new()
                 };
 
-                // Extraire l'abstract s'il existe
+                // Extract the abstract if it exists
                 let abstract_text = if let Some(abs_start) = item.find("class=\"abstract\"") {
                     let rest = &item[abs_start..];
                     if let Some(tag_end) = rest.find('>') {
@@ -95,7 +95,7 @@ impl WebKnowledge {
                     String::new()
                 };
 
-                // Extraire les auteurs
+                // Extract authors
                 let authors = if let Some(auth_start) = item.find("class=\"author\"") {
                     let rest = &item[auth_start..];
                     if let Some(tag_end) = rest.find('>') {
@@ -134,7 +134,7 @@ impl WebKnowledge {
         }
 
         if results.is_empty() {
-            // Fallback simplifie : extraire ce qu'on peut du body brut
+            // Simplified fallback: extract what we can from the raw body
             let text = Self::strip_html_tags(&body);
             if text.len() > 200 {
                 results.push(KnowledgeResult {

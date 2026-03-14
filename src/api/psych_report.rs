@@ -1,14 +1,14 @@
 // =============================================================================
-// api/psych_report.rs — Handlers du rapport neuropsychologique
+// api/psych_report.rs — Neuropsychological report handlers
 //
-// Role : 4 endpoints pour capturer des snapshots psychologiques et generer
-// des rapports cliniques via le LLM.
+// Role: 4 endpoints to capture psychological snapshots and generate
+// clinical reports via the LLM.
 //
-// Endpoints :
-//   GET  /api/psych/snapshot   — Prend un snapshot, le stocke (max 5), le retourne
-//   POST /api/psych/report     — Snapshot + appel LLM → rapport clinique
-//   GET  /api/psych/snapshots  — Liste les snapshots (resume leger)
-//   GET  /api/psych/reports    — Liste les rapports generes
+// Endpoints:
+//  GET /api/psych/snapshot  — Take a snapshot, store it (max 5), return it
+//  POST /api/psych/report   — Snapshot + LLM call → clinical report
+//  GET /api/psych/snapshots — List stored snapshots (light summary)
+//  GET /api/psych/reports   — List generated reports
 // =============================================================================
 
 use axum::extract::State;
@@ -16,8 +16,8 @@ use axum::response::IntoResponse;
 
 use super::state::AppState;
 
-/// GET /api/psych/snapshot — Capture un snapshot psychologique complet.
-/// Le stocke dans le VecDeque de l'agent (max 5) et le retourne en JSON.
+/// GET /api/psych/snapshot — Capture a complete psychological snapshot.
+/// Stores it in the agent's VecDeque (max 5) and returns it as JSON.
 pub async fn api_psych_snapshot(State(state): State<AppState>) -> impl IntoResponse {
     let mut agent = state.agent.lock().await;
 
@@ -29,7 +29,7 @@ pub async fn api_psych_snapshot(State(state): State<AppState>) -> impl IntoRespo
 
     let snapshot = agent.collect_psych_snapshot();
 
-    // Stocker (max 5)
+    // Store (max 5)
     if agent.psych_snapshots.len() >= 5 {
         agent.psych_snapshots.pop_front();
     }
@@ -38,10 +38,10 @@ pub async fn api_psych_snapshot(State(state): State<AppState>) -> impl IntoRespo
     axum::Json(serde_json::to_value(&snapshot).unwrap_or_default())
 }
 
-/// POST /api/psych/report — Genere un rapport neuropsychologique via le LLM.
-/// Prend un snapshot, construit les prompts, appelle le LLM, stocke le rapport.
+/// POST /api/psych/report — Generate a neuropsychological report via the LLM.
+/// Takes a snapshot, builds prompts, calls the LLM, stores the report.
 pub async fn api_psych_report(State(state): State<AppState>) -> impl IntoResponse {
-    // Phase 1 : collecter les donnees sous le lock
+    // Phase 1: collect data under the lock
     let (snapshot, system_prompt, user_prompt, llm_config, max_tokens, temperature, language) = {
         let mut agent = state.agent.lock().await;
 
@@ -59,7 +59,7 @@ pub async fn api_psych_report(State(state): State<AppState>) -> impl IntoRespons
         let temperature = agent.config().psych_report.temperature;
         let language = agent.config().general.language.clone();
 
-        // Stocker le snapshot
+        // Store the snapshot
         if agent.psych_snapshots.len() >= 5 {
             agent.psych_snapshots.pop_front();
         }
@@ -67,9 +67,8 @@ pub async fn api_psych_report(State(state): State<AppState>) -> impl IntoRespons
 
         (snapshot, system_prompt, user_prompt, llm_config, max_tokens, temperature, language)
     };
-    // Lock relache ici — le LLM peut tourner 30-60s sans bloquer l'agent
-
-    // Phase 2 : appel LLM (bloquant, dans un thread dedie)
+    // Lock released here — the LLM can run 30-60s without blocking the agent
+    // Phase 2: LLM call (blocking, in a dedicated thread)
     let backend = crate::llm::create_backend(&llm_config);
     let result = tokio::task::spawn_blocking(move || {
         backend.chat(&system_prompt, &user_prompt, temperature, max_tokens)
@@ -89,7 +88,7 @@ pub async fn api_psych_report(State(state): State<AppState>) -> impl IntoRespons
         }
     };
 
-    // Phase 3 : stocker le rapport sous le lock
+    // Phase 3: store the report under the lock
     let report = crate::agent::lifecycle::psych_report::PsychReport {
         timestamp: snapshot.timestamp.clone(),
         cycle: snapshot.cycle,
@@ -109,7 +108,7 @@ pub async fn api_psych_report(State(state): State<AppState>) -> impl IntoRespons
     axum::Json(serde_json::to_value(&report).unwrap_or_default())
 }
 
-/// GET /api/psych/snapshots — Liste les snapshots stockes (resume leger).
+/// GET /api/psych/snapshots — List stored snapshots (light summary).
 pub async fn api_psych_snapshots(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let summaries: Vec<_> = agent.psych_snapshots
@@ -122,7 +121,7 @@ pub async fn api_psych_snapshots(State(state): State<AppState>) -> impl IntoResp
     }))
 }
 
-/// GET /api/psych/reports — Liste les rapports generes (resume leger).
+/// GET /api/psych/reports — List generated reports (light summary).
 pub async fn api_psych_reports(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let summaries: Vec<_> = agent.psych_reports

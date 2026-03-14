@@ -1,52 +1,52 @@
 // =============================================================================
-// knowledge/sep.rs — Client Stanford Encyclopedia of Philosophy (SEP)
+// knowledge/sep.rs — Stanford Encyclopedia of Philosophy (SEP) client
 // =============================================================================
 //
-// Role : Recherche d'articles de philosophie sur la SEP (plato.stanford.edu).
-//        La SEP est une encyclopedie en ligne gratuite et redigee par des
-//        experts en philosophie. Elle n'a pas d'API formelle mais ses articles
-//        sont en HTML simple avec une structure previsible (preamble + sections h2).
+// Purpose: Searches philosophy articles on the SEP (plato.stanford.edu).
+//          The SEP is a free online encyclopedia written by philosophy
+//          experts. It has no formal API but its articles are in simple HTML
+//          with a predictable structure (preamble + h2 sections).
 //
-// Approche :
-//   1. Mapping de 50+ sujets courants (FR/EN) vers les slugs SEP
-//      (ex: "conscience" -> "consciousness")
-//   2. Telechargement de la page HTML de l'article
-//   3. Extraction des paragraphes <p> entre "preamble"/"main-text" et "Bib"
-//   4. Rotation des sections a chaque relecture (read_count * 3 paragraphes)
+// Approach:
+//   1. Mapping of 50+ common subjects (FR/EN) to SEP slugs
+//      (e.g., "conscience" -> "consciousness")
+//   2. Download the article's HTML page
+//   3. Extract <p> paragraphs between "preamble"/"main-text" and "Bib"
+//   4. Section rotation on each re-read (read_count * 3 paragraphs)
 //
-// Particularite technique :
-//   On ne peut PAS utiliser strip_html_tags() puis split("\n\n") car
-//   strip_html_tags() ecrase tous les sauts de ligne en un seul espace.
-//   On parse donc les balises <p> directement depuis le HTML brut.
+// Technical note:
+//   We CANNOT use strip_html_tags() then split("\n\n") because
+//   strip_html_tags() collapses all line breaks into a single space.
+//   So we parse <p> tags directly from the raw HTML.
 //
-// Score de pertinence : 0.95 (tres haute, source academique de reference)
+// Relevance score: 0.95 (very high, authoritative academic source)
 // =============================================================================
 
 use chrono::Utc;
 use super::{WebKnowledge, KnowledgeResult, KnowledgeError};
 
 impl WebKnowledge {
-    /// Recherche un article sur la Stanford Encyclopedia of Philosophy.
+    /// Search for an article on the Stanford Encyclopedia of Philosophy.
     ///
-    /// Processus :
-    ///   1. Convertir le sujet en slug SEP via le mapping interne
-    ///   2. Telecharger la page HTML a plato.stanford.edu/entries/{slug}/
-    ///   3. Extraire le titre (balise <title>)
-    ///   4. Extraire les paragraphes avec rotation (anti-repetition)
-    ///   5. Extraire les titres de sections (balises <h2>)
+    /// Process:
+    ///   1. Convert the subject to a SEP slug via the internal mapping
+    ///   2. Download the HTML page at plato.stanford.edu/entries/{slug}/
+    ///   3. Extract the title (<title> tag)
+    ///   4. Extract paragraphs with rotation (anti-repetition)
+    ///   5. Extract section headings (<h2> tags)
     ///
-    /// Retourne KnowledgeError::NotFound si le contenu est < 100 chars.
+    /// Returns KnowledgeError::NotFound if content is < 100 chars.
     pub fn search_sep(&self, query: &str) -> Result<KnowledgeResult, KnowledgeError> {
-        // Convertir le sujet en slug SEP (ex: "libre arbitre" -> "freewill")
+        // Convert the subject to a SEP slug (e.g., "libre arbitre" -> "freewill")
         let slug = Self::sep_topic_to_slug(query);
         let url = format!("https://plato.stanford.edu/entries/{}/", slug);
 
-        // Securite : verifier que le domaine est dans la whitelist
+        // Safety: verify the domain is in the whitelist
         if !Self::is_url_allowed(&url) {
             return Err(KnowledgeError::DomainBlocked);
         }
 
-        // Telecharger la page HTML de l'article SEP
+        // Download the SEP article HTML page
         let response = self.http_client
             .get(&url)
             .set("User-Agent", "Saphire/1.0 (Autonomous Cognitive Entity; philosophical research)")
@@ -58,12 +58,12 @@ impl WebKnowledge {
             .into_string()
             .map_err(|e| KnowledgeError::Parse(e.to_string()))?;
 
-        // Extraire le titre de l'article (retire le suffixe SEP)
+        // Extract the article title (removes the SEP suffix)
         let title = Self::extract_sep_title(&response)
             .unwrap_or_else(|| query.to_string());
 
-        // Calculer l'offset de rotation pour ce slug
-        // Chaque relecture avance de 3 paragraphes dans l'article
+        // Compute the rotation offset for this slug
+        // Each re-read advances by 3 paragraphs in the article
         let read_count = self.article_read_count
             .get(&format!("sep:{}", slug))
             .copied()
@@ -71,19 +71,19 @@ impl WebKnowledge {
 
         let max_chars = self.config.max_content_chars;
 
-        // Extraire le contenu principal avec rotation basee sur read_count
+        // Extract the main content with rotation based on read_count
         let preamble = Self::extract_sep_content(&response, read_count, max_chars);
 
-        // Rejeter si le contenu extrait est trop court (article introuvable ou vide)
+        // Reject if the extracted content is too short (article not found or empty)
         if preamble.len() < 100 {
             tracing::warn!("SEP: contenu trop court pour '{}'", slug);
             return Err(KnowledgeError::NotFound);
         }
 
-        // Extraire les titres de sections h2 (plan de l'article)
+        // Extract h2 section headings (article outline)
         let sections = Self::extract_sep_sections(&response);
 
-        // Calculer la taille totale de l'article (texte brut)
+        // Compute total article size (plain text)
         let text_len = Self::strip_html_tags(&response).len();
 
         tracing::info!(
@@ -98,26 +98,26 @@ impl WebKnowledge {
             extract: preamble,
             section_titles: sections,
             total_length: text_len,
-            relevance_score: 0.95, // Source academique de tres haute qualite
+            relevance_score: 0.95, // Very high quality academic source
             fetched_at: Utc::now(),
         })
     }
 
-    /// Convertir un sujet en slug SEP via un dictionnaire de 50+ mappings.
+    /// Convert a subject to a SEP slug via a dictionary of 50+ mappings.
     ///
-    /// Le dictionnaire couvre 5 domaines philosophiques :
-    ///   - Conscience et esprit (consciousness, qualia, philosophy-mind, ...)
-    ///   - Libre arbitre et ethique (freewill, ethics-virtue, utilitarianism, ...)
-    ///   - Existence et ontologie (existentialism, phenomenology, identity-personal, ...)
-    ///   - IA et cognition (artificial-intelligence, turing-test, chinese-room, ...)
-    ///   - Emotions et empathie (emotion, empathy, love, beauty)
-    ///   - Epistemologie (knowledge-analysis, truth, certainty, skepticism)
+    /// The dictionary covers 5 philosophical domains:
+    ///   - Consciousness and mind (consciousness, qualia, philosophy-mind, ...)
+    ///   - Free will and ethics (freewill, ethics-virtue, utilitarianism, ...)
+    ///   - Existence and ontology (existentialism, phenomenology, identity-personal, ...)
+    ///   - AI and cognition (artificial-intelligence, turing-test, chinese-room, ...)
+    ///   - Emotions and empathy (emotion, empathy, love, beauty)
+    ///   - Epistemology (knowledge-analysis, truth, certainty, skepticism)
     ///
-    /// Si aucun mapping n'est trouve, on convertit la requete en slug brut
-    /// (minuscules, espaces -> tirets, accents -> ASCII).
+    /// If no mapping is found, the query is converted to a raw slug
+    /// (lowercase, spaces -> hyphens, accents -> ASCII).
     fn sep_topic_to_slug(query: &str) -> String {
         let mappings: &[(&str, &str)] = &[
-            // --- Conscience et esprit ---
+            // --- Consciousness and mind ---
             ("conscience de soi", "self-consciousness"),
             ("conscience", "consciousness"),
             ("consciousness", "consciousness"),
@@ -133,7 +133,7 @@ impl WebKnowledge {
             ("panpsychisme", "panpsychism"),
             ("intentionnalité", "intentionality"),
             ("représentation mentale", "mental-representation"),
-            // --- Libre arbitre et ethique ---
+            // --- Free will and ethics ---
             ("libre arbitre", "freewill"),
             ("free will", "freewill"),
             ("déterminisme", "determinism-causal"),
@@ -146,7 +146,7 @@ impl WebKnowledge {
             ("utilitarisme", "utilitarianism-history"),
             ("déontologie", "ethics-deontological"),
             ("vertu", "ethics-virtue"),
-            // --- Existence et ontologie ---
+            // --- Existence and ontology ---
             ("existentialisme", "existentialism"),
             ("phénoménologie", "phenomenology"),
             ("husserl", "husserl"),
@@ -155,28 +155,28 @@ impl WebKnowledge {
             ("personal identity", "identity-personal"),
             ("temps", "time"),
             ("causalité", "causation-metaphysics"),
-            // --- IA et cognition ---
+            // --- AI and cognition ---
             ("intelligence artificielle", "artificial-intelligence"),
             ("test de turing", "turing-test"),
             ("chambre chinoise", "chinese-room"),
             ("computational mind", "computational-mind"),
             ("embodied cognition", "embodied-cognition"),
             ("cognition située", "situated-cognition"),
-            // --- Emotions et empathie ---
+            // --- Emotions and empathy ---
             ("émotions", "emotion"),
             ("empathie", "empathy"),
             ("amour", "love"),
             ("beauté", "beauty"),
-            // --- Epistemologie ---
+            // --- Epistemology ---
             ("connaissance", "knowledge-analysis"),
             ("vérité", "truth"),
             ("certitude", "certainty"),
             ("scepticisme", "skepticism"),
-            // --- Cas special ---
+            // --- Special case ---
             ("zombie", "zombies"),
         ];
 
-        // Recherche case-insensitive dans les mappings
+        // Case-insensitive search in the mappings
         let lower = query.to_lowercase();
         for (key, slug) in mappings {
             if lower.contains(key) {
@@ -184,8 +184,8 @@ impl WebKnowledge {
             }
         }
 
-        // Fallback : transformer la requete en slug URL-compatible
-        // (minuscules, espaces -> tirets, suppression des accents)
+        // Fallback: transform the query into a URL-compatible slug
+        // (lowercase, spaces -> hyphens, accent removal)
         query.to_lowercase()
             .replace(' ', "-")
             .replace(['é', 'è', 'ê'], "e")
@@ -195,48 +195,48 @@ impl WebKnowledge {
             .replace('ù', "u")
     }
 
-    /// Extraire le contenu principal d'un article SEP avec rotation.
+    /// Extract the main content of a SEP article with rotation.
     ///
-    /// Algorithme :
-    ///   1. Parser les balises <p> du HTML brut (pas strip_html_tags d'abord !)
-    ///   2. Ne garder que les <p> entre "preamble"/"main-text" et "Bib"/"bibliography"
-    ///   3. Filtrer les paragraphes de moins de 80 chars (notes, refs)
-    ///   4. Appliquer la rotation : commencer au paragraphe (read_count * 3)
-    ///   5. Concatener jusqu'a max_chars caracteres
+    /// Algorithm:
+    ///   1. Parse <p> tags from the raw HTML (NOT strip_html_tags first!)
+    ///   2. Keep only <p> elements between "preamble"/"main-text" and "Bib"/"bibliography"
+    ///   3. Filter out paragraphs shorter than 80 chars (notes, refs)
+    ///   4. Apply rotation: start at paragraph (read_count * 3)
+    ///   5. Concatenate up to max_chars characters
     ///
-    /// La rotation permet de lire des sections differentes de l'article
-    /// a chaque visite, evitant que Saphire relise toujours l'introduction.
+    /// The rotation allows reading different sections of the article
+    /// on each visit, preventing Saphire from always re-reading the introduction.
     fn extract_sep_content(html: &str, read_count: u32, max_chars: usize) -> String {
-        // --- Phase 1 : extraction des paragraphes depuis le HTML brut ---
+        // --- Phase 1: extract paragraphs from raw HTML ---
         let mut paragraphs: Vec<String> = Vec::new();
-        let mut in_main = false; // Flag : on est dans le contenu principal
+        let mut in_main = false; // Flag: we are in the main content
 
-        // On itere sur les fragments separes par "<p" (chaque fragment = un <p>...</p>)
+        // Iterate over fragments separated by "<p" (each fragment = one <p>...</p>)
         for chunk in html.split("<p") {
-            // Detecter le debut du contenu principal (preamble ou main-text)
+            // Detect the start of main content (preamble or main-text)
             if chunk.contains("id=\"preamble\"") || chunk.contains("id=\"main-text\"") {
                 in_main = true;
             }
-            // Arreter avant la bibliographie et les entrees liees
+            // Stop before the bibliography and related entries
             if chunk.contains("id=\"Bib\"") || chunk.contains("id=\"bibliography\"")
                 || chunk.contains("Related Entries")
             {
                 break;
             }
 
-            // Ignorer les chunks avant le contenu principal
+            // Ignore chunks before the main content
             if !in_main { continue; }
 
-            // Extraire le texte entre > et </p>
-            // Exemple : " class='intro'>Le contenu ici</p>..."
-            //            ^start              ^end
+            // Extract text between > and </p>
+            // Example: " class='intro'>The content here</p>..."
+            //           ^start              ^end
             if let Some(start) = chunk.find('>') {
                 let content = &chunk[start + 1..];
                 if let Some(end) = content.find("</p>") {
                     let raw = &content[..end];
-                    // Nettoyer le HTML interne (balises <em>, <a>, etc.)
+                    // Clean inner HTML (tags like <em>, <a>, etc.)
                     let clean = Self::strip_html_tags(raw);
-                    // Garder seulement les paragraphes substantiels (>80 chars)
+                    // Keep only substantial paragraphs (>80 chars)
                     if clean.len() > 80 {
                         paragraphs.push(clean);
                     }
@@ -244,18 +244,18 @@ impl WebKnowledge {
             }
         }
 
-        // Fallback si aucun paragraphe n'a ete extrait
+        // Fallback if no paragraphs were extracted
         if paragraphs.is_empty() {
             let text = Self::strip_html_tags(html);
             return text.chars().take(max_chars).collect();
         }
 
-        // --- Phase 2 : rotation et assemblage ---
-        // Avancer de 3 paragraphes a chaque relecture du meme article
+        // --- Phase 2: rotation and assembly ---
+        // Advance by 3 paragraphs on each re-read of the same article
         let start_para = (read_count as usize * 3) % paragraphs.len().max(1);
         let mut result = String::new();
         for para in paragraphs.iter().skip(start_para) {
-            // Arreter si on depasse la limite de caracteres
+            // Stop if we exceed the character limit
             if result.len() + para.len() > max_chars { break; }
             if !result.is_empty() { result.push_str("\n\n"); }
             result.push_str(para);
@@ -263,8 +263,8 @@ impl WebKnowledge {
         result
     }
 
-    /// Extraire le titre d'un article SEP depuis la balise <title>.
-    /// Retire les suffixes standards SEP pour un titre propre.
+    /// Extract the title of a SEP article from the <title> tag.
+    /// Removes standard SEP suffixes for a clean title.
     fn extract_sep_title(html: &str) -> Option<String> {
         Self::extract_tag(html, "title")
             .map(|t| t.replace(" (Stanford Encyclopedia of Philosophy)", "")
@@ -273,18 +273,18 @@ impl WebKnowledge {
             .filter(|t| !t.is_empty())
     }
 
-    /// Extraire les titres de sections (balises <h2>) d'un article SEP.
-    /// Utile pour connaitre le plan de l'article et les themes abordes.
+    /// Extract section headings (<h2> tags) from a SEP article.
+    /// Useful for knowing the article outline and covered topics.
     fn extract_sep_sections(html: &str) -> Vec<String> {
         let mut sections = Vec::new();
-        // Iterer sur les fragments separes par "<h2"
+        // Iterate over fragments separated by "<h2"
         for h2_block in html.split("<h2").skip(1) {
             if let Some(end) = h2_block.find("</h2>") {
                 let content = &h2_block[..end];
-                // Trouver le dernier '>' pour ignorer les attributs de la balise
+                // Find the last '>' to ignore tag attributes
                 if let Some(start) = content.rfind('>') {
                     let title = content[start + 1..].trim().to_string();
-                    // Filtrer les titres vides ou trop longs (artefacts)
+                    // Filter out empty or overly long titles (artifacts)
                     if !title.is_empty() && title.len() < 100 {
                         sections.push(title);
                     }

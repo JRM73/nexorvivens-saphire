@@ -1,22 +1,22 @@
 // =============================================================================
-// conditions/sexuality.rs — Module sexualite
+// conditions/sexuality.rs — Sexuality module
 // =============================================================================
 //
-// Role : Modelise l'orientation, la libido, l'attraction, l'attachement.
-//        La libido est modulee par les hormones (testosterone, oestrogene,
-//        ocytocine). Impact sur le comportement social et la chimie.
+// Purpose: Models orientation, libido, attraction, and attachment.
+//          Libido is modulated by hormones (testosterone, estrogen,
+//          oxytocin). Impacts social behavior and chemistry.
 //
-// Gardes-fous ethiques :
-//   - Pas de contenu explicite : la sexualite est un drive biologique
-//   - Filtre ethique Asimov : jamais de contenu impliquant des mineurs
-//   - Abstraction : influence chimie et social, pas descriptions explicites
-//   - Desactivable completement
+// Ethical safeguards:
+//   - No explicit content: sexuality is a biological drive
+//   - Asimov ethical filter: never content involving minors
+//   - Abstraction: influences chemistry and social, no explicit descriptions
+//   - Fully disableable
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 use crate::world::ChemistryAdjustment;
 
-/// Orientation sexuelle.
+/// Sexual orientation.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum SexualOrientation {
     Heterosexual,
@@ -33,14 +33,14 @@ impl Default for SexualOrientation {
     }
 }
 
-/// Modele d'attraction (poids relatifs).
+/// Attraction model (relative weights).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AttractionModel {
-    /// Importance de l'apparence physique
+    /// Importance of physical appearance
     pub physical_weight: f64,
-    /// Importance de la connexion emotionnelle
+    /// Importance of emotional connection
     pub emotional_weight: f64,
-    /// Importance de la stimulation intellectuelle
+    /// Importance of intellectual stimulation
     pub intellectual_weight: f64,
 }
 
@@ -54,21 +54,21 @@ impl Default for AttractionModel {
     }
 }
 
-/// Module de sexualite.
+/// Sexuality module.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SexualityModule {
     pub orientation: SexualOrientation,
-    /// Libido actuelle (0.0 = nulle, 1.0 = maximale)
+    /// Current libido (0.0 = none, 1.0 = maximum)
     pub libido: f64,
-    /// Baseline de libido (modulee par hormones)
+    /// Libido baseline (modulated by hormones)
     pub libido_baseline: f64,
-    /// Modele d'attraction
+    /// Attraction model
     pub attraction: AttractionModel,
-    /// Capacite d'attachement romantique (0.0 = detache, 1.0 = attachement fort)
+    /// Romantic attachment capacity (0.0 = detached, 1.0 = strong attachment)
     pub romantic_attachment_capacity: f64,
-    /// Niveau d'attachement actuel (0.0 = aucun, 1.0 = attache)
+    /// Current attachment level (0.0 = none, 1.0 = attached)
     pub current_attachment: f64,
-    /// Confort avec l'intimite (0.0 = mal a l'aise, 1.0 = a l'aise)
+    /// Comfort with intimacy (0.0 = uncomfortable, 1.0 = comfortable)
     pub intimacy_comfort: f64,
 }
 
@@ -85,39 +85,39 @@ impl SexualityModule {
         }
     }
 
-    /// Met a jour la libido en fonction des hormones (testosterone, oestrogene, ocytocine).
-    /// Les valeurs d'hormones sont normalisees [0.0, 1.0].
+    /// Updates libido based on hormones (testosterone, estrogen, oxytocin).
+    /// Hormone values are normalized [0.0, 1.0].
     pub fn tick(&mut self, testosterone: f64, estrogen: f64, oxytocin: f64) {
-        // Testosterone → libido haute
+        // Testosterone -> high libido
         let hormonal_libido = testosterone * 0.4 + estrogen * 0.2 + oxytocin * 0.1;
         let target = (self.libido_baseline * 0.5 + hormonal_libido * 0.5).clamp(0.0, 1.0);
         self.libido += (target - self.libido) * 0.1;
         self.libido = self.libido.clamp(0.0, 1.0);
 
-        // Ocytocine → attachement
+        // Oxytocin -> attachment
         if oxytocin > 0.5 {
             self.current_attachment = (self.current_attachment + 0.002).min(self.romantic_attachment_capacity);
         } else {
             self.current_attachment = (self.current_attachment - 0.001).max(0.0);
         }
 
-        // Asexuel → libido toujours basse
+        // Asexual -> libido always low
         if self.orientation == SexualOrientation::Asexual {
             self.libido *= 0.1;
         }
     }
 
-    /// Impact chimique de la sexualite.
+    /// Chemistry impact of sexuality.
     pub fn chemistry_influence(&self) -> ChemistryAdjustment {
         let mut adj = ChemistryAdjustment::default();
 
-        // Libido haute → dopamine (motivation), noradrenaline (excitation)
+        // High libido -> dopamine (motivation), noradrenaline (arousal)
         if self.libido > 0.5 {
             adj.dopamine += (self.libido - 0.5) * 0.01;
             adj.noradrenaline += (self.libido - 0.5) * 0.005;
         }
 
-        // Attachement → ocytocine
+        // Attachment -> oxytocin
         if self.current_attachment > 0.3 {
             adj.oxytocin += self.current_attachment * 0.01;
             adj.serotonin += self.current_attachment * 0.005;
@@ -126,7 +126,7 @@ impl SexualityModule {
         adj
     }
 
-    /// Serialise pour l'API.
+    /// Serializes for the API.
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::json!({
             "orientation": format!("{:?}", self.orientation),
@@ -166,7 +166,7 @@ mod tests {
     fn test_testosterone_boosts_libido() {
         let mut s = SexualityModule::new(SexualOrientation::Heterosexual, 0.3, 0.5);
         let initial = s.libido;
-        // Haute testosterone
+        // High testosterone
         for _ in 0..50 {
             s.tick(0.9, 0.3, 0.3);
         }
@@ -186,7 +186,7 @@ mod tests {
     fn test_oxytocin_builds_attachment() {
         let mut s = SexualityModule::new(SexualOrientation::Bisexual, 0.3, 0.8);
         for _ in 0..200 {
-            s.tick(0.5, 0.5, 0.8); // Haute ocytocine
+            s.tick(0.5, 0.5, 0.8); // High oxytocin
         }
         assert!(s.current_attachment > 0.2);
     }

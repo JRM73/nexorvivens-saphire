@@ -1,82 +1,82 @@
 // =============================================================================
-// care/medication.rs — Medicaments therapeutiques
+// care/medication.rs — Therapeutic medications
 // =============================================================================
 //
-// Role : Medicaments a usage therapeutique. Reutilise le meme systeme de phases
-//        que drugs.rs (pharmacologie) mais avec des profils therapeutiques :
-//        antidepresseurs, anxiolytiques, antidouleur, stimulants, etc.
+// Role: Therapeutic medications. Reuses the same phase system as drugs.rs
+//        (pharmacology) but with therapeutic profiles:
+//        antidepressants, anxiolytics, painkillers, stimulants, etc.
 //
-// Difference avec drugs.rs :
-//   - Les medicaments sont prescrits (volontaires, therapeutiques)
-//   - Effets secondaires explicites
-//   - Tolerance et dependance iatrogene possibles
-//   - Duree de traitement longue (semaines/mois)
+// Difference with drugs.rs:
+//   - Medications are prescribed (voluntary, therapeutic)
+//   - Explicit side effects
+//   - Iatrogenic tolerance and dependence possible
+//  - Long treatment duration (weeks/months)
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 use crate::world::ChemistryAdjustment;
 
-/// Categorie de medicament.
+/// Medication category.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum MedicationCategory {
-    /// ISRS — inhibiteurs selectifs de recapture de serotonine
+    /// SSRI — selective serotonin reuptake inhibitors
     Antidepressant,
-    /// Benzodiazepines — reduction anxiete rapide
+    /// Benzodiazepines — rapid anxiety reduction
     Anxiolytic,
-    /// Opioides ou AINS — soulagement douleur
+    /// Opioids or NSAIDs — pain relief
     Painkiller,
-    /// Methylphenidate, modafinil — concentration
+    /// Methylphenidate, modafinil — focus
     Stimulant,
-    /// Antipsychotiques — reduction dopamine excessive
+    /// Antipsychotics — excessive dopamine reduction
     Neuroleptic,
-    /// Lithium, valproate — lissage cycles humeur
+    /// Lithium, valproate — mood cycle smoothing
     MoodStabilizer,
 }
 
-/// Effets secondaires possibles.
+/// Possible side effects.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SideEffects {
-    /// Somnolence (0.0-1.0)
+    /// Drowsiness (0.0-1.0)
     pub drowsiness: f64,
-    /// Perte d'appetit (0.0-1.0)
+    /// Appetite loss (0.0-1.0)
     pub appetite_loss: f64,
-    /// Emoussement emotionnel (0.0-1.0)
+    /// Emotional blunting (0.0-1.0)
     pub emotional_blunting: f64,
-    /// Risque de dependance (0.0-1.0)
+    /// Dependency risk (0.0-1.0)
     pub dependency_risk: f64,
-    /// Prise de poids (0.0-1.0)
+    /// Weight gain (0.0-1.0)
     pub weight_gain: f64,
 }
 
-/// Un medicament en cours de traitement.
+/// A medication currently being administered.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Medication {
     pub name: String,
     pub category: MedicationCategory,
-    /// Impact chimique par cycle (effet therapeutique)
+    /// Chemical impact per cycle (therapeutic effect)
     pub effect: ChemistryAdjustment,
-    /// Effets secondaires
+    /// Side effects
     pub side_effects: SideEffects,
-    /// Cycles depuis le debut du traitement
+    /// Cycles since the start of treatment
     pub cycles_on_medication: u64,
-    /// Delai avant que l'effet therapeutique plein se manifeste
+    /// Delay before full therapeutic effect manifests
     pub onset_delay_cycles: u64,
-    /// Efficacite courante (0.0 = pas encore actif, 1.0 = plein effet)
+    /// Current efficacy (0.0 = not yet active, 1.0 = full effect)
     pub current_efficacy: f64,
-    /// Tolerance accumulee (0.0 = aucune, 1.0 = inefficace)
+    /// Accumulated tolerance (0.0 = none, 1.0 = ineffective)
     pub tolerance: f64,
-    /// En cours d'arret progressif (tapering)
+    /// Currently being tapered off
     pub tapering: bool,
-    /// Dose relative (1.0 = dose standard)
+    /// Relative dose (1.0 = standard dose)
     pub dose: f64,
 }
 
 impl Medication {
-    /// Met a jour l'etat du medicament a chaque cycle.
+    /// Updates the medication state at each cycle.
     pub fn tick(&mut self) {
         self.cycles_on_medication += 1;
 
-        // Efficacite monte progressivement jusqu'au plein effet
+        // Efficacy ramps up progressively to full effect
         if self.cycles_on_medication < self.onset_delay_cycles {
             self.current_efficacy = self.cycles_on_medication as f64
                 / self.onset_delay_cycles as f64;
@@ -84,16 +84,16 @@ impl Medication {
             self.current_efficacy = 1.0;
         }
 
-        // Tolerance lente sur le long terme
+        // Slow long-term tolerance buildup
         self.tolerance = (self.tolerance + 0.0001).min(0.5);
 
-        // Si tapering, reduire la dose progressivement
+        // If tapering, reduce dose progressively
         if self.tapering {
             self.dose = (self.dose - 0.005).max(0.0);
         }
     }
 
-    /// Impact chimique therapeutique (module par efficacite, tolerance, dose).
+    /// Therapeutic chemical impact (modulated by efficacy, tolerance, dose).
     pub fn chemistry_influence(&self) -> ChemistryAdjustment {
         let factor = self.current_efficacy * (1.0 - self.tolerance) * self.dose;
         ChemistryAdjustment {
@@ -107,7 +107,7 @@ impl Medication {
         }
     }
 
-    /// Est-ce que le medicament est completement arrete ?
+    /// Has the medication been completely stopped?
     pub fn is_stopped(&self) -> bool {
         self.tapering && self.dose <= 0.0
     }
@@ -126,7 +126,7 @@ impl Medication {
     }
 }
 
-/// Gestionnaire de medicaments.
+/// Medication manager.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MedicationManager {
     pub medications: Vec<Medication>,
@@ -137,21 +137,21 @@ impl MedicationManager {
         Self { medications: Vec::new() }
     }
 
-    /// Prescrit un medicament.
+    /// Prescribes a medication.
     pub fn prescribe(&mut self, med: Medication) {
         self.medications.push(med);
     }
 
-    /// Met a jour tous les medicaments.
+    /// Updates all medications.
     pub fn tick(&mut self) {
         for med in &mut self.medications {
             med.tick();
         }
-        // Retirer les medicaments completement arretes
+        // Remove completely stopped medications
         self.medications.retain(|m| !m.is_stopped());
     }
 
-    /// Impact chimique total de tous les medicaments.
+    /// Total chemical impact of all medications.
     pub fn chemistry_influence(&self) -> ChemistryAdjustment {
         let mut adj = ChemistryAdjustment::default();
         for med in &self.medications {
@@ -167,7 +167,7 @@ impl MedicationManager {
         adj
     }
 
-    /// Arrete progressivement un medicament par nom.
+    /// Progressively tapers off a medication by name.
     pub fn taper(&mut self, name: &str) {
         for med in &mut self.medications {
             if med.name == name {
@@ -189,10 +189,9 @@ impl Default for MedicationManager {
 }
 
 // =============================================================================
-// Catalogue de medicaments pre-definis
+// Pre-defined medication catalog
 // =============================================================================
-
-/// Cree un medicament standard a partir du catalogue.
+/// Creates a standard medication from the catalog.
 pub fn medication_catalog(name: &str) -> Option<Medication> {
     match name {
         "ssri" | "isrs" => Some(Medication {
@@ -207,7 +206,7 @@ pub fn medication_catalog(name: &str) -> Option<Medication> {
                 dependency_risk: 0.15, weight_gain: 0.2,
             },
             cycles_on_medication: 0,
-            onset_delay_cycles: 100, // ~2 semaines avant plein effet
+            onset_delay_cycles: 100, // ~2 weeks before full effect
             current_efficacy: 0.0,
             tolerance: 0.0,
             tapering: false,
@@ -227,7 +226,7 @@ pub fn medication_catalog(name: &str) -> Option<Medication> {
                 dependency_risk: 0.6, weight_gain: 0.0,
             },
             cycles_on_medication: 0,
-            onset_delay_cycles: 5, // Effet rapide
+            onset_delay_cycles: 5, // Fast-acting
             current_efficacy: 0.0,
             tolerance: 0.0,
             tapering: false,
@@ -294,7 +293,7 @@ pub fn medication_catalog(name: &str) -> Option<Medication> {
             name: "Lithium (stabilisateur humeur)".into(),
             category: MedicationCategory::MoodStabilizer,
             effect: ChemistryAdjustment {
-                // Lisse les extremes : attenue dopamine et cortisol
+                // Smooths extremes: attenuates dopamine and cortisol
                 dopamine: -0.005,
                 cortisol: -0.005,
                 serotonin: 0.005,
@@ -305,7 +304,7 @@ pub fn medication_catalog(name: &str) -> Option<Medication> {
                 dependency_risk: 0.1, weight_gain: 0.3,
             },
             cycles_on_medication: 0,
-            onset_delay_cycles: 70, // Effet lent
+            onset_delay_cycles: 70, // Slow-acting
             current_efficacy: 0.0,
             tolerance: 0.0,
             tapering: false,
@@ -326,7 +325,7 @@ mod tests {
         for _ in 0..50 {
             med.tick();
         }
-        // A mi-chemin du delai de 100 cycles
+        // Halfway through the 100-cycle delay
         assert!(med.current_efficacy > 0.4);
         assert!(med.current_efficacy < 0.6);
     }
@@ -356,7 +355,7 @@ mod tests {
     #[test]
     fn test_chemistry_modulated_by_dose() {
         let mut med = medication_catalog("ssri").unwrap();
-        // Simuler plein effet
+        // Simulate full effect
         med.current_efficacy = 1.0;
         med.dose = 1.0;
         let adj_full = med.chemistry_influence();

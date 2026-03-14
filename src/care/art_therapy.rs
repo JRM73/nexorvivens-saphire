@@ -1,47 +1,47 @@
 // =============================================================================
-// care/art_therapy.rs — Art therapie
+// care/art_therapy.rs — Art therapy
 // =============================================================================
 //
-// Role : Guerison par la creativite — ecriture, poesie, musique, dessin.
-//        L'art therapie n'est pas un medicament mais un processus expressif :
-//        dopamine via la creation, serotonine via la satisfaction,
-//        cortisol reduit par l'immersion dans le flow creatif.
+// Role: Healing through creativity — writing, poetry, music, drawing.
+//  Art therapy is not a medication but an expressive process:
+//  dopamine via creation, serotonin via satisfaction,
+//  cortisol reduced by immersion in creative flow.
 //
-// Integration :
-//   Stimule les sens (beaute/lecture, musicalite/ecoute).
-//   Peut stimuler les graines emergentes (resonance emotionnelle, syntonie).
-//   Synergie avec les passions creatives (P2.17).
+// Integration:
+//  Stimulates the senses (beauty/reading, musicality/listening).
+//  Can stimulate emergent seeds (emotional resonance, syntony).
+//  Synergy with creative passions (P2.17).
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 use crate::world::ChemistryAdjustment;
 
-/// Type d'art therapie.
+/// Type of art therapy.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ArtForm {
-    /// Ecriture creative, journaling, poesie
+    /// Creative writing, journaling, poetry
     Writing,
-    /// Musique (ecoute ou creation)
+    /// Music (listening or creating)
     Music,
-    /// Dessin, peinture, sculpture
+    /// Drawing, painting, sculpture
     VisualArt,
-    /// Danse, mouvement corporel
+    /// Dance, bodily movement
     Movement,
 }
 
-/// Une session d'art therapie.
+/// An art therapy session.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ArtTherapySession {
     pub art_form: ArtForm,
-    /// Qualite de l'engagement (0.0 = distrait, 1.0 = flow total)
+    /// Engagement quality (0.0 = distracted, 1.0 = total flow)
     pub engagement: f64,
-    /// Cycles dans cette session
+    /// Cycles in this session
     pub cycles_active: u64,
-    /// Niveau de flow atteint (0.0-1.0)
+    /// Flow level reached (0.0-1.0)
     pub flow_level: f64,
-    /// Total de sessions effectuees
+    /// Total sessions completed
     pub total_sessions: u64,
-    /// Benefice cumule sur le bien-etre (0.0-1.0)
+    /// Cumulative benefit on well-being (0.0-1.0)
     pub cumulative_benefit: f64,
 }
 
@@ -57,15 +57,15 @@ impl ArtTherapySession {
         }
     }
 
-    /// Demarre une session d'art therapie.
+    /// Starts an art therapy session.
     pub fn start_session(&mut self) {
         self.cycles_active = 0;
-        self.engagement = 0.3; // Debut modeste
+        self.engagement = 0.3; // Modest start
         self.flow_level = 0.0;
         self.total_sessions += 1;
     }
 
-    /// Met a jour la session (un cycle dans l'activite creative).
+    /// Updates the session (one cycle in the creative activity).
     pub fn tick(&mut self) {
         if self.engagement <= 0.0 {
             return;
@@ -73,7 +73,7 @@ impl ArtTherapySession {
 
         self.cycles_active += 1;
 
-        // L'engagement et le flow montent progressivement
+        // Engagement and flow rise progressively
         self.engagement = (self.engagement + 0.01).min(1.0);
         self.flow_level = if self.cycles_active > 10 {
             (self.flow_level + 0.02).min(1.0)
@@ -81,17 +81,17 @@ impl ArtTherapySession {
             self.flow_level
         };
 
-        // Benefice cumule grandit lentement avec la pratique reguliere
+        // Cumulative benefit grows slowly with regular practice
         self.cumulative_benefit = (self.cumulative_benefit + 0.0005).min(1.0);
     }
 
-    /// Termine la session.
+    /// Ends the session.
     pub fn end_session(&mut self) {
         self.engagement = 0.0;
         self.flow_level = 0.0;
     }
 
-    /// Impact chimique pendant la session.
+    /// Chemical impact during the session.
     pub fn chemistry_influence(&self) -> ChemistryAdjustment {
         if self.engagement <= 0.0 {
             return ChemistryAdjustment::default();
@@ -115,8 +115,7 @@ impl ArtTherapySession {
                 dopamine: 0.008,
                 serotonin: 0.01,
                 cortisol: -0.006,
-                noradrenaline: 0.005, // Concentration
-                ..Default::default()
+                noradrenaline: 0.005, // Concentration                ..Default::default()
             },
             ArtForm::Movement => ChemistryAdjustment {
                 endorphin: 0.015,
@@ -127,7 +126,7 @@ impl ArtTherapySession {
             },
         };
 
-        // Amplifier par l'engagement et le flow
+        // Amplify by engagement and flow
         let factor = self.engagement * (1.0 + self.flow_level * 0.5);
         ChemistryAdjustment {
             dopamine: base.dopamine * factor,
@@ -140,7 +139,7 @@ impl ArtTherapySession {
         }
     }
 
-    /// Est-ce qu'une session est active ?
+    /// Is a session currently active?
     pub fn is_active(&self) -> bool {
         self.engagement > 0.0
     }
@@ -157,7 +156,7 @@ impl ArtTherapySession {
     }
 }
 
-/// Gestionnaire d'art therapie (peut pratiquer plusieurs formes).
+/// Art therapy manager (can practice multiple art forms).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ArtTherapyManager {
     pub practices: Vec<ArtTherapySession>,
@@ -168,7 +167,7 @@ impl ArtTherapyManager {
         Self { practices: Vec::new() }
     }
 
-    /// Commence une session dans une forme d'art.
+    /// Starts a session in an art form.
     pub fn start(&mut self, art_form: ArtForm) {
         if let Some(p) = self.practices.iter_mut().find(|p| p.art_form == art_form) {
             p.start_session();
@@ -179,7 +178,7 @@ impl ArtTherapyManager {
         }
     }
 
-    /// Met a jour toutes les sessions actives.
+    /// Updates all active sessions.
     pub fn tick(&mut self) {
         for p in &mut self.practices {
             if p.is_active() {
@@ -188,7 +187,7 @@ impl ArtTherapyManager {
         }
     }
 
-    /// Impact chimique total des sessions actives.
+    /// Total chemical impact of active sessions.
     pub fn chemistry_influence(&self) -> ChemistryAdjustment {
         let mut adj = ChemistryAdjustment::default();
         for p in &self.practices {
@@ -204,7 +203,7 @@ impl ArtTherapyManager {
         adj
     }
 
-    /// Benefice cumule total de toutes les pratiques.
+    /// Total cumulative benefit from all practices.
     pub fn total_benefit(&self) -> f64 {
         self.practices.iter()
             .map(|p| p.cumulative_benefit)
@@ -244,11 +243,11 @@ mod tests {
     #[test]
     fn test_chemistry_while_active() {
         let mut session = ArtTherapySession::new(ArtForm::Writing);
-        // Pas active : pas d'influence
+        // Not active: no influence
         let adj_inactive = session.chemistry_influence();
         assert!((adj_inactive.dopamine).abs() < 0.001);
 
-        // Active
+        // Active session
         session.start_session();
         session.tick();
         let adj_active = session.chemistry_influence();
@@ -280,7 +279,7 @@ mod tests {
     fn test_manager_reuses_practice() {
         let mut mgr = ArtTherapyManager::new();
         mgr.start(ArtForm::Music);
-        mgr.start(ArtForm::Music); // Meme forme
+        mgr.start(ArtForm::Music); // Same art form
         assert_eq!(mgr.practices.len(), 1);
         assert_eq!(mgr.practices[0].total_sessions, 2);
     }

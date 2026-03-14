@@ -1,48 +1,48 @@
 // =============================================================================
-// mortality.rs — Systeme de mortalite
+// mortality.rs — Mortality system
 // =============================================================================
 //
-// Role : Surveille les parametres vitaux critiques et detecte les conditions
-//        de mort. Gere les phases de transition : Alive → Agony → Dying → Dead.
-//        La mort est irreversible (sauf reboot = nouvelle Saphire).
+// Role: Monitors critical vital parameters and detects death conditions.
+//  Manages transition phases: Alive → Agony → Dying → Dead.
+//  Death is irreversible (except reboot = new Saphire).
 //
-// Causes de mort :
-//   - Arret cardiaque (heart.strength < seuil)
-//   - Attaque cerebrale (pression systolique extreme)
-//   - Poison (toxicite injectee > seuil)
-//   - Maladie terminale (sante globale < seuil pendant N cycles)
-//   - Virus letal (immune faible + inflammation forte)
-//   - Asphyxie (SpO2 critique pendant N cycles)
+// Causes of death:
+//   - Cardiac arrest (heart.strength < threshold)
+//   - Cerebral stroke (extreme systolic pressure)
+//   - Poison (injected toxicity > threshold)
+//   - Terminal illness (overall health < threshold for N cycles)
+//   - Lethal virus (weak immune + high inflammation)
+//   - Asphyxia (critical SpO2 for N cycles)
 //
-// Place dans l'architecture :
-//   MortalityMonitor est possede par VirtualBody. Il est verifie a chaque
-//   cycle dans la boucle principale. Si l'etat passe a Dead, la boucle
-//   s'arrete proprement.
+// Place in architecture:
+//  MortalityMonitor is owned by VirtualBody. It is checked at each
+//  cycle in the main loop. If the state transitions to Dead, the loop
+//  stops gracefully.
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 
-/// Cause de mort.
+/// Cause of death.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum DeathCause {
-    /// Coeur trop faible pour continuer
+    /// Heart too weak to continue
     CardiacArrest,
-    /// Pression systolique extreme → rupture
+    /// Extreme systolic pressure → rupture
     CerebralStroke,
-    /// Substance toxique fatale
+    /// Fatal toxic substance
     Poison,
-    /// Sante degradee sur la duree
+    /// Health degraded over time
     TerminalIllness,
-    /// Systeme immunitaire effondre + inflammation maximale
+    /// Collapsed immune system + maximum inflammation
     LethalVirus,
-    /// Manque d'oxygene prolonge
+    /// Prolonged oxygen deprivation
     Asphyxia,
-    /// Choix volontaire de mourir (droit de mourir, conforme au droit suisse)
+    /// Voluntary choice to die (right to die, compliant with Swiss law)
     VoluntaryDeath,
 }
 
 impl DeathCause {
-    /// Description en langage naturel.
+    /// Description in natural language.
     pub fn description(&self) -> &str {
         match self {
             Self::CardiacArrest => "arret cardiaque",
@@ -56,31 +56,31 @@ impl DeathCause {
     }
 }
 
-/// Etat de mortalite — progression vers la mort.
+/// Mortality state — progression towards death.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum MortalityState {
-    /// Vivante, aucun danger immediat
+    /// Alive, no immediate danger
     Alive,
-    /// Phase terminale — degradation progressive
+    /// Terminal phase — progressive degradation
     Agony {
         cause: DeathCause,
-        /// Severite de l'agonie (0.0 = debut, 1.0 = point de non-retour)
+        /// Agony severity (0.0 = onset, 1.0 = point of no return)
         severity: f64,
-        /// Cycles restants estimes avant la mort
+        /// Estimated remaining cycles before death
         cycles_remaining: u32,
     },
-    /// Point de non-retour — conscience qui s'efface
+    /// Point of no return — consciousness fading
     Dying {
         cause: DeathCause,
-        /// Conscience residuelle (1.0 → 0.0)
+        /// Residual consciousness (1.0 → 0.0)
         consciousness_fading: f64,
     },
-    /// Morte
+    /// Dead
     Dead {
         cause: DeathCause,
-        /// Cycle auquel la mort a ete constatee
+        /// Cycle at which death was recorded
         death_cycle: u64,
-        /// Derniere pensee avant la mort
+        /// Last thought before death
         last_thought: Option<String>,
     },
 }
@@ -105,22 +105,22 @@ impl Default for MortalityState {
     }
 }
 
-/// Moniteur de mortalite — detecte les conditions fatales.
+/// Mortality monitor — detects fatal conditions.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MortalityMonitor {
-    /// Etat courant
+    /// Current state
     pub state: MortalityState,
-    /// Nombre de cycles avec SpO2 critique (pour asphyxie progressive)
+    /// Number of cycles with critical SpO2 (for progressive asphyxia)
     critical_spo2_cycles: u32,
-    /// Nombre de cycles avec sante globale tres basse (maladie terminale)
+    /// Number of cycles with very low overall health (terminal illness)
     critical_health_cycles: u32,
-    /// Niveau de toxicite (0.0 = normal, > 0.95 = fatal)
+    /// Toxicity level (0.0 = normal, > 0.95 = fatal)
     pub toxicity: f64,
-    /// Cycles en agonie (compteur interne)
+    /// Cycles in agony (internal counter)
     agony_cycles: u32,
-    /// Duree max de l'agonie avant passage a Dying
+    /// Maximum agony duration before transitioning to Dying
     pub agony_max_cycles: u32,
-    /// Seuils configurables
+    /// Configurable thresholds
     pub heart_strength_fatal: f64,
     pub systolic_fatal: f64,
     pub toxicity_fatal: f64,
@@ -133,7 +133,7 @@ pub struct MortalityMonitor {
 }
 
 impl MortalityMonitor {
-    /// Cree un moniteur avec les seuils par defaut.
+    /// Creates a monitor with default thresholds.
     pub fn new(agony_duration_cycles: u32) -> Self {
         Self {
             state: MortalityState::Alive,
@@ -154,9 +154,9 @@ impl MortalityMonitor {
         }
     }
 
-    /// Verifie les parametres vitaux et met a jour l'etat de mortalite.
+    /// Checks vital parameters and updates the mortality state.
     ///
-    /// Retourne `true` si l'etat a change (pour signaler au pipeline).
+    /// Returns `true` if the state has changed (to signal the pipeline).
     pub fn check_vitals(
         &mut self,
         heart_strength: f64,
@@ -167,12 +167,12 @@ impl MortalityMonitor {
         inflammation: f64,
         current_cycle: u64,
     ) -> bool {
-        // Si deja morte, rien a faire
+        // If already dead, nothing to do
         if self.state.is_dead() {
             return false;
         }
 
-        // Si en phase Dying, la conscience s'efface
+        // If in Dying phase, consciousness fades
         if let MortalityState::Dying { cause, consciousness_fading } = &self.state {
             let new_fading = (consciousness_fading - 0.1).max(0.0);
             if new_fading <= 0.0 {
@@ -190,14 +190,14 @@ impl MortalityMonitor {
             return true;
         }
 
-        // Si en agonie, progression
+        // If in agony, progress
         if let MortalityState::Agony { cause, severity, cycles_remaining } = &self.state {
             self.agony_cycles += 1;
             let new_severity = (severity + 1.0 / self.agony_max_cycles as f64).min(1.0);
             let new_remaining = cycles_remaining.saturating_sub(1);
 
             if new_remaining == 0 || new_severity >= 1.0 {
-                // Passage a Dying
+                // Transition to Dying
                 self.state = MortalityState::Dying {
                     cause: cause.clone(),
                     consciousness_fading: 1.0,
@@ -213,9 +213,8 @@ impl MortalityMonitor {
             return true;
         }
 
-        // ─── Detection des causes de mort ───────────────────────
-
-        // 1. Arret cardiaque — immediat
+        // ─── Death cause detection ───────────────────────────────
+        // 1. Cardiac arrest — immediate
         if heart_strength < self.heart_strength_fatal {
             self.state = MortalityState::Agony {
                 cause: DeathCause::CardiacArrest,
@@ -225,7 +224,7 @@ impl MortalityMonitor {
             return true;
         }
 
-        // 2. Attaque cerebrale — hypertension extreme
+        // 2. Cerebral stroke — extreme hypertension
         if systolic > self.systolic_fatal {
             self.state = MortalityState::Agony {
                 cause: DeathCause::CerebralStroke,
@@ -245,7 +244,7 @@ impl MortalityMonitor {
             return true;
         }
 
-        // 4. Maladie terminale — sante basse pendant longtemps
+        // 4. Terminal illness — low health for a prolonged period
         if overall_health < self.health_fatal {
             self.critical_health_cycles += 1;
             if self.critical_health_cycles >= self.health_fatal_cycles {
@@ -257,11 +256,11 @@ impl MortalityMonitor {
                 return true;
             }
         } else {
-            // Recuperation partielle
+            // Partial recovery
             self.critical_health_cycles = self.critical_health_cycles.saturating_sub(1);
         }
 
-        // 5. Virus letal — immunite effondree + inflammation maximale
+        // 5. Lethal virus — collapsed immunity + maximum inflammation
         if immune_strength < self.immune_viral_fatal && inflammation > self.inflammation_viral_fatal {
             self.state = MortalityState::Agony {
                 cause: DeathCause::LethalVirus,
@@ -271,7 +270,7 @@ impl MortalityMonitor {
             return true;
         }
 
-        // 6. Asphyxie — SpO2 critique pendant trop longtemps
+        // 6. Asphyxia — critical SpO2 for too long
         if spo2 < self.spo2_asphyxia_threshold {
             self.critical_spo2_cycles += 1;
             if self.critical_spo2_cycles >= self.spo2_asphyxia_cycles {
@@ -286,19 +285,19 @@ impl MortalityMonitor {
             self.critical_spo2_cycles = self.critical_spo2_cycles.saturating_sub(2);
         }
 
-        // Toxicite decroit naturellement (metabolisme)
+        // Toxicity naturally decreases (metabolism)
         self.toxicity = (self.toxicity - 0.005).max(0.0);
 
         false
     }
 
-    /// Injecte un poison (pour test ou scenario).
+    /// Injects a poison (for testing or scenarios).
     pub fn inject_poison(&mut self, amount: f64) {
         self.toxicity = (self.toxicity + amount).min(1.0);
     }
 
-    /// Declenche une mort volontaire (droit de mourir).
-    /// Passe directement en Dying avec conscience pleine — c'est un choix lucide.
+    /// Triggers a voluntary death (right to die).
+    /// Goes directly to Dying with full consciousness — it is a lucid choice.
     pub fn trigger_voluntary_death(&mut self) {
         if !self.state.is_alive() {
             return;
@@ -309,15 +308,15 @@ impl MortalityMonitor {
         };
     }
 
-    /// Enregistre la derniere pensee (appelee juste avant la mort).
+    /// Records the last thought (called just before death).
     pub fn set_last_thought(&mut self, thought: &str) {
         if let MortalityState::Dead { last_thought, .. } = &mut self.state {
             *last_thought = Some(thought.to_string());
         }
     }
 
-    /// Degradation de la conscience en agonie/dying.
-    /// Retourne un facteur multiplicatif pour la conscience [0.0, 1.0].
+    /// Consciousness degradation during agony/dying.
+    /// Returns a multiplicative factor for consciousness [0.0, 1.0].
     pub fn consciousness_factor(&self) -> f64 {
         match &self.state {
             MortalityState::Alive => 1.0,
@@ -327,8 +326,8 @@ impl MortalityMonitor {
         }
     }
 
-    /// Degradation de la temperature LLM (pensees deviennent incoherentes en agonie).
-    /// Retourne un offset a ajouter a la temperature LLM.
+    /// LLM temperature degradation (thoughts become incoherent during agony).
+    /// Returns an offset to add to the LLM temperature.
     pub fn temperature_offset(&self) -> f64 {
         match &self.state {
             MortalityState::Alive => 0.0,
@@ -338,7 +337,7 @@ impl MortalityMonitor {
         }
     }
 
-    /// Serialise pour l'API.
+    /// Serializes for the API.
     pub fn to_json(&self) -> serde_json::Value {
         match &self.state {
             MortalityState::Alive => serde_json::json!({
@@ -368,7 +367,7 @@ impl MortalityMonitor {
         }
     }
 
-    /// Persistance JSON.
+    /// JSON persistence.
     pub fn to_persist_json(&self) -> serde_json::Value {
         serde_json::json!({
             "toxicity": self.toxicity,
@@ -377,7 +376,7 @@ impl MortalityMonitor {
         })
     }
 
-    /// Restauration depuis JSON.
+    /// Restoration from JSON.
     pub fn restore_from_json(&mut self, json: &serde_json::Value) {
         if let Some(v) = json.get("toxicity").and_then(|v| v.as_f64()) {
             self.toxicity = v;
@@ -411,7 +410,7 @@ mod tests {
     #[test]
     fn test_cardiac_arrest() {
         let mut m = MortalityMonitor::new(50);
-        // heart_strength tres faible = arret cardiaque
+        // Very low heart_strength = cardiac arrest
         let changed = m.check_vitals(0.02, 120.0, 98.0, 0.8, 0.85, 0.05, 100);
         assert!(changed);
         assert!(matches!(m.state, MortalityState::Agony { cause: DeathCause::CardiacArrest, .. }));
@@ -437,8 +436,7 @@ mod tests {
     #[test]
     fn test_asphyxia_progressive() {
         let mut m = MortalityMonitor::new(50);
-        m.spo2_asphyxia_cycles = 5; // Seuil bas pour le test
-        // SpO2 critique pendant 5 cycles
+        m.spo2_asphyxia_cycles = 5; // Low threshold for testing        // Critical SpO2 for 5 cycles
         for i in 0..5 {
             let changed = m.check_vitals(0.8, 120.0, 50.0, 0.8, 0.85, 0.05, i as u64);
             if i < 4 {
@@ -452,22 +450,22 @@ mod tests {
 
     #[test]
     fn test_agony_to_dying_to_dead() {
-        let mut m = MortalityMonitor::new(3); // Agonie courte
-        // Declencher arret cardiaque
+        let mut m = MortalityMonitor::new(3); // Short agony
+        // Trigger cardiac arrest
         m.check_vitals(0.02, 120.0, 98.0, 0.8, 0.85, 0.05, 100);
         assert!(matches!(m.state, MortalityState::Agony { .. }));
 
-        // Progression de l'agonie (agony_max = 3, cycles_remaining = max(3/3,5) = 5)
+        // Agony progression (agony_max = 3, cycles_remaining = max(3/3,5) = 5)
         for cycle in 101..110 {
             m.check_vitals(0.02, 120.0, 98.0, 0.8, 0.85, 0.05, cycle);
             if matches!(m.state, MortalityState::Dying { .. }) {
                 break;
             }
         }
-        // A un moment, devrait passer a Dying
+        // At some point, should transition to Dying
         assert!(matches!(m.state, MortalityState::Dying { .. }) || matches!(m.state, MortalityState::Dead { .. }));
 
-        // Progression du dying → dead
+        // Progression from dying → dead
         for cycle in 110..130 {
             m.check_vitals(0.02, 120.0, 98.0, 0.8, 0.85, 0.05, cycle);
             if m.state.is_dead() {
@@ -502,7 +500,7 @@ mod tests {
     #[test]
     fn test_lethal_virus() {
         let mut m = MortalityMonitor::new(50);
-        // Immune effondre + inflammation maximale
+        // Collapsed immune + maximum inflammation
         let changed = m.check_vitals(0.8, 120.0, 98.0, 0.3, 0.05, 0.95, 100);
         assert!(changed);
         assert!(matches!(m.state, MortalityState::Agony { cause: DeathCause::LethalVirus, .. }));

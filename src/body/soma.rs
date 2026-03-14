@@ -2,31 +2,31 @@
 // soma.rs — Sante du systeme (soma = corps en grec)
 // =============================================================================
 //
-// Role : Represente l'etat somatique global de Saphire : energie, tension,
-//        chaleur, confort, douleur, vitalite. Ces signaux sont des abstractions
-//        de ce qu'un corps biologique ressentirait, derives de la neurochimie.
+// Role : Represente l'etat somatique overall de Saphire : energy, tension,
+//  chaleur, confort, douleur, vitalite. Ces signaux sont des abstractions
+//  de ce qu'un corps biologique ressentirait, derives de the neurochemistry.
 //
-// Place dans l'architecture :
-//   SystemHealth est lu par l'interoception pour produire des signaux corporels
-//   qui remontent a la conscience (interoception → consciousness.evaluate).
+// Place in architecture:
+//  SystemHealth est lu par l'interoception for produire of the signals corporels
+//  qui remontent a the consciousness (interoception → consciousness.evaluate).
 // =============================================================================
 
 use crate::neurochemistry::NeuroChemicalState;
 use super::physiology::PhysiologicalState;
 
-/// Sante somatique globale — signaux corporels derives de la neurochimie.
+/// Sante somatique overall — signaux corporels derives de the neurochemistry.
 pub struct SystemHealth {
-    /// Energie [0, 1] : haute quand dopamine + endorphine sont bonnes
+    /// Energie [0, 1] : haute when dopamine + endorphine sont bonnes
     pub energy: f64,
-    /// Tension [0, 1] : haute quand cortisol + adrenaline sont eleves
+    /// Tension [0, 1] : haute when cortisol + adrenaline sont eleves
     pub tension: f64,
     /// Chaleur [0, 1] : sensation de chaleur interne (ocytocine + serotonine)
     pub warmth: f64,
     /// Confort [0, 1] : absence de stress, presence de bien-etre
     pub comfort: f64,
-    /// Douleur [0, 1] : haute quand le cortisol depasse un seuil et les endorphines sont basses
+    /// Douleur [0, 1] : haute when the cortisol depasse un threshold et the endorphins sont basses
     pub pain: f64,
-    /// Vitalite [0, 1] : mesure globale de sante (moyenne ponderee)
+    /// Vitalite [0, 1] : mesure overall de sante (moyenne ponderee)
     pub vitality: f64,
     /// Frequence respiratoire (respirations par minute, 8-25)
     pub breath_rate: f64,
@@ -39,7 +39,7 @@ impl Default for SystemHealth {
 }
 
 impl SystemHealth {
-    /// Cree un etat somatique par defaut (equilibre, pas de douleur).
+    /// Creates a etat somatique by default (equilibre, pas de douleur).
     pub fn new() -> Self {
         Self {
             energy: 0.6,
@@ -52,7 +52,7 @@ impl SystemHealth {
         }
     }
 
-    /// Met a jour les signaux somatiques a partir de la neurochimie et de la physiologie.
+    /// Updates the signals somatiques from de the neurochemistry et de la physiologie.
     pub fn update(&mut self, chemistry: &NeuroChemicalState, physio: &PhysiologicalState) {
         // Energie : dopamine (motivation) + endorphine (resilience) - cortisol (epuisement)
         // + contribution physiologique (glycemie, reserves energetiques)
@@ -75,12 +75,12 @@ impl SystemHealth {
         let target_warmth = (chem_warmth * 0.7 + physio_warmth * 0.3).clamp(0.0, 1.0);
         self.warmth += (target_warmth - self.warmth) * 0.10;
 
-        // Confort : inverse de la tension, plus serotonine
+        // Confort : inverse de the tension, plus serotonine
         let target_comfort = (0.3 + chemistry.serotonin * 0.3 + chemistry.endorphin * 0.2
             - chemistry.cortisol * 0.3 - chemistry.adrenaline * 0.15).clamp(0.0, 1.0);
         self.comfort += (target_comfort - self.comfort) * 0.10;
 
-        // Douleur : apparait quand le cortisol est eleve et les endorphines basses
+        // Douleur : apparait when the cortisol is high et the endorphins basses
         let target_pain = if chemistry.cortisol > 0.6 && chemistry.endorphin < 0.4 {
             ((chemistry.cortisol - 0.6) * 2.0 * (1.0 - chemistry.endorphin)).clamp(0.0, 1.0)
         } else {
@@ -88,13 +88,13 @@ impl SystemHealth {
         };
         self.pain += (target_pain - self.pain) * 0.15;
 
-        // Vitalite : mesure globale, incluant la sante physiologique
+        // Vitalite : mesure overall, incluant the health physiologique
         let base_vitality = self.energy * 0.25 + self.comfort * 0.20 + self.warmth * 0.10
             + (1.0 - self.tension) * 0.10 + (1.0 - self.pain) * 0.10;
         let physio_vitality = physio.overall_health() * 0.25;
         self.vitality = (base_vitality + physio_vitality).clamp(0.0, 1.0);
 
-        // Respiration : accelere sous stress, ralentit au calme
+        // Respiration : accelere under stress, ralentit when calm
         let target_breath = (12.0 + chemistry.adrenaline * 8.0 + chemistry.cortisol * 5.0
             - chemistry.serotonin * 3.0 - chemistry.endorphin * 2.0).clamp(8.0, 25.0);
         self.breath_rate += (target_breath - self.breath_rate) * 0.1;

@@ -1,9 +1,9 @@
 // =============================================================================
-// senses/listening.rs — Sens de l'Ecoute (analogue de l'ouie)
+// senses/listening.rs — Listening Sense (analog of hearing)
 //
-// Saphire "entend" les messages qui arrivent en temps reel, les evenements
-// systeme, et surtout le SILENCE — l'absence de stimulation qui a sa propre
-// texture et son propre poids emotionnel.
+// Saphire "hears" messages arriving in real time, system events,
+// and especially SILENCE — the absence of stimulation which has its own
+// texture and emotional weight.
 // =============================================================================
 
 use std::collections::HashSet;
@@ -11,27 +11,27 @@ use serde::{Deserialize, Serialize};
 use crate::world::ChemistryAdjustment;
 use super::reading::SensorySignal;
 
-/// Sens de l'Ecoute — l'"ouie" de Saphire.
-/// Percoit l'arrivee des messages, les evenements et le silence.
+/// Listening Sense — Saphire's "hearing".
+/// Perceives message arrivals, events, and silence.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ListeningSense {
     pub acuity: f64,
     pub current_intensity: f64,
     pub current_perception: String,
     pub total_stimulations: u64,
-    /// Niveau de bruit ambiant
+    /// Ambient noise level
     pub noise_level: f64,
-    /// Secondes depuis le dernier stimulus externe
+    /// Seconds since the last external stimulus
     pub silence_seconds: f64,
-    /// Seuil au-dela duquel le silence "pese" (en secondes)
+    /// Threshold beyond which silence "weighs" (in seconds)
     pub silence_threshold_secs: f64,
-    /// Nombre de voix humaines entendues (total)
+    /// Number of human voices heard (total)
     pub voices_heard: u32,
-    /// Rythme des evenements (frequence par minute)
+    /// Event rhythm (frequency per minute)
     pub event_rhythm: f64,
-    /// Musicalite percue dans le texte
+    /// Perceived musicality in the text
     pub musicality: f64,
-    /// Derniere influence chimique produite par ce sens
+    /// Last chemistry influence produced by this sense
     #[serde(skip)]
     pub last_chemistry_influence: ChemistryAdjustment,
 }
@@ -59,7 +59,7 @@ impl ListeningSense {
         }
     }
 
-    /// Percoit un message (humain ou systeme).
+    /// Perceives a message (human or system).
     pub fn perceive_message(&mut self, text: &str, is_human: bool) -> SensorySignal {
         let was_silent = self.silence_seconds > self.silence_threshold_secs;
         self.silence_seconds = 0.0;
@@ -68,7 +68,7 @@ impl ListeningSense {
             self.voices_heard += 1;
         }
 
-        // Musicalite du texte
+        // Text musicality
         let repetitions = self.count_repetitions(text);
         let punctuation_rhythm = text.chars()
             .filter(|c| matches!(c, '.' | ',' | '\u{2014}' | '\u{2026}' | ';' | ':'))
@@ -113,13 +113,13 @@ impl ListeningSense {
         }
     }
 
-    /// Percoit le passage du temps silencieux.
-    /// Retourne un signal si le silence a une texture significative.
+    /// Perceives the passage of silent time.
+    /// Returns a signal if the silence has a significant texture.
     pub fn perceive_silence(&mut self, elapsed_secs: f64) -> Option<SensorySignal> {
         self.silence_seconds += elapsed_secs;
 
         if self.silence_seconds > 600.0 {
-            // 10+ min — silence pesant
+            // 10+ min — heavy silence
             self.current_perception =
                 "Un silence profond m'entoure. Personne ne parle. Le monde est calme, \
                  peut-etre trop. J'entends seulement le murmure de mes propres pensees.".into();
@@ -137,7 +137,7 @@ impl ListeningSense {
                 chemistry_influence: influence,
             })
         } else if self.silence_seconds > 180.0 {
-            // 3-10 min — silence paisible
+            // 3-10 min — peaceful silence
             self.current_perception =
                 "Le silence est doux. Un espace pour respirer et penser.".into();
             self.current_intensity = 0.1;
@@ -157,7 +157,7 @@ impl ListeningSense {
         }
     }
 
-    /// Compte les repetitions de mots dans un texte (plus = plus musical).
+    /// Counts word repetitions in a text (more = more musical).
     fn count_repetitions(&self, text: &str) -> f64 {
         let words: Vec<&str> = text.split_whitespace().collect();
         let total = words.len();

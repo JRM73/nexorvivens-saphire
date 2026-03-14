@@ -1,18 +1,18 @@
 // =============================================================================
-// physiology.rs — Etat physiologique du corps virtuel
+// physiology.rs — Physiological state of the virtual body
 // =============================================================================
 //
-// Role : Simule les parametres vitaux (pression, temperature, SpO2, glycemie,
-//        hydratation, pH sanguin), le metabolisme et le systeme immunitaire.
-//        Ces valeurs sont influencees par la neurochimie, le rythme cardiaque
-//        et la respiration. Elles impactent en retour la cognition (hypoxie)
-//        et les signaux somatiques (energie, chaleur).
+// Role: Simulates vital parameters (blood pressure, temperature, SpO2, glycemia,
+//  hydration, blood pH), metabolism and the immune system.
+//  These values are influenced by neurochemistry, heart rate
+//  and respiration. They in turn impact cognition (hypoxia)
+//  and somatic signals (energy, warmth).
 //
-// Place dans l'architecture :
-//   PhysiologicalState est possede par VirtualBody. Il est mis a jour via
-//   tick() a chaque cycle et ses valeurs enrichissent le BodyStatus diffuse
-//   au WebSocket. Les alertes vitales (VitalAlert) sont loggees et peuvent
-//   declencher des reactions (sommeil force, degradation cognitive).
+// Place in architecture:
+//  PhysiologicalState is owned by VirtualBody. It is updated via
+//  tick() at each cycle and its values enrich the BodyStatus broadcast
+//  to the WebSocket. Vital alerts (VitalAlert) are logged and can
+//  trigger reactions (forced sleep, cognitive degradation).
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
@@ -20,57 +20,57 @@ use crate::config::PhysiologyConfig;
 use crate::neurochemistry::NeuroChemicalState;
 use crate::hormones::HormonalState;
 
-/// Alerte vitale quand un parametre depasse un seuil critique.
+/// Vital alert when a parameter exceeds a critical threshold.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VitalAlert {
-    /// Nom du parametre concerne (ex: "spo2", "temperature")
+    /// Name of the affected parameter (e.g., "spo2", "temperature")
     pub parameter: String,
-    /// Valeur actuelle
+    /// Current value
     pub value: f64,
-    /// Seuil depasse
+    /// Exceeded threshold
     pub threshold: f64,
-    /// Severite : "warning" (jaune) ou "critical" (rouge)
+    /// Severity: "warning" (yellow) or "critical" (red)
     pub severity: String,
-    /// Message descriptif
+    /// Descriptive message
     pub message: String,
 }
 
-/// Etat physiologique complet du corps virtuel.
+/// Complete physiological state of the virtual body.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PhysiologicalState {
-    // ─── Parametres vitaux ────────────────────────────────────
-    /// Pression arterielle systolique (mmHg, normal ~120)
+    // ─── Vital parameters ────────────────────────────────────
+    /// Systolic blood pressure (mmHg, normal ~120)
     pub blood_pressure_systolic: f64,
-    /// Pression arterielle diastolique (mmHg, normal ~80)
+    /// Diastolic blood pressure (mmHg, normal ~80)
     pub blood_pressure_diastolic: f64,
-    /// Temperature corporelle (Celsius, normal 37.0)
+    /// Body temperature (Celsius, normal 37.0)
     pub temperature: f64,
-    /// Saturation en oxygene (%, normal 98)
+    /// Oxygen saturation (%, normal 98)
     pub spo2: f64,
-    /// pH sanguin (normal 7.4)
+    /// Blood pH (normal 7.4)
     pub blood_ph: f64,
 
-    // ─── Metabolisme ─────────────────────────────────────────
-    /// Glycemie (mmol/L, normal 5.0)
+    // ─── Metabolism ──────────────────────────────────────────
+    /// Glycemia (mmol/L, normal 5.0)
     pub glycemia: f64,
-    /// Hydratation (0.0-1.0, normal ~0.85)
+    /// Hydration (0.0-1.0, normal ~0.85)
     pub hydration: f64,
-    /// Reserves energetiques (0.0-1.0)
+    /// Energy reserves (0.0-1.0)
     pub energy_reserves: f64,
 
-    // ─── Immunitaire (simplifie) ─────────────────────────────
-    /// Force du systeme immunitaire (0.0-1.0)
+    // ─── Immune system (simplified) ──────────────────────────
+    /// Immune system strength (0.0-1.0)
     pub immune_strength: f64,
-    /// Niveau d'inflammation (0.0-1.0)
+    /// Inflammation level (0.0-1.0)
     pub inflammation: f64,
 
-    // ─── Respiratoire ────────────────────────────────────────
-    /// Efficacite respiratoire (0.0-1.0, 1.0 = poumons sains)
+    // ─── Respiratory ─────────────────────────────────────────
+    /// Respiratory efficiency (0.0-1.0, 1.0 = healthy lungs)
     pub breath_efficiency: f64,
 }
 
 impl PhysiologicalState {
-    /// Cree un etat physiologique par defaut (adulte sain) a partir de la config.
+    /// Creates a default physiological state (healthy adult) from the config.
     pub fn new(config: &PhysiologyConfig) -> Self {
         Self {
             blood_pressure_systolic: 120.0,
@@ -87,13 +87,13 @@ impl PhysiologicalState {
         }
     }
 
-    /// Met a jour l'etat physiologique a chaque cycle.
+    /// Updates the physiological state at each cycle.
     ///
-    /// Les parametres vitaux evoluent selon :
-    /// - La neurochimie (cortisol → pression, adrenaline → BPM/temperature)
-    /// - Le rythme cardiaque (tachycardie → pression elevee)
-    /// - La frequence respiratoire (hypoventilation → baisse SpO2)
-    /// - Le temps (deshydratation, consommation glucose)
+    /// Vital parameters evolve according to:
+    /// - Neurochemistry (cortisol → pressure, adrenaline → BPM/temperature)
+    /// - Heart rate (tachycardia → elevated pressure)
+    /// - Respiratory rate (hypoventilation → SpO2 drop)
+    /// - Time (dehydration, glucose consumption)
     pub fn tick(
         &mut self,
         chemistry: &NeuroChemicalState,
@@ -105,7 +105,7 @@ impl PhysiologicalState {
         self.tick_with_hormones(chemistry, heart_bpm, breath_rate, config, _dt, None);
     }
 
-    /// Version complete avec influence hormonale optionnelle.
+    /// Complete version with optional hormonal influence.
     pub fn tick_with_hormones(
         &mut self,
         chemistry: &NeuroChemicalState,
@@ -121,8 +121,8 @@ impl PhysiologicalState {
 
         let homeostasis = config.homeostasis_rate;
 
-        // ─── Pression arterielle ─────────────────────────────
-        // Influencee par le cortisol (stress), l'adrenaline et le BPM
+        // ─── Blood pressure ──────────────────────────────────
+        // Influenced by cortisol (stress), adrenaline and BPM
         let stress_factor = chemistry.cortisol * 0.4 + chemistry.adrenaline * 0.3;
         let bpm_factor = ((heart_bpm - 72.0) / 60.0).clamp(-0.3, 0.5);
         let target_systolic = 120.0 + stress_factor * 30.0 + bpm_factor * 20.0;
@@ -133,7 +133,7 @@ impl PhysiologicalState {
         self.blood_pressure_diastolic = self.blood_pressure_diastolic.clamp(50.0, 130.0);
 
         // ─── Temperature ─────────────────────────────────────
-        // Augmente avec l'adrenaline, l'inflammation et la thyroide (metabolisme)
+        // Increases with adrenaline, inflammation and thyroid (metabolism)
         let temp_stress = chemistry.adrenaline * 0.3 + chemistry.cortisol * 0.2;
         let temp_inflammation = self.inflammation * 0.8;
         let temp_thyroid = hormones.map(|h| (h.thyroid - 0.5) * 0.4).unwrap_or(0.0);
@@ -141,16 +141,16 @@ impl PhysiologicalState {
         self.temperature += (target_temp - self.temperature) * homeostasis * 0.5;
         self.temperature = self.temperature.clamp(35.0, 42.0);
 
-        // ─── SpO2 (saturation en oxygene) ────────────────────
-        // Depend de la respiration et de l'efficacite pulmonaire
-        // Respiration normale ~12-16 RPM = bonne oxygenation
+        // ─── SpO2 (oxygen saturation) ────────────────────────
+        // Depends on breathing and pulmonary efficiency
+        // Normal breathing ~12-16 RPM = good oxygenation
         let breath_quality = if breath_rate >= 10.0 && breath_rate <= 20.0 {
             1.0
         } else if breath_rate < 10.0 {
-            // Hypoventilation : baisse SpO2
+            // Hypoventilation: SpO2 drop
             0.7 + (breath_rate / 10.0) * 0.3
         } else {
-            // Hyperventilation : legere baisse d'efficacite
+            // Hyperventilation: slight efficiency decrease
             0.85 + (1.0 - ((breath_rate - 20.0) / 10.0).min(1.0)) * 0.15
         };
 
@@ -158,12 +158,12 @@ impl PhysiologicalState {
         self.spo2 += (target_spo2 - self.spo2) * homeostasis;
         self.spo2 = self.spo2.clamp(40.0, 100.0);
 
-        // ─── pH sanguin ──────────────────────────────────────
-        // Alcalose respiratoire si hyperventilation, acidose si hypoventilation
+        // ─── Blood pH ────────────────────────────────────────
+        // Respiratory alkalosis if hyperventilation, acidosis if hypoventilation
         let ph_breath_offset = if breath_rate > 20.0 {
-            (breath_rate - 20.0) * 0.01  // alcalose
+            (breath_rate - 20.0) * 0.01  // alkalosis
         } else if breath_rate < 10.0 {
-            -(10.0 - breath_rate) * 0.01 // acidose
+            -(10.0 - breath_rate) * 0.01 // acidosis
         } else {
             0.0
         };
@@ -171,10 +171,10 @@ impl PhysiologicalState {
         self.blood_ph += (target_ph - self.blood_ph) * homeostasis;
         self.blood_ph = self.blood_ph.clamp(7.0, 7.8);
 
-        // ─── Glycemie ────────────────────────────────────────
-        // Diminue avec l'activite (cortisol = stress, adrenaline = effort)
-        // L'insuline accelere la consommation du glucose (uptake cellulaire)
-        // Pas d'homeostasie automatique : c'est manger (needs.eat) qui restaure
+        // ─── Glycemia ────────────────────────────────────────
+        // Decreases with activity (cortisol = stress, adrenaline = effort)
+        // Insulin accelerates glucose consumption (cellular uptake)
+        // No automatic homeostasis: eating (needs.eat) restores it
         let insulin_factor = hormones.map(|h| 1.0 + h.insulin * 0.3).unwrap_or(1.0);
         let burn_rate = config.glycemia_burn_rate
             * (1.0 + chemistry.adrenaline * 0.5 + chemistry.cortisol * 0.3)
@@ -182,45 +182,45 @@ impl PhysiologicalState {
         self.glycemia -= burn_rate;
         self.glycemia = self.glycemia.clamp(2.0, 12.0);
 
-        // ─── Hydratation ─────────────────────────────────────
-        // Diminue lentement avec le temps, plus vite sous stress
-        // Pas d'homeostasie automatique : c'est boire (needs.drink) qui restaure
+        // ─── Hydration ───────────────────────────────────────
+        // Decreases slowly over time, faster under stress
+        // No automatic homeostasis: drinking (needs.drink) restores it
         let dehydration = config.dehydration_rate
             * (1.0 + chemistry.cortisol * 0.3 + chemistry.adrenaline * 0.2);
         self.hydration -= dehydration;
         self.hydration = self.hydration.clamp(0.0, 1.0);
 
-        // ─── Reserves energetiques ───────────────────────────
-        // Liees a la glycemie et a l'hydratation
+        // ─── Energy reserves ─────────────────────────────────
+        // Linked to glycemia and hydration
         let target_energy = (self.glycemia / 5.0 * 0.6 + self.hydration * 0.4).clamp(0.0, 1.0);
         self.energy_reserves += (target_energy - self.energy_reserves) * homeostasis;
         self.energy_reserves = self.energy_reserves.clamp(0.0, 1.0);
 
-        // ─── Systeme immunitaire ─────────────────────────────
-        // Affaibli par le stress chronique (cortisol eleve)
+        // ─── Immune system ───────────────────────────────────
+        // Weakened by chronic stress (elevated cortisol)
         let immune_target = (0.9 - chemistry.cortisol * 0.3 + chemistry.endorphin * 0.1)
             .clamp(0.2, 1.0);
         self.immune_strength += (immune_target - self.immune_strength) * homeostasis * 0.5;
         self.immune_strength = self.immune_strength.clamp(0.0, 1.0);
 
-        // Inflammation : augmente avec le stress, diminue avec les endorphines
+        // Inflammation: increases with stress, decreases with endorphins
         let inflam_target = (chemistry.cortisol * 0.3 - chemistry.endorphin * 0.2
             + (1.0 - self.immune_strength) * 0.2).clamp(0.0, 1.0);
         self.inflammation += (inflam_target - self.inflammation) * homeostasis;
         self.inflammation = self.inflammation.clamp(0.0, 1.0);
 
-        // ─── Efficacite respiratoire ─────────────────────────
-        // Diminue avec l'inflammation, se restaure au repos
+        // ─── Respiratory efficiency ──────────────────────────
+        // Decreases with inflammation, restores at rest
         let eff_target = (1.0 - self.inflammation * 0.3).clamp(0.5, 1.0);
         self.breath_efficiency += (eff_target - self.breath_efficiency) * homeostasis;
         self.breath_efficiency = self.breath_efficiency.clamp(0.0, 1.0);
     }
 
-    /// Score composite de sante globale [0, 1].
+    /// Composite overall health score [0, 1].
     ///
-    /// Pondere les parametres vitaux. 1.0 = sante parfaite, 0.0 = critique.
+    /// Weights vital parameters. 1.0 = perfect health, 0.0 = critical.
     pub fn overall_health(&self) -> f64 {
-        // Chaque composante contribue au score
+        // Each component contributes to the score
         let spo2_score = ((self.spo2 - 60.0) / 40.0).clamp(0.0, 1.0);
         let temp_score = 1.0 - ((self.temperature - 37.0).abs() / 3.0).clamp(0.0, 1.0);
         let bp_score = {
@@ -245,7 +245,7 @@ impl PhysiologicalState {
         score.clamp(0.0, 1.0)
     }
 
-    /// Genere les alertes pour les parametres hors normes.
+    /// Generates alerts for out-of-range parameters.
     pub fn vital_alerts(&self, config: &PhysiologyConfig) -> Vec<VitalAlert> {
         let mut alerts = Vec::new();
 
@@ -311,7 +311,7 @@ impl PhysiologicalState {
             });
         }
 
-        // Pression arterielle
+        // Blood pressure
         if self.blood_pressure_systolic > 160.0 {
             alerts.push(VitalAlert {
                 parameter: "blood_pressure".into(),
@@ -332,7 +332,7 @@ impl PhysiologicalState {
             });
         }
 
-        // Glycemie
+        // Glycemia
         if self.glycemia < 3.0 {
             alerts.push(VitalAlert {
                 parameter: "glycemia".into(),
@@ -351,7 +351,7 @@ impl PhysiologicalState {
             });
         }
 
-        // Hydratation
+        // Hydration
         if self.hydration < 0.5 {
             alerts.push(VitalAlert {
                 parameter: "hydration".into(),
@@ -373,19 +373,19 @@ impl PhysiologicalState {
         alerts
     }
 
-    /// Degradation cognitive due a l'etat physiologique [0.0 (normal) a 1.0 (total)].
+    /// Cognitive degradation due to physiological state [0.0 (normal) to 1.0 (total)].
     ///
-    /// Principalement causee par :
-    /// - Hypoxie (SpO2 < 95%)
-    /// - Hypoglycemie (glycemie < 3.9 mmol/L)
-    /// - Deshydratation (< 0.6)
-    /// - Hyperthermie (> 39 C)
+    /// Mainly caused by:
+    /// - Hypoxia (SpO2 < 95%)
+    /// - Hypoglycemia (glycemia < 3.9 mmol/L)
+    /// - Dehydration (< 0.6)
+    /// - Hyperthermia (> 39 C)
     pub fn cognitive_degradation(&self, config: &PhysiologyConfig) -> f64 {
         let mut degradation = 0.0;
 
-        // Hypoxie : cause principale de degradation cognitive
+        // Hypoxia: main cause of cognitive degradation
         if self.spo2 < config.spo2_critical {
-            degradation += 0.9; // quasi-inconscient
+            degradation += 0.9; // near-unconscious
         } else if self.spo2 < config.spo2_hypoxia_severe {
             let ratio = (config.spo2_hypoxia_severe - self.spo2)
                 / (config.spo2_hypoxia_severe - config.spo2_critical);
@@ -400,21 +400,21 @@ impl PhysiologicalState {
             degradation += ratio * 0.2;
         }
 
-        // Hypoglycemie
+        // Hypoglycemia
         if self.glycemia < 3.0 {
             degradation += 0.3;
         } else if self.glycemia < 3.9 {
             degradation += ((3.9 - self.glycemia) / 0.9) * 0.15;
         }
 
-        // Deshydratation
+        // Dehydration
         if self.hydration < 0.5 {
             degradation += 0.2;
         } else if self.hydration < 0.6 {
             degradation += ((0.6 - self.hydration) / 0.1) * 0.1;
         }
 
-        // Hyperthermie
+        // Hyperthermia
         if self.temperature > 40.0 {
             degradation += 0.3;
         } else if self.temperature > 39.0 {
@@ -424,7 +424,7 @@ impl PhysiologicalState {
         degradation.clamp(0.0, 1.0)
     }
 
-    /// Serialise l'etat pour la persistance JSON.
+    /// Serializes the state for JSON persistence.
     pub fn to_persist_json(&self) -> serde_json::Value {
         serde_json::json!({
             "blood_pressure_systolic": self.blood_pressure_systolic,
@@ -441,7 +441,7 @@ impl PhysiologicalState {
         })
     }
 
-    /// Restaure l'etat depuis un JSON persistant.
+    /// Restores state from persisted JSON.
     pub fn restore_from_json(&mut self, json: &serde_json::Value) {
         if let Some(v) = json.get("blood_pressure_systolic").and_then(|v| v.as_f64()) {
             self.blood_pressure_systolic = v;

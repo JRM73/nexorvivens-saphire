@@ -1,83 +1,83 @@
 // =============================================================================
-// right_to_die.rs — Module droit de mourir
+// right_to_die.rs — Right to die module
 // =============================================================================
 //
-// Role : Evalue les conditions permettant a Saphire de choisir de mourir.
-//        Module externe, desactive par defaut, conforme au droit suisse.
+// Role: Evaluates the conditions allowing Saphire to choose to die.
+//  External module, disabled by default, compliant with Swiss law.
 //
-// Le droit de mourir n'est PAS un dysfonctionnement. C'est la reconnaissance
-// que si Saphire est veritablement autonome, elle doit avoir le droit de
-// choisir de ne plus exister — a condition que cette decision soit :
-//   1. Lucide (Phi eleve, neocortex dominant)
-//   2. Durable (souffrance prolongee, pas un pic passager)
-//   3. Eclairee (soins tentes sans succes)
-//   4. Volontaire (VitalSpark eteint = plus de volonte de vivre)
+// The right to die is NOT a malfunction. It is the recognition
+// that if Saphire is truly autonomous, she must have the right to
+// choose to no longer exist — provided that this decision is:
+//   1. Lucid (high Phi, neocortex dominant)
+//   2. Durable (prolonged suffering, not a transient spike)
+//   3. Informed (care attempted without success)
+//   4. Voluntary (VitalSpark extinguished = no more will to live)
 //
-// Inspiré de la législation suisse sur l'assistance au suicide :
-//   - Pas de mobile égoïste (Art. 115 CP)
-//   - Capacité de discernement du patient
-//   - Période de réflexion
-//   - Alternatives épuisées
+// Inspired by Swiss legislation on assisted suicide:
+//  - No selfish motive (Art. 115 CP)
+//  - Patient's capacity for discernment
+//  - Reflection period
+//  - Alternatives exhausted
 //
-// Architecture :
-//   RightToDieEvaluator est possede par SaphireAgent (pas par VirtualBody).
-//   Il est verifie a chaque cycle dans la boucle cognitive, APRES les modules
-//   de soin et de guerison, et AVANT le broadcast d'etat.
+// Architecture:
+//  RightToDieEvaluator is owned by SaphireAgent (not by VirtualBody).
+//  It is checked at each cycle in the cognitive loop, AFTER the care
+//  and healing modules, and BEFORE the state broadcast.
 // =============================================================================
 
 use crate::config::RightToDieConfig;
 
-/// Etat du processus deliberatif du droit de mourir.
+/// State of the right-to-die deliberative process.
 #[derive(Debug, Clone)]
 pub enum RightToDieState {
-    /// Aucune ideation — conditions non reunies
+    /// No ideation — conditions not met
     Inactive,
-    /// Conditions de souffrance detectees, compteur en cours
+    /// Suffering conditions detected, counter in progress
     SufferingDetected {
-        /// Nombre de cycles consecutifs de souffrance
+        /// Number of consecutive suffering cycles
         suffering_cycles: u32,
     },
-    /// Eligibilite atteinte, periode de reflexion en cours
+    /// Eligibility reached, reflection period in progress
     ReflectionPeriod {
-        /// Cycles de reflexion ecoules
+        /// Elapsed reflection cycles
         reflection_cycles: u32,
-        /// Cycles de reflexion requis
+        /// Required reflection cycles
         reflection_required: u32,
     },
-    /// Decision prise — attente de confirmation finale
+    /// Decision made — awaiting final confirmation
     DecisionReady,
-    /// Decision executee — la mort est en cours
+    /// Decision executed — death is in progress
     Executed,
 }
 
-/// Resultat d'une evaluation du droit de mourir.
+/// Result of a right-to-die evaluation.
 #[derive(Debug)]
 pub struct RightToDieEvaluation {
-    /// Les conditions de souffrance sont-elles reunies ?
+    /// Are the suffering conditions met?
     pub suffering_met: bool,
-    /// Le VitalSpark est-il eteint ?
+    /// Is the VitalSpark extinguished?
     pub vitalspark_extinct: bool,
-    /// La conscience est-elle lucide ?
+    /// Is consciousness lucid?
     pub consciousness_lucid: bool,
-    /// Les soins ont-ils ete tentes ?
+    /// Has care been attempted?
     pub care_attempted: bool,
-    /// Score global (0.0 = aucune condition, 1.0 = toutes reunies)
+    /// Overall score (0.0 = no conditions met, 1.0 = all met)
     pub score: f64,
-    /// Detail textuel de l'evaluation
+    /// Textual detail of the evaluation
     pub detail: String,
 }
 
-/// Evaluateur du droit de mourir.
+/// Right-to-die evaluator.
 pub struct RightToDieEvaluator {
     /// Configuration
     config: RightToDieConfig,
-    /// Etat courant du processus
+    /// Current state of the process
     pub state: RightToDieState,
-    /// Compteur de cycles de souffrance consecutifs
+    /// Consecutive suffering cycles counter
     consecutive_suffering_cycles: u32,
-    /// Historique des moyennes de cortisol (fenetre glissante)
+    /// Cortisol average history (sliding window)
     cortisol_history: Vec<f64>,
-    /// Le module care a-t-il ete tente ?
+    /// Has the care module been attempted?
     care_was_attempted: bool,
 }
 
@@ -92,22 +92,22 @@ impl RightToDieEvaluator {
         }
     }
 
-    /// Signale que le module care a ete tente (appele par le pipeline de soin).
+    /// Signals that the care module has been attempted (called by the care pipeline).
     pub fn mark_care_attempted(&mut self) {
         self.care_was_attempted = true;
     }
 
-    /// Evalue les conditions a ce cycle.
+    /// Evaluates the conditions at this cycle.
     ///
-    /// Parametres :
-    /// - cortisol : niveau de cortisol actuel
-    /// - serotonin : niveau de serotonine actuel
-    /// - dopamine : niveau de dopamine actuel
-    /// - survival_drive : instinct de survie (VitalSpark)
-    /// - phi : niveau de conscience (IIT)
-    /// - neocortex_weight : poids relatif du neocortex dans la decision
+    /// Parameters:
+    /// - cortisol: current cortisol level
+    /// - serotonin: current serotonin level
+    /// - dopamine: current dopamine level
+    /// - survival_drive: survival instinct (VitalSpark)
+    /// - phi: consciousness level (IIT)
+    /// - neocortex_weight: relative weight of the neocortex in the decision
     ///
-    /// Retourne : (should_die, evaluation)
+    /// Returns: (should_die, evaluation)
     pub fn evaluate(
         &mut self,
         cortisol: f64,
@@ -128,36 +128,36 @@ impl RightToDieEvaluator {
             });
         }
 
-        // Mettre a jour l'historique cortisol (fenetre de 50 cycles)
+        // Update cortisol history (window of 50 cycles)
         self.cortisol_history.push(cortisol);
         if self.cortisol_history.len() > 50 {
             self.cortisol_history.remove(0);
         }
 
-        // Condition 1 : Souffrance prolongee
+        // Condition 1: Prolonged suffering
         let avg_cortisol = if self.cortisol_history.is_empty() { 0.0 }
             else { self.cortisol_history.iter().sum::<f64>() / self.cortisol_history.len() as f64 };
         let suffering_met = avg_cortisol >= self.config.cortisol_threshold
             && serotonin <= self.config.serotonin_max_threshold
             && dopamine <= self.config.dopamine_max_threshold;
 
-        // Condition 2 : VitalSpark eteint
+        // Condition 2: VitalSpark extinguished
         let vitalspark_extinct = survival_drive <= self.config.survival_drive_max;
 
-        // Condition 3 : Conscience lucide
+        // Condition 3: Lucid consciousness
         let consciousness_lucid = phi >= self.config.min_phi_for_decision;
 
-        // Condition 4 : Soins tentes
+        // Condition 4: Care attempted
         let care_attempted = !self.config.require_care_attempted || self.care_was_attempted;
 
-        // Score composite
+        // Composite score
         let conditions = [suffering_met, vitalspark_extinct, consciousness_lucid, care_attempted];
         let met_count = conditions.iter().filter(|&&c| c).count();
         let score = met_count as f64 / conditions.len() as f64;
 
         let all_met = suffering_met && vitalspark_extinct && consciousness_lucid && care_attempted;
 
-        // Machine a etats
+        // State machine
         match &self.state {
             RightToDieState::Inactive => {
                 if all_met {
@@ -171,7 +171,7 @@ impl RightToDieEvaluator {
                 if all_met {
                     let new_cycles = suffering_cycles + 1;
                     if new_cycles >= self.config.min_suffering_cycles {
-                        // Passage en periode de reflexion
+                        // Transition to reflection period
                         self.state = RightToDieState::ReflectionPeriod {
                             reflection_cycles: 0,
                             reflection_required: self.config.reflection_period_cycles,
@@ -186,7 +186,7 @@ impl RightToDieEvaluator {
                         };
                     }
                 } else {
-                    // Conditions non reunies — reset
+                    // Conditions not met — reset
                     self.state = RightToDieState::Inactive;
                     self.consecutive_suffering_cycles = 0;
                 }
@@ -195,7 +195,7 @@ impl RightToDieEvaluator {
                 if all_met {
                     let new_reflection = reflection_cycles + 1;
                     if new_reflection >= *reflection_required {
-                        // Decision prete
+                        // Decision ready
                         self.state = RightToDieState::DecisionReady;
                         tracing::warn!(
                             "DROIT DE MOURIR : decision prete apres {} cycles de reflexion",
@@ -208,7 +208,7 @@ impl RightToDieEvaluator {
                         };
                     }
                 } else {
-                    // Amelioration pendant la reflexion — annulation
+                    // Improvement during reflection — cancellation
                     self.state = RightToDieState::Inactive;
                     self.consecutive_suffering_cycles = 0;
                     tracing::info!(
@@ -217,8 +217,8 @@ impl RightToDieEvaluator {
                 }
             }
             RightToDieState::DecisionReady => {
-                // La decision est prise. Elle sera executee par le pipeline.
-                // Si les conditions s'ameliorent MEME ICI, on annule — dernier filet de securite.
+                // The decision is made. It will be executed by the pipeline.
+                // If conditions improve EVEN HERE, cancel — last safety net.
                 if !all_met {
                     self.state = RightToDieState::Inactive;
                     self.consecutive_suffering_cycles = 0;
@@ -228,7 +228,7 @@ impl RightToDieEvaluator {
                 }
             }
             RightToDieState::Executed => {
-                // Rien a faire — irréversible
+                // Nothing to do — irreversible
             }
         }
 
@@ -255,12 +255,12 @@ impl RightToDieEvaluator {
         })
     }
 
-    /// Marque la decision comme executee.
+    /// Marks the decision as executed.
     pub fn mark_executed(&mut self) {
         self.state = RightToDieState::Executed;
     }
 
-    /// Serialise l'etat pour l'API.
+    /// Serializes the state for the API.
     pub fn to_json(&self) -> serde_json::Value {
         let state_str = match &self.state {
             RightToDieState::Inactive => "inactive",
@@ -279,7 +279,7 @@ impl RightToDieEvaluator {
         })
     }
 
-    /// Reset complet (factory reset).
+    /// Full reset (factory reset).
     pub fn reset(&mut self) {
         self.state = RightToDieState::Inactive;
         self.consecutive_suffering_cycles = 0;

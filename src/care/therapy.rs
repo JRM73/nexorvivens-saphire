@@ -1,58 +1,58 @@
 // =============================================================================
-// care/therapy.rs — Therapies psychologiques
+// care/therapy.rs — Psychological therapies
 // =============================================================================
 //
-// Role : Modelise les therapies psy qui traitent traumas, phobies, addictions.
-//        Chaque therapie a un type, une duree, une efficacite progressive,
-//        et modifie la chimie et les conditions ciblees.
+// Role: Models psychological therapies that treat traumas, phobias, addictions.
+//  Each therapy has a type, duration, progressive efficacy,
+//        and modifies chemistry and targeted conditions.
 //
-// Integration :
-//   Accelere le healing_rate des traumas (P2.10),
-//   booste la desensibilisation des phobies (P2.7),
-//   aide au sevrage des addictions (P2.5).
+// Integration:
+//   Accelerates the healing_rate of traumas (P2.10),
+//  boosts phobia desensitization (P2.7),
+//  assists with addiction withdrawal (P2.5).
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 use crate::world::ChemistryAdjustment;
 
-/// Type de therapie psychologique.
+/// Type of psychological therapy.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum TherapyType {
-    /// Therapie cognitivo-comportementale (phobies, anxiete, TOC)
+    /// Cognitive-behavioral therapy (phobias, anxiety, OCD)
     Cbt,
-    /// EMDR — retraitement des traumas par mouvements oculaires
+    /// EMDR — trauma reprocessing through eye movements
     Emdr,
-    /// Psychanalyse — exploration profonde de l'inconscient
+    /// Psychoanalysis — deep exploration of the unconscious
     Psychoanalysis,
-    /// Hypnose therapeutique (addictions, phobies, douleur)
+    /// Therapeutic hypnosis (addictions, phobias, pain)
     Hypnotherapy,
 }
 
-/// Une session de therapie en cours.
+/// An ongoing therapy session.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TherapySession {
     pub therapy_type: TherapyType,
-    /// Condition ciblee (id texte libre : "trauma:grief", "phobia:claustro", etc.)
+    /// Targeted condition (free text id: "trauma:grief", "phobia:claustro", etc.)
     pub target_condition: String,
-    /// Cycles ecoules dans cette therapie
+    /// Cycles elapsed in this therapy
     pub cycles_elapsed: u64,
-    /// Duree totale prevue (en cycles)
+    /// Total expected duration (in cycles)
     pub total_duration: u64,
-    /// Progres du traitement (0.0 = debut, 1.0 = termine)
+    /// Treatment progress (0.0 = start, 1.0 = completed)
     pub progress: f64,
-    /// Efficacite de cette therapie sur cette condition (0.0-1.0)
+    /// Efficacy of this therapy on this condition (0.0-1.0)
     pub efficacy: f64,
-    /// Sessions completees
+    /// Completed sessions
     pub sessions_completed: u32,
 }
 
 impl TherapySession {
     pub fn new(therapy_type: TherapyType, target: &str) -> Self {
         let (duration, efficacy) = match therapy_type {
-            TherapyType::Cbt => (300, 0.7),          // Long, bonne efficacite
-            TherapyType::Emdr => (150, 0.8),          // Moyen, haute efficacite sur trauma
-            TherapyType::Psychoanalysis => (600, 0.5), // Tres long, effet profond mais lent
-            TherapyType::Hypnotherapy => (100, 0.6),   // Court, efficacite moderee
+            TherapyType::Cbt => (300, 0.7),          // Long, good efficacy
+            TherapyType::Emdr => (150, 0.8),          // Medium, high efficacy on trauma
+            TherapyType::Psychoanalysis => (600, 0.5), // Very long, deep but slow effect
+            TherapyType::Hypnotherapy => (100, 0.6),   // Short, moderate efficacy
         };
         Self {
             therapy_type,
@@ -65,8 +65,8 @@ impl TherapySession {
         }
     }
 
-    /// Fait avancer la therapie d'un cycle.
-    /// Retourne le bonus de guerison a appliquer a la condition ciblee.
+    /// Advances the therapy by one cycle.
+    /// Returns the healing bonus to apply to the targeted condition.
     pub fn tick(&mut self) -> f64 {
         if self.progress >= 1.0 {
             return 0.0;
@@ -75,10 +75,10 @@ impl TherapySession {
         self.cycles_elapsed += 1;
         self.progress = (self.cycles_elapsed as f64 / self.total_duration as f64).min(1.0);
 
-        // Le bonus de guerison augmente avec le progres (plus on avance, plus ca aide)
+        // The healing bonus increases with progress (the further along, the more it helps)
         let healing_bonus = self.efficacy * self.progress * 0.001;
 
-        // Session milestone tous les 50 cycles
+        // Session milestone every 50 cycles
         if self.cycles_elapsed % 50 == 0 {
             self.sessions_completed += 1;
         }
@@ -86,7 +86,7 @@ impl TherapySession {
         healing_bonus
     }
 
-    /// Impact chimique de la therapie (pendant la seance).
+    /// Chemical impact of the therapy (during the session).
     pub fn chemistry_influence(&self) -> ChemistryAdjustment {
         if self.progress >= 1.0 {
             return ChemistryAdjustment::default();
@@ -94,21 +94,21 @@ impl TherapySession {
 
         match self.therapy_type {
             TherapyType::Cbt => ChemistryAdjustment {
-                cortisol: -0.005 * self.progress, // Reduction progressive du stress
-                serotonin: 0.003 * self.progress, // Amelioration bien-etre
+                cortisol: -0.005 * self.progress, // Progressive stress reduction
+                serotonin: 0.003 * self.progress, // Well-being improvement
                 ..Default::default()
             },
             TherapyType::Emdr => ChemistryAdjustment {
-                // EMDR peut etre eprouvant au debut puis liberateur
+                // EMDR can be taxing at first then liberating
                 cortisol: if self.progress < 0.3 { 0.005 } else { -0.008 },
                 endorphin: 0.003 * self.progress,
                 ..Default::default()
             },
             TherapyType::Psychoanalysis => ChemistryAdjustment {
-                // Lent mais profond — remue des choses
+                // Slow but deep — stirs things up
                 cortisol: if self.progress < 0.5 { 0.002 } else { -0.003 },
                 serotonin: 0.001 * self.progress,
-                oxytocin: 0.002, // Lien therapeutique
+                oxytocin: 0.002, // Therapeutic bond
                 ..Default::default()
             },
             TherapyType::Hypnotherapy => ChemistryAdjustment {
@@ -136,7 +136,7 @@ impl TherapySession {
     }
 }
 
-/// Gestionnaire de therapies actives.
+/// Manager for active therapies.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TherapyManager {
     pub active_therapies: Vec<TherapySession>,
@@ -147,13 +147,13 @@ impl TherapyManager {
         Self { active_therapies: Vec::new() }
     }
 
-    /// Demarre une nouvelle therapie.
+    /// Starts a new therapy.
     pub fn start(&mut self, therapy_type: TherapyType, target: &str) {
         self.active_therapies.push(TherapySession::new(therapy_type, target));
     }
 
-    /// Met a jour toutes les therapies.
-    /// Retourne les bonus de guerison par condition ciblee.
+    /// Updates all therapies.
+    /// Returns healing bonuses per targeted condition.
     pub fn tick(&mut self) -> Vec<(String, f64)> {
         let mut bonuses = Vec::new();
         for therapy in &mut self.active_therapies {
@@ -162,12 +162,12 @@ impl TherapyManager {
                 bonuses.push((therapy.target_condition.clone(), bonus));
             }
         }
-        // Retirer les therapies terminees
+        // Remove completed therapies
         self.active_therapies.retain(|t| !t.is_complete());
         bonuses
     }
 
-    /// Impact chimique total.
+    /// Total chemical impact.
     pub fn chemistry_influence(&self) -> ChemistryAdjustment {
         let mut adj = ChemistryAdjustment::default();
         for t in &self.active_therapies {
@@ -222,12 +222,12 @@ mod tests {
     #[test]
     fn test_emdr_chemistry_phases() {
         let mut session = TherapySession::new(TherapyType::Emdr, "trauma:accident");
-        // Debut : cortisol positif (eprouvant)
+        // Start: positive cortisol (taxing)
         session.tick();
         let adj_early = session.chemistry_influence();
         assert!(adj_early.cortisol > 0.0);
 
-        // Apres 50% : cortisol negatif (liberateur)
+        // After 50%: negative cortisol (liberating)
         for _ in 0..100 {
             session.tick();
         }

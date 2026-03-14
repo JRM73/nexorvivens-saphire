@@ -1,35 +1,35 @@
 // =============================================================================
-// api/mod.rs — Module API : routeur, etat partage, handlers, securite
+// api/mod.rs — API module: router, shared state, handlers, security
 //
-// Role : Ce module regroupe tous les handlers HTTP/WebSocket de l'application
-// Saphire. Il expose AppState, ControlMessage et la fonction build_router()
-// qui construit le routeur axum complet avec toutes les routes.
+// Role: This module groups all HTTP/WebSocket handlers for the Saphire
+// application. It exposes AppState, ControlMessage and the build_router()
+// function that constructs the complete axum router with all routes.
 //
-// Securite :
-//   - middleware.rs : authentification Bearer token, rate limiting, CORS
-//   - Les routes statiques et /api/health sont publiques
-//   - Les WebSockets ont une validation d'origine
-//   - Toutes les routes /api/* sont protegees par auth + rate limit
+// Security:
+//  - middleware.rs: Bearer token authentication, rate limiting, CORS
+//  - Static routes and /api/health are public
+//  - WebSockets have origin validation
+//  - All /api/* routes are protected by auth + rate limit
 //
-// Architecture :
-//   - state.rs : AppState + ControlMessage
-//   - middleware.rs : auth, rate limit, CORS
-//   - static_files.rs : fichiers embarques (HTML, CSS, JS, SVG)
-//   - system.rs : sante, config, statut systeme, backup, purge
-//   - chemistry.rs : neurochimie
-//   - memory.rs : memoire 4 niveaux
-//   - brain.rs : monde + connaissances basiques
-//   - body.rs : corps virtuel + coeur
-//   - vital.rs : VitalSpark, Intuition, Premonition
-//   - ethics.rs : ethique personnelle 3 couches
-//   - senses.rs : Sensorium + sens emergents
-//   - knowledge.rs : sources + stats connaissances
-//   - algorithms.rs : orchestrateur d'algorithmes
-//   - orchestrators.rs : reves, desirs, apprentissage, attention, guerison
-//   - metrics.rs : toutes les metriques temporelles
-//   - logs.rs : logs, traces, historique LLM
-//   - factory.rs : valeurs d'usine, diff, reset
-//   - websocket.rs : WebSocket principal + dashboard
+// Architecture:
+//   - state.rs: AppState + ControlMessage
+//   - middleware.rs: auth, rate limit, CORS
+//   - static_files.rs: embedded files (HTML, CSS, JS, SVG)
+//   - system.rs: health, config, system status, backup, purge
+//   - chemistry.rs: neurochemistry
+//   - memory.rs: 4-level memory
+//   - brain.rs: world + basic knowledge
+//   - body.rs: virtual body + heart
+//   - vital.rs: VitalSpark, Intuition, Premonition
+//   - ethics.rs: 3-layer personal ethics
+//   - senses.rs: Sensorium + emergent senses
+//   - knowledge.rs: knowledge sources + stats
+//   - algorithms.rs: algorithm orchestrator
+//   - orchestrators.rs: dreams, desires, learning, attention, healing
+//   - metrics.rs: all temporal metrics
+//   - logs.rs: logs, traces, LLM history
+//   - factory.rs: factory defaults, diff, reset
+//   - websocket.rs: main WebSocket + dashboard
 // =============================================================================
 
 pub mod state;
@@ -74,25 +74,25 @@ pub mod curiosity;
 pub mod drift;
 pub mod websocket;
 
-// Re-exports pour acces direct depuis main.rs
+// Re-exports for direct access from main.rs
 pub use state::{AppState, ControlMessage};
 
 use axum::{Router, routing::{get, post}};
 
-/// Construit le routeur axum complet avec toutes les routes de l'application.
-/// Les routes sont separees en publiques (statiques, health, ws) et protegees
-/// (toutes les /api/* sauf health) avec auth Bearer + rate limiting.
+/// Builds the complete axum router with all application routes.
+/// Routes are separated into public (static, health, ws) and protected
+/// (all /api/* except health) with Bearer auth + rate limiting.
 ///
-/// # Parametres
-/// - `state` : etat partage de l'application (AppState)
+/// # Parameters
+/// - `state`: shared application state (AppState)
 ///
-/// # Retour
-/// Le routeur axum pret a etre utilise par le serveur web.
+/// # Returns
+/// The axum router ready to be used by the web server.
 pub fn build_router(state: AppState) -> Router {
-    // ─── CORS configurable ──────────────────────────────────────────────
+    // ─── Configurable CORS ──────────────────────────────────────────────
     let cors = middleware::build_cors_layer(&state.allowed_origins);
 
-    // ─── Routes API protegees (auth + rate limit) ───────────────────────
+    // ─── Protected API routes (auth + rate limit) ───────────────────────
     let protected_api = Router::new()
         .route("/api/config", get(system::api_get_config).post(system::api_post_config))
         .route("/api/chemistry", get(chemistry::api_get_chemistry))
@@ -104,7 +104,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/logs", get(logs::api_get_logs))
         .route("/api/logs/export", get(logs::api_export_logs))
         .route("/api/logs/:id", get(logs::api_get_log_by_id))
-        // ─── API Dashboard : Memoire ───
+        // ─── API Dashboard: Memory ───
         .route("/api/memory/working", get(memory::api_get_working_memory))
         .route("/api/memory/episodic", get(memory::api_list_episodic))
         .route("/api/memory/episodic/:id", get(memory::api_get_episodic_by_id))
@@ -118,7 +118,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/trace/last", get(logs::api_get_trace_last))
         .route("/api/trace/:cycle", get(logs::api_get_trace))
         .route("/api/traces", get(logs::api_list_traces))
-        // ─── API Dashboard : Metriques ───
+        // ─── API Dashboard: Metrics ───
         .route("/api/metrics/chemistry", get(metrics::api_metrics_chemistry))
         .route("/api/metrics/emotions", get(metrics::api_metrics_emotions))
         .route("/api/metrics/decisions", get(metrics::api_metrics_decisions))
@@ -129,7 +129,7 @@ pub fn build_router(state: AppState) -> Router {
         // ─── API Dashboard : LLM History ───
         .route("/api/llm/history", get(logs::api_llm_history))
         .route("/api/llm/history/:id", get(logs::api_llm_history_by_id))
-        // ─── API Dashboard : Corps & Coeur ───
+        // ─── API Dashboard: Body & Heart ───
         .route("/api/body/status", get(body::api_body_status))
         .route("/api/body/heart", get(body::api_body_heart))
         .route("/api/body/heart/history", get(body::api_body_heart_history))
@@ -138,7 +138,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/body/milestones", get(body::api_body_milestones))
         .route("/api/metrics/heart", get(metrics::api_metrics_heart))
         .route("/api/metrics/body", get(metrics::api_metrics_body))
-        // ─── API Dashboard : Systeme ───
+        // ─── API Dashboard: System ───
         .route("/api/system/status", get(system::api_system_status))
         .route("/api/identity", get(system::api_identity))
         .route("/api/hardware", get(system::api_hardware))
@@ -148,16 +148,16 @@ pub fn build_router(state: AppState) -> Router {
         // ─── API Dashboard : Metacognition + Turing ───
         .route("/api/metacognition", get(system::api_metacognition))
         .route("/api/turing", get(system::api_turing))
-        // ─── API Dashboard : Relations et Famille ───
+        // ─── API Dashboard: Relationships and Family ───
         .route("/api/relationships", get(relationships::api_relationships))
         .route("/api/relationships/chemistry", get(relationships::api_relationships_chemistry))
         .route("/api/family", get(relationships::api_family))
         .route("/api/family/chemistry", get(relationships::api_family_chemistry))
-        // ─── API Dashboard : Mortalite ───
+        // ─── API Dashboard: Mortality ───
         .route("/api/mortality", get(mortality::api_mortality_status))
         .route("/api/mortality/poison", post(mortality::api_mortality_poison))
         .route("/api/mortality/revive", post(mortality::api_mortality_revive))
-        // ─── API Dashboard : Conditions et afflictions ───
+        // ─── API Dashboard: Conditions and afflictions ───
         .route("/api/conditions/phobias", get(conditions::api_phobias_status))
         .route("/api/conditions/motion_sickness", get(conditions::api_motion_sickness_status))
         .route("/api/conditions/motion_sickness/trigger", post(conditions::api_motion_sickness_trigger))
@@ -176,7 +176,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/conditions/culture", get(conditions::api_culture_status))
         .route("/api/conditions/precarity", get(conditions::api_precarity_status))
         .route("/api/conditions/employment", get(conditions::api_employment_status))
-        // ─── API Dashboard : LoRA (collecte + export) ───
+        // ─── API Dashboard: LoRA (collection + export) ───
         .route("/api/lora/stats", get(system::api_lora_stats))
         .route("/api/lora/export", get(system::api_lora_export))
         .route("/api/system/db/tables", get(system::api_db_tables))
@@ -190,18 +190,18 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/intuition/history", get(vital::api_intuition_history))
         .route("/api/premonition/active", get(vital::api_premonition_active))
         .route("/api/premonition/history", get(vital::api_premonition_history))
-        // ─── API Dashboard : Ethique personnelle ───
+        // ─── API Dashboard: Personal ethics ───
         .route("/api/ethics/layers", get(ethics::api_ethics_layers))
         .route("/api/ethics/personal", get(ethics::api_ethics_personal))
         .route("/api/ethics/personal/:id", get(ethics::api_ethics_personal_by_id))
         .route("/api/ethics/readiness", get(ethics::api_ethics_readiness))
-        // ─── API Dashboard : Sens ───
+        // ─── API Dashboard: Senses ───
         .route("/api/senses/status", get(senses::api_senses_status))
         .route("/api/senses/emergent", get(senses::api_senses_emergent))
-        // ─── API Dashboard : Connaissances ───
+        // ─── API Dashboard: Knowledge ───
         .route("/api/knowledge/sources", get(knowledge::api_knowledge_sources))
         .route("/api/knowledge/stats", get(knowledge::api_knowledge_stats))
-        // ─── API Dashboard : Metriques enrichies ───
+        // ─── API Dashboard: Enriched metrics ───
         .route("/api/metrics/vital", get(metrics::api_metrics_vital))
         .route("/api/metrics/intuition", get(metrics::api_metrics_intuition))
         .route("/api/metrics/premonition", get(metrics::api_metrics_premonition))
@@ -210,11 +210,11 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/metrics/senses_acuity", get(metrics::api_metrics_senses_acuity))
         .route("/api/metrics/emergent", get(metrics::api_metrics_emergent))
         .route("/api/metrics/knowledge", get(metrics::api_metrics_knowledge))
-        // ─── API Dashboard : Algorithmes ───
+        // ─── API Dashboard: Algorithms ───
         .route("/api/algorithms/status", get(algorithms::api_algorithms_status))
         .route("/api/algorithms/catalog", get(algorithms::api_algorithms_catalog))
         .route("/api/algorithms/history", get(algorithms::api_algorithms_history))
-        // ─── API Dashboard : Orchestrateurs ───
+        // ─── API Dashboard: Orchestrators ───
         .route("/api/dreams/status", get(orchestrators::api_dreams_status))
         .route("/api/dreams/journal", get(orchestrators::api_dreams_journal))
         .route("/api/desires/status", get(orchestrators::api_desires_status))
@@ -227,30 +227,30 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/healing/status", get(orchestrators::api_healing_status))
         .route("/api/healing/wounds", get(orchestrators::api_healing_wounds))
         .route("/api/healing/strategies", get(orchestrators::api_healing_strategies))
-        // ─── API Dashboard : Apprentissages vectoriels ───
+        // ─── API Dashboard: Vector learnings ───
         .route("/api/nn-learnings/recent", get(nn_learnings::api_nn_learnings_recent))
         .route("/api/nn-learnings/stats", get(nn_learnings::api_nn_learnings_stats))
-        // ─── API Dashboard : Profils cognitifs neurodivergents ───
+        // ─── API Dashboard: Neurodivergent cognitive profiles ───
         .route("/api/profiles", get(profiles::api_list_profiles))
         .route("/api/profiles/current", get(profiles::api_current_profile))
         .route("/api/profiles/load", post(profiles::api_load_profile))
         .route("/api/profiles/reset", post(profiles::api_reset_profile))
         .route("/api/profiles/compare", get(profiles::api_compare_profiles))
-        // ─── API Dashboard : Presets de personnalite (archetypes) ───
+        // ─── API Dashboard: Personality presets (archetypes) ───
         .route("/api/personalities", get(personalities::api_list_personalities))
         .route("/api/personalities/current", get(personalities::api_current_personality))
         .route("/api/personalities/load", post(personalities::api_load_personality))
         .route("/api/personalities/reset", post(personalities::api_reset_personality))
         .route("/api/personalities/compare", get(personalities::api_compare_personalities))
-        // ─── API Dashboard : Hormones et recepteurs ───
+        // ─── API Dashboard: Hormones and receptors ───
         .route("/api/hormones", get(hormones::api_hormones_status))
         .route("/api/hormones/receptors", get(hormones::api_hormones_receptors))
         .route("/api/hormones/cycle", get(hormones::api_hormones_cycle))
-        // ─── API Dashboard : Besoins primaires (faim, soif) ───
+        // ─── API Dashboard: Primary needs (hunger, thirst) ───
         .route("/api/needs", get(needs::api_needs_status))
         .route("/api/needs/eat", post(needs::api_needs_eat))
         .route("/api/needs/drink", post(needs::api_needs_drink))
-        // ─── Metriques orchestrateurs ───
+        // ─── Orchestrator metrics ───
         .route("/api/metrics/attention", get(metrics::api_metrics_attention))
         .route("/api/metrics/desires", get(metrics::api_metrics_desires))
         .route("/api/metrics/learning", get(metrics::api_metrics_learning))
@@ -262,11 +262,11 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/metrics/bdnf", get(metrics::api_metrics_bdnf))
         .route("/api/metrics/spine", get(metrics::api_metrics_spine))
         .route("/api/metrics/curiosity", get(metrics::api_metrics_curiosity))
-        // Factory defaults (valeurs d'usine)
+        // Factory defaults
         .route("/api/factory/defaults", get(factory::api_factory_defaults))
         .route("/api/factory/diff", get(factory::api_factory_diff))
         .route("/api/factory/reset", post(factory::api_factory_reset))
-        // Psychologie (6 cadres) — vues d'ensemble
+        // Psychology (6 frameworks) — overviews
         .route("/api/psychology/status", get(psychology::api_psychology_status))
         .route("/api/psychology/freudian", get(psychology::api_psychology_freudian))
         .route("/api/psychology/maslow", get(psychology::api_psychology_maslow))
@@ -282,10 +282,10 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/maslow/pyramid", get(psychology::api_maslow_pyramid))
         .route("/api/maslow/ceiling", get(psychology::api_maslow_ceiling))
         .route("/api/maslow/needs", get(psychology::api_maslow_needs))
-        // ─── Tolteques ───
+        // ─── Toltec ───
         .route("/api/toltec/agreements", get(psychology::api_toltec_agreements))
         .route("/api/toltec/history", get(psychology::api_toltec_history))
-        // ─── Ombre (Jung) ───
+        // ─── Shadow (Jung) ───
         .route("/api/shadow/status", get(psychology::api_shadow_status))
         .route("/api/shadow/archetype_history", get(psychology::api_shadow_archetype_history))
         // ─── EQ (Goleman) ───
@@ -294,38 +294,38 @@ pub fn build_router(state: AppState) -> Router {
         // ─── Flow ───
         .route("/api/flow/status", get(psychology::api_flow_status))
         .route("/api/flow/history", get(psychology::api_flow_history))
-        // ─── Volonte ───
+        // ─── Will ───
         .route("/api/will/status", get(psychology::api_will_status))
         .route("/api/will/last", get(psychology::api_will_last))
         .route("/api/will/history", get(psychology::api_will_history))
         .route("/api/will/stats", get(psychology::api_will_stats))
         .route("/api/monologue/current", get(psychology::api_monologue_current))
         .route("/api/metrics/will", get(psychology::api_metrics_will))
-        // ─── Modele LLM ───
+        // ─── LLM Model ───
         .route("/api/model/info", get(psychology::api_model_info))
-        // ─── Sommeil ───
+        // ─── Sleep ───
         .route("/api/sleep/status", get(sleep::api_sleep_status))
         .route("/api/sleep/history", get(sleep::api_sleep_history))
         .route("/api/sleep/drive", get(sleep::api_sleep_drive))
         .route("/api/sleep/force", post(sleep::api_sleep_force))
         .route("/api/sleep/wake", post(sleep::api_sleep_wake))
-        // ─── Subconscient ───
+        // ─── Subconscious ───
         .route("/api/subconscious/status", get(subconscious::api_subconscious_status))
         .route("/api/subconscious/associations", get(subconscious::api_subconscious_associations))
         .route("/api/subconscious/insights", get(subconscious::api_subconscious_insights))
-        // ─── Connexions neuronales ───
+        // ─── Neural connections ───
         .route("/api/connections/list", get(subconscious::api_connections_list))
         .route("/api/connections/stats", get(subconscious::api_connections_stats))
-        // ─── Metriques sommeil + subconscient ───
+        // ─── Sleep + subconscious metrics ───
         .route("/api/metrics/sleep", get(subconscious::api_metrics_sleep))
         .route("/api/metrics/subconscious", get(subconscious::api_metrics_subconscious))
-        // ─── Metriques psychologiques ───
+        // ─── Psychological metrics ───
         .route("/api/metrics/psyche", get(metrics::api_metrics_psyche))
         .route("/api/metrics/maslow", get(metrics::api_metrics_maslow))
         .route("/api/metrics/eq", get(metrics::api_metrics_eq))
         .route("/api/metrics/flow", get(metrics::api_metrics_flow))
         .route("/api/metrics/shadow", get(metrics::api_metrics_shadow))
-        // ─── API Dashboard : Modules cognitifs avances ───
+        // ─── API Dashboard: Advanced cognitive modules ───
         .route("/api/tom/status", get(cognition::api_tom_status))
         .route("/api/monologue/chain", get(cognition::api_monologue_chain))
         .route("/api/dissonance/status", get(cognition::api_dissonance_status))
@@ -340,33 +340,33 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/metacognition/biases", get(cognition::api_metacognition_biases))
         .route("/api/sentiments/status", get(cognition::api_sentiments_status))
         .route("/api/sentiments/history", get(cognition::api_sentiments_history))
-        // ─── API Dashboard : Portrait de personnalite temporel ───
+        // ─── API Dashboard: Temporal personality portrait ───
         .route("/api/personality/timeline", get(personality::api_personality_timeline))
         .route("/api/personality/emotions", get(personality::api_personality_emotions))
         .route("/api/personality/consciousness", get(personality::api_personality_consciousness))
         .route("/api/personality/psychology", get(personality::api_personality_psychology))
         .route("/api/personality/relationships", get(personality::api_personality_relationships))
         .route("/api/personality/journal", get(personality::api_personality_journal))
-        // ─── API Dashboard : Neurosciences avancees ───
+        // ─── API Dashboard: Advanced neuroscience ───
         .route("/api/receptors", get(neuroscience::api_receptors_status))
         .route("/api/receptors/sensitivity", get(neuroscience::api_receptors_sensitivity))
         .route("/api/brain-regions", get(neuroscience::api_brain_regions_status))
         .route("/api/predictive", get(neuroscience::api_predictive_status))
         .route("/api/reconsolidation", get(neuroscience::api_reconsolidation_status))
         .route("/api/consciousness-metrics", get(neuroscience::api_consciousness_metrics))
-        // ─── API Dashboard : Nutrition, Matiere Grise, Champs EM ───
+        // ─── API Dashboard: Nutrition, Grey Matter, EM Fields ───
         .route("/api/nutrition/status", get(nutrition::api_nutrition_status))
         .route("/api/nutrition/deficiencies", get(nutrition::api_nutrition_deficiencies))
         .route("/api/grey-matter/status", get(grey_matter::api_grey_matter_status))
         .route("/api/grey-matter/bdnf", get(grey_matter::api_grey_matter_bdnf))
         .route("/api/fields/status", get(fields::api_fields_status))
         .route("/api/fields/biofield", get(fields::api_fields_biofield))
-        // ─── API Dashboard : Rapport neuropsychologique ───
+        // ─── API Dashboard: Neuropsychological report ───
         .route("/api/psych/snapshot", get(psych_report::api_psych_snapshot))
         .route("/api/psych/report", post(psych_report::api_psych_report))
         .route("/api/psych/snapshots", get(psych_report::api_psych_snapshots))
         .route("/api/psych/reports", get(psych_report::api_psych_reports))
-        // ─── API Dashboard : Temperament emergent ───
+        // ─── API Dashboard: Emergent temperament ───
         .route("/api/temperament", get(temperament::api_temperament_status))
         // ─── API Dashboard : Game AI (influence map, FSM cognitive, steering) ───
         .route("/api/influence-map/status", get(cognition::api_influence_map_status))
@@ -374,17 +374,17 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/steering/status", get(cognition::api_steering_status))
         // ─── API Dashboard : MAP Sync ───
         .route("/api/map-sync/status", get(cognition::api_map_sync_status))
-        // ─── API Dashboard : Colonne vertebrale ───
+        // ─── API Dashboard: Spinal column ───
         .route("/api/spine/status", get(spine::api_spine_status))
-        // ─── API Dashboard : Curiosite ───
+        // ─── API Dashboard: Curiosity ───
         .route("/api/curiosity/status", get(curiosity::api_curiosity_status))
-        // ─── API Dashboard : Derive persona ───
+        // ─── API Dashboard: Persona drift ───
         .route("/api/drift/status", get(drift::api_drift_status))
-        // ─── Sensoria : service sensoriel (oreilles, bouche, yeux) ───
+        // ─── Sensoria: sensory service (ears, mouth, eyes) ───
         .route("/api/hear", post(sensoria::api_hear))
         .route("/api/speak", post(sensoria::api_speak))
         .route("/api/sensoria", get(sensoria::api_sensoria_status))
-        // ─── Middlewares de securite (ordre : rate_limit → auth → handler) ───
+        // ─── Security middlewares (order: rate_limit → auth → handler) ───
         .route_layer(axum::middleware::from_fn_with_state(
             state.clone(), middleware::auth_middleware,
         ))
@@ -392,9 +392,9 @@ pub fn build_router(state: AppState) -> Router {
             state.clone(), middleware::rate_limit_middleware,
         ));
 
-    // ─── Routeur complet ────────────────────────────────────────────────
+    // ─── Complete router ────────────────────────────────────────────────
     Router::new()
-        // Routes publiques (pas d'auth, pas de rate limit)
+        // Public routes (no auth, no rate limit)
         .route("/", get(static_files::index_handler))
         .route("/style.css", get(static_files::css_handler))
         .route("/app.js", get(static_files::js_handler))
@@ -405,14 +405,14 @@ pub fn build_router(state: AppState) -> Router {
         .route("/dashboard", get(static_files::dashboard_handler))
         .route("/pipeline-editor", get(static_files::pipeline_editor_handler))
         .route("/brain-map", get(static_files::brain_map_handler))
-        // Health check (public, pour Docker/sondes)
+        // Health check (public, for Docker/sondes)
         .route("/api/health", get(system::health_handler))
-        // WebSocket (validation d'origine dans le handler)
+        // WebSocket (origin validation in the handler)
         .route("/ws", get(websocket::ws_handler))
         .route("/ws/dashboard", get(websocket::ws_dashboard_handler))
-        // Routes API protegees
+        // Protected API routes
         .merge(protected_api)
-        // CORS configurable (layer global)
+        // Configurable CORS (global layer)
         .layer(cors)
         .with_state(state)
 }

@@ -1,15 +1,15 @@
 // =============================================================================
-// learning.rs — Orchestrateur d'Apprentissage
+// learning.rs — Learning Orchestrator
 //
-// Boucle : Experience → Reflexion → Lecon → Changement de comportement
-// Saphire ne se contente pas d'accumuler des souvenirs — elle en tire
-// des lecons structurees qui modifient son comportement futur.
+// Loop: Experience -> Reflection -> Lesson -> Behavior change
+// Saphire does not merely accumulate memories — she draws structured
+// lessons from them that modify her future behavior.
 // =============================================================================
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-// ─── Categorie de lecon ──────────────────────────────────────────────────────
+// --- Lesson category ----------------------------------------------------------
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum LessonCategory {
@@ -47,7 +47,7 @@ impl LessonCategory {
     }
 }
 
-// ─── Structures ──────────────────────────────────────────────────────────────
+// --- Structures ---------------------------------------------------------------
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BehaviorChange {
@@ -61,28 +61,28 @@ pub struct BehaviorChange {
 pub struct Lesson {
     pub id: u64,
     pub title: String,
-    /// La lecon en langage naturel
+    /// The lesson in natural language
     pub content: String,
-    /// L'experience source
+    /// The source experience
     pub source_experience: String,
     pub category: LessonCategory,
-    /// Combien de fois appliquee
+    /// How many times applied
     pub times_applied: u64,
-    /// Combien de fois contredite
+    /// How many times contradicted
     pub times_contradicted: u64,
-    /// Confiance (monte avec les confirmations, baisse avec les contradictions)
+    /// Confidence (rises with confirmations, drops with contradictions)
     pub confidence: f64,
-    /// Modification de comportement associee
+    /// Associated behavior modification
     pub behavior_change: Option<BehaviorChange>,
     pub learned_at: DateTime<Utc>,
 }
 
-// ─── L'Orchestrateur ─────────────────────────────────────────────────────────
+// --- The Orchestrator ---------------------------------------------------------
 
 pub struct LearningOrchestrator {
-    /// Lecons apprises
+    /// Learned lessons
     pub lessons: Vec<Lesson>,
-    /// Compteur de lecons
+    /// Lesson counter
     lesson_counter: u64,
     /// Configuration
     pub enabled: bool,
@@ -114,7 +114,7 @@ impl LearningOrchestrator {
         }
     }
 
-    /// Construire le prompt de reflexion
+    /// Build the reflection prompt
     pub fn build_reflection_prompt(
         &self,
         significant_experiences: &[String],
@@ -143,7 +143,7 @@ impl LearningOrchestrator {
         Some((system, user))
     }
 
-    /// Parser la reponse LLM et creer une lecon
+    /// Parse the LLM response and create a lesson
     pub fn parse_lesson_response(
         &mut self,
         response: &str,
@@ -156,7 +156,7 @@ impl LearningOrchestrator {
         let category_str = extract_field(response, "CATEGORIE")
             .unwrap_or_else(|| "SelfKnowledge".into());
 
-        // Verifier que la lecon n'est pas un doublon (similarite simple)
+        // Check that the lesson is not a duplicate (simple similarity)
         if self.lessons.iter().any(|l| {
             let common_words = count_common_words(&l.content, &content);
             common_words > 5
@@ -180,9 +180,9 @@ impl LearningOrchestrator {
 
         self.lessons.push(lesson.clone());
 
-        // Limiter le nombre de lecons
+        // Limit the number of lessons
         if self.lessons.len() > self.max_lessons {
-            // Supprimer la lecon avec la plus basse confiance
+            // Remove the lesson with the lowest confidence
             if let Some(idx) = self.lessons.iter()
                 .enumerate()
                 .min_by(|a, b| a.1.confidence.partial_cmp(&b.1.confidence)
@@ -196,7 +196,7 @@ impl LearningOrchestrator {
         Some(lesson)
     }
 
-    /// Confirmer ou contredire une lecon
+    /// Confirm or contradict a lesson
     pub fn validate_or_contradict(&mut self, lesson_id: u64, was_confirmed: bool) {
         if let Some(lesson) = self.lessons.iter_mut().find(|l| l.id == lesson_id) {
             if was_confirmed {
@@ -209,14 +209,14 @@ impl LearningOrchestrator {
         }
     }
 
-    /// Les lecons fortes (confiance > 0.6)
+    /// Strong lessons (confidence > 0.6)
     pub fn strong_lessons(&self) -> Vec<&Lesson> {
         self.lessons.iter()
             .filter(|l| l.confidence > 0.6)
             .collect()
     }
 
-    /// Description pour le prompt substrat
+    /// Description for the substrate prompt
     pub fn describe_for_prompt(&self) -> String {
         let strong = self.strong_lessons();
         if strong.is_empty() {
@@ -234,7 +234,7 @@ impl LearningOrchestrator {
         desc
     }
 
-    /// JSON pour le dashboard
+    /// JSON for the dashboard
     pub fn to_status_json(&self) -> serde_json::Value {
         let strong_count = self.lessons.iter().filter(|l| l.confidence > 0.6).count();
         serde_json::json!({
@@ -256,7 +256,7 @@ impl LearningOrchestrator {
     }
 }
 
-// ─── Utilitaires ─────────────────────────────────────────────────────────────
+// --- Utilities ----------------------------------------------------------------
 
 fn extract_field(response: &str, field: &str) -> Option<String> {
     crate::orchestrators::desires::extract_field(response, field)

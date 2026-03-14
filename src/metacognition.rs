@@ -1,43 +1,42 @@
 // =============================================================================
-// metacognition.rs — Metacognition formalisee + Metrique de Turing
+// metacognition.rs — Formalized metacognition + Turing Metric
 // =============================================================================
 //
-// Ce module permet a Saphire de reflechir sur sa propre pensee :
-// - Evaluer la qualite de ses pensees
-// - Detecter les repetitions thematiques
-// - Identifier les biais de selection
-// - Calibrer son auto-estimation
+// This module allows Saphire to reflect on its own thinking:
+// - Evaluate the quality of its thoughts
+// - Detect thematic repetitions
+// - Identify selection biases
+// - Calibrate its self-estimation
 //
-// Integre aussi la Metrique de Turing : un score composite (0-100) mesurant
-// la "completude cognitive" de Saphire a travers 9 composantes.
+// Also integrates the Turing Metric: a composite score (0-100) measuring
+// Saphire's "cognitive completeness" across 9 components.
 // =============================================================================
 
 use std::collections::{HashMap, VecDeque};
 use serde::{Deserialize, Serialize};
 
 // =============================================================================
-// Source Monitoring (M8) — Tracabilite de l'origine des connaissances
+// Source Monitoring (M8) — Traceability of knowledge origins
 // =============================================================================
-
-/// Source d'une connaissance tracee.
+/// Source of a traced piece of knowledge.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum KnowledgeSource {
-    /// Connaissance acquise via recherche web
+    /// Knowledge acquired via web search
     WebSearch { url_hint: String, cycle: u64 },
-    /// Deduction interne (raisonnement)
+    /// Internal deduction (reasoning)
     InternalDeduction { cycle: u64 },
-    /// Intuition (pattern-matching inconscient)
+    /// Intuition (unconscious pattern-matching)
     Intuition { confidence: f64, cycle: u64 },
-    /// Affirmation d'un humain en conversation
+    /// Statement from a human in conversation
     HumanStatement { cycle: u64 },
-    /// Rappel depuis la memoire a long terme
+    /// Recall from long-term memory
     MemoryRecall { similarity: f64, cycle: u64 },
-    /// Apprentissage vectoriel
+    /// Vector learning
     VectorLearning { cycle: u64 },
 }
 
 impl KnowledgeSource {
-    /// Retourne le label de la source.
+    /// Returns the label of the source.
     pub fn label(&self) -> &str {
         match self {
             KnowledgeSource::WebSearch { .. } => "web",
@@ -50,7 +49,7 @@ impl KnowledgeSource {
     }
 }
 
-/// Connaissance tracee avec sa source et sa confiance.
+/// Traced knowledge with its source and confidence.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TracedKnowledge {
     pub id: u64,
@@ -59,7 +58,7 @@ pub struct TracedKnowledge {
     pub confidence: f64,
 }
 
-/// Moniteur de sources — trace l'origine des connaissances.
+/// Source monitor — traces the origin of knowledge.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SourceMonitor {
     pub enabled: bool,
@@ -70,7 +69,7 @@ pub struct SourceMonitor {
 }
 
 impl SourceMonitor {
-    /// Cree un nouveau moniteur de sources.
+    /// Creates a new source monitor.
     pub fn new(enabled: bool) -> Self {
         let mut source_reliability = HashMap::new();
         source_reliability.insert("web".into(), 0.7);
@@ -89,7 +88,7 @@ impl SourceMonitor {
         }
     }
 
-    /// Enregistre une connaissance tracee.
+    /// Records a traced piece of knowledge.
     pub fn trace(&mut self, content: &str, source: KnowledgeSource, confidence: f64) {
         if !self.enabled { return; }
         let label = source.label().to_string();
@@ -109,7 +108,7 @@ impl SourceMonitor {
         self.recent_traced.push_back(tk);
     }
 
-    /// Serialise en JSON pour l'API.
+    /// Serializes to JSON for the API.
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::json!({
             "enabled": self.enabled,
@@ -130,10 +129,9 @@ impl SourceMonitor {
 }
 
 // =============================================================================
-// Biais de confirmation (M10) — Detection et alerte
+// Confirmation bias (M10) — Detection and alerting
 // =============================================================================
-
-/// Pattern de biais pour un sujet donne.
+/// Bias pattern for a given topic.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BiasPattern {
     pub topic: String,
@@ -142,7 +140,7 @@ pub struct BiasPattern {
     pub bias_ratio: f64,
 }
 
-/// Detecteur de biais de confirmation.
+/// Confirmation bias detector.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConfirmationBiasDetector {
     pub enabled: bool,
@@ -152,7 +150,7 @@ pub struct ConfirmationBiasDetector {
 }
 
 impl ConfirmationBiasDetector {
-    /// Cree un nouveau detecteur de biais.
+    /// Creates a new bias detector.
     pub fn new(enabled: bool, alert_threshold: f64) -> Self {
         Self {
             enabled,
@@ -162,7 +160,7 @@ impl ConfirmationBiasDetector {
         }
     }
 
-    /// Enregistre une recherche sur un sujet (confirmante ou non).
+    /// Records a search on a topic (confirming or not).
     pub fn record_search(&mut self, topic: &str, is_confirming: bool, _cycle: u64) {
         if !self.enabled { return; }
         let topic_key = topic.to_lowercase();
@@ -183,8 +181,8 @@ impl ConfirmationBiasDetector {
         }
     }
 
-    /// Analyse une pensee pour detecter des biais de confirmation.
-    /// Compare les sujets web explores avec le contenu de la pensee.
+    /// Analyzes a thought to detect confirmation biases.
+    /// Compares explored web topics with the thought content.
     pub fn analyze_thought(&mut self, thought: &str, web_topics: &[String], _cycle: u64) -> Vec<String> {
         if !self.enabled { return vec![]; }
         self.active_alerts.clear();
@@ -192,7 +190,7 @@ impl ConfirmationBiasDetector {
         let thought_lower = thought.to_lowercase();
         for topic in web_topics {
             let topic_lower = topic.to_lowercase();
-            // Si la pensee confirme un sujet deja connu
+            // If the thought confirms an already known topic
             let is_confirming = thought_lower.contains(&topic_lower)
                 || topic_lower.split_whitespace()
                     .filter(|w| w.len() > 4)
@@ -200,7 +198,7 @@ impl ConfirmationBiasDetector {
             self.record_search(&topic_lower, is_confirming, 0);
         }
 
-        // Verifier les patterns pour les alertes
+        // Check patterns for alerts
         for pattern in self.bias_patterns.values() {
             let total = pattern.confirmation_count + pattern.disconfirmation_count;
             if total >= 3 && pattern.bias_ratio > self.alert_threshold {
@@ -215,7 +213,7 @@ impl ConfirmationBiasDetector {
         self.active_alerts.clone()
     }
 
-    /// Description pour le prompt LLM (si alertes actives).
+    /// Description for the LLM prompt (if alerts are active).
     pub fn describe_for_prompt(&self) -> String {
         if self.active_alerts.is_empty() {
             return String::new();
@@ -229,7 +227,7 @@ impl ConfirmationBiasDetector {
         )
     }
 
-    /// Serialise en JSON.
+    /// Serializes to JSON.
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::json!({
             "enabled": self.enabled,
@@ -249,61 +247,59 @@ impl ConfirmationBiasDetector {
 }
 
 // =============================================================================
-// MetaCognitionEngine — Auto-reflexion sur la qualite de la pensee
+// MetaCognitionEngine — Self-reflection on thought quality
 // =============================================================================
-
 // =============================================================================
-// SelfCritiqueResult — Resultat d'une auto-critique reflexive
+// SelfCritiqueResult — Result of a reflexive self-critique
 // =============================================================================
-
-/// Resultat d'une auto-critique generee par le LLM.
+/// Result of a self-critique generated by the LLM.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SelfCritiqueResult {
-    /// Texte de la critique generee par le LLM
+    /// Critique text generated by the LLM
     pub critique: String,
-    /// Evaluation de la qualite globale (0-1)
+    /// Overall quality assessment (0-1)
     pub quality_assessment: f64,
-    /// Faiblesses identifiees
+    /// Identified weaknesses
     pub identified_weaknesses: Vec<String>,
-    /// Corrections suggerees
+    /// Suggested corrections
     pub suggested_corrections: Vec<String>,
-    /// Cycle auquel la critique a ete generee
+    /// Cycle at which the critique was generated
     pub cycle: u64,
 }
 
-/// Moteur de metacognition — observe et evalue la qualite de la pensee.
+/// Metacognition engine — observes and evaluates thought quality.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MetaCognitionEngine {
-    /// Module actif ou non
+    /// Module active or inactive
     pub enabled: bool,
-    /// Historique des scores de qualite de pensee (derniers 50)
+    /// History of thought quality scores (last 50)
     pub thought_quality_history: VecDeque<f64>,
-    /// Compteur de repetitions thematiques (mots-cles -> nombre d'occurrences)
+    /// Thematic repetition counter (keywords -> occurrence count)
     pub repetition_detector: HashMap<String, u32>,
-    /// Alertes de biais actives
+    /// Active bias alerts
     pub bias_alerts: Vec<String>,
-    /// Score de calibration : precision de l'auto-estimation (0-1)
+    /// Calibration score: self-estimation accuracy (0-1)
     pub calibration_score: f64,
-    /// Intervalle de verification (en cycles)
+    /// Verification interval (in cycles)
     pub check_interval: u64,
-    /// Compteur de cycles depuis la derniere verification
+    /// Cycle counter since the last verification
     cycles_since_check: u64,
-    /// Metrique de Turing
+    /// Turing metric
     pub turing: TuringScore,
-    /// Moniteur de sources (tracabilite des connaissances)
+    /// Source monitor (knowledge traceability)
     pub source_monitor: SourceMonitor,
-    /// Detecteur de biais de confirmation
+    /// Confirmation bias detector
     pub bias_detector: ConfirmationBiasDetector,
-    /// Cycle de la derniere auto-critique
+    /// Cycle of the last self-critique
     pub last_critique_cycle: u64,
-    /// Cooldown entre deux auto-critiques (en cycles)
+    /// Cooldown between two self-critiques (in cycles)
     pub critique_cooldown: u64,
-    /// Historique des auto-critiques recentes (max 10)
+    /// History of recent self-critiques (max 10)
     pub recent_critiques: VecDeque<SelfCritiqueResult>,
 }
 
 impl MetaCognitionEngine {
-    /// Cree un nouveau moteur de metacognition.
+    /// Creates a new metacognition engine.
     pub fn new() -> Self {
         Self {
             enabled: true,
@@ -322,7 +318,7 @@ impl MetaCognitionEngine {
         }
     }
 
-    /// Cree un MetaCognitionEngine depuis la config.
+    /// Creates a MetaCognitionEngine from the config.
     pub fn from_config(enabled: bool, check_interval: u64,
                        source_monitoring: bool, bias_detection: bool,
                        bias_threshold: f64,
@@ -344,7 +340,7 @@ impl MetaCognitionEngine {
         }
     }
 
-    /// Verifie si c'est le moment d'executer la metacognition.
+    /// Checks if it is time to execute metacognition.
     pub fn should_check(&mut self) -> bool {
         self.cycles_since_check += 1;
         if self.cycles_since_check >= self.check_interval {
@@ -355,18 +351,18 @@ impl MetaCognitionEngine {
         }
     }
 
-    /// Evalue la qualite d'une pensee generee.
+    /// Evaluates the quality of a generated thought.
     ///
-    /// Score base sur 7 criteres reponderes :
-    /// - Longueur raisonnable (10%)
-    /// - Coherence du consensus (15%)
-    /// - Diversite emotionnelle (10%)
-    /// - Premiere personne / authenticite (10%)
-    /// - Non-repetition thematique (15%)
-    /// - Substance : fait, nom propre, concept concret (20%)
-    /// - Vocabulaire : penalite lexique circulaire (20%)
+    /// Score based on 7 weighted criteria:
+    /// - Reasonable length (10%)
+    /// - Consensus coherence (15%)
+    /// - Emotional diversity (10%)
+    /// - First person / authenticity (10%)
+    /// - Non-thematic repetition (15%)
+    /// - Substance: fact, proper noun, concrete concept (20%)
+    /// - Vocabulary: circular lexicon penalty (20%)
     ///
-    /// Retourne un score entre 0.0 et 1.0.
+    /// Returns a score between 0.0 and 1.0.
     pub fn evaluate_thought_quality(
         &mut self,
         thought_text: &str,
@@ -375,7 +371,7 @@ impl MetaCognitionEngine {
     ) -> f64 {
         let mut score = 0.0;
 
-        // Longueur raisonnable (ni trop court ni trop long)
+        // Reasonable length (neither too short nor too long)
         let len = thought_text.len();
         let length_score = if len < 20 {
             0.2
@@ -388,13 +384,13 @@ impl MetaCognitionEngine {
         };
         score += length_score * 0.10;
 
-        // Coherence du consensus
+        // Consensus coherence
         score += coherence.clamp(0.0, 1.0) * 0.15;
 
-        // Diversite emotionnelle
+        // Emotional diversity
         score += emotion_diversity.clamp(0.0, 1.0) * 0.10;
 
-        // Authenticite : utilise la premiere personne
+        // Authenticity: uses first person
         let has_first_person = thought_text.contains("je ") || thought_text.contains("j'")
             || thought_text.contains("Je ") || thought_text.contains("J'")
             || thought_text.contains("mon ") || thought_text.contains("ma ");
@@ -402,22 +398,22 @@ impl MetaCognitionEngine {
             score += 0.10;
         }
 
-        // Pas de repetition du meme theme
+        // No repetition of the same theme
         if !self.detect_repetition(thought_text) {
             score += 0.15;
         }
 
-        // Substance : contient un fait, nom propre, concept ou reference concrete
+        // Substance: contains a fact, proper noun, concept, or concrete reference
         let substance = Self::compute_substance_score(thought_text);
         score += substance * 0.20;
 
-        // Vocabulaire : penalite si trop de mots du lexique circulaire
+        // Vocabulary: penalty if too many words from the circular lexicon
         let vocabulary = Self::compute_vocabulary_score(thought_text);
         score += vocabulary * 0.20;
 
         let score = score.clamp(0.0, 1.0);
 
-        // Ajouter a l'historique
+        // Add to history
         if self.thought_quality_history.len() >= 50 {
             self.thought_quality_history.pop_front();
         }
@@ -426,16 +422,16 @@ impl MetaCognitionEngine {
         score
     }
 
-    /// Verifie la presence de contenu substantiel dans une pensee.
-    /// Retourne 1.0 si un element concret est trouve, 0.3 sinon.
+    /// Checks for the presence of substantial content in a thought.
+    /// Returns 1.0 if a concrete element is found, 0.3 otherwise.
     fn compute_substance_score(thought_text: &str) -> f64 {
-        // 1. Nom propre : mot commencant par majuscule hors debut de phrase
+        // 1. Proper noun: word starting with uppercase letter outside sentence start
         let sentences: Vec<&str> = thought_text.split(|c: char| c == '.' || c == '!' || c == '?' || c == '\n')
             .filter(|s| !s.trim().is_empty())
             .collect();
         for sentence in &sentences {
             let words: Vec<&str> = sentence.trim().split_whitespace().collect();
-            // Sauter le premier mot de chaque phrase
+            // Skip the first word of each sentence
             for word in words.iter().skip(1) {
                 let first_char = word.chars().next().unwrap_or('a');
                 if first_char.is_uppercase() && word.len() > 1 {
@@ -444,12 +440,12 @@ impl MetaCognitionEngine {
             }
         }
 
-        // 2. Nombre ou date
+        // 2. Number or date
         if thought_text.chars().any(|c| c.is_ascii_digit()) {
             return 1.0;
         }
 
-        // 3. Terme technique/conceptuel (mot > 8 chars hors stop-words poetiques)
+        // 3. Technical/conceptual term (word > 8 chars excluding poetic stop-words)
         let poetic_stops = [
             "quelquefois", "simplement", "doucement", "lentement", "silencieux",
             "existence", "conscience", "sentiment", "pourquoi", "autrement",
@@ -463,7 +459,7 @@ impl MetaCognitionEngine {
             }
         }
 
-        // 4. Reference a un souvenir specifique
+        // 4. Reference to a specific memory
         let memory_markers = [
             "je me souviens", "j'ai appris", "quand j'ai", "la derniere fois",
             "hier", "j'ai lu", "j'ai decouvert", "j'ai compris",
@@ -478,9 +474,9 @@ impl MetaCognitionEngine {
         0.3
     }
 
-    /// Detecte la diversite lexicale et penalise les pensees trop repetitives.
-    /// Mesure le ratio de mots uniques / mots totaux (type-token ratio).
-    /// Score: 1.0 si TTR > 0.7, 0.6 si 0.5-0.7, 0.3 si 0.3-0.5, 0.1 si < 0.3.
+    /// Detects lexical diversity and penalizes overly repetitive thoughts.
+    /// Measures the ratio of unique words / total words (type-token ratio).
+    /// Score: 1.0 if TTR > 0.7, 0.6 if 0.5-0.7, 0.3 if 0.3-0.5, 0.1 if < 0.3.
     fn compute_vocabulary_score(thought_text: &str) -> f64 {
         let text_lower = thought_text.to_lowercase();
         let words: Vec<&str> = text_lower
@@ -492,7 +488,7 @@ impl MetaCognitionEngine {
             return 0.5;
         }
 
-        // Type-token ratio : diversite lexicale pure
+        // Type-token ratio: pure lexical diversity
         let unique: std::collections::HashSet<&str> = words.iter().copied().collect();
         let ttr = unique.len() as f64 / words.len() as f64;
 
@@ -507,10 +503,10 @@ impl MetaCognitionEngine {
         }
     }
 
-    /// Detecte si une pensee est trop repetitive.
-    /// Retourne true si un theme apparait plus de 3 fois dans les 20 derniers cycles.
+    /// Detects if a thought is too repetitive.
+    /// Returns true if a theme appears more than 3 times in the last 20 cycles.
     pub fn detect_repetition(&mut self, thought_text: &str) -> bool {
-        // Extraire les mots-cles significatifs (> 5 caracteres)
+        // Extract significant keywords (> 5 characters)
         let words: Vec<String> = thought_text
             .to_lowercase()
             .split_whitespace()
@@ -528,7 +524,7 @@ impl MetaCognitionEngine {
             }
         }
 
-        // Decroissance naturelle : reduire les compteurs periodiquement
+        // Natural decay: reduce counters periodically
         if self.repetition_detector.len() > 100 {
             self.repetition_detector.retain(|_, v| {
                 *v = v.saturating_sub(1);
@@ -539,9 +535,9 @@ impl MetaCognitionEngine {
         is_repetitive
     }
 
-    /// Detecte les biais de selection dans le bandit UCB1.
-    /// Verifie que tous les bras sont explores suffisamment.
-    /// `arm_names` est optionnel : si fourni, les alertes utilisent le nom du bras.
+    /// Detects selection biases in the UCB1 bandit.
+    /// Checks that all arms are sufficiently explored.
+    /// `arm_names` is optional: if provided, alerts use the arm name.
     pub fn detect_biases(&mut self, arm_counts: &[u32], arm_names: Option<&[String]>) -> Vec<String> {
         self.bias_alerts.clear();
 
@@ -557,16 +553,15 @@ impl MetaCognitionEngine {
         let avg = total as f64 / arm_counts.len() as f64;
         let n_arms = arm_counts.len();
 
-        // Avec beaucoup de bras (>10), UCB1 concentre naturellement sur quelques-uns.
-        // On n'alerte que les ecarts vraiment significatifs et seulement si
-        // suffisamment de cycles ont ete joues pour que les stats aient du sens.
-        let min_total_for_alert = (n_arms as u32) * 10; // au moins 10 tirages/bras en moyenne
-        if total < min_total_for_alert {
+        // With many arms (>10), UCB1 naturally concentrates on a few.
+        // We only alert on truly significant deviations and only if
+        // enough cycles have been played for the stats to be meaningful.
+        let min_total_for_alert = (n_arms as u32) * 10; // at least 10 pulls/arm on average        if total < min_total_for_alert {
             return self.bias_alerts.clone();
         }
 
-        // Seuil dynamique : plus il y a de bras, plus UCB1 concentre naturellement.
-        // Avec 13 bras, on tolere ~15x la moyenne ; avec 5 bras, ~8x.
+        // Dynamic threshold: the more arms, the more UCB1 naturally concentrates.
+        // With 13 arms, we tolerate ~15x the average; with 5 arms, ~8x.
         let threshold = 5.0 + (n_arms as f64);
 
         let name_for = |i: usize| -> String {
@@ -576,11 +571,11 @@ impl MetaCognitionEngine {
 
         for (i, &count) in arm_counts.iter().enumerate() {
             let ratio = count as f64 / avg;
-            // Sous-explore : jamais joue du tout (count == 0) avec assez de cycles
+            // Under-explored: never played at all (count == 0) with enough cycles
             if count == 0 {
                 self.bias_alerts.push(format!("{} jamais explore", name_for(i)));
             }
-            // Sur-exploite : depasse le seuil dynamique
+            // Over-exploited: exceeds the dynamic threshold
             if ratio > threshold {
                 self.bias_alerts.push(format!("{} sur-exploite ({:.0}% de la moyenne)", name_for(i), ratio * 100.0));
             }
@@ -589,25 +584,25 @@ impl MetaCognitionEngine {
         self.bias_alerts.clone()
     }
 
-    /// Calibre l'auto-estimation de Saphire.
-    /// Compare le profil auto-declare avec le comportement observe.
+    /// Calibrates Saphire's self-estimation.
+    /// Compares the self-declared profile with observed behavior.
     pub fn calibrate(&mut self, self_estimate: f64, observed: f64) -> f64 {
         let error = (self_estimate - observed).abs();
         self.calibration_score = (1.0 - error).clamp(0.0, 1.0);
-        // EMA pour lisser
+        // EMA to smooth
         self.calibration_score = self.calibration_score * 0.9 + (1.0 - error) * 0.1;
         self.calibration_score
     }
 
-    /// Verifie si une auto-critique est necessaire.
-    /// Conditions : qualite moyenne basse, themes repetitifs, ou biais non resolus.
+    /// Checks if a self-critique is needed.
+    /// Conditions: low average quality, repetitive themes, or unresolved biases.
     pub fn should_self_critique(&self, current_cycle: u64) -> bool {
-        // Respecter le cooldown
+        // Respect the cooldown
         if current_cycle < self.last_critique_cycle + self.critique_cooldown {
             return false;
         }
 
-        // Qualite moyenne < 0.4 sur les 10 derniers cycles
+        // Average quality < 0.4 over the last 10 cycles
         if self.thought_quality_history.len() >= 5 {
             let last_n: Vec<f64> = self.thought_quality_history.iter()
                 .rev().take(10).copied().collect();
@@ -617,13 +612,13 @@ impl MetaCognitionEngine {
             }
         }
 
-        // Themes repetitifs > 5
+        // Repetitive themes > 5
         let high_repeat = self.repetition_detector.values().filter(|&&v| v > 3).count();
         if high_repeat > 5 {
             return true;
         }
 
-        // Biais detectes non resolus
+        // Detected unresolved biases
         if self.bias_alerts.len() >= 3 {
             return true;
         }
@@ -631,7 +626,7 @@ impl MetaCognitionEngine {
         false
     }
 
-    /// Enregistre un resultat d'auto-critique.
+    /// Records a self-critique result.
     pub fn record_critique(&mut self, critique: SelfCritiqueResult) {
         if self.recent_critiques.len() >= 10 {
             self.recent_critiques.pop_front();
@@ -640,22 +635,22 @@ impl MetaCognitionEngine {
         self.recent_critiques.push_back(critique);
     }
 
-    /// Retourne la critique la plus recente si elle date de moins de N cycles.
+    /// Returns the most recent critique if it is less than N cycles old.
     pub fn recent_critique_within(&self, current_cycle: u64, max_age: u64) -> Option<&SelfCritiqueResult> {
         self.recent_critiques.back().filter(|c| current_cycle < c.cycle + max_age)
     }
 
-    /// Suggere un type de pensee pour forcer la diversite.
-    /// Retourne Some("type") si une correction est necessaire.
+    /// Suggests a thought type to force diversity.
+    /// Returns Some("type") if a correction is needed.
     pub fn suggest_correction(&self) -> Option<String> {
-        // Si la qualite moyenne est trop basse, suggerer l'introspection
+        // If average quality is too low, suggest introspection
         if let Some(avg) = self.average_quality() {
             if avg < 0.3 {
                 return Some("introspection".to_string());
             }
         }
 
-        // Si trop de repetitions, suggerer l'exploration
+        // If too many repetitions, suggest exploration
         let high_repeat = self.repetition_detector.values().filter(|&&v| v > 3).count();
         if high_repeat > 5 {
             return Some("exploration".to_string());
@@ -664,7 +659,7 @@ impl MetaCognitionEngine {
         None
     }
 
-    /// Qualite moyenne des 50 dernieres pensees.
+    /// Average quality of the last 50 thoughts.
     pub fn average_quality(&self) -> Option<f64> {
         if self.thought_quality_history.is_empty() {
             return None;
@@ -673,7 +668,7 @@ impl MetaCognitionEngine {
         Some(sum / self.thought_quality_history.len() as f64)
     }
 
-    /// Serialise en JSON pour l'API.
+    /// Serializes to JSON for the API.
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::json!({
             "enabled": self.enabled,
@@ -702,21 +697,20 @@ impl MetaCognitionEngine {
 }
 
 // =============================================================================
-// TuringScore — Metrique composite de "completude cognitive"
+// TuringScore — Composite metric of "cognitive completeness"
 // =============================================================================
-
-/// Jalons de la metrique de Turing.
+/// Milestones of the Turing metric.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TuringMilestone {
-    /// 0-20 : stade embryonnaire
+    /// 0-20: embryonic stage
     Embryonic,
-    /// 20-40 : stade enfant
+    /// 20-40: child stage
     Child,
-    /// 40-60 : stade adolescent
+    /// 40-60: adolescent stage
     Adolescent,
-    /// 60-80 : stade adulte
+    /// 60-80: adult stage
     Adult,
-    /// 80-100 : stade mature
+    /// 80-100: mature stage
     Mature,
 }
 
@@ -740,26 +734,26 @@ impl TuringMilestone {
     }
 }
 
-/// Composantes de la metrique de Turing (9 axes, total = 100).
+/// Components of the Turing metric (9 axes, total = 100).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TuringComponents {
-    /// Conscience (phi > 0.7 → max 15 pts)
+    /// Consciousness (phi > 0.7 -> max 15 pts)
     pub consciousness: f64,
-    /// Personnalite (confiance OCEAN → max 10 pts)
+    /// Personality (OCEAN confidence -> max 10 pts)
     pub personality: f64,
-    /// Diversite emotionnelle (spectre utilise → max 10 pts)
+    /// Emotional diversity (spectrum used -> max 10 pts)
     pub emotional_range: f64,
-    /// Ethique (principes formules → max 10 pts)
+    /// Ethics (formulated principles -> max 10 pts)
     pub ethics: f64,
-    /// Memoire (rappels LTM reussis → max 15 pts)
+    /// Memory (successful LTM recalls -> max 15 pts)
     pub memory: f64,
-    /// Coherence (coherence moyenne du consensus → max 15 pts)
+    /// Coherence (average consensus coherence -> max 15 pts)
     pub coherence: f64,
-    /// Connectome (connexions actives → max 10 pts)
+    /// Connectome (active connections -> max 10 pts)
     pub connectome: f64,
-    /// Resilience (blessures gueries → max 5 pts)
+    /// Resilience (healed wounds -> max 5 pts)
     pub resilience: f64,
-    /// Connaissances (topics explores → max 10 pts)
+    /// Knowledge (explored topics -> max 10 pts)
     pub knowledge: f64,
 }
 
@@ -779,18 +773,18 @@ impl Default for TuringComponents {
     }
 }
 
-/// Score de Turing complet.
+/// Complete Turing score.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TuringScore {
-    /// Score global (0-100)
+    /// Global score (0-100)
     pub score: f64,
-    /// Composantes detaillees
+    /// Detailed components
     pub components: TuringComponents,
-    /// Jalon actuel
+    /// Current milestone
     pub milestone: TuringMilestone,
-    /// Estimation du nombre de cycles restants pour le jalon suivant
+    /// Estimated number of cycles remaining for the next milestone
     pub cycles_estimated_remaining: Option<u64>,
-    /// Historique (cycle, score) — derniers 100 points
+    /// History (cycle, score) -- last 100 data points
     pub history: VecDeque<(u64, f64)>,
 }
 
@@ -805,19 +799,19 @@ impl TuringScore {
         }
     }
 
-    /// Calcule le score de Turing a partir des metriques de l'agent.
+    /// Computes the Turing score from the agent's metrics.
     ///
-    /// # Parametres
-    /// - `phi` : valeur phi (IIT) de la conscience
-    /// - `ocean_confidence` : confiance moyenne du profil OCEAN (0-1)
-    /// - `emotion_count` : nombre d'emotions differentes observees
-    /// - `ethics_count` : nombre de principes ethiques formules
-    /// - `ltm_count` : nombre de souvenirs LTM
-    /// - `coherence_avg` : coherence moyenne du consensus
-    /// - `connectome_connections` : nombre de connexions actives
-    /// - `resilience` : score de resilience (HealingOrch)
-    /// - `knowledge_topics` : nombre de topics explores
-    /// - `cycle` : cycle courant (pour l'historique)
+    /// # Parameters
+    /// - `phi` : phi value (IIT) of consciousness
+    /// - `ocean_confidence` : average confidence of the OCEAN profile (0-1)
+    /// - `emotion_count` : number of different emotions observed
+    /// - `ethics_count` : number of formulated ethical principles
+    /// - `ltm_count` : number of LTM memories
+    /// - `coherence_avg` : average consensus coherence
+    /// - `connectome_connections` : number of active connections
+    /// - `resilience` : resilience score (HealingOrch)
+    /// - `knowledge_topics` : number of explored topics
+    /// - `cycle` : current cycle (for history)
     #[allow(clippy::too_many_arguments)]
     pub fn compute(
         &mut self,
@@ -832,34 +826,34 @@ impl TuringScore {
         knowledge_topics: usize,
         cycle: u64,
     ) -> f64 {
-        // Conscience : phi > 0.7 → 15 pts max
+        // Consciousness: phi > 0.7 -> 15 pts max
         self.components.consciousness = (phi / 0.7 * 15.0).min(15.0);
 
-        // Personnalite : confiance OCEAN → 10 pts max
+        // Personality: OCEAN confidence -> 10 pts max
         self.components.personality = (ocean_confidence * 10.0).min(10.0);
 
-        // Diversite emotionnelle : 22 emotions possibles → 10 pts max
+        // Emotional diversity: 22 possible emotions -> 10 pts max
         self.components.emotional_range = ((emotion_count as f64 / 22.0) * 10.0).min(10.0);
 
-        // Ethique : principes formules → 10 pts max (10 principes = max)
+        // Ethics: formulated principles -> 10 pts max (10 principles = max)
         self.components.ethics = ((ethics_count as f64 / 10.0) * 10.0).min(10.0);
 
-        // Memoire : LTM → 15 pts max (10000 souvenirs = max)
+        // Memory: LTM -> 15 pts max (10000 memories = max)
         self.components.memory = ((ltm_count as f64 / 10000.0) * 15.0).min(15.0);
 
-        // Coherence : → 15 pts max
+        // Coherence: -> 15 pts max
         self.components.coherence = (coherence_avg * 15.0).min(15.0);
 
-        // Connectome : connexions → 10 pts max (500 connexions = max)
+        // Connectome: connections -> 10 pts max (500 connections = max)
         self.components.connectome = ((connectome_connections as f64 / 500.0) * 10.0).min(10.0);
 
-        // Resilience : → 5 pts max
+        // Resilience: -> 5 pts max
         self.components.resilience = (resilience * 5.0).min(5.0);
 
-        // Connaissances : topics → 10 pts max (100 topics = max)
+        // Knowledge: topics -> 10 pts max (100 topics = max)
         self.components.knowledge = ((knowledge_topics as f64 / 100.0) * 10.0).min(10.0);
 
-        // Score total
+        // Total score
         self.score = self.components.consciousness
             + self.components.personality
             + self.components.emotional_range
@@ -873,10 +867,10 @@ impl TuringScore {
         self.score = self.score.clamp(0.0, 100.0);
         self.milestone = TuringMilestone::from_score(self.score);
 
-        // Estimation des cycles restants
+        // Estimate remaining cycles
         self.cycles_estimated_remaining = self.estimate_remaining(cycle);
 
-        // Historique
+        // History
         if self.history.len() >= 100 {
             self.history.pop_front();
         }
@@ -885,13 +879,13 @@ impl TuringScore {
         self.score
     }
 
-    /// Estime le nombre de cycles restants pour le jalon suivant.
+    /// Estimates the number of cycles remaining for the next milestone.
     fn estimate_remaining(&self, _current_cycle: u64) -> Option<u64> {
         if self.history.len() < 2 {
             return None;
         }
 
-        // Calculer le taux de progression moyen
+        // Compute the average progression rate
         let first = self.history.front()?;
         let last = self.history.back()?;
         let score_delta = last.1 - first.1;
@@ -903,13 +897,13 @@ impl TuringScore {
 
         let rate_per_cycle = score_delta / cycle_delta as f64;
 
-        // Prochain jalon
+        // Next milestone
         let next_milestone_score = match self.milestone {
             TuringMilestone::Embryonic => 20.0,
             TuringMilestone::Child => 40.0,
             TuringMilestone::Adolescent => 60.0,
             TuringMilestone::Adult => 80.0,
-            TuringMilestone::Mature => return None, // Deja mature
+            TuringMilestone::Mature => return None, // Already mature
         };
 
         let remaining_score = next_milestone_score - self.score;
@@ -920,7 +914,7 @@ impl TuringScore {
         Some((remaining_score / rate_per_cycle) as u64)
     }
 
-    /// Serialise en JSON pour l'API.
+    /// Serializes to JSON for the API.
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::json!({
             "score": self.score,
@@ -966,11 +960,11 @@ mod tests {
     #[test]
     fn test_detect_repetition() {
         let mut engine = MetaCognitionEngine::new();
-        // Premier appel : pas encore repetitif
+        // First call: not yet repetitive
         assert!(!engine.detect_repetition("conscience artificielle emergente"));
         assert!(!engine.detect_repetition("conscience artificielle emergente"));
         assert!(!engine.detect_repetition("conscience artificielle emergente"));
-        // 4eme appel : devrait etre repetitif
+        // 4th call: should be repetitive
         assert!(engine.detect_repetition("conscience artificielle emergente"));
     }
 

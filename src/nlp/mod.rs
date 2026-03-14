@@ -1,23 +1,22 @@
 // =============================================================================
-// nlp/mod.rs — Pipeline NLP (Natural Language Processing / Traitement Automatique
-//              du Langage Naturel) hybride a 3 couches
+// nlp/mod.rs — Hybrid 3-layer NLP (Natural Language Processing) pipeline
 //
-// Role : Point d'entree du module NLP. Orchestre le pipeline complet d'analyse
-//        textuelle en 3 couches successives :
-//          Couche 1 — Pretraitement (tokenisation, normalisation, features structurelles)
-//          Couche 2A — Analyse de sentiment (lexique VADER-like bilingue)
-//          Couche 2B — Detection d'intention (classificateur Naive Bayes simplifie)
-//          Couche 2C — Extraction de dimensions (danger, recompense, urgence, social, nouveaute)
+// Role: Entry point for the NLP module. Orchestrates the complete text analysis
+//       pipeline in 3 successive layers:
+//         Layer 1 — Preprocessing (tokenization, normalization, structural features)
+//         Layer 2A — Sentiment analysis (bilingual VADER-like lexicon)
+//         Layer 2B — Intent detection (simplified Naive Bayes classifier)
+//         Layer 2C — Dimension extraction (danger, reward, urgency, social, novelty)
 //
-// Dependances :
-//   - serde : serialisation/deserialisation des resultats
-//   - crate::stimulus : structure Stimulus (vecteur de dimensions emotionnelles)
-//   - Sous-modules : preprocessor, sentiment, intent, dimensions, dictionaries
+// Dependencies:
+//   - serde: serialization/deserialization of results
+//   - crate::stimulus: Stimulus structure (emotional dimension vector)
+//   - Submodules: preprocessor, sentiment, intent, dimensions, dictionaries
 //
-// Place dans l'architecture :
-//   Ce module est appele par la boucle cognitive principale de Saphire pour
-//   transformer le texte brut de l'utilisateur en un vecteur de stimulus
-//   multidimensionnel exploitable par le systeme de profilage et le consensus.
+// Place in the architecture:
+//   This module is called by Saphire's main cognitive loop to transform
+//   raw user text into a multidimensional stimulus vector usable by the
+//   profiling system and the consensus mechanism.
 // =============================================================================
 
 pub mod preprocessor;
@@ -37,41 +36,41 @@ use self::intent::{IntentClassifier, IntentResult};
 use self::dimensions::DimensionExtractor;
 use self::register::{RegisterDetector, RegisterResult};
 
-/// Resultat complet de l'analyse NLP (Natural Language Processing).
+/// Complete NLP (Natural Language Processing) analysis result.
 ///
-/// Regroupe toutes les informations extraites du texte brut apres passage
-/// dans le pipeline a 3 couches.
+/// Groups all information extracted from raw text after passing through
+/// the 3-layer pipeline.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NlpResult {
-    /// Le stimulus multidimensionnel extrait du texte (danger, recompense, urgence, social, nouveaute)
+    /// The multidimensional stimulus extracted from text (danger, reward, urgency, social, novelty)
     pub stimulus: Stimulus,
-    /// Le resultat de l'analyse de sentiment (polarite positive/negative, score compose)
+    /// The sentiment analysis result (positive/negative polarity, compound score)
     pub sentiment: SentimentResult,
-    /// L'intention detectee dans le message (question, ordre, expression d'emotion, etc.)
+    /// The detected intent in the message (question, command, emotion expression, etc.)
     pub intent: IntentResult,
-    /// La langue detectee du message (francais, anglais ou inconnue)
+    /// The detected language of the message (French, English, or unknown)
     pub language: Language,
-    /// Les caracteristiques structurelles du texte (majuscules, ponctuation, longueur)
+    /// The structural features of the text (uppercase, punctuation, length)
     pub structural_features: StructuralFeatures,
-    /// Le registre linguistique detecte (technique, poetique, emotionnel, etc.)
+    /// The detected linguistic register (technical, poetic, emotional, etc.)
     pub register: RegisterResult,
 }
 
-/// Pipeline NLP complet.
+/// Complete NLP pipeline.
 ///
-/// Contient les 4 composants du pipeline : le preprocesseur, le lexique de sentiment,
-/// le classificateur d'intention et l'extracteur de dimensions. Chaque composant est
-/// initialise une seule fois et reutilise a chaque appel d'analyse.
+/// Contains the 4 pipeline components: the preprocessor, the sentiment lexicon,
+/// the intent classifier, and the dimension extractor. Each component is
+/// initialized once and reused for each analysis call.
 pub struct NlpPipeline {
-    /// Composant de pretraitement : normalisation, tokenisation, extraction de features structurelles
+    /// Preprocessing component: normalization, tokenization, structural feature extraction
     preprocessor: TextPreprocessor,
-    /// Lexique de sentiment bilingue FR+EN avec intensifieurs et negations
+    /// Bilingual FR+EN sentiment lexicon with intensifiers and negations
     sentiment_lexicon: SentimentLexicon,
-    /// Classificateur d'intention par correspondance de mots-cles ponderes
+    /// Intent classifier via weighted keyword matching
     intent_classifier: IntentClassifier,
-    /// Extracteur de dimensions texte vers Stimulus (5 axes emotionnels)
+    /// Dimension extractor from text to Stimulus (5 emotional axes)
     dimension_extractor: DimensionExtractor,
-    /// Detecteur de registre linguistique (technique, poetique, emotionnel, etc.)
+    /// Linguistic register detector (technical, poetic, emotional, etc.)
     register_detector: RegisterDetector,
 }
 
@@ -82,12 +81,12 @@ impl Default for NlpPipeline {
 }
 
 impl NlpPipeline {
-    /// Cree une nouvelle instance du pipeline NLP.
+    /// Creates a new NLP pipeline instance.
     ///
-    /// Initialise tous les composants (preprocesseur, lexique, classificateur, extracteur)
-    /// avec leurs dictionnaires par defaut.
+    /// Initializes all components (preprocessor, lexicon, classifier, extractor)
+    /// with their default dictionaries.
     ///
-    /// Retour : une instance prete a analyser du texte
+    /// Returns: an instance ready to analyze text
     pub fn new() -> Self {
         Self {
             preprocessor: TextPreprocessor::new(),
@@ -98,44 +97,44 @@ impl NlpPipeline {
         }
     }
 
-    /// Analyse complete d'un texte brut.
+    /// Complete analysis of raw text.
     ///
-    /// Deroule le pipeline en 3 couches :
-    ///   1. Pretraitement : tokenisation + extraction de features structurelles
-    ///   2. Analyses paralleles : sentiment (2A), intention (2B), dimensions (2C)
-    ///   3. Fusion : le sentiment ajuste le stimulus (recompense si positif, danger si negatif)
+    /// Runs the 3-layer pipeline:
+    ///   1. Preprocessing: tokenization + structural feature extraction
+    ///   2. Parallel analyses: sentiment (2A), intent (2B), dimensions (2C)
+    ///   3. Fusion: sentiment adjusts the stimulus (reward if positive, danger if negative)
     ///
-    /// Parametre :
-    ///   - text : le texte brut a analyser (message de l'utilisateur)
+    /// Parameter:
+    ///   - text: the raw text to analyze (user message)
     ///
-    /// Retour : un NlpResult contenant le stimulus, le sentiment, l'intention,
-    ///          la langue et les features structurelles
+    /// Returns: an NlpResult containing the stimulus, sentiment, intent,
+    ///          language, and structural features
     pub fn analyze(&self, text: &str) -> NlpResult {
-        // Couche 1 : Pretraitement — tokenisation et extraction des features structurelles
+        // Layer 1: Preprocessing — tokenization and structural feature extraction
         let (tokens, features) = self.preprocessor.process(text);
 
-        // Couche 2A : Sentiment — analyse de polarite positive/negative
+        // Layer 2A: Sentiment — positive/negative polarity analysis
         let sentiment = self.sentiment_lexicon.analyze(&tokens);
 
-        // Couche 2B : Intention — classification de l'intention communicative
+        // Layer 2B: Intent — communicative intent classification
         let intent = self.intent_classifier.classify(&tokens, text);
 
-        // Couche 2C : Extraction dimensions — conversion des tokens en vecteur Stimulus
+        // Layer 2C: Dimension extraction — convert tokens to Stimulus vector
         let mut stimulus = self.dimension_extractor.extract(&tokens, text, &features);
 
-        // Ajuster le stimulus par le sentiment :
-        // Un sentiment fortement positif (compound > 0.3) renforce la dimension "recompense"
-        // en y ajoutant 30% de la composante positive du sentiment.
+        // Adjust the stimulus by sentiment:
+        // A strongly positive sentiment (compound > 0.3) reinforces the "reward" dimension
+        // by adding 30% of the sentiment's positive component.
         if sentiment.compound > 0.3 {
             stimulus.reward = (stimulus.reward + sentiment.positive * 0.3).min(1.0);
         }
-        // Un sentiment fortement negatif (compound < -0.3) renforce la dimension "danger"
-        // en y ajoutant 20% de la composante negative du sentiment.
+        // A strongly negative sentiment (compound < -0.3) reinforces the "danger" dimension
+        // by adding 20% of the sentiment's negative component.
         if sentiment.compound < -0.3 {
             stimulus.danger = (stimulus.danger + sentiment.negative * 0.2).min(1.0);
         }
 
-        // Couche 2D : Registre — detection du registre linguistique dominant
+        // Layer 2D: Register — detect the dominant linguistic register
         let register = self.register_detector.detect(&tokens, text);
 
         NlpResult {
@@ -148,14 +147,14 @@ impl NlpPipeline {
         }
     }
 
-    /// Analyse enrichie par LLM : sentiment, intention et registre sont determines
-    /// par le LLM au lieu des regles. Structural features, langue et stimulus restent
-    /// par regles. Fallback sur analyze() si le LLM echoue.
+    /// LLM-enriched analysis: sentiment, intent, and register are determined
+    /// by the LLM instead of rules. Structural features, language, and stimulus
+    /// remain rule-based. Falls back to analyze() if the LLM fails.
     pub async fn analyze_with_llm(&self, text: &str, llm_config: &crate::llm::LlmConfig) -> NlpResult {
-        // D'abord, analyse par regles (base)
+        // First, rule-based analysis (baseline)
         let mut result = self.analyze(text);
 
-        // Appel LLM pour sentiment + intent + register
+        // LLM call for sentiment + intent + register
         let backend = crate::llm::create_backend(llm_config);
         let system = "Tu es un analyseur linguistique. Analyse le message suivant et retourne \
                       UNIQUEMENT un JSON avec ces champs :\n\
@@ -179,7 +178,7 @@ impl NlpPipeline {
 
         match llm_result {
             Ok(Ok(raw)) => {
-                // Extraire le JSON de la reponse (peut etre entoure de ```json ... ```)
+                // Extract JSON from response (may be wrapped in ```json ... ```)
                 let json_str = raw.trim()
                     .trim_start_matches("```json")
                     .trim_start_matches("```")
@@ -198,7 +197,7 @@ impl NlpPipeline {
                             negative,
                             has_contradiction,
                         };
-                        // Re-ajuster le stimulus avec le nouveau sentiment
+                        // Re-adjust stimulus with the new sentiment
                         if compound > 0.3 {
                             result.stimulus.reward = (result.stimulus.reward + positive * 0.3).min(1.0);
                         }

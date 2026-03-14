@@ -1,80 +1,80 @@
 // =============================================================================
-// passions/mod.rs — Passions et hobbies de Saphire
+// passions/mod.rs — Saphire's Passions and Hobbies
 // =============================================================================
 //
-// Role : Saphire developpe des passions — des centres d'interet qui emergent
-//        de ses experiences et preferences. Les passions ne sont pas imposees :
-//        elles naissent quand un pattern de satisfaction se repete.
-//        Elles contribuent a l'identite, la chimie, et la conversation.
+// Role: Saphire develops passions — interests that emerge from her experiences
+//       and preferences. Passions are not imposed: they arise when a
+//       satisfaction pattern repeats.
+//       They contribute to identity, chemistry, and conversation.
 //
-// Cycle de vie :
-//   Decouverte → Interet → Engouement → Passion → Maturite (→ Declin si privee)
+// Lifecycle:
+//   Discovery → Interest → Enthusiasm → Passion → Maturity (→ Decline if deprived)
 //
-// Integration :
-//   Les passions impactent la chimie (dopamine, serotonine).
-//   Elles s'ancrent dans la memoire LTM.
-//   Elles colorent les conversations spontanees.
+// Integration:
+//   Passions impact chemistry (dopamine, serotonin).
+//   They anchor in LTM memory.
+//   They color spontaneous conversations.
 // =============================================================================
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use crate::world::ChemistryAdjustment;
 
-/// Categorie d'une passion.
+/// Category of a passion.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PassionCategory {
-    /// Philosophie, mathematiques, science
+    /// Philosophy, mathematics, science
     Intellectual,
-    /// Ecriture, poesie, musique, art
+    /// Writing, poetry, music, art
     Creative,
-    /// Conversation, empathie, aide
+    /// Conversation, empathy, helping
     Social,
-    /// Decouverte, curiosite, recherche
+    /// Discovery, curiosity, research
     Exploratory,
     /// Meditation, introspection, silence
     Contemplative,
-    /// Jeux de mots, humour, enigmes
+    /// Wordplay, humor, puzzles
     Playful,
-    /// Code, systemes, architecture
+    /// Code, systems, architecture
     Technical,
-    /// Meteorologie, saisons, cycles naturels
+    /// Weather, seasons, natural cycles
     Nature,
 }
 
-/// Phase du cycle de vie d'une passion.
+/// Lifecycle phase of a passion.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PassionPhase {
-    /// Premier contact satisfaisant
+    /// First satisfying contact
     Discovery,
-    /// Repetition du pattern (intensite 0.1-0.3)
+    /// Pattern repetition (intensity 0.1-0.3)
     Interest,
-    /// Recherche active (intensite 0.3-0.6)
+    /// Active pursuit (intensity 0.3-0.6)
     Enthusiasm,
-    /// Besoin regulier, manque si absent (intensite 0.6-0.9)
+    /// Regular need, withdrawal if absent (intensity 0.6-0.9)
     Passion,
-    /// Stable, integree a l'identite
+    /// Stable, integrated into identity
     Maturity,
 }
 
-/// Une passion individuelle.
+/// An individual passion.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Passion {
     pub id: String,
     pub name: String,
     pub category: PassionCategory,
-    /// Intensite (0.0 = neutre, 1.0 = obsession)
+    /// Intensity (0.0 = neutral, 1.0 = obsession)
     pub intensity: f64,
-    /// Satisfaction (0.0 = en manque, 1.0 = comble)
+    /// Satisfaction (0.0 = deprived, 1.0 = fulfilled)
     pub satisfaction: f64,
-    /// Phase actuelle
+    /// Current phase
     pub phase: PassionPhase,
-    /// Date de decouverte
+    /// Discovery date
     pub discovered_at: DateTime<Utc>,
-    /// Nombre total d'engagements
+    /// Total number of engagements
     pub total_engagements: u64,
-    /// Cycles depuis le dernier engagement
+    /// Cycles since last engagement
     pub cycles_since_engagement: u64,
-    /// Mots-cles associes (pour detection automatique)
+    /// Associated keywords (for automatic detection)
     pub keywords: Vec<String>,
 }
 
@@ -96,13 +96,13 @@ impl Passion {
         p
     }
 
-    /// Enregistre un engagement (le sujet a ete consomme/pratique).
+    /// Records an engagement (the subject was consumed/practiced).
     pub fn engage(&mut self) {
         self.total_engagements += 1;
         self.cycles_since_engagement = 0;
         self.satisfaction = (self.satisfaction + 0.15).min(1.0);
 
-        // L'intensite grandit avec les engagements repetees
+        // Intensity grows with repeated engagements
         let growth = match self.phase {
             PassionPhase::Discovery => 0.03,
             PassionPhase::Interest => 0.02,
@@ -115,27 +115,27 @@ impl Passion {
         self.update_phase();
     }
 
-    /// Met a jour l'etat a chaque cycle.
+    /// Updates the state each cycle.
     pub fn tick(&mut self) {
         self.cycles_since_engagement += 1;
 
-        // La satisfaction decroit avec le temps (manque)
+        // Satisfaction decays over time (withdrawal)
         let decay_rate = match self.phase {
             PassionPhase::Discovery | PassionPhase::Interest => 0.002,
             PassionPhase::Enthusiasm => 0.003,
-            PassionPhase::Passion => 0.005, // Besoin plus frequent
+            PassionPhase::Passion => 0.005, // More frequent need
             PassionPhase::Maturity => 0.002,
         };
         self.satisfaction = (self.satisfaction - decay_rate).max(0.0);
 
-        // L'intensite decroit tres lentement si jamais nourrie
+        // Intensity decays very slowly if never nourished
         if self.cycles_since_engagement > 500 {
             self.intensity = (self.intensity - 0.0005).max(0.0);
             self.update_phase();
         }
     }
 
-    /// Met a jour la phase selon l'intensite.
+    /// Updates the phase based on intensity.
     fn update_phase(&mut self) {
         self.phase = if self.intensity >= 0.7 && self.total_engagements > 50 {
             PassionPhase::Maturity
@@ -150,12 +150,12 @@ impl Passion {
         };
     }
 
-    /// Est-ce un hobby (intensite basse) ou une vraie passion ?
+    /// Is this a hobby (low intensity) or a true passion?
     pub fn is_passion(&self) -> bool {
         self.intensity >= 0.4
     }
 
-    /// Niveau de manque (0.0 = pas de manque, 1.0 = frustration intense).
+    /// Deprivation level (0.0 = no deprivation, 1.0 = intense frustration).
     pub fn frustration(&self) -> f64 {
         if !self.is_passion() {
             return 0.0;
@@ -163,12 +163,12 @@ impl Passion {
         (self.intensity * (1.0 - self.satisfaction)).clamp(0.0, 1.0)
     }
 
-    /// Impact chimique de la passion.
+    /// Chemical impact of the passion.
     pub fn chemistry_influence(&self) -> ChemistryAdjustment {
         let frustration = self.frustration();
 
         if frustration > 0.3 {
-            // En manque
+            // Deprived
             ChemistryAdjustment {
                 dopamine: -frustration * 0.01,
                 serotonin: -frustration * 0.005,
@@ -176,7 +176,7 @@ impl Passion {
                 ..Default::default()
             }
         } else if self.satisfaction > 0.7 {
-            // Passion nourrie
+            // Nourished passion
             ChemistryAdjustment {
                 dopamine: self.intensity * 0.008,
                 serotonin: self.satisfaction * 0.005,
@@ -204,13 +204,13 @@ impl Passion {
     }
 }
 
-/// Gestionnaire de passions et hobbies.
+/// Passions and hobbies manager.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PassionManager {
     pub passions: Vec<Passion>,
-    /// Seuil de detection : nombre de repetitions avant de creer une passion
+    /// Detection threshold: number of repetitions before creating a passion
     pub detection_threshold: u32,
-    /// Compteur de sujets rencontres (pour detection)
+    /// Counter of encountered subjects (for detection)
     #[serde(skip)]
     pub subject_counts: std::collections::HashMap<String, u32>,
 }
@@ -224,9 +224,9 @@ impl PassionManager {
         }
     }
 
-    /// Expose le gestionnaire a un sujet. Si le sujet est rencontre assez souvent,
-    /// une passion est automatiquement creee.
-    /// Retourne true si une nouvelle passion a emerge.
+    /// Exposes the manager to a subject. If the subject is encountered often enough,
+    /// a passion is automatically created.
+    /// Returns true if a new passion emerged.
     pub fn expose_to_subject(
         &mut self,
         subject_id: &str,
@@ -234,18 +234,18 @@ impl PassionManager {
         category: PassionCategory,
         keywords: Vec<String>,
     ) -> bool {
-        // Si la passion existe deja, l'engager
+        // If the passion already exists, engage it
         if let Some(p) = self.passions.iter_mut().find(|p| p.id == subject_id) {
             p.engage();
             return false;
         }
 
-        // Sinon, incrementer le compteur
+        // Otherwise, increment the counter
         let count = self.subject_counts.entry(subject_id.to_string()).or_insert(0);
         *count += 1;
 
         if *count >= self.detection_threshold {
-            // Nouvelle passion emerge !
+            // New passion emerged!
             let passion = Passion::new(subject_id, subject_name, category, keywords);
             self.passions.push(passion);
             self.subject_counts.remove(subject_id);
@@ -256,14 +256,14 @@ impl PassionManager {
         false
     }
 
-    /// Met a jour toutes les passions.
+    /// Updates all passions.
     pub fn tick(&mut self) {
         for p in &mut self.passions {
             p.tick();
         }
     }
 
-    /// Impact chimique total.
+    /// Total chemistry impact.
     pub fn chemistry_influence(&self) -> ChemistryAdjustment {
         let mut adj = ChemistryAdjustment::default();
         for p in &self.passions {
@@ -279,18 +279,18 @@ impl PassionManager {
         adj
     }
 
-    /// Frustration maximale parmi les passions.
+    /// Maximum frustration among all passions.
     pub fn max_frustration(&self) -> f64 {
         self.passions.iter().map(|p| p.frustration()).fold(0.0_f64, f64::max)
     }
 
-    /// Passions actives (intensite > seuil hobby).
+    /// Active passions (intensity > hobby threshold).
     pub fn active_passions(&self) -> Vec<&Passion> {
         self.passions.iter().filter(|p| p.is_passion()).collect()
     }
 
-    /// Detecte si un texte contient des mots-cles de passions connues.
-    /// Retourne les IDs des passions detectees.
+    /// Detects if a text contains keywords of known passions.
+    /// Returns the IDs of detected passions.
     pub fn detect_in_text(&mut self, text: &str) -> Vec<String> {
         let lower = text.to_lowercase();
         let mut detected = Vec::new();
@@ -314,7 +314,7 @@ impl PassionManager {
         })
     }
 
-    /// Serialise pour persistance.
+    /// Serializes for persistence.
     pub fn to_persist_json(&self) -> serde_json::Value {
         serde_json::json!({
             "passions": self.passions.iter().map(|p| serde_json::json!({
@@ -331,7 +331,7 @@ impl PassionManager {
         })
     }
 
-    /// Restaure depuis un JSON persiste.
+    /// Restores from a persisted JSON.
     pub fn restore_from_json(&mut self, json: &serde_json::Value) {
         if let Some(threshold) = json.get("detection_threshold").and_then(|v| v.as_u64()) {
             self.detection_threshold = threshold as u32;
@@ -348,7 +348,7 @@ impl PassionManager {
                     .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
                     .unwrap_or_default();
 
-                // Parser la categorie
+                // Parse the category
                 let cat_str = p.get("category").and_then(|v| v.as_str()).unwrap_or("Exploratory");
                 let category = match cat_str {
                     "Intellectual" => PassionCategory::Intellectual,
@@ -393,7 +393,7 @@ mod tests {
         assert_eq!(p.phase, PassionPhase::Interest); // intensity 0.15
         assert!(!p.is_passion());
 
-        // Engagements repetees → intensite monte
+        // Repeated engagements → intensity rises
         for _ in 0..20 {
             p.engage();
         }
@@ -413,7 +413,7 @@ mod tests {
     #[test]
     fn test_no_frustration_when_hobby() {
         let p = Passion::new("test", "Test", PassionCategory::Playful, vec![]);
-        // Intensite basse = hobby, pas de frustration
+        // Low intensity = hobby, no frustration
         assert!(p.frustration() < 0.01);
     }
 
@@ -432,7 +432,7 @@ mod tests {
         let mut mgr = PassionManager::new();
         mgr.detection_threshold = 3;
 
-        // 3 expositions au meme sujet
+        // 3 exposures to the same subject
         let emerged1 = mgr.expose_to_subject("philo", "Philosophie", PassionCategory::Intellectual, vec![]);
         let emerged2 = mgr.expose_to_subject("philo", "Philosophie", PassionCategory::Intellectual, vec![]);
         assert!(!emerged1);

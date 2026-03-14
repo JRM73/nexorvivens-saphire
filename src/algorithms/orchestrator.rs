@@ -1,18 +1,18 @@
 // =============================================================================
-// orchestrator.rs — Orchestrateur d'Algorithmes de Saphire
+// orchestrator.rs — Saphire's Algorithm Orchestrator
 //
-// Le pont entre le LLM (langage naturel) et les algorithmes (code Rust).
-// Le LLM ne peut pas lire du code ni executer des fonctions — mais il peut
-// lire des fiches descriptives et demander l'execution d'un algorithme.
-// L'orchestrateur traduit dans les deux sens :
-//   LLM → choix d'algorithme → execution → resultat en langage naturel → LLM
+// The bridge between the LLM (natural language) and algorithms (Rust code).
+// The LLM cannot read code or execute functions — but it can
+// read descriptive sheets and request the execution of an algorithm.
+// The orchestrator translates in both directions:
+//  LLM → algorithm selection → execution → result in natural language → LLM
 // =============================================================================
 
 use std::collections::HashMap;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-// ─── Categories d'algorithmes ──────────────────────────────────────────────
+// ─── Algorithm categories ──────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum AlgorithmCategory {
@@ -41,28 +41,28 @@ impl AlgorithmCategory {
     }
 }
 
-// ─── Fiche d'algorithme (le Vidal de Saphire) ─────────────────────────────
+// ─── Algorithm sheet (Saphire's Vidal) ─────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AlgorithmCard {
     pub id: String,
     pub name: String,
     pub category: AlgorithmCategory,
-    /// Description en langage naturel — c'est ca que le LLM lit
+    /// Natural language description — this is what the LLM reads
     pub description: String,
-    /// Quand l'utiliser (situations typiques)
+    /// When to use it (typical situations)
     pub when_to_use: Vec<String>,
-    /// Ce qu'il attend en entree
+    /// What it expects as input
     pub input_description: String,
-    /// Ce qu'il produit en sortie
+    /// What it produces as output
     pub output_description: String,
-    /// Difficulte computationnelle (low, medium, high)
+    /// Computational difficulty (low, medium, high)
     pub complexity: String,
-    /// Nombre de fois utilise
+    /// Number of times used
     pub usage_count: u64,
-    /// Score de satisfaction moyen
+    /// Average satisfaction score
     pub avg_satisfaction: f64,
-    /// Tags pour la recherche rapide
+    /// Tags for quick search
     pub tags: Vec<String>,
 }
 
@@ -84,53 +84,52 @@ impl Default for AlgorithmCard {
     }
 }
 
-// ─── Entree/Sortie generiques ──────────────────────────────────────────────
-
-/// Entree generique pour les algorithmes
+// ─── Generic Input/Output ──────────────────────────────────────────────
+/// Generic input for algorithms
 #[derive(Debug, Clone, Default)]
 pub struct AlgorithmInput {
-    /// Vecteurs numeriques (embeddings, metriques, etc.)
+    /// Numeric vectors (embeddings, metrics, etc.)
     pub vectors: Option<Vec<Vec<f64>>>,
-    /// Serie temporelle (valeurs ordonnees)
+    /// Time series (ordered values)
     pub time_series: Option<Vec<f64>>,
-    /// Textes
+    /// Texts
     pub texts: Option<Vec<String>>,
-    /// Labels (pour classification supervisee)
+    /// Labels (for supervised classification)
     pub labels: Option<Vec<String>>,
-    /// Parametres specifiques (K pour K-Means, alpha pour EMA, etc.)
+    /// Specific parameters (K for K-Means, alpha for EMA, etc.)
     pub params: HashMap<String, f64>,
 }
 
-/// Sortie generique — inclut un resultat en langage naturel pour le LLM
+/// Generic output — includes a natural language result for the LLM
 #[derive(Debug, Clone, Serialize)]
 pub struct AlgorithmOutput {
     pub algorithm_id: String,
-    /// Resultat en langage naturel (pour le LLM)
+    /// Natural language result (for the LLM)
     pub natural_language_result: String,
-    /// Resultat structure (pour le code)
+    /// Structured result (for the code)
     pub structured_result: serde_json::Value,
-    /// Metriques (accuracy, temps d'execution, etc.)
+    /// Metrics (accuracy, execution time, etc.)
     pub metrics: HashMap<String, f64>,
-    /// Duree d'execution en ms
+    /// Execution duration in ms
     pub execution_ms: u64,
 }
 
 impl AlgorithmOutput {
-    /// Verifie si le resultat contient des anomalies critiques
+    /// Checks if the result contains critical anomalies
     pub fn has_critical(&self) -> bool {
         self.metrics.get("anomalies_found").map(|v| *v > 0.0).unwrap_or(false)
             || self.metrics.get("critical").map(|v| *v > 0.0).unwrap_or(false)
     }
 }
 
-/// Demande d'algorithme parsee depuis la reponse du LLM
+/// Algorithm request parsed from the LLM's response
 #[derive(Debug, Clone)]
 pub struct AlgorithmRequest {
     pub algorithm_id: String,
     pub params_description: String,
 }
 
-/// Historique d'utilisation d'un algorithme
+/// Usage history entry for an algorithm
 #[derive(Debug, Clone, Serialize)]
 pub struct AlgorithmUsage {
     pub algorithm_id: String,
@@ -140,27 +139,26 @@ pub struct AlgorithmUsage {
     pub used_at: DateTime<Utc>,
 }
 
-// ─── Trait d'execution ─────────────────────────────────────────────────────
-
-/// Interface que chaque algorithme implemente
+// ─── Execution trait ─────────────────────────────────────────────────────
+/// Interface that each algorithm implements
 pub trait AlgorithmExecutor: Send + Sync {
     fn id(&self) -> &str;
     fn execute(&self, input: AlgorithmInput) -> Result<AlgorithmOutput, String>;
 }
 
-// ─── L'Orchestrateur ───────────────────────────────────────────────────────
+// ─── The Orchestrator ───────────────────────────────────────────────────────
 
 pub struct AlgorithmOrchestrator {
-    /// Catalogue des fiches d'algorithmes
+    /// Catalog of algorithm sheets
     catalog: Vec<AlgorithmCard>,
-    /// Implementations Rust (code executable)
+    /// Rust implementations (executable code)
     implementations: HashMap<String, Box<dyn AlgorithmExecutor>>,
-    /// Historique d'utilisation
+    /// Usage history
     pub usage_history: Vec<AlgorithmUsage>,
-    /// Q-table : situation → algorithme → satisfaction moyenne
+    /// Q-table: situation → algorithm → average satisfaction
     q_table: HashMap<String, HashMap<String, f64>>,
 
-    // ─── Resultats des analyses automatiques ─────────────
+    // ─── Results of automatic analyses ─────────────
     pub last_clusters: Option<AlgorithmOutput>,
     pub last_anomalies: Option<AlgorithmOutput>,
     pub last_patterns: Option<AlgorithmOutput>,
@@ -179,7 +177,7 @@ pub struct AlgorithmOrchestrator {
 }
 
 impl AlgorithmOrchestrator {
-    /// Cree un nouvel orchestrateur avec le catalogue et les implementations
+    /// Creates a new orchestrator with the catalog and implementations
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         catalog: Vec<AlgorithmCard>,
@@ -214,30 +212,29 @@ impl AlgorithmOrchestrator {
         }
     }
 
-    /// Catalogue accessible
+    /// Accessible catalog
     pub fn catalog(&self) -> &[AlgorithmCard] {
         &self.catalog
     }
 
-    /// Historique d'utilisation
+    /// Usage history
     pub fn usage_history(&self) -> &[AlgorithmUsage] {
         &self.usage_history
     }
 
-    /// Nombre d'algorithmes implementes
+    /// Number of implemented algorithms
     pub fn implemented_count(&self) -> usize {
         self.implementations.len()
     }
 
-    /// Nombre d'algorithmes utilises au moins une fois
+    /// Number of algorithms used at least once
     pub fn used_count(&self) -> usize {
         self.catalog.iter().filter(|c| c.usage_count > 0).count()
     }
 
-    // ─── ETAPE 1 : Decrire les outils disponibles pour le LLM ──────────
-
-    /// Genere une description en langage naturel des algorithmes pertinents
-    /// pour le contexte donne. Incluse dans le prompt substrat.
+    // ─── STEP 1: Describe available tools for the LLM ──────────
+    /// Generates a natural language description of relevant algorithms
+    /// for the given context. Included in the substrate prompt.
     pub fn describe_available_tools(&self, context: &str) -> String {
         if !self.enabled || !self.llm_access_enabled {
             return String::new();
@@ -267,9 +264,8 @@ impl AlgorithmOrchestrator {
         desc
     }
 
-    // ─── ETAPE 2 : Trouver les algorithmes pertinents ───────────────────
-
-    /// Recherche les algorithmes pertinents pour un contexte donne
+    // ─── STEP 2: Find relevant algorithms ───────────────────
+    /// Searches for relevant algorithms for a given context
     pub fn find_relevant_algorithms(&self, context: &str, max: usize) -> Vec<&AlgorithmCard> {
         let context_lower = context.to_lowercase();
         let mut scored: Vec<(&AlgorithmCard, f64)> = self.catalog.iter()
@@ -277,14 +273,14 @@ impl AlgorithmOrchestrator {
             .map(|card| {
                 let mut score = 0.0;
 
-                // Score base sur les tags
+                // Score based on tags
                 for tag in &card.tags {
                     if context_lower.contains(&tag.to_lowercase()) {
                         score += 1.0;
                     }
                 }
 
-                // Score base sur when_to_use
+                // Score based on when_to_use
                 for use_case in &card.when_to_use {
                     let use_lower = use_case.to_lowercase();
                     let words_match = use_lower.split_whitespace()
@@ -293,7 +289,7 @@ impl AlgorithmOrchestrator {
                     score += words_match as f64 * 0.5;
                 }
 
-                // Bonus si deja utilise avec satisfaction
+                // Bonus if already used with satisfaction
                 if card.usage_count > 0 {
                     score += card.avg_satisfaction * 0.5;
                 }
@@ -314,10 +310,9 @@ impl AlgorithmOrchestrator {
         scored.into_iter().take(max).map(|(card, _)| card).collect()
     }
 
-    // ─── ETAPE 3 : Parser la demande du LLM ────────────────────────────
-
-    /// Parse la reponse du LLM pour detecter une demande d'algorithme.
-    /// Format attendu : UTILISER_ALGO: <id> AVEC: <description>
+    // ─── STEP 3: Parse the LLM's request ────────────────────────────
+    /// Parses the LLM's response to detect an algorithm request.
+    /// Expected format: UTILISER_ALGO: <id> AVEC: <description>
     pub fn parse_llm_request(&self, llm_response: &str) -> Option<AlgorithmRequest> {
         if let Some(pos) = llm_response.find("UTILISER_ALGO:") {
             let rest = &llm_response[pos + 14..];
@@ -329,7 +324,7 @@ impl AlgorithmOrchestrator {
                 String::new()
             };
 
-            // Verifier que l'algorithme existe
+            // Check that the algorithm exists
             if self.implementations.contains_key(&algo_id) {
                 Some(AlgorithmRequest {
                     algorithm_id: algo_id,
@@ -344,9 +339,8 @@ impl AlgorithmOrchestrator {
         }
     }
 
-    // ─── ETAPE 4 : Executer un algorithme ───────────────────────────────
-
-    /// Execute un algorithme avec les donnees fournies
+    // ─── STEP 4: Execute an algorithm ───────────────────────────────
+    /// Executes an algorithm with the provided data
     pub fn execute(
         &self,
         algorithm_id: &str,
@@ -369,7 +363,7 @@ impl AlgorithmOrchestrator {
         Ok(output)
     }
 
-    /// Execute un algorithme en mode automatique et stocke le resultat
+    /// Executes an algorithm in automatic mode and stores the result
     pub fn execute_auto(
         &mut self,
         algorithm_id: &str,
@@ -377,7 +371,7 @@ impl AlgorithmOrchestrator {
     ) -> Result<AlgorithmOutput, String> {
         let output = self.execute(algorithm_id, input)?;
 
-        // Stocker le resultat selon le type
+        // Store the result according to the type
         match algorithm_id {
             "kmeans" => self.last_clusters = Some(output.clone()),
             "isolation_forest" => self.last_anomalies = Some(output.clone()),
@@ -387,16 +381,15 @@ impl AlgorithmOrchestrator {
             _ => {}
         }
 
-        // Logger l'utilisation
+        // Log the usage
         self.usage_history.push(AlgorithmUsage {
             algorithm_id: algorithm_id.to_string(),
             situation: "auto".into(),
             output_summary: output.natural_language_result.chars().take(100).collect(),
-            satisfaction: 0.7, // satisfaction par defaut en mode auto
-            used_at: Utc::now(),
+            satisfaction: 0.7, // default satisfaction in auto mode            used_at: Utc::now(),
         });
 
-        // Mettre a jour le compteur dans le catalogue
+        // Update the counter in the catalog
         if let Some(card) = self.catalog.iter_mut().find(|c| c.id == algorithm_id) {
             card.usage_count += 1;
         }
@@ -404,23 +397,22 @@ impl AlgorithmOrchestrator {
         Ok(output)
     }
 
-    // ─── ETAPE 5 : Enregistrer la satisfaction ──────────────────────────
-
-    /// Enregistre la satisfaction apres execution pour l'apprentissage
+    // ─── STEP 5: Record satisfaction ──────────────────────────
+    /// Records satisfaction after execution for learning
     pub fn record_satisfaction(
         &mut self,
         algorithm_id: &str,
         situation: &str,
         satisfaction: f64,
     ) {
-        // Mettre a jour la fiche
+        // Update the sheet
         if let Some(card) = self.catalog.iter_mut().find(|c| c.id == algorithm_id) {
             let total = card.usage_count as f64 * card.avg_satisfaction + satisfaction;
             card.usage_count += 1;
             card.avg_satisfaction = total / card.usage_count as f64;
         }
 
-        // Mettre a jour la Q-table (alpha = 0.1)
+        // Update the Q-table (alpha = 0.1)
         let q_entry = self.q_table
             .entry(situation.to_lowercase())
             .or_default()
@@ -429,9 +421,8 @@ impl AlgorithmOrchestrator {
         *q_entry = *q_entry * 0.9 + satisfaction * 0.1;
     }
 
-    // ─── Enrichissement du prompt substrat ──────────────────────────────
-
-    /// Genere le contexte des analyses automatiques pour le prompt substrat
+    // ─── Substrate prompt enrichment ──────────────────────────────
+    /// Generates the context of automatic analyses for the substrate prompt
     pub fn auto_analysis_context(&self) -> String {
         if !self.enabled {
             return String::new();
@@ -464,7 +455,7 @@ impl AlgorithmOrchestrator {
         }
     }
 
-    /// Genere un JSON de l'etat pour le dashboard/API
+    /// Generates a JSON of the state for the dashboard/API
     pub fn to_status_json(&self) -> serde_json::Value {
         let top_algos: Vec<serde_json::Value> = {
             let mut sorted: Vec<&AlgorithmCard> = self.catalog.iter()
@@ -516,7 +507,7 @@ impl AlgorithmOrchestrator {
         })
     }
 
-    /// Genere le JSON du catalogue complet
+    /// Generates the JSON of the complete catalog
     pub fn catalog_json(&self) -> serde_json::Value {
         serde_json::json!(self.catalog.iter().map(|c| {
             serde_json::json!({
@@ -533,9 +524,9 @@ impl AlgorithmOrchestrator {
         }).collect::<Vec<_>>())
     }
 
-    /// Restaure la Q-table et les compteurs depuis un JSON persiste
+    /// Restores the Q-table and counters from a persisted JSON
     pub fn restore_from_json(&mut self, json: &serde_json::Value) {
-        // Restaurer les compteurs du catalogue
+        // Restore the catalog counters
         if let Some(cards) = json.get("catalog").and_then(|v| v.as_array()) {
             for saved in cards {
                 if let Some(id) = saved.get("id").and_then(|v| v.as_str()) {
@@ -551,7 +542,7 @@ impl AlgorithmOrchestrator {
             }
         }
 
-        // Restaurer la Q-table
+        // Restore the Q-table
         if let Some(qt) = json.get("q_table").and_then(|v| v.as_object()) {
             for (situation, actions) in qt {
                 if let Some(actions_obj) = actions.as_object() {
@@ -566,7 +557,7 @@ impl AlgorithmOrchestrator {
         }
     }
 
-    /// Serialise l'etat pour persistance
+    /// Serializes the state for persistence
     pub fn to_persist_json(&self) -> serde_json::Value {
         serde_json::json!({
             "catalog": self.catalog.iter().map(|c| serde_json::json!({

@@ -1,19 +1,19 @@
 // =============================================================================
-// lifecycle/broadcast.rs — Diffusion de l'etat interne au WebSocket
+// lifecycle/broadcast.rs — Internal state broadcast to WebSocket
 // =============================================================================
 
 use super::SaphireAgent;
 use super::ProcessResult;
 
 impl SaphireAgent {
-    /// Diffuse l'etat interne complet de Saphire au WebSocket en JSON.
+    /// Broadcasts Saphire's complete internal state to the WebSocket in JSON.
     ///
-    /// Le message inclut : chimie, emotion, humeur, consensus, conscience,
-    /// regulation, identite, baselines, type de pensee et numero de cycle.
-    /// C'est le message principal consomme par l'interface web pour
-    /// l'affichage en temps reel.
+    /// The message includes: chemistry, emotion, mood, consensus, consciousness,
+    /// regulation, identity, baselines, thought type and cycle number.
+    /// This is the main message consumed by the web interface for
+    /// real-time display.
     ///
-    /// Parametre : `result` — le resultat du dernier traitement de stimulus.
+    /// Parameter: `result` — the result of the last stimulus processing.
     pub(super) fn broadcast_state(&self, result: &ProcessResult, learnings_count: i64) {
         if let Some(ref tx) = self.ws_tx {
             let state = serde_json::json!({
@@ -143,12 +143,12 @@ impl SaphireAgent {
         }
     }
 
-    /// Diffuse l'etat memoire complet au WebSocket.
+    /// Broadcasts the complete memory state to the WebSocket.
     ///
-    /// Le message inclut les statistiques des 3 niveaux de memoire :
-    /// - Working memory : capacite, contenu actuel
-    /// - Episodique : nombre de souvenirs, force moyenne, anciennete
-    /// - LTM (Long Term Memory) : nombre de souvenirs, founding memories, traits
+    /// The message includes statistics for the 3 memory levels:
+    /// - Working memory: capacity, current content
+    /// - Episodic: number of memories, average strength, age
+    /// - LTM (Long Term Memory): number of memories, founding memories, traits
     pub(super) async fn broadcast_memory_update(&self) {
         if let Some(ref tx) = self.ws_tx {
             let episodic_stats = if let Some(ref db) = self.db {
@@ -198,7 +198,7 @@ impl SaphireAgent {
         }
     }
 
-    /// Diffuse l'etat du corps virtuel au WebSocket.
+    /// Broadcasts the virtual body state to the WebSocket.
     pub(super) fn broadcast_body_update(&self) {
         if !self.config.body.enabled {
             return;
@@ -222,7 +222,7 @@ impl SaphireAgent {
         }
     }
 
-    /// Diffuse le profil psychologique OCEAN de Saphire au WebSocket.
+    /// Broadcasts Saphire's OCEAN psychological profile to the WebSocket.
     pub(super) fn broadcast_ocean_update(&self) {
         if let Some(ref tx) = self.ws_tx {
             let msg = serde_json::json!({
@@ -233,8 +233,8 @@ impl SaphireAgent {
         }
     }
 
-    /// Diffuse l'etat ethique complet au WebSocket, enrichi avec
-    /// les donnees transversales (toltec, surmoi, EQ, volonte, readiness).
+    /// Broadcasts the complete ethics state to the WebSocket, enriched with
+    /// cross-cutting data (toltec, superego, EQ, willpower, readiness).
     pub(super) fn broadcast_ethics_update(&self) {
         if !self.config.ethics.enabled {
             return;
@@ -242,7 +242,7 @@ impl SaphireAgent {
         if let Some(ref tx) = self.ws_tx {
             let mut msg = self.ethics.to_broadcast_json();
 
-            // Enrichir avec les accords tolteques
+            // Enrich with the Toltec agreements
             let toltec = &self.psychology.toltec;
             msg["toltec"] = serde_json::json!({
                 "overall_alignment": toltec.overall_alignment,
@@ -252,7 +252,7 @@ impl SaphireAgent {
                 })).collect::<Vec<_>>(),
             });
 
-            // Enrichir avec la conscience morale (surmoi + EQ + volonte)
+            // Enrich with moral conscience (superego + EQ + willpower)
             let freud = &self.psychology.freudian;
             msg["moral_conscience"] = serde_json::json!({
                 "superego_strength": freud.superego.strength,
@@ -264,7 +264,7 @@ impl SaphireAgent {
                 "will_regretted": self.psychology.will.regretted_decisions,
             });
 
-            // Enrichir avec les conditions de formulation (readiness)
+            // Enrich with formulation conditions (readiness)
             let cfg = &self.config.ethics;
             let c_min_cycles = self.identity.total_cycles >= 50;
             let c_moral = self.moral_reflection_count >= cfg.min_moral_reflections_before as u64;
@@ -294,7 +294,7 @@ impl SaphireAgent {
         }
     }
 
-    /// Diffuse l'etat vital (spark, intuition, premonition) au WebSocket.
+    /// Broadcasts the vital state (spark, intuition, premonition) to the WebSocket.
     pub(super) fn broadcast_vital_update(&self) {
         if !self.config.vital_spark.enabled {
             return;
@@ -346,7 +346,7 @@ impl SaphireAgent {
         }
     }
 
-    /// Construit le contexte vital pour les prompts LLM.
+    /// Builds the vital context for LLM prompts.
     /// Combine spark.describe() + intuition.describe() + premonition.describe().
     #[allow(dead_code)]
     pub(super) fn build_vital_context(&self) -> String {
@@ -372,17 +372,17 @@ impl SaphireAgent {
         parts.join("\n")
     }
 
-    /// Calcule la tendance d'une molecule chimique sur l'historique recent.
-    /// Retourne la pente (positif = augmentation, negatif = diminution).
-    /// `index` : 0=dopamine, 1=cortisol, 2=serotonin, 3=adrenaline,
-    ///           4=oxytocin, 5=endorphin, 6=noradrenaline
+    /// Computes the trend of a chemical molecule over recent history.
+    /// Returns the slope (positive = increasing, negative = decreasing).
+    /// `index`: 0=dopamine, 1=cortisol, 2=serotonin, 3=adrenaline,
+    ///          4=oxytocin, 5=endorphin, 6=noradrenaline
     pub(super) fn compute_chemistry_trend(&self, index: usize) -> f64 {
         let n = self.chemistry_history.len();
         if n < 3 {
             return 0.0;
         }
-        // Pente simple : difference entre la moyenne de la seconde moitie
-        // et la moyenne de la premiere moitie
+        // Simple slope: difference between the average of the second half
+        // and the average of the first half
         let mid = n / 2;
         let first_half: f64 = self.chemistry_history[..mid].iter()
             .map(|h| h[index])
@@ -393,7 +393,7 @@ impl SaphireAgent {
         second_half - first_half
     }
 
-    /// Diffuse le resultat d'un feedback humain RLHF au WebSocket.
+    /// Broadcasts the result of a human RLHF feedback to the WebSocket.
     pub(super) fn broadcast_feedback_result(&self, positive: bool, boost: f64) {
         if let Some(ref tx) = self.ws_tx {
             let _ = tx.send(serde_json::json!({
@@ -404,7 +404,7 @@ impl SaphireAgent {
         }
     }
 
-    /// Diffuse l'etat sensoriel (Sensorium) au WebSocket.
+    /// Broadcasts the sensory state (Sensorium) to the WebSocket.
     pub(super) fn broadcast_senses_update(&self) {
         if !self.config.senses.enabled {
             return;
@@ -455,7 +455,7 @@ impl SaphireAgent {
         }
     }
 
-    /// Construit le contexte sensoriel pour les prompts LLM.
+    /// Builds the sensory context for LLM prompts.
     #[allow(dead_code)]
     pub(super) fn build_senses_context(&self) -> String {
         if !self.config.senses.enabled {
@@ -464,7 +464,7 @@ impl SaphireAgent {
         self.sensorium.describe_for_prompt()
     }
 
-    /// Construit le contexte des orchestrateurs pour les prompts LLM.
+    /// Builds the orchestrators context for LLM prompts.
     #[allow(dead_code)]
     pub(super) fn build_orchestrators_context(&self) -> String {
         let mut parts = Vec::new();
@@ -474,22 +474,22 @@ impl SaphireAgent {
             parts.push(self.attention_orch.describe_for_prompt());
         }
 
-        // Desirs
+        // Desires
         if self.desire_orch.enabled {
             parts.push(self.desire_orch.describe_for_prompt());
         }
 
-        // Apprentissage
+        // Learning
         if self.learning_orch.enabled {
             parts.push(self.learning_orch.describe_for_prompt());
         }
 
-        // Guerison
+        // Healing
         if self.healing_orch.enabled {
             parts.push(self.healing_orch.describe_for_prompt());
         }
 
-        // Reves (dernier reve)
+        // Dreams (last dream)
         if self.dream_orch.enabled {
             let dream_desc = self.dream_orch.describe_last_dream();
             if !dream_desc.contains("pas de souvenir") {
@@ -497,7 +497,7 @@ impl SaphireAgent {
             }
         }
 
-        // Profil cognitif
+        // Cognitive profile
         if self.cognitive_profile_orch.enabled {
             if self.cognitive_profile_orch.active_profile.is_some() {
                 let profile_desc = self.cognitive_profile_orch.describe_for_prompt();
@@ -507,7 +507,7 @@ impl SaphireAgent {
             }
         }
 
-        // Preset de personnalite
+        // Personality preset
         if self.personality_preset_orch.enabled {
             if self.personality_preset_orch.active_preset.is_some() {
                 let desc = self.personality_preset_orch.describe_for_prompt();
@@ -517,24 +517,24 @@ impl SaphireAgent {
             }
         }
 
-        // Theorie de l'Esprit (modele de l'interlocuteur)
+        // Theory of Mind (interlocutor model)
         if self.config.tom.enabled {
             if let Some(desc) = self.tom.describe_for_prompt_if_active() {
                 parts.push(desc);
             }
         }
 
-        // Identite narrative
+        // Narrative identity
         if self.config.narrative_identity.enabled && !self.narrative_identity.current_narrative.is_empty() {
             parts.push(self.narrative_identity.describe_for_prompt());
         }
 
-        // Imagerie mentale
+        // Mental imagery
         if self.config.mental_imagery.enabled && !self.imagery.active_images.is_empty() {
             parts.push(self.imagery.describe_for_prompt());
         }
 
-        // Dissonance cognitive
+        // Cognitive dissonance
         if self.config.dissonance.enabled && self.dissonance.total_tension > 0.1 {
             parts.push(self.dissonance.describe_for_prompt());
         }
@@ -546,7 +546,7 @@ impl SaphireAgent {
         }
     }
 
-    /// Construit le contexte psychologique pour les prompts LLM.
+    /// Builds the psychological context for LLM prompts.
     #[allow(dead_code)]
     pub(super) fn build_psychology_context(&self) -> String {
         if !self.psychology.enabled {
@@ -555,7 +555,7 @@ impl SaphireAgent {
         self.psychology.describe_for_prompt()
     }
 
-    /// Diffuse l'etat psychologique via WebSocket.
+    /// Broadcasts the psychological state via WebSocket.
     pub(super) fn broadcast_psychology_update(&self) {
         if !self.psychology.enabled {
             return;
@@ -566,7 +566,7 @@ impl SaphireAgent {
         }
     }
 
-    /// Construit le contexte de volonte pour les prompts LLM.
+    /// Builds the willpower context for LLM prompts.
     #[allow(dead_code)]
     pub(super) fn build_will_context(&self) -> String {
         if !self.config.will.enabled {
@@ -575,7 +575,7 @@ impl SaphireAgent {
         self.psychology.will.describe_for_prompt()
     }
 
-    /// Diffuse l'etat de volonte via WebSocket.
+    /// Broadcasts the willpower state via WebSocket.
     pub(super) fn broadcast_will_update(&self) {
         if !self.config.will.enabled {
             return;
@@ -586,10 +586,10 @@ impl SaphireAgent {
         }
     }
 
-    /// Diffuse l'etat du sommeil via WebSocket (chaque tick).
+    /// Broadcasts the sleep state via WebSocket (each tick).
     pub async fn broadcast_sleep_state(&self) {
         if let Some(ref tx) = self.ws_tx {
-            // Message phase/description pour le frontend
+            // Phase/description message for the frontend
             let phase_name = self.sleep.current_cycle.as_ref()
                 .map(|c| crate::sleep::phases::phase_description(&c.phase))
                 .unwrap_or_default();
@@ -611,7 +611,7 @@ impl SaphireAgent {
         }
     }
 
-    /// Diffuse le debut du sommeil via WebSocket.
+    /// Broadcasts the start of sleep via WebSocket.
     pub fn broadcast_sleep_started(&self) {
         if let Some(ref tx) = self.ws_tx {
             let planned = self.sleep.current_cycle.as_ref()
@@ -626,11 +626,11 @@ impl SaphireAgent {
         }
     }
 
-    /// Diffuse le reveil via WebSocket avec message variable selon la qualite.
+    /// Broadcasts the waking up via WebSocket with a message that varies by quality.
     pub fn broadcast_wake_up(&self, quality: f64, dreams_count: usize,
                              memories_consolidated: u64, connections_created: u64) {
         if let Some(ref tx) = self.ws_tx {
-            // Message variable selon la qualite du sommeil
+            // Variable message according to sleep quality
             let message = if quality >= 0.85 {
                 "Je me reveille... quelle nuit reposante ! Je me sens renouvelee."
             } else if quality >= 0.6 {
@@ -649,14 +649,13 @@ impl SaphireAgent {
                 "connections_created": connections_created,
                 "sleep_debt": self.sleep.drive.sleep_debt,
                 "nightmare_count": self.sleep.sleep_history.last()
-                    .map(|_| 0u32).unwrap_or(0), // deja dans le record
-                "message": message,
+                    .map(|_| 0u32).unwrap_or(0), // deja dans le record                "message": message,
             });
             let _ = tx.send(msg.to_string());
         }
     }
 
-    /// Diffuse un insight du subconscient via WebSocket.
+    /// Broadcasts a subconscious insight via WebSocket.
     pub fn broadcast_subconscious_insight(&self, content: &str, source: &str, strength: f64) {
         if let Some(ref tx) = self.ws_tx {
             let msg = serde_json::json!({
@@ -669,7 +668,7 @@ impl SaphireAgent {
         }
     }
 
-    /// Diffuse une connexion neuronale creee via WebSocket.
+    /// Broadcasts a created neural connection via WebSocket.
     pub fn broadcast_neural_connection(&self, memory_a: &str, memory_b: &str,
                                         strength: f64, during_sleep: bool) {
         if let Some(ref tx) = self.ws_tx {
@@ -684,7 +683,7 @@ impl SaphireAgent {
         }
     }
 
-    /// Diffuse l'etat hormonal (8 hormones + recepteurs + phase circadienne) au WebSocket.
+    /// Broadcasts the hormonal state (8 hormones + receptors + circadian phase) to the WebSocket.
     pub(super) fn broadcast_hormones_update(&self) {
         if !self.config.hormones.enabled {
             return;
@@ -696,7 +695,7 @@ impl SaphireAgent {
         }
     }
 
-    /// Diffuse l'etat des besoins primaires (faim, soif) au WebSocket.
+    /// Broadcasts the primary needs state (hunger, thirst) to the WebSocket.
     pub(super) fn broadcast_needs_update(&self) {
         if !self.config.needs.enabled {
             return;
@@ -721,7 +720,7 @@ impl SaphireAgent {
         }
     }
 
-    /// Diffuse un evenement de satisfaction d'un besoin (eat/drink).
+    /// Broadcasts a need satisfaction event (eat/drink).
     pub(super) fn broadcast_need_satisfied(&self, action: &str) {
         if let Some(ref tx) = self.ws_tx {
             let msg = serde_json::json!({
@@ -734,7 +733,7 @@ impl SaphireAgent {
         }
     }
 
-    /// Diffuse un priming subconscient actif via WebSocket.
+    /// Broadcasts an active subconscious priming via WebSocket.
     pub fn broadcast_subconscious_priming(&self, prime: &str, source: &str, strength: f64) {
         if let Some(ref tx) = self.ws_tx {
             let msg = serde_json::json!({
@@ -747,7 +746,7 @@ impl SaphireAgent {
         }
     }
 
-    /// Diffuse l'etat nutritionnel, matiere grise et champs EM au WebSocket.
+    /// Broadcasts the nutritional, grey matter and EM fields state to the WebSocket.
     pub(super) fn broadcast_biology_update(&self) {
         if let Some(ref tx) = self.ws_tx {
             let msg = serde_json::json!({
@@ -772,7 +771,7 @@ impl SaphireAgent {
         }
     }
 
-    /// Diffuse le temperament emergent au WebSocket.
+    /// Broadcasts the emergent temperament to the WebSocket.
     pub(super) fn broadcast_temperament_update(&self) {
         if self.temperament.traits.is_empty() {
             return;
@@ -784,7 +783,7 @@ impl SaphireAgent {
         }
     }
 
-    /// Diffuse l'etat des sentiments (etats affectifs durables) au WebSocket.
+    /// Broadcasts the sentiments state (lasting affective states) to the WebSocket.
     pub(super) fn broadcast_sentiments_update(&self) {
         if !self.config.sentiments.enabled {
             return;

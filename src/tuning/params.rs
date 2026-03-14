@@ -1,87 +1,87 @@
 // =============================================================================
-// params.rs — Parametres ajustables du cerveau
+// params.rs — Tunable brain parameters
 //
-// Role : Ce fichier definit la structure TunableParams qui contient tous les
-// coefficients ajustables du cerveau de Saphire. Ces parametres sont modifies
-// par l'auto-tuner (CoefficientTuner) et persistent en base de donnees.
+// Role: This file defines the TunableParams structure containing all
+// tunable coefficients for Saphire's brain. These parameters are modified
+// by the auto-tuner (CoefficientTuner) and persisted in the database.
 //
-// Dependances :
-//   - serde : serialisation/deserialisation pour la persistance et l'API
+// Dependencies:
+//   - serde: serialization/deserialization for persistence and API
 //
-// Place dans l'architecture :
-//   TunableParams est utilise par le cerveau (brain.rs) pour ponderer les
-//   modules, calculer le consensus et appliquer la retroaction.
-//   L'auto-tuner (tuning/mod.rs) modifie ces parametres incrementalement
-//   pour optimiser la satisfaction de l'agent au fil du temps.
+// Place in architecture:
+//   TunableParams is used by the brain (brain.rs) to weight the modules,
+//   compute the consensus, and apply feedback.
+//   The auto-tuner (tuning/mod.rs) modifies these parameters incrementally
+//   to optimize the agent's satisfaction over time.
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 
-/// Parametres ajustables par l'auto-tuner.
-/// Chaque parametre influence un aspect du traitement cognitif de Saphire.
-/// Les valeurs par defaut representent un equilibre de depart raisonnable.
+/// Parameters tunable by the auto-tuner.
+/// Each parameter influences an aspect of Saphire's cognitive processing.
+/// The default values represent a reasonable starting balance.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TunableParams {
-    // ─── Poids de ponderation des modules cerebraux ──────────
-    // Ces poids determinent l'influence relative de chaque "cerveau"
-    // dans le calcul du consensus.
+    // --- Brain module weights ---
+    // These weights determine the relative influence of each "brain"
+    // in the consensus computation.
 
-    /// Poids de base du module reptilien (instinct, survie, reflexes).
-    /// Le reptilien reagit au danger et a l'urgence.
+    /// Base weight of the reptilian module (instinct, survival, reflexes).
+    /// The reptilian reacts to danger and urgency.
     pub weight_base_reptilian: f64,
-    /// Facteur multiplicateur du cortisol (hormone du stress) sur le poids reptilien.
-    /// Plus le cortisol est eleve, plus le reptilien est influent.
+    /// Cortisol (stress hormone) multiplier factor on the reptilian weight.
+    /// The higher the cortisol, the more influential the reptilian becomes.
     pub weight_cortisol_factor: f64,
-    /// Facteur multiplicateur de l'adrenaline sur le poids reptilien.
-    /// L'adrenaline amplifie les reactions de survie.
+    /// Adrenaline multiplier factor on the reptilian weight.
+    /// Adrenaline amplifies survival reactions.
     pub weight_adrenaline_factor: f64,
-    /// Poids de base du module limbique (emotions, memoire emotionnelle).
-    /// Le limbique reagit a la recompense et aux liens sociaux.
+    /// Base weight of the limbic module (emotions, emotional memory).
+    /// The limbic reacts to reward and social bonds.
     pub weight_base_limbic: f64,
-    /// Facteur multiplicateur de la dopamine sur le poids limbique.
-    /// La dopamine amplifie la sensibilite a la recompense.
+    /// Dopamine multiplier factor on the limbic weight.
+    /// Dopamine amplifies reward sensitivity.
     pub weight_dopamine_factor: f64,
-    /// Facteur multiplicateur de l'ocytocine sur le poids limbique.
-    /// L'ocytocine amplifie la sensibilite aux liens sociaux.
+    /// Oxytocin multiplier factor on the limbic weight.
+    /// Oxytocin amplifies sensitivity to social bonds.
     pub weight_oxytocin_factor: f64,
-    /// Poids de base du module neocortex (raisonnement, analyse, logique).
-    /// Le neocortex fournit l'evaluation la plus rationnelle.
+    /// Base weight of the neocortex module (reasoning, analysis, logic).
+    /// The neocortex provides the most rational evaluation.
     pub weight_base_neocortex: f64,
-    /// Facteur multiplicateur de la noradrenaline sur le poids neocortex.
-    /// La noradrenaline augmente la concentration et l'attention.
+    /// Noradrenaline multiplier factor on the neocortex weight.
+    /// Noradrenaline increases concentration and attention.
     pub weight_noradrenaline_factor: f64,
 
-    // ─── Seuils de consensus ─────────────────────────────────
-    // Le score de consensus est un nombre entre -1.0 et +1.0.
-    // La decision est determinee par comparaison avec ces seuils.
+    // --- Consensus thresholds ---
+    // The consensus score is a number between -1.0 and +1.0.
+    // The decision is determined by comparison with these thresholds.
 
-    /// Seuil en dessous duquel la decision est "Non" (valeur negative).
-    /// Ex: -0.33 signifie que tout score < -0.33 donne "Non".
+    /// Threshold below which the decision is "No" (negative value).
+    /// E.g.: -0.33 means any score < -0.33 yields "No".
     pub threshold_no: f64,
-    /// Seuil au-dessus duquel la decision est "Oui" (valeur positive).
-    /// Ex: 0.33 signifie que tout score > 0.33 donne "Oui".
-    /// Entre les deux seuils, la decision est "Peut-etre".
+    /// Threshold above which the decision is "Yes" (positive value).
+    /// E.g.: 0.33 means any score > 0.33 yields "Yes".
+    /// Between the two thresholds, the decision is "Maybe".
     pub threshold_yes: f64,
 
-    // ─── Taux de retroaction (feedback) ──────────────────────
-    // La retroaction ajuste la neurochimie apres chaque decision
-    // en fonction du resultat.
+    // --- Feedback rates ---
+    // Feedback adjusts neurochemistry after each decision
+    // based on the outcome.
 
-    /// Boost de dopamine applique apres une decision "Oui" satisfaisante.
-    /// Simule le plaisir de la recompense obtenue.
+    /// Dopamine boost applied after a satisfying "Yes" decision.
+    /// Simulates the pleasure of obtained reward.
     pub feedback_dopamine_boost: f64,
-    /// Reduction du cortisol apres une decision "Non" securisante.
-    /// Simule le soulagement d'avoir evite un danger.
+    /// Cortisol reduction after a reassuring "No" decision.
+    /// Simulates the relief of having avoided danger.
     pub feedback_cortisol_relief: f64,
-    /// Augmentation du stress (cortisol) apres une decision "Peut-etre".
-    /// Simule l'inconfort de l'indecision.
+    /// Stress increase (cortisol) after a "Maybe" decision.
+    /// Simulates the discomfort of indecision.
     pub feedback_indecision_stress: f64,
 
-    // ─── Taux d'homeostasie ──────────────────────────────────
+    // --- Homeostasis rate ---
 
-    /// Vitesse de retour de la neurochimie vers les valeurs de base.
-    /// Plus la valeur est elevee, plus le retour a l'equilibre est rapide.
-    /// Simule la regulation naturelle des neurotransmetteurs.
+    /// Speed at which neurochemistry returns to baseline values.
+    /// The higher the value, the faster the return to equilibrium.
+    /// Simulates the natural regulation of neurotransmitters.
     pub homeostasis_rate: f64,
 }
 
@@ -110,18 +110,18 @@ impl Default for TunableParams {
 }
 
 impl TunableParams {
-    /// Restreint (clamp) tous les parametres dans des bornes de securite.
-    /// Empeche les valeurs aberrantes qui pourraient destabiliser le systeme
-    /// (par exemple un poids de 100 ou un seuil de 0).
+    /// Clamps all parameters within safety bounds.
+    /// Prevents aberrant values that could destabilize the system
+    /// (for example a weight of 100 or a threshold of 0).
     ///
-    /// Les bornes sont choisies pour permettre une variation suffisante
-    /// tout en garantissant un comportement stable :
-    /// - Poids des modules : [0.1, 5.0]
-    /// - Seuils : [0.05, 0.8] en valeur absolue
-    /// - Taux de retroaction : [0.01, 0.5]
-    /// - Homeostasie : [0.01, 0.2]
+    /// Bounds are chosen to allow sufficient variation
+    /// while guaranteeing stable behavior:
+    /// - Module weights: [0.1, 5.0]
+    /// - Thresholds: [0.05, 0.8] in absolute value
+    /// - Feedback rates: [0.01, 0.5]
+    /// - Homeostasis: [0.01, 0.2]
     pub fn clamp_all(&mut self) {
-        // Poids des modules cerebraux
+        // Brain module weights
         self.weight_base_reptilian = self.weight_base_reptilian.clamp(0.1, 5.0);
         self.weight_cortisol_factor = self.weight_cortisol_factor.clamp(0.1, 5.0);
         self.weight_adrenaline_factor = self.weight_adrenaline_factor.clamp(0.1, 5.0);
@@ -131,16 +131,16 @@ impl TunableParams {
         self.weight_base_neocortex = self.weight_base_neocortex.clamp(0.1, 5.0);
         self.weight_noradrenaline_factor = self.weight_noradrenaline_factor.clamp(0.1, 5.0);
 
-        // Seuils de consensus
+        // Consensus thresholds
         self.threshold_no = self.threshold_no.clamp(-0.8, -0.05);
         self.threshold_yes = self.threshold_yes.clamp(0.05, 0.8);
 
-        // Taux de retroaction
+        // Feedback rates
         self.feedback_dopamine_boost = self.feedback_dopamine_boost.clamp(0.01, 0.5);
         self.feedback_cortisol_relief = self.feedback_cortisol_relief.clamp(0.01, 0.3);
         self.feedback_indecision_stress = self.feedback_indecision_stress.clamp(0.01, 0.3);
 
-        // Homeostasie
+        // Homeostasis
         self.homeostasis_rate = self.homeostasis_rate.clamp(0.01, 0.2);
     }
 }

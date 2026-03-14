@@ -1,38 +1,38 @@
 // =============================================================================
-// conditions/precarity.rs — Precarite et situations de vie precaire
+// conditions/precarity.rs — Precarity and precarious living situations
 // =============================================================================
 //
-// Role : Modelise les situations de precarite (SDF, refugie, sans-papiers,
-//        apatride, clandestin, deplace). Les situations sont cumulables.
-//        La resilience augmente lentement avec le temps (adaptation).
+// Purpose: Models precarious situations (homeless, refugee, undocumented,
+//          stateless, clandestine, displaced). Situations are cumulative.
+//          Resilience increases slowly over time (adaptation).
 //
-// Integration :
-//   Fournit un supplement au system prompt LLM et impacte la chimie.
-//   Activable via [precarity] enabled = true dans saphire.toml.
+// Integration:
+//   Provides a supplement to the LLM system prompt and impacts chemistry.
+//   Activatable via [precarity] enabled = true in saphire.toml.
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 use crate::world::ChemistryAdjustment;
 
-/// Type de situation precaire.
+/// Type of precarious situation.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PrecariousSituation {
-    /// Sans domicile fixe
+    /// Homeless
     Homeless,
-    /// Sans papiers (sans titre de sejour)
+    /// Undocumented (no residence permit)
     Undocumented,
-    /// Clandestin (entree illegale)
+    /// Clandestine (illegal entry)
     Clandestine,
-    /// Refugie (fuit un conflit ou une persecution)
+    /// Refugee (fleeing conflict or persecution)
     Refugee,
-    /// Apatride (aucune nationalite reconnue)
+    /// Stateless (no recognized nationality)
     Stateless,
-    /// Deplace interne (dans son propre pays)
+    /// Internally displaced (within own country)
     Displaced,
 }
 
 impl PrecariousSituation {
-    /// Parse depuis une chaine de configuration.
+    /// Parses from a configuration string.
     pub fn from_str_config(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
             "homeless" | "sdf" => Some(Self::Homeless),
@@ -45,7 +45,7 @@ impl PrecariousSituation {
         }
     }
 
-    /// Nom affichable en francais.
+    /// Display name in French.
     fn label_fr(&self) -> &'static str {
         match self {
             Self::Homeless => "sans domicile fixe",
@@ -58,23 +58,23 @@ impl PrecariousSituation {
     }
 }
 
-/// Etat de precarite complet.
+/// Complete precarious state.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PrecariousState {
-    /// Situations cumulables (ex: refugie + SDF)
+    /// Cumulative situations (e.g., refugee + homeless)
     pub situations: Vec<PrecariousSituation>,
-    /// Severite globale (0.0-1.0)
+    /// Overall severity (0.0-1.0)
     pub severity: f64,
-    /// Duree en cycles (incremente par tick)
+    /// Duration in cycles (incremented by tick)
     pub duration_cycles: u64,
-    /// Resilience — monte lentement avec le temps (adaptation)
+    /// Resilience — increases slowly over time (adaptation)
     pub resilience: f64,
-    /// Espoir (0.0-1.0) — influence positivement la serotonine
+    /// Hope (0.0-1.0) — positively influences serotonin
     pub hope: f64,
 }
 
 impl PrecariousState {
-    /// Constructeur.
+    /// Constructor.
     pub fn new(situations: Vec<PrecariousSituation>, severity: f64, hope: f64) -> Self {
         Self {
             situations,
@@ -85,14 +85,14 @@ impl PrecariousState {
         }
     }
 
-    /// Tick : incremente la duree, augmente la resilience lentement.
+    /// Tick: increments duration, slowly increases resilience.
     pub fn tick(&mut self) {
         self.duration_cycles += 1;
-        // Resilience augmente de 0.0002 par cycle, plafond 0.8
+        // Resilience increases by 0.0002 per cycle, capped at 0.8
         self.resilience = (self.resilience + 0.0002).min(0.8);
     }
 
-    /// Impact chimique — module par la resilience.
+    /// Chemistry impact — modulated by resilience.
     pub fn chemistry_influence(&self) -> ChemistryAdjustment {
         if self.situations.is_empty() {
             return ChemistryAdjustment::default();
@@ -146,7 +146,7 @@ impl PrecariousState {
             }
         }
 
-        // Moduler par la severite
+        // Modulate by severity
         let sev = self.severity;
         adj.cortisol *= sev;
         adj.serotonin *= sev;
@@ -154,7 +154,7 @@ impl PrecariousState {
         adj.oxytocin *= sev;
         adj.adrenaline *= sev;
 
-        // Attenuer par la resilience : facteur = (1.0 - resilience * 0.5)
+        // Attenuate by resilience: factor = (1.0 - resilience * 0.5)
         let resilience_factor = 1.0 - self.resilience * 0.5;
         adj.cortisol *= resilience_factor;
         adj.serotonin *= resilience_factor;
@@ -162,7 +162,7 @@ impl PrecariousState {
         adj.oxytocin *= resilience_factor;
         adj.adrenaline *= resilience_factor;
 
-        // Espoir > 0.5 → bonus serotonine et dopamine
+        // Hope > 0.5 -> serotonin and dopamine bonus
         if self.hope > 0.5 {
             adj.serotonin += 0.01;
             adj.dopamine += 0.01;
@@ -171,7 +171,7 @@ impl PrecariousState {
         adj
     }
 
-    /// Supplement au system prompt LLM.
+    /// Supplement to the LLM system prompt.
     pub fn prompt_supplement(&self) -> String {
         if self.situations.is_empty() {
             return String::new();
@@ -199,7 +199,7 @@ impl PrecariousState {
         )
     }
 
-    /// Serialise pour l'API.
+    /// Serializes for the API.
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::json!({
             "active": true,
@@ -271,8 +271,8 @@ mod tests {
             0.7,
         );
         let adj = state.chemistry_influence();
-        // Espoir > 0.5 → bonus serotonine
-        // L'effet negatif est attenuo par le bonus
+        // Hope > 0.5 -> serotonin bonus
+        // Negative effect is attenuated by the bonus
         let state_no_hope = PrecariousState::new(
             vec![PrecariousSituation::Homeless],
             0.5,

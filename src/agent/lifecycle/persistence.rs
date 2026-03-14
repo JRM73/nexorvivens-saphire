@@ -1,8 +1,8 @@
 // =============================================================================
-// lifecycle/persistence.rs — Persistance des orchestrateurs (save/load DB)
+// lifecycle/persistence.rs — Orchestrator persistence (save/load DB)
 //
-// Methodes pour restaurer les orchestrateurs depuis la DB au boot
-// et les sauvegarder au shutdown ou lors d'evenements significatifs.
+// Methods to restore orchestrators from the DB at boot
+// and save them at shutdown or during significant events.
 // =============================================================================
 
 use chrono::{DateTime, Utc};
@@ -14,9 +14,8 @@ use crate::orchestrators::dreams::{Dream, DreamEntry, DreamType};
 use crate::orchestrators::learning::{Lesson, LessonCategory};
 
 impl SaphireAgent {
-    // ─── Restauration depuis la DB ──────────────────────────────────────────────
-
-    /// Restaure les reves depuis les donnees DB.
+    // ─── Restoration from the DB ──────────────────────────────────────────────
+    /// Restores dreams from DB data.
     pub(super) fn restore_dreams_from_db(&mut self, dreams: Vec<serde_json::Value>) {
         for dream_json in dreams.into_iter().rev() {
             let dream_type = match dream_json["dream_type"].as_str().unwrap_or("") {
@@ -52,7 +51,7 @@ impl SaphireAgent {
         }
     }
 
-    /// Restaure les desirs actifs depuis les donnees DB.
+    /// Restores active desires from DB data.
     pub(super) fn restore_desires_from_db(&mut self, desires: Vec<serde_json::Value>) {
         for desire_json in desires {
             let desire_type_str = desire_json["desire_type"].as_str().unwrap_or("Exploration");
@@ -105,7 +104,7 @@ impl SaphireAgent {
         }
     }
 
-    /// Restaure les lecons depuis les donnees DB.
+    /// Restores lessons from DB data.
     pub(super) fn restore_lessons_from_db(&mut self, lessons: Vec<serde_json::Value>) {
         for lesson_json in lessons {
             let lesson = Lesson {
@@ -130,12 +129,12 @@ impl SaphireAgent {
         }
     }
 
-    /// Restaure les blessures actives depuis les donnees DB.
-    /// Deduplique par type : on ne garde que la plus recente de chaque type.
+    /// Restores active wounds from DB data.
+    /// Deduplicates by type: keeps only the most recent of each type.
     pub(super) fn restore_wounds_from_db(&mut self, wounds: Vec<serde_json::Value>) {
         let mut seen_types = std::collections::HashSet::new();
-        // Les wounds sont triees par created_at ASC, on parcourt en reverse
-        // pour garder la plus recente de chaque type
+        // Wounds are sorted by created_at ASC; iterate in reverse
+        // to keep the most recent of each type
         let mut deduped: Vec<&serde_json::Value> = Vec::new();
         for wound_json in wounds.iter().rev() {
             let wtype = wound_json["wound_type"].as_str().unwrap_or("").to_string();
@@ -143,7 +142,7 @@ impl SaphireAgent {
                 deduped.push(wound_json);
             }
         }
-        deduped.reverse(); // restaurer l'ordre chronologique
+        deduped.reverse(); // restore chronological order
         for wound_json in deduped {
             let wound_type = match wound_json["wound_type"].as_str().unwrap_or("") {
                 "Melancolie prolongee" | "ProlongedMelancholy" => WoundType::ProlongedMelancholy,
@@ -175,12 +174,11 @@ impl SaphireAgent {
         }
     }
 
-    // ─── Sauvegarde vers la DB ──────────────────────────────────────────────────
-
-    /// Sauvegarde l'etat de tous les orchestrateurs dans la DB.
-    /// Appele au shutdown et periodiquement (tous les 50 cycles).
+    // ─── Save to the DB ──────────────────────────────────────────────────
+    /// Saves the state of all orchestrators to the DB.
+    /// Called at shutdown and periodically (every 50 cycles).
     pub(super) async fn save_orchestrators_to_db(&self, db: &SaphireDb) {
-        // Sauvegarder les reves non encore persistes
+        // Save dreams not yet persisted
         for entry in &self.dream_orch.dream_journal {
             let d = &entry.dream;
             let surreal = serde_json::json!(d.surreal_connections.iter()
@@ -198,7 +196,7 @@ impl SaphireAgent {
             ).await;
         }
 
-        // Sauvegarder/mettre a jour les desirs actifs
+        // Save/update active desires
         for desire in &self.desire_orch.active_desires {
             let milestones = serde_json::json!(desire.milestones.iter().map(|m| {
                 serde_json::json!({
@@ -221,11 +219,10 @@ impl SaphireAgent {
             ).await;
         }
 
-        // Les lecons sont sauvees individuellement a la creation (save_lesson_to_db)
-        // Pas de bulk save ici pour eviter les doublons
-
-        // Les blessures sont sauvees individuellement a la detection (save_wound_to_db)
-        // On met a jour la progression de guerison des blessures actives
+        // Lessons are saved individually at creation (save_lesson_to_db)
+        // No bulk save here to avoid duplicates
+        // Wounds are saved individually at detection (save_wound_to_db)
+        // Update healing progress of active wounds
         for wound in &self.healing_orch.active_wounds {
             if wound.id > 0 {
                 let healed_at = wound.healed_at;
@@ -247,9 +244,9 @@ impl SaphireAgent {
         );
     }
 
-    /// Sauvegarde un reve individuel (appele quand un reve est genere).
-    /// Note: le cycle de reves (advance_phase/build_dream_prompt) n'est pas encore
-    /// integre dans le lifecycle, donc cette methode n'est pas encore appelee.
+    /// Saves an individual dream (called when a dream is generated).
+    /// Note: the cycle de dreams (advance_phase/build_dream_prompt) n'est pas encore
+    /// integrated into the lifecycle, so this method is not yet called.
     #[allow(dead_code)]
     pub(super) async fn save_dream_to_db(&self, entry: &DreamEntry) {
         if let Some(ref db) = self.db {
@@ -270,7 +267,7 @@ impl SaphireAgent {
         }
     }
 
-    /// Sauvegarde un desir individuel (appele a la naissance d'un desir).
+    /// Saves an individual desire (called when a desire is born).
     pub(super) async fn save_desire_to_db(&self, desire: &crate::orchestrators::desires::Desire) {
         if let Some(ref db) = self.db {
             let milestones = serde_json::json!(desire.milestones.iter().map(|m| {
@@ -295,7 +292,7 @@ impl SaphireAgent {
         }
     }
 
-    /// Sauvegarde une lecon individuelle (appele quand une lecon est apprise).
+    /// Saves an individual lesson (called when a lesson is learned).
     pub(super) async fn save_lesson_to_db(&self, lesson: &Lesson) {
         if let Some(ref db) = self.db {
             let _ = db.save_lesson(
@@ -308,8 +305,8 @@ impl SaphireAgent {
         }
     }
 
-    /// Sauvegarde une blessure individuelle (appele quand une blessure est detectee).
-    /// Retourne l'ID DB pour synchroniser l'ID en RAM.
+    /// Saves an individual wound (called when a wound is detected).
+    /// Returns the DB ID to synchronize the in-RAM ID.
     pub(super) async fn save_wound_to_db(&self, wound: &crate::orchestrators::healing::Wound) -> Option<i64> {
         if let Some(ref db) = self.db {
             match db.save_wound(

@@ -1,43 +1,43 @@
 // =============================================================================
-// hormones/interactions.rs — Interactions bidirectionnelles hormones <-> NT
+// hormones/interactions.rs — Bidirectional hormone <-> NT interactions
 //
-// Role : Matrice d'interactions entre les 8 hormones et les 7 neurotransmetteurs.
+// Purpose: Interaction matrix between the 8 hormones and the 7 neurotransmitters.
 //
-// Direction 1 : Hormones -> NT (apply_hormones_to_chemistry)
-//   Les hormones modulent les niveaux de NT par des effets excitateurs,
-//   inhibiteurs ou modulateurs. L'effet est attenue par les recepteurs.
+// Direction 1: Hormones -> NT (apply_hormones_to_chemistry)
+//   Hormones modulate NT levels via excitatory, inhibitory or modulatory
+//   effects. The effect is attenuated by receptor sensitivity.
 //
-// Direction 2 : NT -> Hormones (update_hormones_from_chemistry)
-//   Les niveaux de NT influencent la production hormonale.
-//   Ex: dopamine haute -> endorphines ; cortisol NT haut -> cortisol_h monte.
+// Direction 2: NT -> Hormones (update_hormones_from_chemistry)
+//   NT levels influence hormone production.
+//   E.g.: high dopamine -> endorphins; high NT cortisol -> cortisol_h rises.
 // =============================================================================
 
 use super::HormonalState;
 use super::receptors::ReceptorSystem;
 use crate::neurochemistry::{Molecule, NeuroChemicalState};
 
-/// Applique les effets des hormones sur les neurotransmetteurs.
-/// Chaque effet est module par la sensibilite du recepteur cible.
+/// Applies hormone effects on neurotransmitters.
+/// Each effect is modulated by the target receptor's sensitivity.
 ///
-/// Interactions majeures :
-///   - Melatonine haute -> serotonin +, noradrenaline -
-///   - Cortisol_h haute chronique -> serotonin -, dopamine -
-///   - Testosterone haute -> dopamine +, adrenaline +
-///   - Oestrogene haute -> serotonin +, oxytocin +
-///   - Insuline basse -> cortisol +, irritabilite
-///   - Thyroide haute -> noradrenaline +, dopamine +
-///   - Epinephrine haute -> adrenaline NT +
-///   - Ocytocin_h haute -> oxytocin NT +
+/// Major interactions:
+///   - High melatonin -> serotonin +, noradrenaline -
+///   - High chronic cortisol_h -> serotonin -, dopamine -
+///   - High testosterone -> dopamine +, adrenaline +
+///   - High estrogen -> serotonin +, oxytocin +
+///   - Low insulin -> cortisol +, irritability
+///   - High thyroid -> noradrenaline +, dopamine +
+///   - High epinephrine -> adrenaline NT +
+///   - High oxytocin_h -> oxytocin NT +
 pub fn apply_hormones_to_chemistry(
     hormones: &HormonalState,
     receptors: &ReceptorSystem,
     chemistry: &mut NeuroChemicalState,
 ) {
-    // Facteur d'amplitude global pour eviter les effets trop forts
+    // Global amplitude factor to prevent overly strong effects
     let amp = 0.01;
 
-    // --- Melatonine ---
-    // Haute melatonine -> serotonine +, noradrenaline -, dopamine -
+    // --- Melatonin ---
+    // High melatonin -> serotonin +, noradrenaline -, dopamine -
     if hormones.melatonin > 0.4 {
         let excess = hormones.melatonin - 0.4;
         chemistry.boost(Molecule::Serotonin, excess * amp * 5.0 * receptors.serotonin_receptors.effective_factor());
@@ -45,34 +45,34 @@ pub fn apply_hormones_to_chemistry(
         chemistry.boost(Molecule::Dopamine, -(excess * amp * 2.0 * receptors.dopamine_receptors.effective_factor()));
     }
 
-    // --- Cortisol hormonal (stress chronique) ---
-    // Haute cortisol_h -> serotonine -, dopamine - (deprime les circuits de bien-etre)
+    // --- Hormonal cortisol (chronic stress) ---
+    // High cortisol_h -> serotonin -, dopamine - (depresses well-being circuits)
     if hormones.cortisol_h > 0.5 {
         let excess = hormones.cortisol_h - 0.5;
         chemistry.boost(Molecule::Serotonin, -(excess * amp * 5.0 * receptors.serotonin_receptors.effective_factor()));
         chemistry.boost(Molecule::Dopamine, -(excess * amp * 3.0 * receptors.dopamine_receptors.effective_factor()));
-        // Le cortisol hormonal renforce aussi le cortisol NT
+        // Hormonal cortisol also reinforces NT cortisol
         chemistry.boost(Molecule::Cortisol, excess * amp * 2.0 * receptors.cortisol_receptors.effective_factor());
     }
 
     // --- Testosterone ---
-    // Haute testosterone -> dopamine +, adrenaline + (motivation, assertivite)
+    // High testosterone -> dopamine +, adrenaline + (motivation, assertiveness)
     if hormones.testosterone > 0.5 {
         let excess = hormones.testosterone - 0.5;
         chemistry.boost(Molecule::Dopamine, excess * amp * 3.0 * receptors.dopamine_receptors.effective_factor());
         chemistry.boost(Molecule::Adrenaline, excess * amp * 2.0 * receptors.adrenaline_receptors.effective_factor());
     }
 
-    // --- Oestrogene ---
-    // Haute oestrogene -> serotonin +, oxytocin + (regulation emotionnelle)
+    // --- Estrogen ---
+    // High estrogen -> serotonin +, oxytocin + (emotional regulation)
     if hormones.estrogen > 0.4 {
         let excess = hormones.estrogen - 0.4;
         chemistry.boost(Molecule::Serotonin, excess * amp * 3.0 * receptors.serotonin_receptors.effective_factor());
         chemistry.boost(Molecule::Oxytocin, excess * amp * 2.0 * receptors.oxytocin_receptors.effective_factor());
     }
 
-    // --- Insuline ---
-    // Basse insuline -> cortisol + (stress), irritabilite (noradrenaline +)
+    // --- Insulin ---
+    // Low insulin -> cortisol + (stress), irritability (noradrenaline +)
     if hormones.insulin < 0.3 {
         let deficit = 0.3 - hormones.insulin;
         chemistry.boost(Molecule::Cortisol, deficit * amp * 5.0 * receptors.cortisol_receptors.effective_factor());
@@ -80,30 +80,30 @@ pub fn apply_hormones_to_chemistry(
         chemistry.boost(Molecule::Serotonin, -(deficit * amp * 2.0 * receptors.serotonin_receptors.effective_factor()));
     }
 
-    // --- Thyroide ---
-    // Haute thyroide -> noradrenaline + (vigilance), dopamine + (vitesse de pensee)
+    // --- Thyroid ---
+    // High thyroid -> noradrenaline + (vigilance), dopamine + (thought speed)
     if hormones.thyroid > 0.5 {
         let excess = hormones.thyroid - 0.5;
         chemistry.boost(Molecule::Noradrenaline, excess * amp * 3.0 * receptors.noradrenaline_receptors.effective_factor());
         chemistry.boost(Molecule::Dopamine, excess * amp * 2.0 * receptors.dopamine_receptors.effective_factor());
     }
-    // Basse thyroide -> ralentissement general
+    // Low thyroid -> general slowdown
     if hormones.thyroid < 0.4 {
         let deficit = 0.4 - hormones.thyroid;
         chemistry.boost(Molecule::Noradrenaline, -(deficit * amp * 2.0));
         chemistry.boost(Molecule::Dopamine, -(deficit * amp * 2.0));
     }
 
-    // --- Epinephrine (adrenaline hormonale) ---
-    // Haute epinephrine -> adrenaline NT + (reaction fight-or-flight)
+    // --- Epinephrine (hormonal adrenaline) ---
+    // High epinephrine -> adrenaline NT + (fight-or-flight response)
     if hormones.epinephrine > 0.4 {
         let excess = hormones.epinephrine - 0.4;
         chemistry.boost(Molecule::Adrenaline, excess * amp * 5.0 * receptors.adrenaline_receptors.effective_factor());
         chemistry.boost(Molecule::Noradrenaline, excess * amp * 2.0 * receptors.noradrenaline_receptors.effective_factor());
     }
 
-    // --- Ocytocine hormonale ---
-    // Haute ocytocin_h -> oxytocin NT + (renforce le lien social)
+    // --- Hormonal oxytocin ---
+    // High oxytocin_h -> oxytocin NT + (reinforces social bonding)
     if hormones.oxytocin_h > 0.4 {
         let excess = hormones.oxytocin_h - 0.4;
         chemistry.boost(Molecule::Oxytocin, excess * amp * 4.0 * receptors.oxytocin_receptors.effective_factor());
@@ -111,49 +111,49 @@ pub fn apply_hormones_to_chemistry(
     }
 }
 
-/// Met a jour les hormones en fonction des niveaux de NT.
+/// Updates hormones based on NT levels.
 ///
-/// Interactions NT -> Hormones :
-///   - Dopamine haute -> endorphine + (circuit de recompense)
-///   - Cortisol NT haut -> cortisol_h monte (stress se propage)
-///   - Adrenaline NT haute -> epinephrine monte (feedback positif)
-///   - Oxytocin NT haute -> ocytocin_h monte
-///   - Serotonine haute -> estrogene stabilise
+/// NT -> Hormone interactions:
+///   - High dopamine -> endorphin + (reward circuit)
+///   - High NT cortisol -> cortisol_h rises (stress propagates)
+///   - High NT adrenaline -> epinephrine rises (positive feedback)
+///   - High NT oxytocin -> oxytocin_h rises
+///   - High serotonin -> estrogen stabilizes
 pub fn update_hormones_from_chemistry(
     hormones: &mut HormonalState,
     chemistry: &NeuroChemicalState,
 ) {
     let amp = 0.005;
 
-    // Cortisol NT eleve prolonge -> cortisol hormonal monte
+    // Prolonged high NT cortisol -> hormonal cortisol rises
     if chemistry.cortisol > 0.6 {
         let excess = chemistry.cortisol - 0.6;
         hormones.cortisol_h += excess * amp * 3.0;
     }
 
-    // Adrenaline NT elevee -> epinephrine monte
+    // High NT adrenaline -> epinephrine rises
     if chemistry.adrenaline > 0.5 {
         let excess = chemistry.adrenaline - 0.5;
         hormones.epinephrine += excess * amp * 4.0;
     }
-    // Adrenaline basse -> epinephrine descend
+    // Low adrenaline -> epinephrine decreases
     if chemistry.adrenaline < 0.3 {
         hormones.epinephrine -= amp * 2.0;
     }
 
-    // Oxytocine NT elevee -> ocytocine hormonale monte
+    // High NT oxytocin -> hormonal oxytocin rises
     if chemistry.oxytocin > 0.5 {
         let excess = chemistry.oxytocin - 0.5;
         hormones.oxytocin_h += excess * amp * 3.0;
     }
 
-    // Serotonine elevee stabilise l'oestrogene
+    // High serotonin stabilizes estrogen
     if chemistry.serotonin > 0.6 {
         let excess = chemistry.serotonin - 0.6;
         hormones.estrogen += excess * amp * 1.5;
     }
 
-    // Dopamine haute -> potentiel d'augmentation thyroide (energie, metabolisme)
+    // High dopamine -> potential thyroid increase (energy, metabolism)
     if chemistry.dopamine > 0.7 {
         let excess = chemistry.dopamine - 0.7;
         hormones.thyroid += excess * amp * 1.0;
@@ -228,7 +228,7 @@ mod tests {
         let mut chem = NeuroChemicalState::default();
         let dopa_before = chem.dopamine;
         apply_hormones_to_chemistry(&hormones, &receptors, &mut chem);
-        // Les effets par cycle doivent etre petits (< 0.1)
+        // Per-cycle effects must be small (< 0.1)
         let dopa_diff = (chem.dopamine - dopa_before).abs();
         assert!(dopa_diff < 0.1, "Effects should be subtle per cycle: {}", dopa_diff);
     }

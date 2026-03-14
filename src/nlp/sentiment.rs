@@ -1,67 +1,67 @@
 // =============================================================================
-// sentiment.rs — Analyse de sentiment VADER-like bilingue (FR+EN, 400+ mots)
+// sentiment.rs — Bilingual VADER-like sentiment analysis (FR+EN, 400+ words)
 //
-// Role : Couche 2A du pipeline NLP. Calcule la polarite emotionnelle d'un texte
-//        (positif, negatif, compose) en utilisant un lexique de sentiment enrichi
-//        d'intensifieurs (boosters/attenuateurs), de negations et de pivots
-//        adversatifs (conjonctions de contraste comme "mais", "however").
+// Role: Layer 2A of the NLP pipeline. Computes the emotional polarity of a text
+//       (positive, negative, compound) using an enriched sentiment lexicon with
+//       intensifiers (boosters/attenuators), negations, and adversative pivots
+//       (contrast conjunctions like "mais", "however").
 //
-// Approche inspiree de VADER (Valence Aware Dictionary and sEntiment Reasoner),
-// adaptee au bilinguisme francais-anglais avec un lexique de 400+ mots.
+// Approach inspired by VADER (Valence Aware Dictionary and sEntiment Reasoner),
+// adapted for French-English bilingualism with a 400+ word lexicon.
 //
-// Dependances :
-//   - std::collections::HashMap : stockage performant des lexiques mot -> score
-//   - serde : serialisation des resultats de sentiment
-//   - super::dictionaries : fournit les lexiques bilingues (mots, intensifieurs,
-//     negations, conjonctions adversatives)
+// Dependencies:
+//   - std::collections::HashMap: performant storage for word -> score lexicons
+//   - serde: serialization of sentiment results
+//   - super::dictionaries: provides bilingual lexicons (words, intensifiers,
+//     negations, adversative conjunctions)
 //
-// Place dans l'architecture :
-//   Appele par NlpPipeline::analyze() apres le pretraitement. Le resultat de
-//   sentiment influence ensuite le Stimulus (ajustement des dimensions recompense
-//   et danger) et est transmis dans NlpResult.
+// Place in the architecture:
+//   Called by NlpPipeline::analyze() after preprocessing. The sentiment result
+//   then influences the Stimulus (adjustment of reward and danger dimensions)
+//   and is passed along in NlpResult.
 // =============================================================================
 
 use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use super::dictionaries;
 
-/// Resultat de l'analyse de sentiment d'un texte.
+/// Result of a text's sentiment analysis.
 ///
-/// Les scores sont calcules a partir du lexique de sentiment, en tenant compte
-/// des intensifieurs, des negations et des pivots adversatifs.
+/// Scores are computed from the sentiment lexicon, accounting for
+/// intensifiers, negations, and adversative pivots.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SentimentResult {
-    /// Score compose normalise dans [-1, +1].
-    /// -1 = sentiment tres negatif, 0 = neutre, +1 = sentiment tres positif.
+    /// Normalized compound score in [-1, +1].
+    /// -1 = very negative sentiment, 0 = neutral, +1 = very positive sentiment.
     pub compound: f64,
-    /// Score positif dans [0, 1] — extrait de la partie positive du compound.
+    /// Positive score in [0, 1] — extracted from the positive part of the compound.
     pub positive: f64,
-    /// Score negatif dans [0, 1] — valeur absolue de la partie negative du compound.
+    /// Negative score in [0, 1] — absolute value of the negative part of the compound.
     pub negative: f64,
-    /// Indique si une contradiction a ete detectee (pivot adversatif dans le texte,
-    /// par exemple "mais", "however"). Utile pour signaler l'ambivalence du message.
+    /// Indicates whether a contradiction was detected (adversative pivot in the text,
+    /// e.g. "mais", "however"). Useful for signaling message ambivalence.
     pub has_contradiction: bool,
 }
 
-/// Lexique de sentiment avec intensifieurs, negations et pivots adversatifs.
+/// Sentiment lexicon with intensifiers, negations, and adversative pivots.
 ///
-/// Le lexique est construit une seule fois a l'initialisation a partir du module
-/// dictionaries, puis reutilise pour chaque analyse.
+/// The lexicon is built once at initialization from the dictionaries module,
+/// then reused for each analysis.
 pub struct SentimentLexicon {
-    /// Dictionnaire des mots de sentiment : mot -> polarite dans [-1.0, +1.0].
-    /// Les mots positifs ont une polarite > 0, les mots negatifs < 0.
+    /// Sentiment word dictionary: word -> polarity in [-1.0, +1.0].
+    /// Positive words have polarity > 0, negative words < 0.
     words: HashMap<String, f64>,
-    /// Dictionnaire des intensifieurs : mot -> multiplicateur.
-    /// Les boosters (> 1.0) amplifient le sentiment (ex: "tres" = 1.5x).
-    /// Les attenuateurs (< 1.0) le reduisent (ex: "un peu" = 0.5x).
+    /// Intensifier dictionary: word -> multiplier.
+    /// Boosters (> 1.0) amplify sentiment (e.g., "tres" = 1.5x).
+    /// Attenuators (< 1.0) reduce it (e.g., "un peu" = 0.5x).
     boosters: HashMap<String, f64>,
-    /// Liste des mots de negation (ex: "ne", "pas", "not", "never").
-    /// Une negation active inverse partiellement la polarite des mots suivants.
+    /// List of negation words (e.g., "ne", "pas", "not", "never").
+    /// An active negation partially inverts the polarity of following words.
     negations: Vec<String>,
-    /// Liste des conjonctions adversatives (ex: "mais", "cependant", "but", "however").
-    /// Un pivot adversatif donne plus de poids a la partie du texte qui suit la conjonction
-    /// (70% apres, 30% avant), car en linguistique la clause post-adversative porte
-    /// generalement le sentiment dominant.
+    /// List of adversative conjunctions (e.g., "mais", "cependant", "but", "however").
+    /// An adversative pivot gives more weight to the part of the text after the conjunction
+    /// (70% after, 30% before), because in linguistics the post-adversative clause
+    /// generally carries the dominant sentiment.
     adversatives: Vec<String>,
 }
 
@@ -72,110 +72,110 @@ impl Default for SentimentLexicon {
 }
 
 impl SentimentLexicon {
-    /// Cree un nouveau lexique de sentiment en chargeant les dictionnaires.
+    /// Creates a new sentiment lexicon by loading the dictionaries.
     ///
-    /// Les dictionnaires sont definis dans le module dictionaries et contiennent
-    /// les lexiques bilingues FR+EN.
+    /// Dictionaries are defined in the dictionaries module and contain
+    /// the bilingual FR+EN lexicons.
     ///
-    /// Retour : une instance de SentimentLexicon prete a analyser
+    /// Returns: a SentimentLexicon instance ready to analyze
     pub fn new() -> Self {
-        // Charger le dictionnaire de mots de sentiment (mot -> polarite)
+        // Load the sentiment word dictionary (word -> polarity)
         let mut words = HashMap::new();
         for (word, polarity) in dictionaries::sentiment_words() {
             words.insert(word.to_string(), polarity);
         }
 
-        // Charger le dictionnaire d'intensifieurs (mot -> multiplicateur)
+        // Load the intensifier dictionary (word -> multiplier)
         let mut boosters = HashMap::new();
         for (word, mult) in dictionaries::boosters() {
             boosters.insert(word.to_string(), mult);
         }
 
-        // Charger les listes de negations et de conjonctions adversatives
+        // Load the negation and adversative conjunction lists
         let negations = dictionaries::negations().iter().map(|s| s.to_string()).collect();
         let adversatives = dictionaries::adversatives().iter().map(|s| s.to_string()).collect();
 
         Self { words, boosters, negations, adversatives }
     }
 
-    /// Analyse le sentiment d'une sequence de tokens.
+    /// Analyzes the sentiment of a token sequence.
     ///
-    /// L'algorithme parcourt les tokens sequentiellement en maintenant un etat :
-    ///   - Un multiplicateur d'intensite (current_booster, reinitialise apres utilisation)
-    ///   - Un drapeau de negation active (avec un decompte de 3 tokens de portee)
-    ///   - Un point de pivot adversatif (separe les scores avant/apres la conjonction)
+    /// The algorithm traverses tokens sequentially while maintaining state:
+    ///   - An intensity multiplier (current_booster, reset after use)
+    ///   - An active negation flag (with a 3-token scope countdown)
+    ///   - An adversative pivot point (separates scores before/after the conjunction)
     ///
-    /// Regles de traitement pour chaque token :
-    ///   1. Si c'est un pivot adversatif : separer les scores et continuer
-    ///   2. Si c'est une negation : activer le mode negation pour 3 tokens
-    ///   3. Si c'est un intensifieur : memoriser le multiplicateur
-    ///   4. Si c'est un mot de sentiment : calculer le score ajuste
+    /// Processing rules for each token:
+    ///   1. If it's an adversative pivot: separate the scores and continue
+    ///   2. If it's a negation: activate negation mode for 3 tokens
+    ///   3. If it's an intensifier: store the multiplier
+    ///   4. If it's a sentiment word: compute the adjusted score
     ///
-    /// Parametres :
-    ///   - tokens : la liste de tokens normalises en minuscules
+    /// Parameters:
+    ///   - tokens: the list of normalized lowercase tokens
     ///
-    /// Retour : un SentimentResult avec le score compose, positif, negatif et
-    ///          l'indicateur de contradiction
+    /// Returns: a SentimentResult with compound, positive, negative scores,
+    ///          and the contradiction indicator
     pub fn analyze(&self, tokens: &[String]) -> SentimentResult {
         let mut scores: Vec<f64> = Vec::new();
-        // Multiplicateur courant applique au prochain mot de sentiment (1.0 = pas de modification)
+        // Current multiplier applied to the next sentiment word (1.0 = no modification)
         let mut current_booster = 1.0;
-        // Indique si une negation est actuellement active
+        // Indicates whether a negation is currently active
         let mut negation_active = false;
-        // Decompte de tokens restants sous l'effet de la negation (portee de 3 tokens)
+        // Countdown of tokens remaining under negation effect (3-token scope)
         let mut negation_countdown: i32 = 0;
-        // Indique si un pivot adversatif a ete trouve dans le texte
+        // Indicates whether an adversative pivot was found in the text
         let mut pivot_found = false;
-        // Scores accumules avant le pivot adversatif
+        // Scores accumulated before the adversative pivot
         let mut before_pivot: Vec<f64> = Vec::new();
 
         for token in tokens.iter() {
             let lower = token.to_lowercase();
 
-            // Detection de pivot adversatif (ex: "mais", "however")
-            // Quand un pivot est trouve, les scores avant le pivot sont sauvegardes
-            // et on recommence a zero pour la partie post-pivot.
+            // Adversative pivot detection (e.g., "mais", "however")
+            // When a pivot is found, scores before the pivot are saved
+            // and we restart from zero for the post-pivot part.
             if self.adversatives.contains(&lower) {
                 pivot_found = true;
                 before_pivot = scores.clone();
                 scores.clear();
-                // Reinitialiser l'etat de negation et d'intensification
+                // Reset negation and intensification state
                 negation_active = false;
                 negation_countdown = 0;
                 current_booster = 1.0;
                 continue;
             }
 
-            // Detection de negation (ex: "ne", "pas", "not", "never")
-            // La negation est active pendant les 3 tokens suivants.
+            // Negation detection (e.g., "ne", "pas", "not", "never")
+            // Negation is active for the following 3 tokens.
             if self.negations.contains(&lower) {
                 negation_active = true;
                 negation_countdown = 3;
                 continue;
             }
 
-            // Detection d'intensifieur (ex: "tres" = 1.5x, "un peu" = 0.5x)
-            // Le multiplicateur est memorise et applique au prochain mot de sentiment.
+            // Intensifier detection (e.g., "tres" = 1.5x, "un peu" = 0.5x)
+            // The multiplier is stored and applied to the next sentiment word.
             if let Some(&boost) = self.boosters.get(&lower) {
                 current_booster = boost;
                 continue;
             }
 
-            // Detection de mot de sentiment
-            // Le score est calcule comme : polarite * multiplicateur * facteur de negation.
-            // La negation n'inverse pas totalement le score (facteur -0.75 au lieu de -1.0)
-            // car "pas triste" n'est pas aussi fort que "heureux" en linguistique.
+            // Sentiment word detection
+            // Score is computed as: polarity * multiplier * negation factor.
+            // Negation does not fully invert the score (factor -0.75 instead of -1.0)
+            // because "not sad" is not as strong as "happy" in linguistics.
             if let Some(&polarity) = self.words.get(&lower) {
                 let mut score = polarity * current_booster;
                 if negation_active {
-                    score *= -0.75; // Inversion partielle, pas totale
+                    score *= -0.75; // Partial inversion, not total
                 }
                 scores.push(score);
-                // Reinitialiser le multiplicateur apres utilisation
+                // Reset the multiplier after use
                 current_booster = 1.0;
             }
 
-            // Decompte de la portee de la negation (3 tokens maximum)
+            // Negation scope countdown (3 tokens maximum)
             if negation_countdown > 0 {
                 negation_countdown -= 1;
                 if negation_countdown == 0 {
@@ -184,9 +184,9 @@ impl SentimentLexicon {
             }
         }
 
-        // Si un pivot adversatif a ete trouve : ponderation 30% avant / 70% apres.
-        // Ceci reflete le principe linguistique selon lequel la clause apres "mais"
-        // porte le sentiment dominant du locuteur.
+        // If an adversative pivot was found: 30% before / 70% after weighting.
+        // This reflects the linguistic principle that the clause after "but"
+        // carries the speaker's dominant sentiment.
         let final_scores = if pivot_found && !scores.is_empty() {
             let before_avg = if before_pivot.is_empty() {
                 0.0
@@ -199,7 +199,7 @@ impl SentimentLexicon {
             scores
         };
 
-        // Calcul du score compose : moyenne des scores, bornee a [-1, +1]
+        // Compound score computation: mean of scores, clamped to [-1, +1]
         let compound = if final_scores.is_empty() {
             0.0
         } else {
@@ -208,9 +208,9 @@ impl SentimentLexicon {
 
         SentimentResult {
             compound,
-            // Le score positif est la partie > 0 du compound
+            // Positive score is the > 0 part of the compound
             positive: compound.max(0.0),
-            // Le score negatif est la valeur absolue de la partie < 0 du compound
+            // Negative score is the absolute value of the < 0 part of the compound
             negative: compound.min(0.0).abs(),
             has_contradiction: pivot_found,
         }

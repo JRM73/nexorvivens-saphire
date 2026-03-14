@@ -1,20 +1,20 @@
 // =============================================================================
-// micro_nn.rs — Plugin micro reseau de neurones (coque de compatibilite)
+// micro_nn.rs — Micro neural network plugin (compatibility shell)
 //
-// Role : Plugin de compatibilite pour le systeme de plugins. Le reseau de
-// neurones est maintenant un champ direct de SaphireAgent (micro_nn),
-// cable dans le pipeline cognitif. Ce plugin reste enregistre pour recevoir
-// les evenements mais ne porte plus le NN.
+// Role: Compatibility plugin for the plugin system. The neural network
+// is now a direct field of SaphireAgent (micro_nn), wired into the
+// cognitive pipeline. This plugin remains registered to receive
+// events but no longer carries the NN.
 // =============================================================================
 
 use super::{Plugin, BrainEvent, PluginAction};
 
-/// Plugin micro reseau de neurones (coque de compatibilite).
-/// Le NN est desormais dans SaphireAgent.micro_nn.
+/// Micro neural network plugin (compatibility shell).
+/// The NN is now in SaphireAgent.micro_nn.
 pub struct MicroNNPlugin;
 
 impl MicroNNPlugin {
-    /// Cree le plugin (coque vide pour compatibilite).
+    /// Creates the plugin (empty shell for compatibility).
     pub fn new(_learning_rate: f64) -> Self {
         Self
     }
@@ -26,7 +26,7 @@ impl Plugin for MicroNNPlugin {
     }
 
     fn on_event(&mut self, _event: &BrainEvent) -> Vec<PluginAction> {
-        // Le NN est desormais cable directement dans pipeline.rs
+        // The NN is now wired directly in pipeline.rs
         vec![]
     }
 }

@@ -1,23 +1,23 @@
 // =============================================================================
-// knowledge/hackernews.rs — Client HackerNews via Algolia API
+// knowledge/hackernews.rs — HackerNews client via Algolia API
 // =============================================================================
 //
-// Role : Recherche d'articles tech/science populaires sur HackerNews
-//        via l'API Algolia (recherche full-text, classement par pertinence).
+// Purpose: Searches popular tech/science articles on HackerNews
+//          via the Algolia API (full-text search, relevance ranking).
 //
-// API : https://hn.algolia.com/api/v1/search?query=...&tags=story
-//       Retourne du JSON avec hits[].title, hits[].url, hits[].story_text, etc.
+// API: https://hn.algolia.com/api/v1/search?query=...&tags=story
+//      Returns JSON with hits[].title, hits[].url, hits[].story_text, etc.
 //
-// Score de pertinence : 0.75
+// Relevance score: 0.75
 // =============================================================================
 
 use chrono::Utc;
 use super::{WebKnowledge, KnowledgeResult, KnowledgeError};
 
 impl WebKnowledge {
-    /// Cherche des articles sur HackerNews via l'API Algolia.
+    /// Search for articles on HackerNews via the Algolia API.
     ///
-    /// Retourne jusqu'a 3 resultats tries par pertinence.
+    /// Returns up to 3 results sorted by relevance.
     pub fn search_hackernews(&self, query: &str) -> Result<Vec<KnowledgeResult>, KnowledgeError> {
         let encoded = Self::url_encode(query);
         let url = format!(
@@ -49,7 +49,7 @@ impl WebKnowledge {
             let story_url = hit["url"].as_str().unwrap_or_default().to_string();
             let object_id = hit["objectID"].as_str().unwrap_or_default();
 
-            // Le texte peut etre dans story_text ou comment_text
+            // The text may be in story_text or comment_text
             let story_text = hit["story_text"].as_str().unwrap_or_default();
             let extract = if story_text.len() > 20 {
                 Self::strip_html_tags(story_text)
@@ -57,7 +57,7 @@ impl WebKnowledge {
                     .take(max_chars)
                     .collect::<String>()
             } else {
-                // Fallback: utiliser le titre + auteur + points comme contexte
+                // Fallback: use title + author + points as context
                 let author = hit["author"].as_str().unwrap_or("anonyme");
                 let points = hit["points"].as_u64().unwrap_or(0);
                 let num_comments = hit["num_comments"].as_u64().unwrap_or(0);

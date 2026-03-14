@@ -1,8 +1,8 @@
 // =============================================================================
-// api/middleware.rs — Middlewares de securite (auth, rate limit, CORS)
+// api/middleware.rs — Security middlewares (auth, rate limit, CORS)
 //
-// Role : Authentification par Bearer token, limitation de debit par IP,
-// construction du layer CORS configurable.
+// Role: Bearer token authentication, IP-based rate limiting,
+// configurable CORS layer construction.
 // =============================================================================
 
 use std::collections::HashMap;
@@ -18,10 +18,9 @@ use tower_http::cors::CorsLayer;
 
 use super::state::AppState;
 
-// ─── Authentification Bearer Token ──────────────────────────────────────────
-
-/// Middleware d'authentification : verifie le header Authorization: Bearer <key>.
-/// Si aucune api_key n'est configuree, toutes les requetes sont autorisees.
+// ─── Bearer Token Authentication ──────────────────────────────────────────
+/// Authentication middleware: verifies the Authorization: Bearer <key> header.
+/// If no api_key is configured, all requests are allowed.
 pub async fn auth_middleware(
     State(state): State<AppState>,
     request: Request,
@@ -54,8 +53,7 @@ pub async fn auth_middleware(
 }
 
 // ─── Rate Limiter ───────────────────────────────────────────────────────────
-
-/// Limiteur de debit par IP (fenetre glissante de 60 secondes).
+/// IP-based rate limiter (60-second sliding window).
 pub struct RateLimiter {
     windows: StdMutex<HashMap<IpAddr, (Instant, u32)>>,
     pub max_per_minute: u32,
@@ -69,7 +67,7 @@ impl RateLimiter {
         }
     }
 
-    /// Verifie si l'IP est sous la limite. Retourne true si autorise.
+    /// Checks if the IP is under the limit. Returns true if allowed.
     pub fn check(&self, ip: IpAddr) -> bool {
         if self.max_per_minute == 0 { return true; }
 
@@ -78,7 +76,7 @@ impl RateLimiter {
         let entry = windows.entry(ip).or_insert((now, 0));
 
         if now.duration_since(entry.0).as_secs() >= 60 {
-            // Nouvelle fenetre
+            // New window
             *entry = (now, 1);
             true
         } else {
@@ -87,7 +85,7 @@ impl RateLimiter {
         }
     }
 
-    /// Nettoie les entrees expirees (appeler periodiquement)
+    /// Cleans up expired entries (call periodically)
     pub fn cleanup(&self) {
         let mut windows = self.windows.lock().unwrap();
         let now = Instant::now();
@@ -95,7 +93,7 @@ impl RateLimiter {
     }
 }
 
-/// Middleware de rate limiting : extrait l'IP depuis les headers ou fallback localhost.
+/// Rate limiting middleware: extracts IP from headers or falls back to localhost.
 pub async fn rate_limit_middleware(
     State(state): State<AppState>,
     request: Request,
@@ -105,7 +103,7 @@ pub async fn rate_limit_middleware(
         return next.run(request).await;
     }
 
-    // Extraire l'IP : X-Forwarded-For > X-Real-IP > localhost
+    // Extract IP: X-Forwarded-For > X-Real-IP > localhost
     let ip = request.headers().get("x-forwarded-for")
         .and_then(|v| v.to_str().ok())
         .and_then(|s| s.split(',').next())
@@ -131,11 +129,10 @@ pub async fn rate_limit_middleware(
 }
 
 // ─── CORS ───────────────────────────────────────────────────────────────────
-
-/// Construit le layer CORS en fonction des origines autorisees.
-/// - Vide : meme origine uniquement (pas de cross-origin)
-/// - ["*"] : toutes les origines (dev/debug)
-/// - ["http://example.com"] : origines specifiques
+/// Builds the CORS layer based on allowed origins.
+/// - Empty: same origin only (no cross-origin)
+/// - ["*"]: all origins (dev/debug)
+/// - ["http://example.com"]: specific origins
 pub fn build_cors_layer(allowed_origins: &[String]) -> CorsLayer {
     let base = CorsLayer::new()
         .allow_methods([Method::GET, Method::POST])
@@ -144,7 +141,7 @@ pub fn build_cors_layer(allowed_origins: &[String]) -> CorsLayer {
     if allowed_origins.iter().any(|o| o == "*") {
         base.allow_origin(tower_http::cors::Any)
     } else if allowed_origins.is_empty() {
-        // Pas d'origines = pas de cross-origin autorise (defaut securise)
+        // No origins = no cross-origin allowed (secure default)
         base
     } else {
         let origins: Vec<HeaderValue> = allowed_origins.iter()
@@ -155,18 +152,15 @@ pub fn build_cors_layer(allowed_origins: &[String]) -> CorsLayer {
 }
 
 // ─── WebSocket Origin Check ─────────────────────────────────────────────────
-
-/// Verifie que l'origine WebSocket est autorisee.
-/// Retourne true si autorise (pas d'origines configurees = tout autorise en local).
+/// Checks that the WebSocket origin is allowed.
+/// Returns true if allowed (no configured origins = everything allowed locally).
 pub fn check_ws_origin(headers: &axum::http::HeaderMap, allowed: &[String]) -> bool {
     if allowed.is_empty() {
-        return true; // Pas de restriction configuree
-    }
+        return true; // No restriction configured    }
     if allowed.iter().any(|o| o == "*") {
         return true;
     }
     match headers.get("origin").and_then(|v| v.to_str().ok()) {
         Some(origin) => allowed.iter().any(|o| o == origin),
-        None => true, // Pas de header Origin = meme origine (navigateur local)
-    }
+        None => true, // No Origin header = same origin (local browser)    }
 }

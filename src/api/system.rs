@@ -1,8 +1,8 @@
 // =============================================================================
-// api/system.rs — Handlers systeme, sante, configuration
+// api/system.rs — System, health, and configuration handlers
 //
-// Role : Endpoints de sante, configuration, statut systeme, tables DB,
-// backup, consolidation, purge des logs, stabilisation d'urgence.
+// Role: Health, configuration, system status, DB tables, backup,
+// consolidation, log purge, emergency stabilization endpoints.
 // =============================================================================
 
 use axum::extract::State;
@@ -10,28 +10,28 @@ use axum::response::IntoResponse;
 
 use super::state::AppState;
 
-/// Endpoint de sante : retourne le statut et la version de l'agent.
-/// Utile pour les health checks Docker ou les sondes de disponibilite.
+/// Health endpoint: returns the agent's status and version.
+/// Useful for Docker health checks or availability probes.
 pub async fn health_handler() -> impl IntoResponse {
     axum::Json(serde_json::json!({ "status": "alive", "version": "1.0.0" }))
 }
 
-/// GET /api/config — Retourne la configuration actuelle de l'agent en JSON.
+/// GET /api/config — Returns the agent's current configuration as JSON.
 pub async fn api_get_config(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     axum::Json(agent.config_json())
 }
 
-/// POST /api/config — Modifie partiellement la configuration de l'agent.
-/// Le corps de la requete est un objet JSON avec les champs a modifier.
-/// Seuls les champs presents sont mis a jour (merge partiel).
+/// POST /api/config — Partially modifies the agent's configuration.
+/// The request body is a JSON object with the fields to modify.
+/// Only present fields are updated (partial merge).
 pub async fn api_post_config(
     State(state): State<AppState>,
     axum::Json(body): axum::Json<serde_json::Value>,
 ) -> impl IntoResponse {
     let mut agent = state.agent.lock().await;
 
-    // Merge partiel : chaque champ present dans le JSON est applique individuellement
+    // Partial merge: each field present in the JSON is applied individually
     if let Some(v) = body.get("baseline_dopamine").and_then(|v| v.as_f64()) { agent.set_baseline("dopamine", v); }
     if let Some(v) = body.get("baseline_cortisol").and_then(|v| v.as_f64()) { agent.set_baseline("cortisol", v); }
     if let Some(v) = body.get("baseline_serotonin").and_then(|v| v.as_f64()) { agent.set_baseline("serotonin", v); }
@@ -46,7 +46,7 @@ pub async fn api_post_config(
     axum::Json(serde_json::json!({ "status": "ok" }))
 }
 
-/// GET /api/system/status — Statut du systeme.
+/// GET /api/system/status — System status.
 pub async fn api_system_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let turing = &agent.metacognition.turing;
@@ -64,7 +64,7 @@ pub async fn api_system_status(State(state): State<AppState>) -> impl IntoRespon
     }))
 }
 
-/// GET /api/system/db/tables — Statistiques des tables DB.
+/// GET /api/system/db/tables — DB table statistics.
 pub async fn api_db_tables(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let mut result = serde_json::json!({});
@@ -86,11 +86,11 @@ pub async fn api_db_tables(State(state): State<AppState>) -> impl IntoResponse {
     axum::Json(result)
 }
 
-/// POST /api/system/backup — Declenche un backup des logs + etat agent.
+/// POST /api/system/backup — Triggers a backup of logs + agent state.
 pub async fn api_backup(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
 
-    // Snapshot de l'etat agent (relationships, metacognition, turing)
+    // Snapshot of agent state (relationships, metacognition, turing)
     let agent_state = serde_json::json!({
         "metacognition": agent.metacognition.to_json(),
         "relationships": agent.relationships.to_json(),
@@ -113,14 +113,14 @@ pub async fn api_backup(State(state): State<AppState>) -> impl IntoResponse {
     }))
 }
 
-/// POST /api/system/consolidate — Declenche une consolidation memoire.
+/// POST /api/system/consolidate — Triggers a memory consolidation.
 pub async fn api_consolidate(State(state): State<AppState>) -> impl IntoResponse {
     let mut agent = state.agent.lock().await;
     let result = agent.run_consolidation().await;
     axum::Json(result)
 }
 
-/// POST /api/system/purge_logs — Purge les logs anciens.
+/// POST /api/system/purge_logs — Purge old logs.
 pub async fn api_purge_logs(
     State(state): State<AppState>,
     axum::Json(body): axum::Json<serde_json::Value>,
@@ -136,15 +136,15 @@ pub async fn api_purge_logs(
     }
 }
 
-/// POST /api/stabilize — Declenche une stabilisation d'urgence de la neurochimie.
-/// Remet tous les neurotransmetteurs a leurs valeurs de base.
+/// POST /api/stabilize — Triggers an emergency neurochemistry stabilization.
+/// Resets all neurotransmitters to their baseline values.
 pub async fn api_stabilize(State(state): State<AppState>) -> impl IntoResponse {
     let mut agent = state.agent.lock().await;
     agent.emergency_stabilize();
     axum::Json(serde_json::json!({ "status": "stabilized" }))
 }
 
-/// GET /api/hardware — Profil materiel detecte au demarrage.
+/// GET /api/hardware — Hardware profile detected at startup.
 pub async fn api_hardware(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     match &agent.hardware_profile {
@@ -153,7 +153,7 @@ pub async fn api_hardware(State(state): State<AppState>) -> impl IntoResponse {
     }
 }
 
-/// GET /api/genome — Genome / ADN deterministe genere au demarrage.
+/// GET /api/genome — Deterministic genome/DNA generated at startup.
 pub async fn api_genome(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let enabled = agent.config().genome.enabled;
@@ -167,7 +167,7 @@ pub async fn api_genome(State(state): State<AppState>) -> impl IntoResponse {
     }
 }
 
-/// GET /api/connectome — Etat complet du connectome (noeuds, aretes, metriques).
+/// GET /api/connectome — Complete connectome state (nodes, edges, metrics).
 pub async fn api_connectome(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let enabled = agent.config().connectome.enabled;
@@ -176,7 +176,7 @@ pub async fn api_connectome(State(state): State<AppState>) -> impl IntoResponse 
     axum::Json(j)
 }
 
-/// GET /api/connectome/metrics — Metriques resumees du connectome.
+/// GET /api/connectome/metrics — Summarized connectome metrics.
 pub async fn api_connectome_metrics(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let m = agent.connectome.metrics();
@@ -191,19 +191,19 @@ pub async fn api_connectome_metrics(State(state): State<AppState>) -> impl IntoR
     }))
 }
 
-/// GET /api/metacognition — Etat complet du moteur de metacognition.
+/// GET /api/metacognition — Complete metacognition engine state.
 pub async fn api_metacognition(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     axum::Json(agent.metacognition.to_json())
 }
 
-/// GET /api/turing — Metrique de Turing (score composite 0-100).
+/// GET /api/turing — Turing metric (composite score 0-100).
 pub async fn api_turing(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     axum::Json(agent.metacognition.turing.to_json())
 }
 
-/// GET /api/lora/stats — Statistiques de la collecte LoRA.
+/// GET /api/lora/stats — LoRA collection statistics.
 pub async fn api_lora_stats(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     if let Some(ref db) = agent.db {
@@ -221,7 +221,7 @@ pub async fn api_lora_stats(State(state): State<AppState>) -> impl IntoResponse 
     }
 }
 
-/// GET /api/lora/export — Exporte les meilleurs echantillons LoRA en JSON.
+/// GET /api/lora/export — Export the best LoRA samples as JSON.
 pub async fn api_lora_export(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
@@ -237,7 +237,7 @@ pub async fn api_lora_export(
     if let Some(ref db) = agent.db {
         match db.export_lora_jsonl(min_quality, limit).await {
             Ok(samples) => {
-                // Format JSONL : chaque ligne est un objet JSON independant
+                // JSONL format: each line is an independent JSON object
                 let jsonl: Vec<serde_json::Value> = samples.iter().map(|s| {
                     serde_json::json!({
                         "messages": [
@@ -271,7 +271,7 @@ pub async fn api_lora_export(
     }
 }
 
-/// GET /api/identity — Identite complete de Saphire (nom, apparence, stats).
+/// GET /api/identity — Saphire's complete identity (name, appearance, stats).
 pub async fn api_identity(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let id = &agent.identity;

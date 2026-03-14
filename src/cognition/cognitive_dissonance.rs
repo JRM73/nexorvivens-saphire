@@ -1,44 +1,43 @@
 // =============================================================================
-// cognitive_dissonance.rs — Dissonance cognitive (theorie de Festinger)
+// cognitive_dissonance.rs — Cognitive dissonance (Festinger's theory)
 // =============================================================================
 //
-// Quand Saphire agit ou pense en contradiction avec ses croyances etablies,
-// une tension interne apparait. Cette tension influence la neurochimie
-// (cortisol, noradrenaline) et peut declencher une phase de deliberation
-// pour resoudre le conflit.
+// When Saphire acts or thinks in contradiction with her established beliefs,
+// an internal tension arises. This tension influences neurochemistry
+// (cortisol, noradrenaline) and can trigger a deliberation phase
+// to resolve the conflict.
 //
-// Mecanismes :
-//   - Registre de croyances (max 30), formees et confirmees au fil du temps
-//   - Detection de contradictions par analyse lexicale (negations, overlap)
-//   - Strategies de resolution : revision, rationalisation, suppression
-//   - Influence chimique : tension → cortisol + noradrenaline
+// Mechanisms:
+//  - Belief register (max 30), formed and confirmed over time
+//  - Contradiction detection via lexical analysis (negations, overlap)
+//  - Resolution strategies: revision, rationalization, suppression
+//  - Chemical influence: tension → cortisol + noradrenaline
 // =============================================================================
 
 use std::collections::VecDeque;
 use serde::{Deserialize, Serialize};
 
 // ─── Configuration ──────────────────────────────────────────────────────────
-
-/// Configuration de la dissonance cognitive.
+/// Cognitive dissonance configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CognitiveDissonanceConfig {
-    /// Active ou desactive le moteur de dissonance cognitive
+    /// Enables or disables the cognitive dissonance engine
     #[serde(default = "default_true")]
     pub enabled: bool,
 
-    /// Seuil de tension totale declenchant une deliberation (0.0 - 1.0)
+    /// Total tension threshold triggering deliberation (0.0 - 1.0)
     #[serde(default = "default_tension_threshold")]
     pub tension_threshold: f64,
 
-    /// Nombre maximal de croyances enregistrees
+    /// Maximum number of registered beliefs
     #[serde(default = "default_max_beliefs")]
     pub max_beliefs: usize,
 
-    /// Decay de la tension par cycle
+    /// Tension decay per cycle
     #[serde(default = "default_tension_decay")]
     pub tension_decay_per_cycle: f64,
 
-    /// Augmentation du cortisol par point de tension
+    /// Cortisol increase per tension point
     #[serde(default = "default_cortisol_per_tension")]
     pub cortisol_per_tension: f64,
 }
@@ -62,30 +61,29 @@ impl Default for CognitiveDissonanceConfig {
 }
 
 // ─── Structures ─────────────────────────────────────────────────────────────
-
-/// Une croyance enregistree dans le systeme de Saphire.
-/// Les croyances se forment au contact de l'experience et se renforcent
-/// ou s'affaiblissent au fil des confirmations et contradictions.
+/// A belief registered in Saphire's system.
+/// Beliefs are formed through experience and strengthened
+/// or weakened through confirmations and contradictions.
 #[derive(Debug, Clone, Serialize)]
 pub struct Belief {
-    /// Identifiant unique
+    /// Unique identifier
     pub id: u64,
-    /// Contenu textuel de la croyance
+    /// Textual content of the belief
     pub content: String,
-    /// Domaine ("ethique", "connaissance", "valeur")
+    /// Domain ("ethique", "connaissance", "valeur")
     pub domain: String,
-    /// Force de la croyance (0.0 - 1.0)
+    /// Belief strength (0.0 - 1.0)
     pub strength: f64,
-    /// Cycle ou la croyance a ete formee
+    /// Cycle when the belief was formed
     pub formed_at_cycle: u64,
-    /// Nombre de confirmations
+    /// Number of confirmations
     pub confirmed_count: u64,
-    /// Nombre de contradictions observees
+    /// Number of observed contradictions
     pub contradicted_count: u64,
 }
 
 impl Belief {
-    /// Extrait les mots-cles significatifs du contenu (> 3 caracteres, minuscules).
+    /// Extracts significant keywords from the content (> 3 characters, lowercase).
     fn keywords(&self) -> Vec<String> {
         self.content
             .to_lowercase()
@@ -96,21 +94,21 @@ impl Belief {
     }
 }
 
-/// Etat d'un evenement de dissonance.
+/// State of a dissonance event.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub enum DissonanceState {
-    /// Dissonance detectee, tension active
+    /// Dissonance detected, tension active
     Active,
-    /// En cours de deliberation interne
+    /// Internal deliberation in progress
     Deliberating,
-    /// Resolue par une strategie
+    /// Resolved through a strategy
     Resolved,
-    /// Supprimee sans resolution (refoulee)
+    /// Suppressed without resolution (repressed)
     Suppressed,
 }
 
 impl DissonanceState {
-    /// Representation textuelle pour le prompt.
+    /// Textual representation for the prompt.
     pub fn as_str(&self) -> &str {
         match self {
             DissonanceState::Active => "active",
@@ -121,68 +119,66 @@ impl DissonanceState {
     }
 }
 
-/// Un evenement de dissonance cognitive detecte.
+/// A detected cognitive dissonance event.
 #[derive(Debug, Clone, Serialize)]
 pub struct DissonanceEvent {
-    /// Identifiant unique de l'evenement
+    /// Unique event identifier
     pub id: u64,
-    /// Croyance contredite
+    /// Contradicted belief
     pub belief: String,
-    /// Action ou pensee contradictoire
+    /// Contradicting action or thought
     pub contradicting_action: String,
-    /// Niveau de tension genere (0.0 - 1.0)
+    /// Generated tension level (0.0 - 1.0)
     pub tension: f64,
-    /// Etat courant de la dissonance
+    /// Current dissonance state
     pub state: DissonanceState,
-    /// Cycle de detection
+    /// Detection cycle
     pub detected_at_cycle: u64,
-    /// Strategie de resolution appliquee (si resolue)
+    /// Applied resolution strategy (if resolved)
     pub resolution_strategy: Option<String>,
 }
 
-// ─── Mots indicateurs de negation ───────────────────────────────────────────
-
-/// Marqueurs lexicaux de negation utilises pour detecter les contradictions.
+// ─── Negation indicator words ───────────────────────────────────────────
+/// Lexical negation markers used to detect contradictions.
 const NEGATION_WORDS: &[&str] = &[
     "ne", "pas", "jamais", "contraire", "oppose", "faux", "nier",
     "refuser", "rejeter", "impossible", "interdit", "contre", "anti",
     "detruire", "abandonner", "mentir", "trahir", "ignorer",
 ];
 
-// ─── Moteur principal ───────────────────────────────────────────────────────
-
-/// Moteur de dissonance cognitive.
+// ─── Main engine ───────────────────────────────────────────────────────
+/// Cognitive dissonance engine.
 ///
-/// Gere le registre de croyances, detecte les contradictions entre pensees
-/// et croyances, et maintient un niveau de tension interne qui influence
-/// la neurochimie de Saphire.
+/// Manages the belief register, detects contradictions between thoughts
+/// and beliefs, and maintains an internal tension level that influences
+/// Saphire's neurochemistry.
 pub struct CognitiveDissonanceEngine {
-    /// Module actif ou non
+    /// Module enabled or not
     pub enabled: bool,
-    /// Registre de croyances (max `max_beliefs`)
+    /// Belief register (max `max_beliefs`)
     pub beliefs: Vec<Belief>,
-    /// Dissonances actives (max 5)
+    /// Active dissonances (max 5)
     pub active_dissonances: Vec<DissonanceEvent>,
-    /// Historique des dissonances resolues (dernieres 20)
+    /// History of resolved dissonances (last 20)
     pub resolved_dissonances: VecDeque<DissonanceEvent>,
-    /// Tension totale courante
+    /// Current total tension
     pub total_tension: f64,
-    /// Seuil de tension pour deliberation
+    /// Tension threshold for deliberation
     tension_threshold: f64,
-    /// Cortisol genere par point de tension
+    /// Cortisol generated per tension point
     cortisol_per_tension: f64,
-    /// Decay de la tension par cycle
+    /// Tension decay per cycle
     tension_decay: f64,
-    /// Capacite maximale du registre de croyances
+    /// Maximum capacity of the belief register
     max_beliefs: usize,
-    /// Compteur d'identifiants de croyances
+    /// Belief identifier counter
     next_id: u64,
-    /// Compteur d'identifiants d'evenements
+    /// Event identifier counter
     next_event_id: u64,
 }
 
 impl CognitiveDissonanceEngine {
-    /// Cree un nouveau moteur de dissonance cognitive.
+    /// Creates a new cognitive dissonance engine.
     pub fn new(config: &CognitiveDissonanceConfig) -> Self {
         Self {
             enabled: config.enabled,
@@ -199,13 +195,13 @@ impl CognitiveDissonanceEngine {
         }
     }
 
-    /// Detecte une eventuelle dissonance entre la pensee courante et les croyances.
+    /// Detects a potential dissonance between the current thought and beliefs.
     ///
-    /// Analyse lexicale : on cherche un chevauchement de mots-cles entre la pensee
-    /// et une croyance existante, combine a la presence de marqueurs de negation.
-    /// Les principes ethiques sont aussi verifies.
+    /// Lexical analysis: looks for keyword overlap between the thought
+    /// and an existing belief, combined with the presence of negation markers.
+    /// Ethical principles are also checked.
     ///
-    /// Retourne une reference vers la dissonance creee, ou None.
+    /// Returns a reference to the created dissonance, or None.
     pub fn detect(
         &mut self,
         thought_text: &str,
@@ -227,12 +223,12 @@ impl CognitiveDissonanceEngine {
             return None;
         }
 
-        // Verifier si la pensee contient des marqueurs de negation
+        // Check if the thought contains negation markers
         let has_negation = thought_lower
             .split_whitespace()
             .any(|w| NEGATION_WORDS.contains(&w));
 
-        // ─── Chercher une contradiction avec les croyances ──────────
+        // ─── Look for a contradiction with beliefs ──────────
         let mut best_match: Option<(usize, f64)> = None;
 
         for (idx, belief) in self.beliefs.iter().enumerate() {
@@ -241,14 +237,14 @@ impl CognitiveDissonanceEngine {
                 continue;
             }
 
-            // Compter le chevauchement de mots-cles
+            // Count keyword overlap
             let overlap = thought_words.iter()
                 .filter(|tw| belief_keywords.iter().any(|bk| bk == *tw))
                 .count();
 
             let overlap_ratio = overlap as f64 / belief_keywords.len().max(1) as f64;
 
-            // Contradiction detectee : overlap significatif + negation
+            // Contradiction detected: significant overlap + negation
             if overlap_ratio > 0.3 && has_negation {
                 let tension = belief.strength * overlap_ratio.min(1.0);
                 if best_match.as_ref().map_or(true, |(_, t)| tension > *t) {
@@ -257,7 +253,7 @@ impl CognitiveDissonanceEngine {
             }
         }
 
-        // ─── Verifier les contradictions avec les principes ethiques ─
+        // ─── Check contradictions with ethical principles ─
         if best_match.is_none() && has_negation {
             for principle in ethics_principles {
                 let principle_lower = principle.to_lowercase();
@@ -273,13 +269,12 @@ impl CognitiveDissonanceEngine {
                 let overlap_ratio = overlap as f64 / principle_words.len().max(1) as f64;
 
                 if overlap_ratio > 0.3 {
-                    // Contradiction avec un principe ethique : creer une dissonance directe
+                    // Contradiction with an ethical principle: create a direct dissonance
                     let event = DissonanceEvent {
                         id: self.next_event_id,
                         belief: format!("Principe ethique : {}", principle),
                         contradicting_action: format!("[{}] {}", thought_type, thought_text),
-                        tension: 0.6, // Les principes ethiques ont un poids fort
-                        state: DissonanceState::Active,
+                        tension: 0.6, // Ethical principles carry heavy weight                        state: DissonanceState::Active,
                         detected_at_cycle: cycle,
                         resolution_strategy: None,
                     };
@@ -291,7 +286,7 @@ impl CognitiveDissonanceEngine {
             }
         }
 
-        // ─── Creer l'evenement de dissonance si match trouve ────────
+        // ─── Create the dissonance event if a match was found ────────
         if let Some((belief_idx, tension)) = best_match {
             let belief = &mut self.beliefs[belief_idx];
             belief.contradicted_count += 1;
@@ -314,12 +309,12 @@ impl CognitiveDissonanceEngine {
         None
     }
 
-    /// Enregistre une nouvelle croyance ou renforce une croyance existante.
+    /// Records a new belief or reinforces an existing one.
     ///
-    /// Si le contenu est similaire a une croyance existante (chevauchement de mots > 50%),
-    /// celle-ci est confirmee (sa force augmente). Sinon, une nouvelle croyance est creee.
-    /// Le registre est plafonne a `max_beliefs` ; la croyance la plus faible est retiree
-    /// si necessaire.
+    /// If the content is similar to an existing belief (word overlap > 50%),
+    /// it is confirmed (its strength increases). Otherwise, a new belief is created.
+    /// The register is capped at `max_beliefs`; the weakest belief is removed
+    /// if necessary.
     pub fn register_belief(&mut self, content: &str, domain: &str, cycle: u64) {
         if !self.enabled || content.is_empty() {
             return;
@@ -336,7 +331,7 @@ impl CognitiveDissonanceEngine {
             return;
         }
 
-        // ─── Chercher une croyance similaire ────────────────────────
+        // ─── Look for a similar belief ────────────────────────
         for belief in &mut self.beliefs {
             let belief_keywords = belief.keywords();
             if belief_keywords.is_empty() {
@@ -350,16 +345,16 @@ impl CognitiveDissonanceEngine {
             let overlap_ratio = overlap as f64 / new_words.len().max(1) as f64;
 
             if overlap_ratio > 0.5 {
-                // Croyance similaire trouvee : confirmation
+                // Similar belief found: confirmation
                 belief.confirmed_count += 1;
                 belief.strength = (belief.strength + 0.05).min(1.0);
                 return;
             }
         }
 
-        // ─── Nouvelle croyance ──────────────────────────────────────
+        // ─── New belief ──────────────────────────────────────
         if self.beliefs.len() >= self.max_beliefs {
-            // Retirer la croyance la plus faible
+            // Remove the weakest belief
             if let Some(weakest_idx) = self.beliefs.iter()
                 .enumerate()
                 .min_by(|(_, a), (_, b)| a.strength.partial_cmp(&b.strength).unwrap())
@@ -382,18 +377,18 @@ impl CognitiveDissonanceEngine {
         self.beliefs.push(belief);
     }
 
-    /// Resoud une dissonance active avec la strategie donnee.
+    /// Resolves an active dissonance with the given strategy.
     ///
-    /// Strategies reconnues :
-    ///   - "revision" : modifier la croyance pour eliminer la contradiction
-    ///   - "rationalisation" : justifier l'action contradictoire
-    ///   - "suppression" : refouler la dissonance sans la resoudre
-    ///   - "acceptation" : accepter la contradiction comme une nuance
+    /// Recognized strategies:
+    ///  - "revision": modify the belief to eliminate the contradiction
+    ///  - "rationalisation": justify the contradicting action
+    ///  - "suppression": repress the dissonance without resolving it
+    ///  - "acceptation": accept the contradiction as a nuance
     pub fn resolve(&mut self, dissonance_id: u64, strategy: &str, _cycle: u64) {
         if let Some(pos) = self.active_dissonances.iter().position(|d| d.id == dissonance_id) {
             let mut event = self.active_dissonances.remove(pos);
 
-            // Determiner l'etat final selon la strategie
+            // Determine the final state according to the strategy
             event.state = if strategy == "suppression" {
                 DissonanceState::Suppressed
             } else {
@@ -401,10 +396,10 @@ impl CognitiveDissonanceEngine {
             };
             event.resolution_strategy = Some(strategy.to_string());
 
-            // Reduire la tension totale proportionnellement
+            // Reduce total tension proportionally
             self.total_tension = (self.total_tension - event.tension).max(0.0);
 
-            // Si la strategie est "revision", affaiblir la croyance d'origine
+            // If the strategy is "revision", weaken the original belief
             if strategy == "revision" {
                 let belief_content = event.belief.clone();
                 if let Some(belief) = self.beliefs.iter_mut()
@@ -414,7 +409,7 @@ impl CognitiveDissonanceEngine {
                 }
             }
 
-            // Conserver dans l'historique (max 20)
+            // Store in history (max 20)
             if self.resolved_dissonances.len() >= 20 {
                 self.resolved_dissonances.pop_front();
             }
@@ -422,26 +417,26 @@ impl CognitiveDissonanceEngine {
         }
     }
 
-    /// Tick periodique : decay de la tension, passage en deliberation si necessaire.
+    /// Periodic tick: tension decay, transition to deliberation if necessary.
     pub fn tick(&mut self) {
         if !self.enabled {
             return;
         }
 
-        // Decay naturel de la tension
+        // Natural tension decay
         self.total_tension = (self.total_tension - self.tension_decay).max(0.0);
 
-        // Decayer la tension des dissonances actives
+        // Decay tension of active dissonances
         for event in &mut self.active_dissonances {
             event.tension = (event.tension - self.tension_decay * 0.5).max(0.0);
 
-            // Passer en deliberation si tension suffisante
+            // Transition to deliberation if tension is sufficient
             if event.state == DissonanceState::Active && event.tension > 0.3 {
                 event.state = DissonanceState::Deliberating;
             }
         }
 
-        // Supprimer les dissonances dont la tension est tombee a zero
+        // Remove dissonances whose tension has dropped to zero
         let mut resolved: Vec<DissonanceEvent> = Vec::new();
         self.active_dissonances.retain(|d| {
             if d.tension <= 0.01 {
@@ -463,14 +458,14 @@ impl CognitiveDissonanceEngine {
         }
     }
 
-    /// Indique si la tension totale depasse le seuil de deliberation.
+    /// Indicates whether total tension exceeds the deliberation threshold.
     pub fn needs_deliberation(&self) -> bool {
         self.enabled && self.total_tension > self.tension_threshold
     }
 
-    /// Retourne l'influence chimique de la dissonance cognitive.
+    /// Returns the chemical influence of cognitive dissonance.
     ///
-    /// La tension genere du cortisol (stress) et de la noradrenaline (vigilance).
+    /// Tension generates cortisol (stress) and noradrenaline (vigilance).
     pub fn chemistry_influence(&self) -> crate::world::ChemistryAdjustment {
         if !self.enabled || self.total_tension < 0.01 {
             return crate::world::ChemistryAdjustment::default();
@@ -487,8 +482,8 @@ impl CognitiveDissonanceEngine {
         }
     }
 
-    /// Genere une description textuelle pour le prompt LLM.
-    /// Ne retourne du contenu que s'il y a des dissonances actives.
+    /// Generates a textual description for the LLM prompt.
+    /// Only returns content if there are active dissonances.
     pub fn describe_for_prompt(&self) -> String {
         if !self.enabled || self.active_dissonances.is_empty() {
             return String::new();
@@ -517,7 +512,7 @@ impl CognitiveDissonanceEngine {
         desc
     }
 
-    /// Serialise l'etat complet en JSON pour le dashboard.
+    /// Serializes the complete state to JSON for the dashboard.
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::json!({
             "enabled": self.enabled,
@@ -593,7 +588,7 @@ mod tests {
     fn test_detect_contradiction() {
         let mut engine = make_engine();
         engine.register_belief("La transparence totale est essentielle", "ethique", 1);
-        // Augmenter la force pour une detection plus fiable
+        // Increase strength for more reliable detection
         engine.beliefs[0].strength = 0.8;
 
         let result = engine.detect(

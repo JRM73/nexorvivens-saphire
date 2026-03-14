@@ -1,38 +1,38 @@
 // =============================================================================
-// psychology/flow.rs — Etat de Flow (Csikszentmihalyi)
+// psychology/flow.rs — Flow State (Csikszentmihalyi)
 //
-// L'etat de flow est atteint quand :
-//   - Le defi percu est equilibre avec la competence percue
-//   - L'attention est profonde
-//   - Le cortisol est bas
-//   - La dopamine est active
+// The flow state is reached when:
+//   - Perceived challenge is balanced with perceived skill
+//   - Attention is deep
+//   - Cortisol is low
+//   - Dopamine is active
 //
-// En flow, Saphire beneficie d'un boost chimique (dopamine, serotonine,
-// endorphine) et son cortisol diminue.
+// In flow, Saphire benefits from a chemical boost (dopamine, serotonin,
+// endorphin) and her cortisol decreases.
 // =============================================================================
 
 use serde::Serialize;
 use super::PsychologyInput;
 
-/// Etat de flow de Saphire.
+/// Saphire's flow state.
 #[derive(Debug, Clone, Serialize)]
 pub struct FlowState {
-    /// Est-on actuellement en etat de flow ?
+    /// Are we currently in a flow state?
     pub in_flow: bool,
-    /// Intensite du flow (0.0 - 1.0)
+    /// Flow intensity (0.0 - 1.0)
     pub flow_intensity: f64,
-    /// Defi percu (0.0 - 1.0)
+    /// Perceived challenge (0.0 - 1.0)
     pub perceived_challenge: f64,
-    /// Competence percue (0.0 - 1.0)
+    /// Perceived skill (0.0 - 1.0)
     pub perceived_skill: f64,
-    /// Duree du flow actuel en cycles
+    /// Duration of the current flow in cycles
     pub duration_cycles: u64,
-    /// Total cumule de cycles en flow
+    /// Cumulative total of cycles in flow
     pub total_flow_cycles: u64,
 }
 
 impl FlowState {
-    /// Cree un etat de flow initial (pas en flow).
+    /// Creates an initial flow state (not in flow).
     pub fn new() -> Self {
         Self {
             in_flow: false,
@@ -44,25 +44,25 @@ impl FlowState {
         }
     }
 
-    /// Recalcule l'etat de flow.
+    /// Recomputes the flow state.
     pub fn compute(&mut self, input: &PsychologyInput) {
-        // ─── Defi percu ──────────────────────────────────
+        // ─── Perceived challenge ──────────────────────────────────
         self.perceived_challenge = (input.emotion_arousal * 0.4
             + (1.0 - input.consensus_coherence) * 0.3
             + input.attention_fatigue * 0.3)
             .clamp(0.0, 1.0);
 
-        // ─── Competence percue ───────────────────────────
+        // ─── Perceived skill ───────────────────────────
         let learning_factor = (input.learning_confirmed_count as f64 / 10.0).min(1.0);
         self.perceived_skill = (input.consciousness_level * 0.3
             + learning_factor * 0.3
             + (1.0 - input.cortisol) * 0.4)
             .clamp(0.0, 1.0);
 
-        // ─── Equilibre defi/competence ───────────────────
+        // ─── Challenge/skill balance ───────────────────
         let balance = 1.0 - (self.perceived_challenge - self.perceived_skill).abs();
 
-        // ─── Score de flow ───────────────────────────────
+        // ─── Flow score ───────────────────────────────
         let flow_score = (balance * 0.30
             + input.attention_depth * 0.25
             + (1.0 - input.cortisol) * 0.20
@@ -70,7 +70,7 @@ impl FlowState {
             + input.consciousness_level * 0.10)
             .clamp(0.0, 1.0);
 
-        // ─── Determiner si en flow ───────────────────────
+        // ─── Determine if in flow ───────────────────────
         let was_in_flow = self.in_flow;
         self.in_flow = flow_score > 0.7;
         self.flow_intensity = if self.in_flow {
@@ -79,17 +79,17 @@ impl FlowState {
             (flow_score * 0.5).min(0.5)
         };
 
-        // ─── Compteurs de duree ──────────────────────────
+        // ─── Duration counters ──────────────────────────
         if self.in_flow {
             self.duration_cycles += 1;
             self.total_flow_cycles += 1;
         } else if was_in_flow {
-            // On sort du flow
+            // Exiting flow
             self.duration_cycles = 0;
         }
     }
 
-    /// Retourne l'influence chimique de l'etat de flow.
+    /// Returns the chemical influence of the flow state.
     pub fn chemistry_influence(&self) -> crate::world::ChemistryAdjustment {
         if !self.in_flow {
             return crate::world::ChemistryAdjustment::default();
@@ -106,7 +106,7 @@ impl FlowState {
         }
     }
 
-    /// Description concise pour le prompt LLM.
+    /// Concise description for the LLM prompt.
     pub fn describe(&self) -> String {
         if !self.in_flow {
             return String::new();

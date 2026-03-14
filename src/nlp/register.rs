@@ -1,44 +1,44 @@
 // =============================================================================
-// nlp/register.rs — Detecteur de registre linguistique
+// nlp/register.rs — Linguistic register detector
 //
-// Role : Identifie le registre dominant d'un message (technique, poetique,
-//        emotionnel, philosophique, factuel, familier) pour adapter le ton
-//        de Saphire a son interlocuteur.
+// Role: Identifies the dominant register of a message (technical, poetic,
+//       emotional, philosophical, factual, playful) to adapt Saphire's tone
+//       to its interlocutor.
 //
-// Algorithme :
-//   Meme pattern que IntentClassifier — mots-cles bilingues ponderes.
+// Algorithm:
+//   Same pattern as IntentClassifier — weighted bilingual keywords.
 //   Score = (matches / total_keywords) * base_weight
-//   Retourne le registre dominant + confiance + registre secondaire optionnel.
+//   Returns the dominant register + confidence + optional secondary register.
 //
-// Place dans l'architecture :
-//   Appele par NlpPipeline::analyze() en couche 2, parallele au sentiment
-//   et a l'intention. Le resultat est injecte dans le prompt conversation
+// Place in the architecture:
+//   Called by NlpPipeline::analyze() in layer 2, parallel to sentiment
+//   and intent. The result is injected into the conversation prompt
 //   via profiling/adaptation.rs.
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 
-/// Registre linguistique detecte dans un message.
+/// Linguistic register detected in a message.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Register {
-    /// Vocabulaire technique, acronymes, code, donnees
+    /// Technical vocabulary, acronyms, code, data
     Technical,
-    /// Metaphores, langage figure, images, musicalite
+    /// Metaphors, figurative language, imagery, musicality
     Poetic,
-    /// Expressions d'emotions, intimite, vulnerabilite
+    /// Emotion expressions, intimacy, vulnerability
     Emotional,
-    /// Faits, descriptions neutres, informations
+    /// Facts, neutral descriptions, information
     Factual,
-    /// Questions existentielles, concepts abstraits, philosophie
+    /// Existential questions, abstract concepts, philosophy
     Philosophical,
-    /// Humour, ton leger, familier
+    /// Humor, light tone, casual
     Playful,
-    /// Pas de registre marque
+    /// No marked register
     Neutral,
 }
 
 impl Register {
-    /// Nom lisible pour les logs et le prompt.
+    /// Human-readable name for logs and prompts.
     pub fn as_str(&self) -> &'static str {
         match self {
             Register::Technical => "technique",
@@ -52,14 +52,14 @@ impl Register {
     }
 }
 
-/// Resultat de la detection de registre.
+/// Result of register detection.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RegisterResult {
-    /// Registre dominant detecte
+    /// Detected dominant register
     pub primary: Register,
-    /// Confiance dans la detection [0.0, 1.0]
+    /// Detection confidence [0.0, 1.0]
     pub confidence: f64,
-    /// Registre secondaire (si deux registres sont proches)
+    /// Secondary register (if two registers score closely)
     pub secondary: Option<Register>,
 }
 
@@ -73,9 +73,9 @@ impl Default for RegisterResult {
     }
 }
 
-/// Detecteur de registre linguistique par mots-cles bilingues ponderes.
+/// Linguistic register detector using weighted bilingual keywords.
 pub struct RegisterDetector {
-    /// (Registre, mots-cles, poids de base)
+    /// (Register, keywords, base weight)
     patterns: Vec<(Register, Vec<&'static str>, f64)>,
 }
 
@@ -86,7 +86,7 @@ impl Default for RegisterDetector {
 }
 
 impl RegisterDetector {
-    /// Cree un nouveau detecteur avec les dictionnaires bilingues.
+    /// Creates a new detector with bilingual dictionaries.
     pub fn new() -> Self {
         Self {
             patterns: vec![
@@ -176,13 +176,13 @@ impl RegisterDetector {
         }
     }
 
-    /// Detecte le registre dominant d'un message.
+    /// Detects the dominant register of a message.
     ///
-    /// Parametres :
-    ///   - tokens : mots normalises (minuscules) du message
-    ///   - text : texte brut original (pour les expressions multi-mots)
+    /// Parameters:
+    ///   - tokens: normalized (lowercase) words from the message
+    ///   - text: original raw text (for multi-word expressions)
     ///
-    /// Retour : RegisterResult avec registre primaire, confiance et secondaire optionnel
+    /// Returns: RegisterResult with primary register, confidence, and optional secondary
     pub fn detect(&self, tokens: &[String], text: &str) -> RegisterResult {
         let text_lower = text.to_lowercase();
         let mut scores: Vec<(Register, f64)> = Vec::new();
@@ -191,13 +191,13 @@ impl RegisterDetector {
             let mut matches = 0usize;
 
             for kw in keywords {
-                // Multi-mots : chercher dans le texte brut
+                // Multi-word: search in raw text
                 if kw.contains(' ') {
                     if text_lower.contains(kw) {
                         matches += 1;
                     }
                 } else {
-                    // Mot simple : chercher dans les tokens
+                    // Single word: search in tokens
                     if tokens.iter().any(|t| t == kw) {
                         matches += 1;
                     }
@@ -211,7 +211,7 @@ impl RegisterDetector {
             }
         }
 
-        // Trier par score decroissant
+        // Sort by descending score
         scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
         match scores.len() {
@@ -224,7 +224,7 @@ impl RegisterDetector {
             _ => {
                 let primary_score = scores[0].1;
                 let secondary_score = scores[1].1;
-                // Secondaire si a au moins 60% du score du primaire
+                // Secondary if it has at least 60% of the primary's score
                 let secondary = if secondary_score >= primary_score * 0.6 {
                     Some(scores[1].0.clone())
                 } else {

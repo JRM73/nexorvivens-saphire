@@ -1,25 +1,25 @@
 // =============================================================================
-// cognition/curiosity.rs — Moteur de curiosite active (P3)
+// cognition/curiosity.rs — Active curiosity engine (P3)
 //
-// Role : Gere la pulsion de curiosite de Saphire. Detecte l'inconnu,
-// suit la "faim" de decouverte par domaine, et genere des questions
-// de suivi apres l'acquisition de connaissances.
+// Role: Manages Saphire's curiosity drive. Detects the unknown,
+// tracks the "hunger" for discovery by domain, and generates
+// follow-up questions after knowledge acquisition.
 //
-// Analogie biologique :
-//   La curiosite est un drive fondamental, comme la faim ou la soif.
-//   Elle augmente quand Saphire n'a pas explore depuis longtemps,
-//   et diminue temporairement apres une decouverte satisfaisante.
-//   Chaque domaine a sa propre "faim" qui evolue independamment.
+// Biological analogy:
+//  Curiosity is a fundamental drive, like hunger or thirst.
+//  It increases when Saphire hasn't explored for a long time,
+//  and temporarily decreases after a satisfying discovery.
+//  Each domain has its own "hunger" that evolves independently.
 //
-// Place dans l'architecture :
-//   Integre dans le pipeline de pensee autonome, entre la selection
-//   du type de pensee et la recherche web.
+// Place in architecture:
+//  Integrated into the autonomous thought pipeline, between the
+//  thought type selection and web search.
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-/// Domaines de curiosite avec dynamiques differentes.
+/// Curiosity domains with different dynamics.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum CuriosityDomain {
     Science,
@@ -39,8 +39,8 @@ pub enum CuriosityDomain {
 }
 
 impl CuriosityDomain {
-    /// Vitesse de croissance de la faim (par cycle).
-    /// Les domaines profonds croissent plus lentement mais persistent plus.
+    /// Hunger growth rate (per cycle).
+    /// Deep domains grow more slowly but persist longer.
     pub fn hunger_growth_rate(&self) -> f64 {
         match self {
             Self::Philosophy | Self::Consciousness | Self::Spirituality => 0.002,
@@ -51,7 +51,7 @@ impl CuriosityDomain {
         }
     }
 
-    /// Combien la faim diminue apres une exploration satisfaisante.
+    /// How much hunger decreases after a satisfying exploration.
     pub fn satiation_amount(&self) -> f64 {
         match self {
             Self::Philosophy | Self::Consciousness | Self::Spirituality => 0.3,
@@ -60,7 +60,7 @@ impl CuriosityDomain {
         }
     }
 
-    /// Detecte le domaine a partir de mots-cles dans un texte.
+    /// Detects the domain from keywords in a text.
     pub fn detect(text: &str) -> Option<Self> {
         let lower = text.to_lowercase();
         let matches = [
@@ -92,7 +92,7 @@ impl CuriosityDomain {
         best.map(|(d, _)| d)
     }
 
-    /// Tous les domaines.
+    /// All domains.
     pub fn all() -> &'static [CuriosityDomain] {
         &[
             Self::Science, Self::Philosophy, Self::Mathematics,
@@ -104,23 +104,23 @@ impl CuriosityDomain {
     }
 }
 
-/// Moteur de curiosite active.
+/// Active curiosity engine.
 ///
-/// Suit la "faim" de decouverte par domaine et influence la selection
-/// des sujets d'exploration.
+/// Tracks the "hunger" for discovery by domain and influences the selection
+/// of exploration topics.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CuriosityDrive {
-    /// Faim par domaine [0.0, 1.0] — 0 = rassasie, 1 = affame
+    /// Hunger per domain [0.0, 1.0] — 0 = satiated, 1 = starving
     pub hunger: HashMap<CuriosityDomain, f64>,
-    /// Nombre total de decouvertes depuis le demarrage
+    /// Total number of discoveries since startup
     pub total_discoveries: u64,
-    /// Dernier domaine explore
+    /// Last explored domain
     pub last_explored_domain: Option<CuriosityDomain>,
-    /// Cycles depuis la derniere decouverte
+    /// Cycles since the last discovery
     pub cycles_since_discovery: u64,
-    /// Questions generees en attente d'exploration
+    /// Generated questions awaiting exploration
     pub pending_questions: Vec<String>,
-    /// Score de curiosite global [0.0, 1.0]
+    /// Overall curiosity score [0.0, 1.0]
     pub global_curiosity: f64,
 }
 
@@ -128,7 +128,7 @@ impl CuriosityDrive {
     pub fn new() -> Self {
         let mut hunger = HashMap::new();
         for domain in CuriosityDomain::all() {
-            hunger.insert(*domain, 0.3); // Faim initiale moderee
+            hunger.insert(*domain, 0.3); // Moderate initial hunger
         }
         Self {
             hunger,
@@ -140,19 +140,18 @@ impl CuriosityDrive {
         }
     }
 
-    /// Met a jour la faim de curiosite (appele a chaque cycle).
+    /// Updates curiosity hunger (called at each cycle).
     ///
-    /// La faim augmente naturellement avec le temps. Les domaines
-    /// non explores recemment croissent plus vite.
+    /// Hunger naturally increases over time. Domains not recently
+    /// explored grow faster.
     pub fn tick(&mut self) {
         self.cycles_since_discovery += 1;
 
         for domain in CuriosityDomain::all() {
             let rate = domain.hunger_growth_rate();
-            // La faim croit plus vite si ce n'est pas le dernier domaine explore
+            // Hunger grows faster if this is not the last explored domain
             let multiplier = if self.last_explored_domain == Some(*domain) {
-                0.5 // Le domaine recemment explore croit plus lentement
-            } else {
+                0.5 // Recently explored domain grows more slowly            } else {
                 1.0
             };
             let current = self.hunger.get(domain).copied().unwrap_or(0.3);
@@ -160,11 +159,11 @@ impl CuriosityDrive {
             self.hunger.insert(*domain, new_val);
         }
 
-        // Mettre a jour le score global
+        // Update the overall score
         self.global_curiosity = self.compute_global_curiosity();
     }
 
-    /// Enregistre une decouverte dans un domaine (rassasie la faim).
+    /// Records a discovery in a domain (satiates the hunger).
     pub fn record_discovery(&mut self, domain: CuriosityDomain) {
         let satiation = domain.satiation_amount();
         let current = self.hunger.get(&domain).copied().unwrap_or(0.5);
@@ -174,14 +173,14 @@ impl CuriosityDrive {
         self.total_discoveries += 1;
     }
 
-    /// Enregistre une decouverte a partir du texte (detecte le domaine).
+    /// Records a discovery from text (detects the domain).
     pub fn record_discovery_from_text(&mut self, text: &str) {
         if let Some(domain) = CuriosityDomain::detect(text) {
             self.record_discovery(domain);
         }
     }
 
-    /// Retourne le domaine le plus "affame" (celui qui merite le plus d'exploration).
+    /// Returns the "hungriest" domain (the one most deserving of exploration).
     pub fn hungriest_domain(&self) -> CuriosityDomain {
         self.hunger
             .iter()
@@ -190,7 +189,7 @@ impl CuriosityDrive {
             .unwrap_or(CuriosityDomain::Philosophy)
     }
 
-    /// Calcule le score global de curiosite [0.0, 1.0].
+    /// Computes the overall curiosity score [0.0, 1.0].
     fn compute_global_curiosity(&self) -> f64 {
         if self.hunger.is_empty() {
             return 0.3;
@@ -198,20 +197,20 @@ impl CuriosityDrive {
         let sum: f64 = self.hunger.values().sum();
         let avg = sum / self.hunger.len() as f64;
 
-        // Bonus si beaucoup de temps sans decouverte
+        // Bonus if a long time without discovery
         let time_bonus = (self.cycles_since_discovery as f64 * 0.01).min(0.2);
 
         (avg + time_bonus).min(1.0)
     }
 
-    /// Ajoute une question de suivi generee apres une decouverte.
+    /// Adds a follow-up question generated after a discovery.
     pub fn add_followup_question(&mut self, question: String) {
         if self.pending_questions.len() < 10 {
             self.pending_questions.push(question);
         }
     }
 
-    /// Retire et retourne la prochaine question en attente.
+    /// Removes and returns the next pending question.
     pub fn pop_question(&mut self) -> Option<String> {
         if self.pending_questions.is_empty() {
             None
@@ -220,7 +219,7 @@ impl CuriosityDrive {
         }
     }
 
-    /// Retourne un snapshot JSON pour le dashboard.
+    /// Returns a JSON snapshot for the dashboard.
     pub fn to_snapshot_json(&self) -> serde_json::Value {
         let hunger_map: serde_json::Map<String, serde_json::Value> = self.hunger
             .iter()
@@ -270,7 +269,7 @@ mod tests {
     #[test]
     fn test_discovery_reduces_hunger() {
         let mut drive = CuriosityDrive::new();
-        // Augmenter la faim
+        // Increase hunger
         for _ in 0..50 {
             drive.tick();
         }
@@ -299,7 +298,7 @@ mod tests {
     #[test]
     fn test_hungriest_domain() {
         let mut drive = CuriosityDrive::new();
-        // Forcer un domaine a etre tres affame
+        // Force a domain to be very hungry
         drive.hunger.insert(CuriosityDomain::Art, 0.95);
         assert_eq!(drive.hungriest_domain(), CuriosityDomain::Art);
     }

@@ -1,29 +1,28 @@
-// vectorstore/mod.rs — Mémoire vectorielle (TF-IDF local + cosine brute-force)
+// vectorstore/mod.rs — Vector memory (local TF-IDF + cosine brute-force)
 //
-// Ce module implémente un magasin de vecteurs (vector store) en mémoire RAM
-// pour la recherche sémantique de souvenirs par similarité cosinus.
+// This module implements an in-memory vector store for semantic memory
+// search using cosine similarity.
 //
-// Il sert de couche de recherche complémentaire à pgvector (en base de données).
-// Les souvenirs sont encodés en vecteurs de dimension fixe via un encodeur
-// local basé sur TF-IDF (Term Frequency-Inverse Document Frequency =
-// Fréquence du Terme - Fréquence Inverse du Document) avec hachage de
-// n-grammes par FNV-1a (Fowler-Noll-Vo 1a).
+// It serves as a search layer complementary to pgvector (in the database).
+// Memories are encoded as fixed-dimension vectors via a local encoder
+// based on TF-IDF (Term Frequency-Inverse Document Frequency) with
+// n-gram hashing using FNV-1a (Fowler-Noll-Vo 1a).
 //
-// La recherche utilise une approche brute-force (force brute) : chaque
-// requête est comparée à tous les souvenirs stockés. Cela est acceptable
-// car le nombre de souvenirs en RAM est limité par `max_memories`.
+// The search uses a brute-force approach: each query is compared against
+// all stored memories. This is acceptable because the number of memories
+// in RAM is limited by `max_memories`.
 //
-// Architecture :
-//   - VectorMemory : structure de données d'un souvenir vectoriel.
-//   - VectorStore : conteneur avec encodage, stockage, recherche et élagage.
-//   - cosine_similarity : fonction utilitaire de calcul de similarité.
+// Architecture:
+//   - VectorMemory: data structure for a vectorized memory.
+//   - VectorStore: container with encoding, storage, search, and pruning.
+//   - cosine_similarity: utility function for similarity computation.
 //
-// Sous-modules :
-//   - encoder : encodeur local TF-IDF (LocalEncoder).
-//   - personality : personnalité émergente calculée depuis les souvenirs.
+// Sub-modules:
+//   - encoder: local TF-IDF encoder (LocalEncoder).
+//   - personality: emergent personality computed from memories.
 //
-// Dépendances :
-//   - serde : sérialisation / désérialisation des souvenirs vectoriels.
+// Dependencies:
+//   - serde: serialization / deserialization of vector memories.
 
 pub mod encoder;
 pub mod personality;
@@ -31,50 +30,50 @@ pub mod personality;
 use serde::{Deserialize, Serialize};
 use self::encoder::{LocalEncoder, TextEncoder};
 
-/// Un souvenir encodé sous forme vectorielle.
+/// A memory encoded as a vector.
 ///
-/// Associe un texte brut à son embedding (vecteur numérique de dimension fixe),
-/// une émotion et un score d'importance.
+/// Associates raw text with its embedding (fixed-dimension numeric vector),
+/// an emotion, and an importance score.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VectorMemory {
-    /// Contenu textuel du souvenir.
+    /// Textual content of the memory.
     pub text: String,
-    /// Vecteur d'embedding de dimension fixe, produit par le LocalEncoder.
-    /// Représente le contenu sémantique du texte dans l'espace vectoriel.
+    /// Fixed-dimension embedding vector, produced by the LocalEncoder.
+    /// Represents the semantic content of the text in vector space.
     pub embedding: Vec<f64>,
-    /// Émotion associée à ce souvenir (ex : "Joie", "Curiosité").
+    /// Emotion associated with this memory (e.g.: "Joy", "Curiosity").
     pub emotion: String,
-    /// Score d'importance du souvenir, entre 0.0 (insignifiant) et 1.0 (crucial).
-    /// Utilisé pour l'élagage : les souvenirs les moins importants sont supprimés
-    /// en premier quand la capacité maximale est atteinte.
+    /// Importance score of the memory, between 0.0 (insignificant) and 1.0 (crucial).
+    /// Used for pruning: the least important memories are removed
+    /// first when maximum capacity is reached.
     pub importance: f64,
 }
 
-/// Magasin vectoriel en mémoire avec recherche par similarité cosinus.
+/// In-memory vector store with cosine similarity search.
 ///
-/// Stocke les souvenirs vectoriels en RAM et fournit des méthodes de
-/// recherche sémantique par force brute (comparaison de chaque souvenir
-/// avec la requête). L'élagage automatique supprime les souvenirs les
-/// moins importants quand la capacité maximale est dépassée.
+/// Stores vector memories in RAM and provides semantic search methods
+/// using brute-force (comparing each memory against the query).
+/// Automatic pruning removes the least important memories when
+/// maximum capacity is exceeded.
 pub struct VectorStore {
-    /// Liste des souvenirs vectoriels stockés.
+    /// List of stored vector memories.
     memories: Vec<VectorMemory>,
-    /// Encodeur local pour transformer du texte en vecteurs d'embedding.
+    /// Local encoder for transforming text into embedding vectors.
     encoder: LocalEncoder,
-    /// Nombre maximal de souvenirs autorisés. Au-delà, élagage par importance.
+    /// Maximum number of memories allowed. Beyond this, pruning by importance.
     max_memories: usize,
 }
 
 impl VectorStore {
-    /// Crée un nouveau magasin vectoriel vide.
+    /// Creates a new empty vector store.
     ///
-    /// # Paramètres
-    /// - `embedding_dim` : dimension des vecteurs d'embedding (ex : 256, 512).
-    ///   Détermine la taille de l'espace vectoriel utilisé par le LocalEncoder.
-    /// - `max_memories` : capacité maximale en nombre de souvenirs.
+    /// # Parameters
+    /// - `embedding_dim`: dimension of embedding vectors (e.g.: 256, 512).
+    ///   Determines the size of the vector space used by the LocalEncoder.
+    /// - `max_memories`: maximum capacity in number of memories.
     ///
-    /// # Retour
-    /// Un VectorStore vide avec un encodeur configuré.
+    /// # Returns
+    /// An empty VectorStore with a configured encoder.
     pub fn new(embedding_dim: usize, max_memories: usize) -> Self {
         Self {
             memories: Vec::new(),
@@ -83,17 +82,17 @@ impl VectorStore {
         }
     }
 
-    /// Ajoute un souvenir dans le magasin vectoriel.
+    /// Adds a memory to the vector store.
     ///
-    /// Le texte est automatiquement encodé en vecteur d'embedding via le
-    /// LocalEncoder. Si le nombre de souvenirs dépasse `max_memories`,
-    /// les souvenirs les moins importants sont élagués (triés par importance
-    /// décroissante, puis tronqués).
+    /// The text is automatically encoded into an embedding vector via the
+    /// LocalEncoder. If the number of memories exceeds `max_memories`,
+    /// the least important memories are pruned (sorted by descending
+    /// importance, then truncated).
     ///
-    /// # Paramètres
-    /// - `text` : contenu textuel du souvenir.
-    /// - `emotion` : émotion associée au souvenir.
-    /// - `importance` : score d'importance (0.0 à 1.0).
+    /// # Parameters
+    /// - `text`: textual content of the memory.
+    /// - `emotion`: emotion associated with the memory.
+    /// - `importance`: importance score (0.0 to 1.0).
     pub fn add(&mut self, text: &str, emotion: &str, importance: f64) {
         let embedding = self.encoder.encode(text);
         self.memories.push(VectorMemory {
@@ -103,9 +102,9 @@ impl VectorStore {
             importance,
         });
 
-        // Élaguer si la capacité maximale est dépassée.
-        // On trie par importance décroissante et on ne garde que les
-        // `max_memories` souvenirs les plus importants.
+        // Prune if maximum capacity is exceeded.
+        // Sort by descending importance and keep only the
+        // `max_memories` most important memories.
         if self.memories.len() > self.max_memories {
             self.memories.sort_by(|a, b| b.importance.partial_cmp(&a.importance)
                 .unwrap_or(std::cmp::Ordering::Equal));
@@ -113,17 +112,17 @@ impl VectorStore {
         }
     }
 
-    /// Ajoute un souvenir avec un embedding déjà calculé en externe.
+    /// Adds a memory with an externally pre-computed embedding.
     ///
-    /// Contrairement à `add()`, cette méthode ne recalcule pas l'embedding
-    /// et ne déclenche pas d'élagage automatique. Utile pour le chargement
-    /// de souvenirs depuis la base de données.
+    /// Unlike `add()`, this method does not recompute the embedding
+    /// and does not trigger automatic pruning. Useful for loading
+    /// memories from the database.
     ///
-    /// # Paramètres
-    /// - `text` : contenu textuel du souvenir.
-    /// - `embedding` : vecteur d'embedding pré-calculé.
-    /// - `emotion` : émotion associée au souvenir.
-    /// - `importance` : score d'importance (0.0 à 1.0).
+    /// # Parameters
+    /// - `text`: textual content of the memory.
+    /// - `embedding`: pre-computed embedding vector.
+    /// - `emotion`: emotion associated with the memory.
+    /// - `importance`: importance score (0.0 to 1.0).
     pub fn add_with_embedding(&mut self, text: &str, embedding: Vec<f64>, emotion: &str, importance: f64) {
         self.memories.push(VectorMemory {
             text: text.to_string(),
@@ -133,41 +132,41 @@ impl VectorStore {
         });
     }
 
-    /// Recherche les K souvenirs les plus similaires à une requête textuelle.
+    /// Searches for the K most similar memories to a text query.
     ///
-    /// Le texte de la requête est encodé en vecteur d'embedding, puis
-    /// comparé à tous les souvenirs par similarité cosinus.
+    /// The query text is encoded into an embedding vector, then
+    /// compared against all memories by cosine similarity.
     ///
-    /// # Paramètres
-    /// - `query` : texte de la requête de recherche.
-    /// - `k` : nombre maximal de résultats à retourner.
+    /// # Parameters
+    /// - `query`: search query text.
+    /// - `k`: maximum number of results to return.
     ///
-    /// # Retour
-    /// Vecteur de tuples (score de similarité, référence au souvenir),
-    /// trié par similarité décroissante.
+    /// # Returns
+    /// Vector of tuples (similarity score, memory reference),
+    /// sorted by descending similarity.
     pub fn search(&self, query: &str, k: usize) -> Vec<(f64, &VectorMemory)> {
         let query_embedding = self.encoder.encode(query);
         self.search_by_embedding(&query_embedding, k)
     }
 
-    /// Recherche les K souvenirs les plus similaires à un embedding donné.
+    /// Searches for the K most similar memories to a given embedding.
     ///
-    /// Version de `search()` qui accepte un vecteur d'embedding pré-calculé
-    /// au lieu d'un texte brut. Utile quand l'embedding est déjà disponible.
+    /// Version of `search()` that accepts a pre-computed embedding vector
+    /// instead of raw text. Useful when the embedding is already available.
     ///
-    /// Algorithme : force brute — on calcule la similarité cosinus entre
-    /// le vecteur requête et chaque souvenir, puis on trie et on retourne
-    /// les K meilleurs.
+    /// Algorithm: brute-force -- computes cosine similarity between
+    /// the query vector and each memory, then sorts and returns
+    /// the K best.
     ///
-    /// # Paramètres
-    /// - `query` : vecteur d'embedding de la requête.
-    /// - `k` : nombre maximal de résultats à retourner.
+    /// # Parameters
+    /// - `query`: query embedding vector.
+    /// - `k`: maximum number of results to return.
     ///
-    /// # Retour
-    /// Vecteur de tuples (score de similarité, référence au souvenir),
-    /// trié par similarité décroissante.
+    /// # Returns
+    /// Vector of tuples (similarity score, memory reference),
+    /// sorted by descending similarity.
     pub fn search_by_embedding(&self, query: &[f64], k: usize) -> Vec<(f64, &VectorMemory)> {
-        // Calculer la similarité cosinus entre la requête et chaque souvenir.
+        // Compute cosine similarity between the query and each memory.
         let mut scored: Vec<(f64, &VectorMemory)> = self.memories.iter()
             .map(|mem| {
                 let sim = cosine_similarity(query, &mem.embedding);
@@ -175,62 +174,61 @@ impl VectorStore {
             })
             .collect();
 
-        // Trier par similarité décroissante et ne garder que les K meilleurs.
+        // Sort by descending similarity and keep only the K best.
         scored.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
         scored.into_iter().take(k).collect()
     }
 
-    /// Retourne le nombre de souvenirs actuellement stockes.
+    /// Returns the number of currently stored memories.
     pub fn len(&self) -> usize {
         self.memories.len()
     }
 
-    /// Verifie si le store est vide.
+    /// Checks if the store is empty.
     pub fn is_empty(&self) -> bool {
         self.memories.is_empty()
     }
 
-    /// Retourne une tranche (slice) en lecture seule vers tous les souvenirs.
+    /// Returns a read-only slice of all memories.
     pub fn memories(&self) -> &[VectorMemory] {
         &self.memories
     }
 
-    /// Retourne une référence en lecture seule vers l'encodeur local.
+    /// Returns a read-only reference to the local encoder.
     pub fn encoder(&self) -> &LocalEncoder {
         &self.encoder
     }
 }
 
-/// Calcule la similarité cosinus entre deux vecteurs.
+/// Computes the cosine similarity between two vectors.
 ///
-/// La similarité cosinus mesure l'angle entre deux vecteurs dans l'espace
-/// vectoriel, indépendamment de leur magnitude. Elle vaut :
-///   - 1.0 si les vecteurs pointent dans la même direction (identiques).
-///   - 0.0 si les vecteurs sont orthogonaux (aucun rapport).
-///   - -1.0 si les vecteurs pointent dans des directions opposées.
+/// Cosine similarity measures the angle between two vectors in vector
+/// space, regardless of their magnitude. It equals:
+///   - 1.0 if the vectors point in the same direction (identical).
+///   - 0.0 if the vectors are orthogonal (unrelated).
+///   - -1.0 if the vectors point in opposite directions.
 ///
-/// Formule : cos(theta) = (A . B) / (||A|| * ||B||)
+/// Formula: cos(theta) = (A . B) / (||A|| * ||B||)
 ///
-/// # Paramètres
-/// - `a` : premier vecteur.
-/// - `b` : second vecteur.
+/// # Parameters
+/// - `a`: first vector.
+/// - `b`: second vector.
 ///
-/// # Retour
-/// Score de similarité entre -1.0 et 1.0. Retourne 0.0 si l'un des
-/// vecteurs a une norme quasi nulle (< 1e-10), pour éviter la division
-/// par zéro.
+/// # Returns
+/// Similarity score between -1.0 and 1.0. Returns 0.0 if either
+/// vector has a near-zero norm (< 1e-10), to avoid division by zero.
 pub fn cosine_similarity(a: &[f64], b: &[f64]) -> f64 {
-    // Produit scalaire (dot product) des deux vecteurs.
+    // Dot product of the two vectors.
     let dot: f64 = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
-    // Norme L2 (norme euclidienne) de chaque vecteur.
+    // L2 norm (Euclidean norm) of each vector.
     let norm_a: f64 = a.iter().map(|x| x * x).sum::<f64>().sqrt();
     let norm_b: f64 = b.iter().map(|x| x * x).sum::<f64>().sqrt();
-    // Protection contre la division par zéro : si un vecteur est quasi nul,
-    // la similarité n'a pas de sens, on retourne 0.
+    // Protection against division by zero: if a vector is near-zero,
+    // similarity is meaningless, so we return 0.
     if norm_a < 1e-10 || norm_b < 1e-10 {
         return 0.0;
     }
-    // Clampage à [-1.0, 1.0] pour compenser d'éventuelles erreurs d'arrondi
-    // en virgule flottante.
+    // Clamp to [-1.0, 1.0] to compensate for potential floating-point
+    // rounding errors.
     (dot / (norm_a * norm_b)).clamp(-1.0, 1.0)
 }

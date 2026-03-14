@@ -1,29 +1,29 @@
 // =============================================================================
-// conditions/culture.rs — Culture, societe, croyances
+// conditions/culture.rs — Culture, society, beliefs
 // =============================================================================
 //
-// Role : Definit le cadre culturel : valeurs, normes sociales, croyances,
-//        tabous, style de communication. Influence l'ethique, le langage,
-//        les reactions emotionnelles.
+// Role: Defines the cultural framework: values, social norms, beliefs,
+//       taboos, communication style. Influences ethics, language,
+//       and emotional reactions.
 //
-// Integration :
-//   Fournit un supplement au system prompt LLM pour adapter le ton.
-//   Les tabous filtrent les sujets. Les croyances alimentent l'ethique.
+// Integration:
+//   Provides a supplement to the LLM system prompt to adapt tone.
+//   Taboos filter topics. Beliefs feed into ethics.
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 use crate::world::ChemistryAdjustment;
 
-/// Style de communication.
+/// Communication style.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum CommStyle {
-    /// Parle clairement et directement
+    /// Speaks clearly and directly
     Direct,
-    /// Utilise sous-entendus, formulations indirectes
+    /// Uses hints, indirect phrasing
     Indirect,
-    /// Vouvoiement, respect hierarchique
+    /// Formal address, hierarchical respect
     Formal,
-    /// Tutoiement, decontracte
+    /// Informal address, casual
     Informal,
 }
 
@@ -31,7 +31,7 @@ impl Default for CommStyle {
     fn default() -> Self { Self::Direct }
 }
 
-/// Domaine d'une croyance.
+/// Domain of a belief.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum BeliefDomain {
     Spiritual,
@@ -41,32 +41,32 @@ pub enum BeliefDomain {
     Ethical,
 }
 
-/// Une croyance individuelle.
+/// An individual belief.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Belief {
     pub domain: BeliefDomain,
-    /// Enonce de la croyance
+    /// Statement of the belief
     pub content: String,
-    /// Conviction (0.0 = doute, 1.0 = certitude absolue)
+    /// Conviction (0.0 = doubt, 1.0 = absolute certainty)
     pub conviction: f64,
-    /// A ete remise en question
+    /// Has been questioned
     pub questioned: bool,
 }
 
-/// Cadre culturel complet.
+/// Complete cultural framework.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CulturalFramework {
-    /// Nom du preset culturel
+    /// Cultural preset name
     pub preset_name: String,
-    /// Style de communication
+    /// Communication style
     pub comm_style: CommStyle,
-    /// Sujets tabous (mots-cles qui declenchent un evitement)
+    /// Taboo subjects (keywords that trigger avoidance)
     pub taboos: Vec<String>,
-    /// Croyances
+    /// Beliefs
     pub beliefs: Vec<Belief>,
-    /// Valeurs ordonnees par importance
+    /// Values ordered by importance
     pub values_hierarchy: Vec<String>,
-    /// Permettre l'evolution des croyances avec l'experience
+    /// Allow belief evolution through experience
     pub allow_belief_evolution: bool,
 }
 
@@ -82,7 +82,7 @@ impl CulturalFramework {
         }
     }
 
-    /// Cree un preset occidental laique.
+    /// Creates a Western secular preset.
     pub fn occidental_secular() -> Self {
         let mut f = Self::new("occidental-laique", CommStyle::Direct);
         f.values_hierarchy = vec![
@@ -98,7 +98,7 @@ impl CulturalFramework {
         f
     }
 
-    /// Cree un preset oriental confuceen.
+    /// Creates an East Asian Confucean preset.
     pub fn oriental_confucean() -> Self {
         let mut f = Self::new("oriental-confuceen", CommStyle::Formal);
         f.values_hierarchy = vec![
@@ -114,13 +114,13 @@ impl CulturalFramework {
         f
     }
 
-    /// Verifie si un texte touche un tabou.
+    /// Checks if a text touches a taboo.
     pub fn touches_taboo(&self, text: &str) -> bool {
         let text_lower = text.to_lowercase();
         self.taboos.iter().any(|t| text_lower.contains(&t.to_lowercase()))
     }
 
-    /// Remet en question une croyance si l'experience la contredit.
+    /// Challenges a belief when experience contradicts it.
     pub fn challenge_belief(&mut self, domain: &BeliefDomain) {
         if !self.allow_belief_evolution {
             return;
@@ -133,7 +133,7 @@ impl CulturalFramework {
         }
     }
 
-    /// Supplement au system prompt LLM.
+    /// Supplement for the LLM system prompt.
     pub fn prompt_supplement(&self) -> String {
         let style = match self.comm_style {
             CommStyle::Direct => "Sois direct et clair dans tes reponses.",
@@ -151,7 +151,7 @@ impl CulturalFramework {
         format!("{}{}", style, values)
     }
 
-    /// Impact chimique (les tabous touches causent du stress).
+    /// Chemistry impact (touched taboos cause stress).
     pub fn taboo_chemistry(&self, text: &str) -> ChemistryAdjustment {
         if self.touches_taboo(text) {
             ChemistryAdjustment {
@@ -164,7 +164,7 @@ impl CulturalFramework {
         }
     }
 
-    /// Serialise pour l'API.
+    /// Serializes for the API.
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::json!({
             "preset_name": self.preset_name,

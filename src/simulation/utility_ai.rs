@@ -1,38 +1,38 @@
 // =============================================================================
-// utility_ai.rs — Utility AI conversationnel
+// utility_ai.rs — Conversational Utility AI
 //
-// Role : Evalue dynamiquement 7 modes de conversation et choisit le plus
-//        adapte selon la chimie de Saphire, le contexte et l'historique.
-//        Anti-repetition : -50% si le mode a ete utilise aux 2 derniers tours.
+// Role: Dynamically evaluates 7 conversation modes and chooses the most
+//       suitable one based on Saphire's chemistry, context, and history.
+//       Anti-repetition: -50% if the mode was used in the last 2 turns.
 //
-// Place dans l'architecture :
-//   Appele dans conversation.rs avant la construction du prompt.
-//   Ecrit le mode gagnant dans le Blackboard.
+// Place in the architecture:
+//   Called in conversation.rs before prompt construction.
+//   Writes the winning mode to the Blackboard.
 // =============================================================================
 
 use std::collections::VecDeque;
 
-/// Mode de conversation possible.
+/// Possible conversation mode.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ConversationAction {
-    /// Nom interne du mode
+    /// Internal mode name
     pub name: &'static str,
-    /// Description courte pour le prompt
+    /// Short description for the prompt
     pub description: &'static str,
 }
 
-/// Resultat du scoring Utility AI.
+/// Utility AI scoring result.
 #[derive(Debug, Clone)]
 pub struct UtilityResult {
-    /// Mode gagnant
+    /// Winning mode
     pub best_action: ConversationAction,
-    /// Score du mode gagnant [0.0, 1.0]
+    /// Winning mode score [0.0, 1.0]
     pub best_score: f64,
 }
 
-/// Moteur Utility AI pour la conversation.
+/// Utility AI engine for conversation.
 pub struct UtilityAI {
-    /// Historique des 2 derniers modes utilises
+    /// History of the last 2 modes used
     recent_modes: VecDeque<String>,
 }
 
@@ -49,7 +49,7 @@ impl UtilityAI {
         }
     }
 
-    /// Actions disponibles.
+    /// Available actions.
     fn actions() -> Vec<ConversationAction> {
         vec![
             ConversationAction { name: "factual", description: "Reponds avec des faits precis" },
@@ -62,12 +62,12 @@ impl UtilityAI {
         ]
     }
 
-    /// Evalue les scores de chaque action selon le contexte.
+    /// Evaluates the scores of each action based on context.
     ///
-    /// Parametres chimiques et contextuels :
-    ///   - dopamine, serotonin, cortisol, oxytocin, noradrenaline : [0, 1]
-    ///   - arousal : intensite emotionnelle [0, 1]
-    ///   - human_frustration : frustration de l'interlocuteur [0, 1]
+    /// Chemical and contextual parameters:
+    ///   - dopamine, serotonin, cortisol, oxytocin, noradrenaline: [0, 1]
+    ///   - arousal: emotional intensity [0, 1]
+    ///   - human_frustration: interlocutor frustration [0, 1]
     pub fn score_actions(
         &self,
         dopamine: f64,
@@ -84,37 +84,37 @@ impl UtilityAI {
         for action in actions {
             let raw_score = match action.name {
                 "factual" => {
-                    // Haut si noradrenaline (attention) et pas trop d'emotion
+                    // High if noradrenaline (attention) and not too much emotion
                     0.3 + noradrenaline * 0.4 + (1.0 - arousal) * 0.2
                 }
                 "deepen" => {
-                    // Haut si dopamine (curiosite) et serotonine (calme)
+                    // High if dopamine (curiosity) and serotonin (calm)
                     dopamine * 0.4 + serotonin * 0.3 + 0.1
                 }
                 "question" => {
-                    // Haut si dopamine + noradrenaline (curiosite + attention)
+                    // High if dopamine + noradrenaline (curiosity + attention)
                     dopamine * 0.35 + noradrenaline * 0.35 + 0.1
                 }
                 "comfort" => {
-                    // Haut si cortisol humain ou ocytocine basse
+                    // High if human cortisol or low oxytocin
                     human_frustration * 0.4 + cortisol * 0.2 + (1.0 - oxytocin) * 0.2
                 }
                 "share" => {
-                    // Haut si ocytocine + serotonine (lien + calme)
+                    // High if oxytocin + serotonin (bonding + calm)
                     oxytocin * 0.35 + serotonin * 0.3 + 0.1
                 }
                 "analogy" => {
-                    // Haut si serotonine (calme creatif) + pas trop de stress
+                    // High if serotonin (creative calm) + not too much stress
                     serotonin * 0.4 + (1.0 - cortisol) * 0.3
                 }
                 "emotion" => {
-                    // Haut si arousal eleve et pas utilise recemment
+                    // High if arousal is high and not used recently
                     arousal * 0.4 + oxytocin * 0.2 + 0.1
                 }
                 _ => 0.3,
             };
 
-            // Anti-repetition : -50% si utilise aux 2 derniers tours
+            // Anti-repetition: -50% if used in the last 2 turns
             let penalty = if self.recent_modes.iter().any(|m| m == action.name) {
                 0.5
             } else {
@@ -124,7 +124,7 @@ impl UtilityAI {
             scores.push((action, (raw_score * penalty).clamp(0.0, 1.0)));
         }
 
-        // Trier par score decroissant
+        // Sort by descending score
         scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
         let (best_action, best_score) = scores.into_iter().next()
@@ -133,7 +133,7 @@ impl UtilityAI {
         UtilityResult { best_action, best_score }
     }
 
-    /// Enregistre le mode utilise pour l'anti-repetition.
+    /// Records the used mode for anti-repetition.
     pub fn record_mode(&mut self, mode_name: &str) {
         self.recent_modes.push_back(mode_name.to_string());
         if self.recent_modes.len() > 2 {
@@ -163,15 +163,15 @@ mod tests {
         let r1 = ai.score_actions(0.3, 0.3, 0.5, 0.2, 0.3, 0.3, 0.8);
         ai.record_mode(r1.best_action.name);
         let r2 = ai.score_actions(0.3, 0.3, 0.5, 0.2, 0.3, 0.3, 0.8);
-        // Le meme mode ne devrait pas etre choisi deux fois
+        // The same mode should not be chosen twice
         assert_ne!(r1.best_action.name, r2.best_action.name);
     }
 
     #[test]
     fn test_deepen_when_curious() {
         let ai = UtilityAI::new();
-        // Dopamine haute, serotonine haute, arousal haut (reduit factual),
-        // noradrenaline basse (reduit factual/question)
+        // High dopamine, high serotonin, high arousal (reduces factual),
+        // low noradrenaline (reduces factual/question)
         let result = ai.score_actions(0.9, 0.8, 0.1, 0.3, 0.2, 0.8, 0.0);
         assert_eq!(result.best_action.name, "deepen",
             "Got: {}", result.best_action.name);

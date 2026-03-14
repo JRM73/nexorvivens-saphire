@@ -1,5 +1,5 @@
 // =============================================================================
-// neuroscience/ — Modules neuroscientifiques
+// neuroscience/ — Neuroscience modules
 // =============================================================================
 
 pub mod receptors;

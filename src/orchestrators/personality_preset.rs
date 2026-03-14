@@ -1,23 +1,21 @@
 // =============================================================================
-// orchestrators/personality_preset.rs — Orchestrateur de Presets de Personnalite
+// orchestrators/personality_preset.rs — Personality Preset Orchestrator
 //
-// Role : Charge et applique des archetypes de personnalite (philosophe, artiste,
-// scientifique, empathique, stoique, aventurier, mystique, mentor, rebelle)
-// sous forme de presets TOML embarques. Chaque preset surcharge les baselines
-// chimiques et les parametres des orchestrateurs, et injecte un contexte de
-// personnalite dans le prompt LLM.
+// Role: Loads and applies personality archetypes (philosopher, artist,
+// scientist, empathic, stoic, adventurer, mystic, mentor, rebel) as embedded
+// TOML presets. Each preset overrides chemical baselines and orchestrator
+// parameters, and injects a personality context into the LLM prompt.
 //
-// Difference avec les profils cognitifs : les profils cognitifs simulent des
-// conditions neurologiques (TDAH, autisme, etc.), les presets de personnalite
-// definissent des caracteres/temperaments. Les deux systemes sont orthogonaux
-// et peuvent etre actifs simultanement.
+// Difference from cognitive profiles: cognitive profiles simulate neurological
+// conditions (ADHD, autism, etc.), personality presets define characters/
+// temperaments. The two systems are orthogonal and can be active simultaneously.
 //
-// Pattern identique aux orchestrateurs existants :
-//   - new() : construction depuis la config
-//   - load_preset() : charge un preset par son ID
-//   - tick() : transitions douces (pas de cycle bipolaire)
-//   - describe_for_prompt() : contexte LLM avec prompt_personality
-//   - to_status_json() : etat JSON pour dashboard/API
+// Same pattern as existing orchestrators:
+//   - new(): construction from config
+//   - load_preset(): loads a preset by its ID
+//   - tick(): smooth transitions (no bipolar cycle)
+//   - describe_for_prompt(): LLM context with prompt_personality
+//   - to_status_json(): JSON state for dashboard/API
 // =============================================================================
 
 use std::collections::HashMap;
@@ -25,7 +23,7 @@ use serde::Deserialize;
 
 use crate::neurochemistry::NeuroBaselines;
 
-// ─── Presets embarques via include_str! ──────────────────────────────────────
+// --- Embedded presets via include_str! ----------------------------------------
 
 const EMBEDDED_PRESETS: &[(&str, &str)] = &[
     ("saphire", include_str!("../../personalities/saphire.toml")),
@@ -40,9 +38,9 @@ const EMBEDDED_PRESETS: &[(&str, &str)] = &[
     ("rebelle", include_str!("../../personalities/rebelle.toml")),
 ];
 
-// ─── Structures de deserialization TOML ─────────────────────────────────────
+// --- TOML deserialization structures ------------------------------------------
 
-/// Structure brute d'un fichier preset TOML (deserialization partielle).
+/// Raw structure of a TOML preset file (partial deserialization).
 #[derive(Debug, Deserialize, Default)]
 struct RawPreset {
     #[serde(default)]
@@ -145,12 +143,12 @@ struct RawSleep {
     adrenaline_resistance: Option<f64>,
 }
 
-// ─── Structures publiques ───────────────────────────────────────────────────
+// --- Public structures --------------------------------------------------------
 
-/// Surcharges d'un preset de personnalite — seuls les champs Some() sont appliques.
+/// Personality preset overrides — only Some() fields are applied.
 #[derive(Debug, Clone, Default)]
 pub struct PersonalityOverrides {
-    // Chimie baselines
+    // Chemical baselines
     pub baseline_dopamine: Option<f64>,
     pub baseline_serotonin: Option<f64>,
     pub baseline_noradrenaline: Option<f64>,
@@ -167,33 +165,33 @@ pub struct PersonalityOverrides {
     pub initial_concentration: Option<f64>,
     pub fatigue_per_cycle: Option<f64>,
     pub recovery_per_cycle: Option<f64>,
-    // Desirs
+    // Desires
     pub desires_max_active: Option<usize>,
     pub desires_min_dopamine: Option<f64>,
     pub desires_max_cortisol: Option<f64>,
-    // Apprentissage
+    // Learning
     pub learning_cycle_interval: Option<u64>,
     pub learning_initial_confidence: Option<f64>,
     pub learning_confirmation_boost: Option<f64>,
     pub learning_contradiction_penalty: Option<f64>,
-    // Guerison
+    // Healing
     pub healing_melancholy_threshold: Option<u64>,
     pub healing_loneliness_hours: Option<f64>,
     pub healing_overload_noradrenaline: Option<f64>,
-    // Sommeil
+    // Sleep
     pub sleep_threshold: Option<f64>,
     pub sleep_time_factor_divisor: Option<u64>,
     pub sleep_adrenaline_resistance: Option<f64>,
-    // Poids des pensees
+    // Thought weights
     pub thought_weights: Option<HashMap<String, f64>>,
-    // ─── Specifiques personnalite ───
-    /// Description injectee dans le prompt LLM pour guider le ton et le style
+    // --- Personality-specific ---
+    /// Description injected into the LLM prompt to guide tone and style
     pub prompt_personality: Option<String>,
-    /// Sujets d'interet initiaux (override initial_topics)
+    /// Initial interest topics (overrides initial_topics)
     pub interests: Option<Vec<String>>,
 }
 
-/// Descripteur complet d'un preset de personnalite.
+/// Complete descriptor of a personality preset.
 #[derive(Debug, Clone)]
 pub struct PersonalityDescriptor {
     pub id: String,
@@ -203,41 +201,41 @@ pub struct PersonalityDescriptor {
     pub overrides: PersonalityOverrides,
 }
 
-// ─── Orchestrateur ──────────────────────────────────────────────────────────
+// --- Orchestrator -------------------------------------------------------------
 
-/// Orchestrateur de presets de personnalite (archetypes de caractere).
+/// Personality preset orchestrator (character archetypes).
 ///
-/// Charge des presets TOML, applique les surcharges sur les baselines et
-/// parametres, gere les transitions douces. Pas de cycle bipolaire
-/// (specifique aux profils cognitifs).
+/// Loads TOML presets, applies overrides on baselines and parameters,
+/// manages smooth transitions. No bipolar cycle (specific to cognitive
+/// profiles).
 pub struct PersonalityPresetOrchestrator {
-    /// Preset actuellement actif (None = aucun charge)
+    /// Currently active preset (None = none loaded)
     pub active_preset: Option<PersonalityDescriptor>,
-    /// IDs des presets disponibles
+    /// IDs of available presets
     pub available_presets: Vec<String>,
-    /// Transition en cours entre deux presets
+    /// Transition in progress between two presets
     pub transition_in_progress: bool,
-    /// Progression de la transition (0.0 → 1.0)
+    /// Transition progression (0.0 -> 1.0)
     pub transition_progress: f64,
-    /// Baselines cibles de la transition
+    /// Target baselines for the transition
     transition_target_baselines: Option<[f64; 7]>,
-    /// Baselines de depart de la transition
+    /// Source baselines for the transition
     transition_source_baselines: Option<[f64; 7]>,
-    /// Nombre total de cycles pour la transition
+    /// Total number of cycles for the transition
     transition_total_cycles: u64,
-    /// Cycles ecoules dans la transition
+    /// Elapsed cycles in the transition
     transition_elapsed_cycles: u64,
     // Config
-    /// Module active ou non
+    /// Module enabled or not
     pub enabled: bool,
-    /// Dossier des presets custom
+    /// Custom presets directory
     pub personalities_dir: String,
-    /// Nombre de cycles pour une transition douce
+    /// Number of cycles for a smooth transition
     pub transition_cycles: u64,
 }
 
 impl PersonalityPresetOrchestrator {
-    /// Cree un nouvel orchestrateur de presets de personnalite.
+    /// Creates a new personality preset orchestrator.
     pub fn new(enabled: bool, active: &str, personalities_dir: &str, transition_cycles: u64) -> Self {
         let available = EMBEDDED_PRESETS.iter()
             .map(|(id, _)| id.to_string())
@@ -257,7 +255,7 @@ impl PersonalityPresetOrchestrator {
             transition_cycles,
         };
 
-        // Charger le preset initial
+        // Load the initial preset
         if enabled && active != "saphire" {
             if let Ok(preset) = orch.parse_preset(active) {
                 orch.active_preset = Some(preset);
@@ -272,14 +270,14 @@ impl PersonalityPresetOrchestrator {
         orch
     }
 
-    /// Parse un preset embarque par son ID.
+    /// Parses an embedded preset by its ID.
     fn parse_preset(&self, id: &str) -> Result<PersonalityDescriptor, String> {
-        // Chercher dans les presets embarques
+        // Search in embedded presets
         let toml_str = EMBEDDED_PRESETS.iter()
             .find(|(eid, _)| *eid == id)
             .map(|(_, content)| *content);
 
-        // Si pas embarque, tenter le filesystem
+        // If not embedded, try the filesystem
         let toml_content = if let Some(content) = toml_str {
             content.to_string()
         } else {
@@ -302,7 +300,7 @@ impl PersonalityPresetOrchestrator {
         })
     }
 
-    /// Convertit les donnees brutes TOML en PersonalityOverrides.
+    /// Converts raw TOML data to PersonalityOverrides.
     fn raw_to_overrides(raw: &RawPreset) -> PersonalityOverrides {
         PersonalityOverrides {
             baseline_dopamine: raw.personality.baseline_dopamine,
@@ -332,7 +330,7 @@ impl PersonalityPresetOrchestrator {
             sleep_time_factor_divisor: raw.sleep.time_factor_divisor,
             sleep_adrenaline_resistance: raw.sleep.adrenaline_resistance,
             thought_weights: raw.thought_weights.clone(),
-            // Champs specifiques personnalite
+            // Personality-specific fields
             prompt_personality: raw.profile.prompt_personality.clone()
                 .filter(|s| !s.is_empty()),
             interests: raw.interests.as_ref()
@@ -341,7 +339,7 @@ impl PersonalityPresetOrchestrator {
         }
     }
 
-    /// Charge un preset par son ID. Retourne le descripteur ou une erreur.
+    /// Loads a preset by its ID. Returns the descriptor or an error.
     pub fn load_preset(&mut self, id: &str) -> Result<PersonalityDescriptor, String> {
         let preset = self.parse_preset(id)?;
         self.active_preset = Some(preset.clone());
@@ -349,8 +347,8 @@ impl PersonalityPresetOrchestrator {
         Ok(preset)
     }
 
-    /// Demarre une transition douce vers les baselines cibles.
-    /// Les baselines actuelles convergent vers les cibles sur N cycles.
+    /// Starts a smooth transition toward target baselines.
+    /// Current baselines converge toward targets over N cycles.
     pub fn start_transition(&mut self, current_baselines: &NeuroBaselines, target: &PersonalityOverrides) {
         let source = [
             current_baselines.dopamine,
@@ -380,14 +378,14 @@ impl PersonalityPresetOrchestrator {
         self.transition_progress = 0.0;
     }
 
-    /// Tick : avance les transitions douces.
-    /// Appelee chaque cycle dans phase_orchestrators().
+    /// Tick: advances smooth transitions.
+    /// Called each cycle in phase_orchestrators().
     pub fn tick(&mut self, baselines: &mut NeuroBaselines) {
         if !self.enabled {
             return;
         }
 
-        // Transition douce en cours
+        // Smooth transition in progress
         if self.transition_in_progress {
             self.transition_elapsed_cycles += 1;
             let t = (self.transition_elapsed_cycles as f64) / (self.transition_total_cycles as f64);
@@ -414,15 +412,15 @@ impl PersonalityPresetOrchestrator {
         }
     }
 
-    /// Genere le contexte pour le prompt LLM.
-    /// Utilise prompt_personality du preset pour guider le ton.
+    /// Generates context for the LLM prompt.
+    /// Uses the preset's prompt_personality to guide tone.
     pub fn describe_for_prompt(&self) -> String {
         let preset = match &self.active_preset {
             Some(p) => p,
             None => return String::new(),
         };
 
-        // Utiliser le prompt_personality s'il existe, sinon la description
+        // Use prompt_personality if it exists, otherwise the description
         let personality_text = preset.overrides.prompt_personality.as_deref()
             .unwrap_or(&preset.description);
 
@@ -441,7 +439,7 @@ impl PersonalityPresetOrchestrator {
         desc
     }
 
-    /// Retourne l'etat JSON pour le dashboard et l'API.
+    /// Returns the JSON state for the dashboard and API.
     pub fn to_status_json(&self) -> serde_json::Value {
         let preset_json = self.active_preset.as_ref().map(|p| {
             serde_json::json!({
@@ -467,7 +465,7 @@ impl PersonalityPresetOrchestrator {
         })
     }
 
-    /// Liste les presets disponibles avec leurs metadonnees.
+    /// Lists available presets with their metadata.
     pub fn list_presets(&self) -> Vec<serde_json::Value> {
         EMBEDDED_PRESETS.iter()
             .filter_map(|(id, content)| {
@@ -484,7 +482,7 @@ impl PersonalityPresetOrchestrator {
             .collect()
     }
 
-    /// Compare deux presets et retourne les differences.
+    /// Compares two presets and returns the differences.
     pub fn compare_presets(&self, id_a: &str, id_b: &str) -> Result<serde_json::Value, String> {
         let preset_a = self.parse_preset(id_a)?;
         let preset_b = self.parse_preset(id_b)?;
@@ -563,7 +561,7 @@ impl PersonalityPresetOrchestrator {
         cmp_u64!(sleep_time_factor_divisor, "sleep_time_factor_divisor");
         cmp_f64!(sleep_adrenaline_resistance, "sleep_adrenaline_resistance");
 
-        // Comparer prompt_personality
+        // Compare prompt_personality
         if ov_a.prompt_personality != ov_b.prompt_personality {
             diffs.push(serde_json::json!({
                 "param": "prompt_personality",
@@ -572,7 +570,7 @@ impl PersonalityPresetOrchestrator {
             }));
         }
 
-        // Comparer interests
+        // Compare interests
         if ov_a.interests != ov_b.interests {
             diffs.push(serde_json::json!({
                 "param": "interests",

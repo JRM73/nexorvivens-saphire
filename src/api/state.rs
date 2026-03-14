@@ -1,9 +1,9 @@
 // =============================================================================
-// api/state.rs — Etat partage de l'application et messages de controle
+// api/state.rs — Shared application state and control messages
 //
-// Role : Definit AppState (etat partage entre handlers HTTP/WebSocket et la
-// boucle principale) et ControlMessage (commandes de pilotage envoyees
-// depuis l'interface web vers la boucle de vie).
+// Role: Defines AppState (shared state between HTTP/WebSocket handlers and the
+// main loop) and ControlMessage (control commands sent from the web
+// interface to the life loop).
 // =============================================================================
 
 use std::sync::Arc;
@@ -15,69 +15,69 @@ use crate::agent::lifecycle::{SharedState, UserMessage};
 use crate::logging::SaphireLogger;
 use crate::logging::db::LogsDb;
 
-/// Messages de controle envoyes depuis l'interface web vers la boucle principale.
-/// Chaque variante correspond a une action de configuration ou de pilotage
-/// que l'operateur peut declencher via l'IU (Interface Utilisateur) web.
+/// Control messages sent from the web interface to the main loop.
+/// Each variant corresponds to a configuration or control action
+/// that the operator can trigger via the web UI (User Interface).
 #[derive(Debug)]
 pub enum ControlMessage {
-    /// Definir la valeur de base d'une molecule (ex: dopamine, cortisol).
-    /// `molecule` : nom du neurotransmetteur, `value` : nouvelle valeur de reference.
+    /// Set the baseline value of a molecule (e.g.: dopamine, cortisol).
+    /// `molecule`: neurotransmitter name, `value`: new reference value.
     SetBaseline { molecule: String, value: f64 },
-    /// Modifier le poids d'un module cerebral (reptilien, limbique, neocortex).
-    /// `module` : nom du module, `value` : nouveau poids.
+    /// Modify the weight of a brain module (reptilian, limbic, neocortex).
+    /// `module`: module name, `value`: new weight.
     SetModuleWeight { module: String, value: f64 },
-    /// Ajuster un seuil de decision (oui/non).
-    /// `which` : identifiant du seuil, `value` : nouvelle valeur.
+    /// Adjust a decision threshold (yes/no).
+    /// `which`: threshold identifier, `value`: new value.
     SetThreshold { which: String, value: f64 },
-    /// Modifier un parametre general (temperature, intervalle de pensee, etc.).
-    /// `param` : nom du parametre, `value` : nouvelle valeur.
+    /// Modify a general parameter (temperature, thought interval, etc.).
+    /// `param`: parameter name, `value`: new value.
     SetParam { param: String, value: f64 },
-    /// Stabilisation d'urgence : remet toute la neurochimie aux valeurs de base.
+    /// Emergency stabilization: resets all neurochemistry to baseline values.
     EmergencyStabilize,
-    /// Suggerer un sujet de reflexion a l'agent.
-    /// `topic` : le sujet propose.
+    /// Suggest a topic for the agent to reflect on.
+    /// `topic`: the proposed topic.
     SuggestTopic { topic: String },
-    /// Reset aux valeurs d'usine.
-    /// `level` : niveau de reset (ChemistryOnly, ParametersOnly, FullReset)
+    /// Reset to factory defaults.
+    /// `level`: reset level (ChemistryOnly, ParametersOnly, FullReset)
     FactoryReset { level: crate::factory::ResetLevel },
-    /// Demander la configuration actuelle. La reponse est envoyee via le canal oneshot.
-    /// `response_tx` : canal de reponse unique pour renvoyer le JSON de configuration.
+    /// Request the current configuration. The response is sent via a oneshot channel.
+    /// `response_tx`: one-time response channel to send back the configuration JSON.
     GetConfig { response_tx: tokio::sync::oneshot::Sender<serde_json::Value> },
-    /// Demander l'etat neurochimique actuel. La reponse est envoyee via le canal oneshot.
-    /// `response_tx` : canal de reponse unique pour renvoyer le JSON de la chimie.
+    /// Request the current neurochemical state. The response is sent via a oneshot channel.
+    /// `response_tx`: one-time response channel to send back the chemistry JSON.
     GetChemistry { response_tx: tokio::sync::oneshot::Sender<serde_json::Value> },
 }
 
-/// Etat partage de l'application, accessible par le serveur web et la boucle principale.
-/// Ce struct est clone et partage entre les handlers HTTP/WebSocket et le coeur de l'agent.
+/// Shared application state, accessible by the web server and the main loop.
+/// This struct is cloned and shared between HTTP/WebSocket handlers and the agent's core.
 #[derive(Clone)]
 pub struct AppState {
-    /// Emetteur broadcast pour diffuser des messages JSON aux clients WebSocket.
+    /// Broadcast sender to distribute JSON messages to WebSocket clients.
     pub ws_tx: Arc<broadcast::Sender<String>>,
-    /// Canal d'envoi des messages utilisateur (chat) vers la boucle principale.
+    /// Channel for sending user messages (chat) to the main loop.
     pub user_tx: mpsc::Sender<UserMessage>,
-    /// Canal d'envoi des messages de controle (configuration) vers la boucle principale.
+    /// Channel for sending control messages (configuration) to the main loop.
     pub ctrl_tx: mpsc::Sender<ControlMessage>,
-    /// Drapeau atomique d'arret : quand il passe a true, la boucle s'arrete.
+    /// Atomic shutdown flag: when set to true, the loop stops.
     pub shutdown: Arc<AtomicBool>,
-    /// Reference partagee vers l'agent (protegee par un Mutex asynchrone).
+    /// Shared reference to the agent (protected by an async Mutex).
     pub agent: Arc<Mutex<SaphireAgent>>,
-    /// Broadcast channel dedie au dashboard (separe du WS principal).
+    /// Dedicated broadcast channel for the dashboard (separate from main WS).
     pub dashboard_tx: Arc<broadcast::Sender<String>>,
-    /// Logger centralise partage.
+    /// Shared centralized logger.
     pub logger: Option<Arc<Mutex<SaphireLogger>>>,
-    /// Base de donnees de logs (optionnelle).
+    /// Logs database (optional).
     pub logs_db: Option<Arc<LogsDb>>,
-    /// Cle API pour l'authentification (None = pas d'auth)
+    /// API key for authentication (None = no auth)
     pub api_key: Option<String>,
-    /// Origines autorisees pour CORS et WebSocket
+    /// Allowed origins for CORS and WebSocket
     pub allowed_origins: Vec<String>,
-    /// Rate limiter par IP
+    /// Per-IP rate limiter
     pub rate_limiter: Arc<crate::api::middleware::RateLimiter>,
 }
 
-// Conversion de AppState vers SharedState pour compatibilite avec le module lifecycle.
-// SharedState est une version reduite qui ne contient que les canaux essentiels.
+// Conversion from AppState to SharedState for compatibility with the lifecycle module.
+// SharedState is a reduced version containing only the essential channels.
 impl From<AppState> for SharedState {
     fn from(s: AppState) -> Self {
         SharedState {

@@ -1,8 +1,8 @@
 // =============================================================================
-// api/sleep.rs — Endpoints REST pour le systeme de sommeil
+// api/sleep.rs — REST endpoints for the sleep system
 //
-// Role : Expose 5 endpoints pour consulter et controler le sommeil de Saphire.
-// Pattern identique a api/nn_learnings.rs (State<AppState>, agent.lock().await).
+// Role: Exposes 5 endpoints to query and control Saphire's sleep.
+// Same pattern as api/nn_learnings.rs (State<AppState>, agent.lock().await).
 // =============================================================================
 
 use axum::extract::State;
@@ -10,7 +10,7 @@ use axum::response::IntoResponse;
 
 use super::state::AppState;
 
-/// GET /api/sleep/status — Etat complet du sommeil.
+/// GET /api/sleep/status — Complete sleep state.
 pub async fn api_sleep_status(
     State(state): State<AppState>,
 ) -> impl IntoResponse {
@@ -18,7 +18,7 @@ pub async fn api_sleep_status(
     axum::Json(agent.sleep.to_status_json())
 }
 
-/// GET /api/sleep/history — Historique des sommeils.
+/// GET /api/sleep/history — Sleep history.
 pub async fn api_sleep_history(
     State(state): State<AppState>,
 ) -> impl IntoResponse {
@@ -26,7 +26,7 @@ pub async fn api_sleep_history(
     axum::Json(agent.sleep.to_history_json())
 }
 
-/// GET /api/sleep/drive — Etat de la pression de sommeil.
+/// GET /api/sleep/drive — Sleep pressure state.
 pub async fn api_sleep_drive(
     State(state): State<AppState>,
 ) -> impl IntoResponse {
@@ -34,8 +34,8 @@ pub async fn api_sleep_drive(
     axum::Json(agent.sleep.to_drive_json())
 }
 
-/// POST /api/sleep/force — Forcer l'endormissement.
-/// Initie le sommeil sans passer par le broadcast async (sera fait au prochain tick).
+/// POST /api/sleep/force — Force sleep onset.
+/// Initiates sleep without going through the async broadcast (will be done on next tick).
 pub async fn api_sleep_force(
     State(state): State<AppState>,
 ) -> impl IntoResponse {
@@ -46,7 +46,7 @@ pub async fn api_sleep_force(
             "reason": "Saphire dort deja",
         }));
     }
-    // Initier le sommeil de maniere synchrone (le broadcast sera fait au prochain tick)
+    // Initiate sleep synchronously (the broadcast will be done on next tick)
     agent.sleep.initiate();
     agent.dream_orch.current_phase = crate::orchestrators::dreams::SleepPhase::Hypnagogic;
     axum::Json(serde_json::json!({
@@ -56,7 +56,7 @@ pub async fn api_sleep_force(
     }))
 }
 
-/// POST /api/sleep/wake — Forcer le reveil.
+/// POST /api/sleep/wake — Force waking.
 pub async fn api_sleep_wake(
     State(state): State<AppState>,
 ) -> impl IntoResponse {

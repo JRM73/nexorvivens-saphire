@@ -1,7 +1,7 @@
 // =============================================================================
-// catalog.rs — Catalogue des fiches d'algorithmes (le Vidal de Saphire)
+// catalog.rs — Catalog of algorithm sheets (le Vidal de Saphire)
 //
-// Chaque algorithme est decrit en langage naturel pour que le LLM puisse
+// Chaque algorithme est decrit in natural language for que the LLM puisse
 // le comprendre et decider de l'utiliser. Les fiches contiennent :
 // - Ce que l'algorithme fait
 // - Quand l'utiliser
@@ -10,12 +10,11 @@
 
 use super::orchestrator::{AlgorithmCard, AlgorithmCategory};
 
-/// Construit le catalogue complet des fiches d'algorithmes.
-/// Chaque fiche est redigee en langage naturel pour le LLM.
+/// Builds the catalog complete des fiches d'algorithmes.
+/// Chaque fiche est redigee in natural language for the LLM.
 pub fn build_algorithm_catalog() -> Vec<AlgorithmCard> {
     vec![
         // ═══ CLUSTERING — Regrouper des choses similaires ═══
-
         AlgorithmCard {
             id: "kmeans".into(),
             name: "K-Means".into(),
@@ -60,7 +59,6 @@ pub fn build_algorithm_catalog() -> Vec<AlgorithmCard> {
         },
 
         // ═══ CLASSIFICATION — Categoriser des choses ═══
-
         AlgorithmCard {
             id: "naive_bayes".into(),
             name: "Naive Bayes".into(),
@@ -123,8 +121,7 @@ pub fn build_algorithm_catalog() -> Vec<AlgorithmCard> {
             ..Default::default()
         },
 
-        // ═══ ANOMALY DETECTION — Detecter des choses anormales ═══
-
+        // ═══ ANOMALY DETECTION — Detect des choses anormales ═══
         AlgorithmCard {
             id: "isolation_forest".into(),
             name: "Detection d'Anomalies".into(),
@@ -146,8 +143,7 @@ pub fn build_algorithm_catalog() -> Vec<AlgorithmCard> {
             ..Default::default()
         },
 
-        // ═══ DIMENSION REDUCTION — Simplifier des donnees complexes ═══
-
+        // ═══ DIMENSION REDUCTION — Simplifier of the data complexes ═══
         AlgorithmCard {
             id: "pca".into(),
             name: "PCA (Analyse en Composantes Principales)".into(),
@@ -169,7 +165,6 @@ pub fn build_algorithm_catalog() -> Vec<AlgorithmCard> {
         },
 
         // ═══ PATTERN RECOGNITION — Trouver des patterns caches ═══
-
         AlgorithmCard {
             id: "association_rules".into(),
             name: "Regles d'Association".into(),
@@ -193,7 +188,6 @@ pub fn build_algorithm_catalog() -> Vec<AlgorithmCard> {
         },
 
         // ═══ TIME SERIES — Analyser des sequences temporelles ═══
-
         AlgorithmCard {
             id: "exponential_smoothing".into(),
             name: "Lissage Exponentiel".into(),
@@ -235,7 +229,6 @@ pub fn build_algorithm_catalog() -> Vec<AlgorithmCard> {
         },
 
         // ═══ EXPLORATION — Explorer intelligemment ═══
-
         AlgorithmCard {
             id: "ucb1".into(),
             name: "UCB1 (Upper Confidence Bound)".into(),
@@ -257,7 +250,6 @@ pub fn build_algorithm_catalog() -> Vec<AlgorithmCard> {
         },
 
         // ═══ REINFORCEMENT — Apprendre par essai/erreur ═══
-
         AlgorithmCard {
             id: "q_learning".into(),
             name: "Q-Learning (simplifie)".into(),

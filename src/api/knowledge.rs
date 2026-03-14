@@ -1,7 +1,7 @@
 // =============================================================================
 // api/knowledge.rs — Handlers sources et statistiques de connaissances
 //
-// Role : Endpoints pour les sources de connaissance configurees
+// Role: Endpoints for the sources de connaissance configurees
 // et les statistiques detaillees d'acquisition.
 // =============================================================================
 

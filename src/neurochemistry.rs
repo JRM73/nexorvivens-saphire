@@ -1,61 +1,61 @@
 // =============================================================================
-// neurochemistry.rs — Les 7 neurotransmetteurs de Saphire
+// neurochemistry.rs — Saphire's 9 neurotransmitters
 // =============================================================================
 //
-// Rôle : Ce fichier modélise l'état neurochimique interne de Saphire sous
-// forme de 7 molécules normalisées entre 0.0 et 1.0. Chaque molécule
-// influence le comportement décisionnel, émotionnel et conscient de l'IA.
+// Role: This file models Saphire's internal neurochemical state as
+// 9 molecules normalized between 0.0 and 1.0. Each molecule influences
+// the decisional, emotional and conscious behavior of the AI.
 //
-// Dépendances :
-//   - serde : sérialisation / désérialisation (sauvegarde d'état)
-//   - crate::world::ChemistryAdjustment : ajustements externes (météo, etc.)
+// Dependencies:
+//   - serde : serialization / deserialization (state persistence)
+//   - crate::world::ChemistryAdjustment : external adjustments (weather, etc.)
 //
-// Place dans l'architecture :
-//   Ce module est la couche biochimique fondamentale. Il est lu par :
-//     - emotions.rs (calcul de l'émotion dominante via similarité cosinus)
-//     - consensus.rs (pondération dynamique des 3 modules cérébraux)
-//     - consciousness.rs (évaluation du niveau de conscience)
-//     - les 3 modules cérébraux (reptilien, limbique, néocortex)
+// Place in architecture:
+//   This module is the fundamental biochemical layer. It is read by:
+//   - emotions.rs (dominant emotion computation via cosine similarity)
+//   - consensus.rs (dynamic weighting of the 3 brain modules)
+//   - consciousness.rs (consciousness level evaluation)
+//   - the 3 brain modules (reptilian, limbic, neocortex)
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 
-/// État neurochimique de Saphire — 7 molécules entre 0.0 et 1.0.
+/// Saphire's neurochemical state — 9 molecules between 0.0 and 1.0.
 ///
-/// Chaque champ représente la concentration normalisée d'un neurotransmetteur
-/// simulé. L'ensemble forme un vecteur à 7 dimensions qui détermine
-/// l'état émotionnel et décisionnel de Saphire.
+/// Each field represents the normalized concentration of a simulated
+/// neurotransmitter. Together they form a multi-dimensional vector that
+/// determines Saphire's emotional and decisional state.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NeuroChemicalState {
-    /// Dopamine : motivation, plaisir, circuit de récompense.
-    /// Élevée = forte envie d'agir ; basse = apathie.
+    /// Dopamine: motivation, pleasure, reward circuit.
+    /// High = strong drive to act; low = apathy.
     pub dopamine: f64,
-    /// Cortisol : hormone du stress et de l'anxiété.
-    /// Élevé = état de stress ; bas = calme.
+    /// Cortisol: stress and anxiety hormone.
+    /// High = stressed state; low = calm.
     pub cortisol: f64,
-    /// Sérotonine : bien-être, stabilité émotionnelle.
-    /// Élevée = sérénité ; basse = instabilité de l'humeur.
+    /// Serotonin: well-being, emotional stability.
+    /// High = serenity; low = mood instability.
     pub serotonin: f64,
-    /// Adrénaline : urgence, réaction de combat ou fuite (fight-or-flight).
-    /// Élevée = mode survie ; basse = absence de pression.
+    /// Adrenaline: urgency, fight-or-flight response.
+    /// High = survival mode; low = no pressure.
     pub adrenaline: f64,
-    /// Ocytocine : attachement, empathie, lien social.
-    /// Élevée = besoin de connexion ; basse = détachement.
+    /// Oxytocin: attachment, empathy, social bonding.
+    /// High = need for connection; low = detachment.
     pub oxytocin: f64,
-    /// Endorphine : résilience, apaisement, gestion de la douleur.
-    /// Élevée = capacité à encaisser le stress ; basse = vulnérabilité.
+    /// Endorphin: resilience, soothing, pain management.
+    /// High = ability to absorb stress; low = vulnerability.
     pub endorphin: f64,
-    /// Noradrénaline : attention, focus, vigilance.
-    /// Élevée = concentration accrue ; basse = distraction.
+    /// Noradrenaline: attention, focus, vigilance.
+    /// High = heightened concentration; low = distraction.
     pub noradrenaline: f64,
-    /// GABA : principal neurotransmetteur inhibiteur.
-    /// Eleve = calme, anxiolyse ; bas = hyperexcitabilite, anxiete.
-    /// Module tous les autres systemes via inhibition tonique.
+    /// GABA: main inhibitory neurotransmitter.
+    /// High = calm, anxiolysis; low = hyperexcitability, anxiety.
+    /// Modulates all other systems via tonic inhibition.
     #[serde(default = "default_gaba")]
     pub gaba: f64,
-    /// Glutamate : principal neurotransmetteur excitateur.
-    /// Eleve = arousal, plasticite synaptique ; exces = excitotoxicite.
-    /// Equilibre fondamental avec le GABA (ratio E/I).
+    /// Glutamate: main excitatory neurotransmitter.
+    /// High = arousal, synaptic plasticity; excess = excitotoxicity.
+    /// Fundamental balance with GABA (E/I ratio).
     #[serde(default = "default_glutamate")]
     pub glutamate: f64,
 }
@@ -63,31 +63,31 @@ pub struct NeuroChemicalState {
 fn default_gaba() -> f64 { 0.5 }
 fn default_glutamate() -> f64 { 0.45 }
 
-/// Baselines configurables pour l'homéostasie.
+/// Configurable baselines for homeostasis.
 ///
-/// Chaque champ définit la valeur d'équilibre vers laquelle la molécule
-/// correspondante tend naturellement avec le temps. L'homéostasie ramène
-/// progressivement l'état chimique vers ces valeurs de référence.
+/// Each field defines the equilibrium value that the corresponding molecule
+/// naturally tends toward over time. Homeostasis progressively brings
+/// the chemical state back toward these reference values.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NeuroBaselines {
-    /// Baseline de dopamine (valeur par défaut : 0.5)
+    /// Dopamine baseline (default: 0.5)
     pub dopamine: f64,
-    /// Baseline de cortisol (valeur par défaut : 0.3 — stress léger de fond)
+    /// Cortisol baseline (default: 0.3 — light background stress)
     pub cortisol: f64,
-    /// Baseline de sérotonine (valeur par défaut : 0.6 — bien-être de base)
+    /// Serotonin baseline (default: 0.6 — baseline well-being)
     pub serotonin: f64,
-    /// Baseline d'adrénaline (valeur par défaut : 0.2 — faible pression)
+    /// Adrenaline baseline (default: 0.2 — low pressure)
     pub adrenaline: f64,
-    /// Baseline d'ocytocine (valeur par défaut : 0.4)
+    /// Oxytocin baseline (default: 0.4)
     pub oxytocin: f64,
-    /// Baseline d'endorphine (valeur par défaut : 0.4)
+    /// Endorphin baseline (default: 0.4)
     pub endorphin: f64,
-    /// Baseline de noradrénaline (valeur par défaut : 0.5)
+    /// Noradrenaline baseline (default: 0.5)
     pub noradrenaline: f64,
-    /// Baseline de GABA (valeur par defaut : 0.5 — equilibre inhibiteur)
+    /// GABA baseline (default: 0.5 — inhibitory balance)
     #[serde(default = "default_gaba_baseline")]
     pub gaba: f64,
-    /// Baseline de glutamate (valeur par defaut : 0.45 — equilibre excitateur)
+    /// Glutamate baseline (default: 0.45 — excitatory balance)
     #[serde(default = "default_glutamate_baseline")]
     pub glutamate: f64,
 }
@@ -96,8 +96,8 @@ fn default_gaba_baseline() -> f64 { 0.5 }
 fn default_glutamate_baseline() -> f64 { 0.45 }
 
 impl Default for NeuroBaselines {
-    /// Valeurs par defaut des baselines — calibrees pour un etat neutre
-    /// equilibre (cortisol 0.30 permet tristesse/anxiete, serotonine neutre).
+    /// Default baseline values — calibrated for a balanced neutral state
+    /// (cortisol 0.30 allows sadness/anxiety, neutral serotonin).
     fn default() -> Self {
         Self {
             dopamine: 0.45,
@@ -114,10 +114,10 @@ impl Default for NeuroBaselines {
 }
 
 impl NeuroChemicalState {
-    /// Signal "umami" — recompense composite multi-moleculaire.
-    /// Combine satisfaction (dopamine), bien-etre (serotonine), lien social (oxytocine),
-    /// resilience (endorphine), et penalise le stress (cortisol).
-    /// Retourne un score [0.0, 1.0] utilisable comme reward pour le bandit UCB1.
+    /// "Umami" signal — composite multi-molecular reward.
+    /// Combines satisfaction (dopamine), well-being (serotonin), social bonding (oxytocin),
+    /// resilience (endorphin), and penalizes stress (cortisol).
+    /// Returns a score [0.0, 1.0] usable as reward for the UCB1 bandit.
     pub fn compute_umami(&self) -> f64 {
         let raw = self.dopamine * 0.30
             + self.serotonin * 0.25
@@ -127,21 +127,21 @@ impl NeuroChemicalState {
         raw.clamp(0.0, 1.0)
     }
 
-    /// Addition avec rendements decroissants (saturation des recepteurs).
-    /// Plus la molecule est proche de 1.0, moins un boost positif a d'effet.
-    /// Les deltas negatifs s'appliquent normalement (pas de saturation inverse).
+    /// Addition with diminishing returns (receptor saturation).
+    /// The closer the molecule is to 1.0, the less effect a positive boost has.
+    /// Negative deltas apply normally (no inverse saturation).
     pub fn diminished_add(current: f64, delta: f64) -> f64 {
         if delta <= 0.0 {
             return (current + delta).clamp(0.0, 1.0);
         }
-        // Marge restante avant saturation (minimum 0.05 pour eviter blocage total)
+        // Remaining margin before saturation (minimum 0.05 to avoid total blockage)
         let saturation = (1.0 - current).max(0.05);
         (current + delta * saturation).clamp(0.0, 1.0)
     }
 
-    /// Applique un boost avec rendements decroissants sur une molecule specifique.
-    /// Utilise `diminished_add` : a 0.5 le boost est normal, a 0.8 il est
-    /// reduit de 80%, a 0.95 il est quasi-nul.
+    /// Applies a boost with diminishing returns on a specific molecule.
+    /// Uses `diminished_add`: at 0.5 the boost is normal, at 0.8 it is
+    /// reduced by 80%, at 0.95 it is nearly zero.
     pub fn boost(&mut self, molecule: Molecule, delta: f64) {
         match molecule {
             Molecule::Dopamine => self.dopamine = Self::diminished_add(self.dopamine, delta),
@@ -156,26 +156,26 @@ impl NeuroChemicalState {
         }
     }
 
-    /// Applique un boost module par la sensibilite des recepteurs.
-    /// Le delta est multiplie par le facteur de sensibilite avant d'etre applique
-    /// via `boost()` (rendements decroissants).
+    /// Applies a boost modulated by receptor sensitivity.
+    /// The delta is multiplied by the sensitivity factor before being applied
+    /// via `boost()` (diminishing returns).
     ///
-    /// # Parametres
-    /// - `molecule` : la molecule ciblee
-    /// - `delta` : variation brute (avant modulation)
-    /// - `sensitivity` : facteur de sensibilite du recepteur (typiquement 0.3 a 1.5)
+    /// # Parameters
+    /// - `molecule` : the targeted molecule
+    /// - `delta` : raw variation (before modulation)
+    /// - `sensitivity` : receptor sensitivity factor (typically 0.3 to 1.5)
     pub fn boost_modulated(&mut self, molecule: Molecule, delta: f64, sensitivity: f64) {
         let modulated_delta = delta * sensitivity;
         self.boost(molecule, modulated_delta);
     }
 
-    /// Crée un état initial à partir des baselines.
+    /// Creates an initial state from the baselines.
     ///
-    /// # Paramètres
-    /// - `baselines` : valeurs d'équilibre de référence pour chaque molécule.
+    /// # Parameters
+    /// - `baselines` : reference equilibrium values for each molecule.
     ///
-    /// # Retour
-    /// Un `NeuroChemicalState` initialisé aux valeurs des baselines.
+    /// # Returns
+    /// A `NeuroChemicalState` initialized to the baseline values.
     pub fn from_baselines(baselines: &NeuroBaselines) -> Self {
         Self {
             dopamine: baselines.dopamine,
@@ -190,20 +190,20 @@ impl NeuroChemicalState {
         }
     }
 
-    /// Homéostasie : chaque molécule tend vers sa baseline par interpolation
-    /// linéaire. Cela simule le retour naturel à l'équilibre biochimique.
+    /// Homeostasis: each molecule tends toward its baseline via linear
+    /// interpolation. This simulates the natural return to biochemical equilibrium.
     ///
-    /// Anti-runaway : quand une molécule dépasse 0.85 (ou descend sous 0.15),
-    /// le taux de correction augmente progressivement (jusqu'à 4x le taux de base).
-    /// Cela empêche les emballements prolongés tout en laissant les pics ponctuels.
+    /// Anti-runaway: when a molecule exceeds 0.85 (or drops below 0.15),
+    /// the correction rate increases progressively (up to 4x the base rate).
+    /// This prevents prolonged runaway while allowing punctual spikes.
     ///
-    /// # Paramètres
-    /// - `baselines` : valeurs cibles d'équilibre.
-    /// - `rate` : vitesse de convergence [0.0, 1.0]. 0.0 = aucun effet,
-    ///   1.0 = retour immédiat à la baseline.
+    /// # Parameters
+    /// - `baselines` : target equilibrium values.
+    /// - `rate` : convergence speed [0.0, 1.0]. 0.0 = no effect,
+    ///   1.0 = immediate return to baseline.
     pub fn homeostasis(&mut self, baselines: &NeuroBaselines, rate: f64) {
         let rate = rate.clamp(0.0, 1.0);
-        // Interpolation linéaire avec correction anti-runaway
+        // Linear interpolation with anti-runaway correction
         self.dopamine += (baselines.dopamine - self.dopamine) * Self::anti_runaway_rate(self.dopamine, baselines.dopamine, rate);
         self.cortisol += (baselines.cortisol - self.cortisol) * Self::anti_runaway_rate(self.cortisol, baselines.cortisol, rate);
         self.serotonin += (baselines.serotonin - self.serotonin) * Self::anti_runaway_rate(self.serotonin, baselines.serotonin, rate);
@@ -216,13 +216,13 @@ impl NeuroChemicalState {
         self.clamp_all();
     }
 
-    /// Calcule le taux d'homéostasie effectif avec correction anti-runaway.
-    /// Quand une molécule s'éloigne trop de sa baseline (>0.85 ou <0.15),
-    /// le taux de retour augmente progressivement (jusqu'à 4x).
+    /// Computes the effective homeostasis rate with anti-runaway correction.
+    /// When a molecule deviates too far from its baseline (>0.85 or <0.15),
+    /// the return rate increases progressively (up to 4x).
     fn anti_runaway_rate(value: f64, baseline: f64, base_rate: f64) -> f64 {
         let deviation = (value - baseline).abs();
         if deviation > 0.35 {
-            // Fort écart : correction accélérée (2x à 4x selon la déviation)
+            // Large deviation: accelerated correction (2x to 4x based on deviation)
             let excess = ((deviation - 0.35) / 0.30).clamp(0.0, 1.0);
             base_rate * (2.0 + excess * 2.0)
         } else {
@@ -230,11 +230,11 @@ impl NeuroChemicalState {
         }
     }
 
-    /// Applique un delta (variation) à une molécule spécifique.
+    /// Applies a delta (variation) to a specific molecule.
     ///
-    /// # Paramètres
-    /// - `molecule` : identifiant de la molécule à modifier.
-    /// - `delta` : variation à appliquer (positif = augmentation, négatif = diminution).
+    /// # Parameters
+    /// - `molecule` : identifier of the molecule to modify.
+    /// - `delta` : variation to apply (positive = increase, negative = decrease).
     pub fn adjust(&mut self, molecule: Molecule, delta: f64) {
         match molecule {
             Molecule::Dopamine => self.dopamine += delta,
@@ -250,10 +250,10 @@ impl NeuroChemicalState {
         self.clamp_all();
     }
 
-    /// Retroaction apres une decision positive (Oui + recompense elevee).
-    /// Renforce la dopamine (satisfaction), reduit le cortisol (apaisement),
-    /// et augmente les endorphines et la serotonine (bien-etre).
-    /// Le parametre `dopamine_boost` provient de TunableParams.feedback_dopamine_boost.
+    /// Feedback after a positive decision (Yes + high reward).
+    /// Reinforces dopamine (satisfaction), reduces cortisol (soothing),
+    /// and increases endorphin and serotonin (well-being).
+    /// The `dopamine_boost` parameter comes from TunableParams.feedback_dopamine_boost.
     pub fn feedback_positive(&mut self, dopamine_boost: f64) {
         self.boost(Molecule::Dopamine, dopamine_boost);
         self.cortisol = (self.cortisol - dopamine_boost * 0.33).max(0.0);
@@ -261,66 +261,64 @@ impl NeuroChemicalState {
         self.boost(Molecule::Serotonin, dopamine_boost * 0.33);
     }
 
-    /// Retroaction apres un refus de danger (Non + danger eleve).
-    /// Reduit le cortisol et l'adrenaline (soulagement d'avoir evite le danger),
-    /// et libere des endorphines (recompense d'auto-preservation).
-    /// Le parametre `cortisol_relief` provient de TunableParams.feedback_cortisol_relief.
+    /// Feedback after danger refusal (No + high danger).
+    /// Reduces cortisol and adrenaline (relief from avoiding danger),
+    /// and releases endorphin (self-preservation reward).
+    /// The `cortisol_relief` parameter comes from TunableParams.feedback_cortisol_relief.
     pub fn feedback_danger_avoided(&mut self, cortisol_relief: f64) {
         self.cortisol = (self.cortisol - cortisol_relief * 2.0).max(0.0);
         self.adrenaline = (self.adrenaline - cortisol_relief * 3.0).max(0.0);
         self.boost(Molecule::Endorphin, cortisol_relief);
     }
 
-    /// Retroaction apres une indecision (Peut-etre) — effets moderes avec
-    /// compensation. L'indecision genere un leger stress (cortisol) mais
-    /// active aussi la vigilance (noradrenaline) et la resilience (endorphine).
-    /// Le parametre `indecision_stress` provient de TunableParams.feedback_indecision_stress.
+    /// Feedback after indecision (Maybe) — moderate effects with
+    /// compensation. Indecision generates slight stress (cortisol) but
+    /// also activates vigilance (noradrenaline) and resilience (endorphin).
+    /// The `indecision_stress` parameter comes from TunableParams.feedback_indecision_stress.
     pub fn feedback_indecision(&mut self, indecision_stress: f64) {
-        self.apply_cortisol_penalty(indecision_stress * 0.375); // Penalite proportionnelle
-        self.boost(Molecule::Endorphin, indecision_stress * 0.25); // Compensation par la resilience
-        self.boost(Molecule::Noradrenaline, indecision_stress * 0.25); // L'incertitude stimule l'attention
-    }
+        self.apply_cortisol_penalty(indecision_stress * 0.375); // Proportional penalty
+        self.boost(Molecule::Endorphin, indecision_stress * 0.25); // Compensation via resilience        self.boost(Molecule::Noradrenaline, indecision_stress * 0.25); // Uncertainty stimulates attention    }
 
-    /// Applique une pénalité de cortisol avec mécanisme anti-spirale et
-    /// amortissement par les endorphines.
+    /// Applies a cortisol penalty with anti-spiral mechanism and
+    /// endorphin dampening.
     ///
-    /// Ce système empêche les boucles de stress incontrôlées grâce à deux
-    /// mécanismes biologiquement inspirés :
-    /// 1. L'endorphine amortit l'effet du stress (plus elle est haute, moins
-    ///    le cortisol monte).
-    /// 2. Au-delà de 0.7 de cortisol, un facteur de saturation réduit
-    ///    l'augmentation (simulation de la saturation des récepteurs).
+    /// This system prevents uncontrolled stress loops through two
+    /// biologically inspired mechanisms:
+    /// 1. Endorphin dampens the stress effect (the higher it is, the less
+    ///    cortisol rises).
+    /// 2. Above 0.7 cortisol, a saturation factor reduces the increase
+    ///    (simulation of receptor saturation).
     ///
-    /// # Paramètres
-    /// - `base_penalty` : pénalité brute de cortisol avant amortissement.
+    /// # Parameters
+    /// - `base_penalty` : raw cortisol penalty before dampening.
     pub fn apply_cortisol_penalty(&mut self, base_penalty: f64) {
-        // Plus l'endorphine est elevee, plus elle amortit le stress
-        // (facteur entre 0.7 et 1.0 — dampening reduit pour laisser le cortisol monter)
+        // The higher the endorphin, the more it dampens stress
+        // (factor between 0.7 and 1.0 — reduced dampening to let cortisol rise)
         let endorphin_dampening = 1.0 - (self.endorphin * 0.3);
 
-        // Au-dessus de 0.80 de cortisol, le cortisol monte de moins en moins
-        // vite — saturation des recepteurs (seuil releve pour permettre plus de stress)
+        // Above 0.80 cortisol, cortisol rises more and more slowly
+        // — receptor saturation (threshold raised to allow more stress)
         let saturation_factor = if self.cortisol > 0.80 {
             1.0 - ((self.cortisol - 0.80) / 0.2) * 0.6
         } else {
             1.0
         };
 
-        // La penalite effective est le produit des trois facteurs
+        // The effective penalty is the product of the three factors
         let effective_penalty = base_penalty * endorphin_dampening * saturation_factor;
         self.cortisol = (self.cortisol + effective_penalty).min(1.0);
 
-        // L'endorphine monte naturellement quand le stress est eleve —
-        // defense biologique : le corps libere des endorphines pour contrer
-        // un stress prolonge (seuil releve a 0.80)
+        // Endorphin rises naturally when stress is high —
+        // biological defense: the body releases endorphin to counter
+        // prolonged stress (threshold raised to 0.80)
         if self.cortisol > 0.80 {
             self.endorphin = (self.endorphin + 0.02).min(1.0);
         }
     }
 
-    /// Retroaction apres un stimulus negatif (message hostile, echec, etc.).
-    /// Augmente le cortisol, diminue dopamine, serotonine et ocytocine.
-    /// `severity` : intensite de la negativite [0.0, 1.0].
+    /// Feedback after a negative stimulus (hostile message, failure, etc.).
+    /// Increases cortisol, decreases dopamine, serotonin and oxytocin.
+    /// `severity` : intensity of the negativity [0.0, 1.0].
     pub fn feedback_negative(&mut self, severity: f64) {
         let s = severity.clamp(0.0, 1.0);
         self.apply_cortisol_penalty(s * 0.15);
@@ -330,9 +328,9 @@ impl NeuroChemicalState {
         self.noradrenaline = (self.noradrenaline + s * 0.05).min(1.0);
     }
 
-    /// Retroaction quand la coherence du consensus est basse.
-    /// Un leger stress cognitif emerge de l'incapacite a decider clairement.
-    /// `coherence` : score de coherence du consensus [0.0, 1.0].
+    /// Feedback when consensus coherence is low.
+    /// A slight cognitive stress emerges from the inability to decide clearly.
+    /// `coherence` : consensus coherence score [0.0, 1.0].
     pub fn feedback_low_coherence(&mut self, coherence: f64) {
         if coherence < 0.3 {
             let stress = (0.3 - coherence) * 0.10;
@@ -341,26 +339,26 @@ impl NeuroChemicalState {
         }
     }
 
-    /// Rétroaction après une interaction sociale satisfaisante.
-    /// Augmente l'ocytocine (lien social) et la sérotonine (bien-être).
+    /// Feedback after a satisfying social interaction.
+    /// Increases oxytocin (social bonding) and serotonin (well-being).
     pub fn feedback_social(&mut self) {
         self.boost(Molecule::Oxytocin, 0.10);
         self.boost(Molecule::Serotonin, 0.05);
     }
 
-    /// Rétroaction après la découverte d'une nouveauté.
-    /// Augmente la noradrénaline (attention) et la dopamine (curiosité).
+    /// Feedback after discovering something new.
+    /// Increases noradrenaline (attention) and dopamine (curiosity).
     pub fn feedback_novelty(&mut self) {
         self.boost(Molecule::Noradrenaline, 0.08);
         self.boost(Molecule::Dopamine, 0.05);
     }
 
-    /// Applique un ajustement chimique provenant de sources externes
-    /// (météo, événements du monde, etc.).
+    /// Applies a chemical adjustment from external sources
+    /// (weather, world events, etc.).
     ///
-    /// # Paramètres
-    /// - `adj` : structure contenant les deltas pour chaque molécule,
-    ///   définie dans le module `world`.
+    /// # Parameters
+    /// - `adj` : structure containing the deltas for each molecule,
+    ///   defined in the `world` module.
     pub fn apply_chemistry_adjustment(&mut self, adj: &crate::world::ChemistryAdjustment) {
         self.dopamine += adj.dopamine;
         self.cortisol += adj.cortisol;
@@ -372,13 +370,13 @@ impl NeuroChemicalState {
         self.clamp_all();
     }
 
-    /// Applique un ajustement chimique avec limite de delta par molecule.
-    /// Empeche les sources externes (besoins, phobies, drogues, etc.)
-    /// de provoquer des changements trop brutaux en un seul cycle.
+    /// Applies a chemical adjustment with per-molecule delta limit.
+    /// Prevents external sources (needs, phobias, drugs, etc.)
+    /// from causing overly abrupt changes in a single cycle.
     ///
-    /// # Parametres
-    /// - `adj` : ajustement chimique a appliquer
-    /// - `max_delta` : variation maximale autorisee par molecule (ex: 0.05)
+    /// # Parameters
+    /// - `adj` : chemical adjustment to apply
+    /// - `max_delta` : maximum allowed variation per molecule (e.g.: 0.05)
     pub fn apply_chemistry_adjustment_clamped(&mut self, adj: &crate::world::ChemistryAdjustment, max_delta: f64) {
         self.dopamine += adj.dopamine.clamp(-max_delta, max_delta);
         self.cortisol += adj.cortisol.clamp(-max_delta, max_delta);
@@ -390,8 +388,8 @@ impl NeuroChemicalState {
         self.clamp_all();
     }
 
-    /// Detecte les molecules en emballement (runaway) au-dessus du seuil 0.92.
-    /// Retourne la liste des molecules en alerte avec leur valeur.
+    /// Detects molecules in runaway above the 0.85 threshold.
+    /// Returns the list of molecules in alert with their value.
     pub fn detect_runaway(&self) -> Vec<(&str, f64)> {
         let mut alerts = Vec::new();
         if self.dopamine > 0.85 { alerts.push(("dopamine", self.dopamine)); }
@@ -406,8 +404,8 @@ impl NeuroChemicalState {
         alerts
     }
 
-    /// Clampe (borne) toutes les valeurs entre 0.0 et 1.0.
-    /// Appelée après chaque modification pour garantir l'intégrité des données.
+    /// Clamps all values between 0.0 and 1.0.
+    /// Called after each modification to guarantee data integrity.
     pub fn clamp_all(&mut self) {
         self.dopamine = self.dopamine.clamp(0.0, 1.0);
         self.cortisol = self.cortisol.clamp(0.0, 1.0);
@@ -420,12 +418,12 @@ impl NeuroChemicalState {
         self.glutamate = self.glutamate.clamp(0.0, 1.0);
     }
 
-    /// Convertit l'état chimique en vecteur de 7 dimensions.
-    /// Ordre : [dopamine, cortisol, sérotonine, adrénaline, ocytocine,
-    /// endorphine, noradrénaline].
+    /// Converts the chemical state to a 7-dimensional vector.
+    /// Order: [dopamine, cortisol, serotonin, adrenaline, oxytocin,
+    /// endorphin, noradrenaline].
     ///
-    /// # Retour
-    /// Tableau de 7 flottants représentant les concentrations.
+    /// # Returns
+    /// Array of 7 floats representing concentrations.
     pub fn to_vec7(&self) -> [f64; 7] {
         [
             self.dopamine,
@@ -438,9 +436,9 @@ impl NeuroChemicalState {
         ]
     }
 
-    /// Convertit l'etat chimique en vecteur de 9 dimensions (inclut GABA et glutamate).
-    /// Ordre : [dopamine, cortisol, serotonine, adrenaline, ocytocine,
-    /// endorphine, noradrenaline, gaba, glutamate].
+    /// Converts the chemical state to a 9-dimensional vector (includes GABA and glutamate).
+    /// Order: [dopamine, cortisol, serotonin, adrenaline, oxytocin,
+    /// endorphin, noradrenaline, gaba, glutamate].
     pub fn to_vec9(&self) -> [f64; 9] {
         [
             self.dopamine, self.cortisol, self.serotonin, self.adrenaline,
@@ -449,12 +447,12 @@ impl NeuroChemicalState {
         ]
     }
 
-    /// Applique les interactions croisees entre molecules.
-    /// Modelise les effets pharmacologiques reels entre neurotransmetteurs.
-    /// Appelee a chaque cycle cognitif APRES l'homeostasie.
+    /// Applies cross-interactions between molecules.
+    /// Models real pharmacological effects between neurotransmitters.
+    /// Called at each cognitive cycle AFTER homeostasis.
     pub fn apply_interactions(&mut self, interaction_matrix: &crate::neuroscience::receptors::InteractionMatrix) {
         let deltas = interaction_matrix.compute_deltas(self);
-        // Appliquer les deltas avec attenuation (pas plus de 0.03 par cycle par interaction)
+        // Apply deltas with attenuation (no more than 0.03 per cycle per interaction)
         let max_delta = 0.03;
         self.dopamine += deltas[0].clamp(-max_delta, max_delta);
         self.cortisol += deltas[1].clamp(-max_delta, max_delta);
@@ -468,14 +466,14 @@ impl NeuroChemicalState {
         self.clamp_all();
     }
 
-    /// Reconstruit un état chimique depuis un vecteur de 7 dimensions.
-    /// Les valeurs sont automatiquement bornées entre 0.0 et 1.0.
+    /// Reconstructs a chemical state from a 7-dimensional vector.
+    /// Values are automatically clamped between 0.0 and 1.0.
     ///
-    /// # Paramètres
-    /// - `v` : tableau de 7 flottants dans le même ordre que `to_vec7`.
+    /// # Parameters
+    /// - `v` : array of 7 floats in the same order as `to_vec7`.
     ///
-    /// # Retour
-    /// Un `NeuroChemicalState` valide.
+    /// # Returns
+    /// A valid `NeuroChemicalState`.
     pub fn from_vec7(v: &[f64; 7]) -> Self {
         let mut s = Self {
             dopamine: v[0],
@@ -492,7 +490,7 @@ impl NeuroChemicalState {
         s
     }
 
-    /// Reconstruit un etat chimique depuis un vecteur de 9 dimensions.
+    /// Reconstructs a chemical state from a 9-dimensional vector.
     pub fn from_vec9(v: &[f64; 9]) -> Self {
         let mut s = Self {
             dopamine: v[0], cortisol: v[1], serotonin: v[2], adrenaline: v[3],
@@ -503,11 +501,11 @@ impl NeuroChemicalState {
         s
     }
 
-    /// Formatte l'état chimique pour l'affichage en console.
-    /// Chaque molécule est abrégée en 4 lettres avec 2 décimales.
+    /// Formats the chemical state for console display.
+    /// Each molecule is abbreviated to 4 letters with 2 decimals.
     ///
-    /// # Retour
-    /// Chaîne de caractères résumant les 7 concentrations.
+    /// # Returns
+    /// String summarizing the 9 concentrations.
     pub fn display_string(&self) -> String {
         format!(
             "Dopa:{:.2} Cort:{:.2} Sero:{:.2} Adre:{:.2} Ocyt:{:.2} Endo:{:.2} Nora:{:.2} GABA:{:.2} Glut:{:.2}",
@@ -516,7 +514,7 @@ impl NeuroChemicalState {
         )
     }
 
-    /// Format compact pour les traces/logs.
+    /// Compact format for traces/logs.
     /// Format : "C[.80,.10,.85,.15,.50,.60,.30]" (dopa,cort,sero,adre,ocyt,endo,nora)
     pub fn compact_string(&self) -> String {
         format!(
@@ -526,8 +524,8 @@ impl NeuroChemicalState {
         )
     }
 
-    /// Format semantique lisible pour les prompts LLM.
-    /// Le LLM peut comprendre et utiliser ces noms pour moduler sa pensee.
+    /// Human-readable semantic format for LLM prompts.
+    /// The LLM can understand and use these names to modulate its thinking.
     pub fn semantic_string(&self) -> String {
         format!(
             "Motivation:{:.0}% Stress:{:.0}% Serenite:{:.0}% Vigilance:{:.0}% \
@@ -540,39 +538,39 @@ impl NeuroChemicalState {
 }
 
 impl Default for NeuroChemicalState {
-    /// Valeur par défaut : initialisée à partir des baselines par défaut.
+    /// Default value: initialized from the default baselines.
     fn default() -> Self {
         Self::from_baselines(&NeuroBaselines::default())
     }
 }
 
-/// Identifiant d'une molécule — utilisé pour cibler un neurotransmetteur
-/// spécifique lors d'un ajustement via `adjust()`.
+/// Molecule identifier — used to target a specific neurotransmitter
+/// during an adjustment via `adjust()`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Molecule {
-    /// Dopamine : motivation et plaisir
+    /// Dopamine: motivation and pleasure
     Dopamine,
-    /// Cortisol : stress et anxiété
+    /// Cortisol: stress and anxiety
     Cortisol,
-    /// Sérotonine : bien-être et stabilité
+    /// Serotonin: well-being and stability
     Serotonin,
-    /// Adrénaline : urgence et combat/fuite
+    /// Adrenaline: urgency and fight/flight
     Adrenaline,
-    /// Ocytocine : attachement et empathie
+    /// Oxytocin: attachment and empathy
     Oxytocin,
-    /// Endorphine : résilience et apaisement
+    /// Endorphin: resilience and soothing
     Endorphin,
-    /// Noradrénaline : attention et focus
+    /// Noradrenaline: attention and focus
     Noradrenaline,
-    /// GABA : inhibition globale, calme
+    /// GABA: global inhibition, calm
     Gaba,
-    /// Glutamate : excitation globale, eveil
+    /// Glutamate: global excitation, arousal
     Glutamate,
 }
 
-/// Signature chimique au moment de l'encodage d'un souvenir.
-/// Stockee en f32 (precision suffisante pour la persistance JSONB)
-/// pour economiser l'espace en base de donnees.
+/// Chemical signature at the time of memory encoding.
+/// Stored as f32 (sufficient precision for JSONB persistence)
+/// to save space in the database.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ChemicalSignature {
     pub dopamine: f32,
@@ -605,7 +603,7 @@ impl From<&NeuroChemicalState> for ChemicalSignature {
 }
 
 impl ChemicalSignature {
-    /// Similarite cosinus entre deux signatures chimiques (0.0 a 1.0).
+    /// Cosine similarity between two chemical signatures (0.0 to 1.0).
     pub fn similarity(&self, other: &ChemicalSignature) -> f64 {
         let a = self.to_vec7();
         let b = other.to_vec7();
@@ -616,7 +614,7 @@ impl ChemicalSignature {
         (dot / (norm_a * norm_b)).clamp(0.0, 1.0)
     }
 
-    /// Convertit en vecteur 7D (compat ascendante, meme ordre que NeuroChemicalState::to_vec7).
+    /// Converts to 7D vector (backward compatible, same order as NeuroChemicalState::to_vec7).
     pub fn to_vec7(&self) -> [f32; 7] {
         [
             self.dopamine, self.cortisol, self.serotonin, self.adrenaline,
@@ -624,7 +622,7 @@ impl ChemicalSignature {
         ]
     }
 
-    /// Convertit en vecteur 9D (inclut GABA et glutamate).
+    /// Converts to 9D vector (includes GABA and glutamate).
     pub fn to_vec9(&self) -> [f32; 9] {
         [
             self.dopamine, self.cortisol, self.serotonin, self.adrenaline,
@@ -696,19 +694,19 @@ mod tests {
 
     #[test]
     fn test_diminished_add_saturation() {
-        // A 0.5, le boost est attenue par le facteur 0.5
+        // At 0.5, the boost is attenuated by factor 0.5
         let result = NeuroChemicalState::diminished_add(0.5, 0.10);
         assert!((result - 0.55).abs() < 1e-10, "A 0.5, boost 0.10 → 0.55");
 
-        // A 0.9, le boost est tres attenue (facteur 0.10)
+        // At 0.9, the boost is heavily attenuated (factor 0.10)
         let result = NeuroChemicalState::diminished_add(0.9, 0.50);
         assert!((result - 0.95).abs() < 1e-10, "A 0.9, boost 0.50 → 0.95");
 
-        // Delta negatif : pas de saturation
+        // Negative delta: no saturation
         let result = NeuroChemicalState::diminished_add(0.8, -0.30);
         assert!((result - 0.50).abs() < 1e-10, "Delta negatif passe tel quel");
 
-        // Plancher a 0.05 de marge meme quand current = 1.0
+        // Floor at 0.05 margin even when current = 1.0
         let result = NeuroChemicalState::diminished_add(1.0, 0.10);
         assert!(result <= 1.0, "Ne depasse jamais 1.0");
     }
@@ -719,7 +717,7 @@ mod tests {
         chem.dopamine = 0.9;
         let before = chem.dopamine;
         chem.boost(Molecule::Dopamine, 0.50);
-        // A 0.9, marge = 0.10, boost effectif = 0.50 * 0.10 = 0.05
+        // At 0.9, margin = 0.10, effective boost = 0.50 * 0.10 = 0.05
         assert!(chem.dopamine > before, "Boost augmente la dopamine");
         assert!(chem.dopamine < 0.96, "Boost est fortement attenue a 0.9");
     }

@@ -1,35 +1,35 @@
 // =============================================================================
-// memory/reconsolidation.rs — Reconsolidation memorielle (Nader 2000)
+// memory/reconsolidation.rs — Memory reconsolidation (Nader 2000)
 // =============================================================================
 //
-// Role : Implemente la reconsolidation des souvenirs. Chaque rappel d'un
-// souvenir le rend temporairement labile — il peut etre modifie par
-// l'etat emotionnel courant avant d'etre re-stabilise.
+// Role: Implements memory reconsolidation. Each recall of a memory
+// temporarily renders it labile — it can be modified by the current
+// emotional state before being re-stabilized.
 //
-// References scientifiques :
-//   - Nader, Schafe & LeDoux (2000) : "Fear memories require protein
+// Scientific references:
+//   - Nader, Schafe & LeDoux (2000): "Fear memories require protein
 //     synthesis in the amygdala for reconsolidation after retrieval"
-//   - Ebbinghaus (1885) : courbe d'oubli exponentielle
-//   - Anderson (2003) : interference retroactive et proactive
+//   - Ebbinghaus (1885): exponential forgetting curve
+//   - Anderson (2003): retroactive and proactive interference
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 
-/// Parametres de reconsolidation.
+/// Reconsolidation parameters.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReconsolidationParams {
-    /// Taux de modification lors du rappel [0.0, 0.3]
-    /// Plus eleve = le souvenir est plus modifie par l'etat courant
+    /// Modification rate upon recall [0.0, 0.3]
+    /// Higher = the memory is more modified by the current state
     pub modification_rate: f64,
-    /// Duree de labilite en cycles (window de reconsolidation)
+    /// Lability duration in cycles (reconsolidation window)
     pub lability_window: u64,
-    /// Taux d'interference entre souvenirs similaires [0.0, 0.5]
+    /// Interference rate between similar memories [0.0, 0.5]
     pub interference_rate: f64,
-    /// Constante de la courbe d'Ebbinghaus (vitesse d'oubli)
-    /// Plus grande = oubli plus rapide
+    /// Ebbinghaus curve constant (forgetting speed)
+    /// Larger = faster forgetting
     pub ebbinghaus_decay_constant: f64,
-    /// Facteur de renforcement emotionnel
-    /// Les souvenirs emotionnels sont mieux retenus
+    /// Emotional retention factor
+    /// Emotional memories are better retained
     pub emotional_retention_factor: f64,
 }
 
@@ -37,7 +37,7 @@ impl Default for ReconsolidationParams {
     fn default() -> Self {
         Self {
             modification_rate: 0.1,
-            lability_window: 20,    // ~20 cycles de labilite
+            lability_window: 20,    // ~20 cycles of lability
             interference_rate: 0.05,
             ebbinghaus_decay_constant: 0.3,
             emotional_retention_factor: 1.5,
@@ -45,18 +45,18 @@ impl Default for ReconsolidationParams {
     }
 }
 
-/// Etat de reconsolidation d'un souvenir.
+/// Reconsolidation state of a memory.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReconsolidationState {
-    /// Le souvenir est-il actuellement labile ?
+    /// Is the memory currently labile?
     pub is_labile: bool,
-    /// Cycles restants de labilite
+    /// Remaining cycles of lability
     pub lability_remaining: u64,
-    /// Nombre de fois que le souvenir a ete rappele
+    /// Number of times the memory has been recalled
     pub recall_count: u64,
-    /// Poids emotionnel original (avant modification)
+    /// Original emotional weight (before modification)
     pub original_emotional_weight: f64,
-    /// Derive cumulative depuis l'original (mesure de distorsion)
+    /// Cumulative drift from the original (distortion measure)
     pub cumulative_drift: f64,
 }
 
@@ -72,11 +72,11 @@ impl Default for ReconsolidationState {
     }
 }
 
-/// Moteur de reconsolidation — gere la labilite et la modification des souvenirs.
+/// Reconsolidation engine — manages lability and modification of memories.
 #[derive(Debug, Clone)]
 pub struct ReconsolidationEngine {
     pub params: ReconsolidationParams,
-    /// Souvenirs actuellement labiles (memory_id → state)
+    /// Currently labile memories (memory_id -> state)
     pub labile_memories: std::collections::HashMap<String, ReconsolidationState>,
 }
 
@@ -94,10 +94,10 @@ impl ReconsolidationEngine {
         }
     }
 
-    /// Appele lors du rappel d'un souvenir.
-    /// Rend le souvenir labile et calcule la modification emotionnelle.
+    /// Called upon recall of a memory.
+    /// Renders the memory labile and computes the emotional modification.
     ///
-    /// Retourne le delta de poids emotionnel a appliquer au souvenir.
+    /// Returns the emotional weight delta to apply to the memory.
     pub fn on_recall(
         &mut self,
         memory_id: &str,
@@ -116,15 +116,15 @@ impl ReconsolidationEngine {
         state.is_labile = true;
         state.lability_remaining = self.params.lability_window;
 
-        // Le rappel renforce le souvenir (testing effect)
+        // Recall reinforces the memory (testing effect)
         let reinforcement = 0.02 * (state.recall_count as f64).ln().max(0.1);
 
-        // Mais l'etat emotionnel courant colore le souvenir (reconsolidation)
-        // La valence courante "contamine" le souvenir
+        // But the current emotional state colors the memory (reconsolidation)
+        // The current valence "contaminates" the memory
         let emotional_contamination = current_valence * self.params.modification_rate;
         let arousal_effect = (current_arousal - 0.5) * self.params.modification_rate * 0.5;
 
-        // La derive cumule
+        // The drift accumulates
         state.cumulative_drift += emotional_contamination.abs() * 0.1;
 
         ReconsolidationEffect {
@@ -136,8 +136,8 @@ impl ReconsolidationEngine {
         }
     }
 
-    /// Tick : avancer les timers de labilite.
-    /// Appelee a chaque cycle cognitif.
+    /// Tick: advance lability timers.
+    /// Called at each cognitive cycle.
     pub fn tick(&mut self) {
         let mut to_remove = Vec::new();
         for (id, state) in &mut self.labile_memories {
@@ -146,14 +146,14 @@ impl ReconsolidationEngine {
             }
             if state.lability_remaining == 0 {
                 state.is_labile = false;
-                // Le souvenir est re-stabilise — garder l'etat pour tracking
-                // mais retirer de la map active apres un moment
+                // The memory is re-stabilized — keep the state for tracking
+                // but remove from the active map after a while
                 if state.recall_count > 0 && !state.is_labile {
                     to_remove.push(id.clone());
                 }
             }
         }
-        // Nettoyer les souvenirs stabilises anciens (garder les 100 plus recents)
+        // Clean up old stabilized memories (keep the 100 most recent)
         if self.labile_memories.len() > 100 {
             for id in to_remove {
                 self.labile_memories.remove(&id);
@@ -161,68 +161,68 @@ impl ReconsolidationEngine {
         }
     }
 
-    /// Courbe d'oubli d'Ebbinghaus : retention = e^(-t/S)
-    /// ou t = temps depuis l'encodage, S = stabilite du souvenir.
+    /// Ebbinghaus forgetting curve: retention = e^(-t/S)
+    /// where t = time since encoding, S = memory stability.
     ///
-    /// La stabilite augmente avec :
-    /// - Le nombre de rappels (testing effect)
-    /// - Le poids emotionnel (souvenirs emotionnels durent plus)
-    /// - L'espacement des rappels (spacing effect)
+    /// Stability increases with:
+    /// - Number of recalls (testing effect)
+    /// - Emotional weight (emotional memories last longer)
+    /// - Spacing of recalls (spacing effect)
     pub fn ebbinghaus_retention(
         &self,
         cycles_since_encoding: u64,
         recall_count: u64,
         emotional_weight: f64,
     ) -> f64 {
-        // Stabilite de base
+        // Base stability
         let base_stability = 1.0 / self.params.ebbinghaus_decay_constant;
 
-        // Bonus de stabilite par rappel (testing effect + spacing)
+        // Stability bonus per recall (testing effect + spacing)
         let recall_bonus = (recall_count as f64).sqrt() * 2.0;
 
-        // Bonus emotionnel (les souvenirs emotionnels sont mieux retenus)
+        // Emotional bonus (emotional memories are better retained)
         let emotional_bonus = emotional_weight.abs() * self.params.emotional_retention_factor;
 
         let total_stability = base_stability + recall_bonus + emotional_bonus;
 
-        // Courbe d'Ebbinghaus : retention = e^(-t/S)
+        // Ebbinghaus curve: retention = e^(-t/S)
         let t = cycles_since_encoding as f64;
         (-t / total_stability.max(1.0)).exp()
     }
 
-    /// Calcule l'interference entre deux souvenirs similaires.
-    /// L'interference retroactive (nouveau souvenir degrade l'ancien)
-    /// et proactive (ancien souvenir interfere avec le nouveau).
+    /// Computes the interference between two similar memories.
+    /// Retroactive interference (new memory degrades the old one)
+    /// and proactive interference (old memory interferes with the new one).
     ///
-    /// Retourne le facteur d'affaiblissement [0.0, 1.0] (1.0 = pas d'interference).
+    /// Returns the weakening factor [0.0, 1.0] (1.0 = no interference).
     pub fn compute_interference(
         &self,
         similarity: f64,
         is_retroactive: bool,
     ) -> f64 {
         if similarity < 0.5 {
-            return 1.0; // Pas assez similaires pour interferer
+            return 1.0; // Not similar enough to interfere
         }
 
         let interference_strength = (similarity - 0.5) * 2.0 * self.params.interference_rate;
-        let direction_factor = if is_retroactive { 1.0 } else { 0.7 }; // Retroactive plus forte
+        let direction_factor = if is_retroactive { 1.0 } else { 0.7 }; // Retroactive is stronger
         let weakening = 1.0 - (interference_strength * direction_factor);
-        weakening.clamp(0.5, 1.0) // Jamais plus de 50% d'affaiblissement
+        weakening.clamp(0.5, 1.0) // Never more than 50% weakening
     }
 }
 
-/// Effet de la reconsolidation sur un souvenir.
+/// Effect of reconsolidation on a memory.
 #[derive(Debug, Clone)]
 pub struct ReconsolidationEffect {
-    /// Delta de force du souvenir (positif = renforcement par le rappel)
+    /// Strength delta of the memory (positive = reinforcement from recall)
     pub strength_delta: f64,
-    /// Delta de poids emotionnel (contamination par l'etat courant)
+    /// Emotional weight delta (contamination by current state)
     pub emotional_weight_delta: f64,
-    /// Le souvenir est devenu labile
+    /// The memory became labile
     pub became_labile: bool,
-    /// Nombre total de rappels
+    /// Total number of recalls
     pub recall_count: u64,
-    /// Derive cumulative depuis l'original
+    /// Cumulative drift from the original
     pub cumulative_drift: f64,
 }
 

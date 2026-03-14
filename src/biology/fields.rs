@@ -1,17 +1,17 @@
 // =============================================================================
-// fields.rs — Champs electromagnetiques de Saphire
+// fields.rs — Saphire's electromagnetic fields
 //
-// Role : Simule les champs EM qui baignent l'etre : champ universel (Schumann),
-// champ solaire (cycles, vent, UV), champ terrestre (geomagnetisme),
-// et le biochamp individuel (coherence cardiaque, ondes cerebrales, aura).
+// Role: Simulates the EM fields surrounding the being: universal field (Schumann),
+// solar field (cycles, wind, UV), terrestrial field (geomagnetism),
+// and the individual biofield (cardiac coherence, brainwaves, aura).
 //
-// Place dans l'architecture :
-//   Pipeline cognitif etape 3q : tick + chemistry_influence.
-//   Interactions croisees :
-//     - UV solaire → synthese vitamine D (nutrition)
-//     - densite synaptique (grey_matter) → coherence biochamp
-//     - orages magnetiques → qualite de sommeil
-//     - alignement Schumann → serotonine, conscience
+// Place in architecture:
+//   Cognitive pipeline step 3q: tick + chemistry_influence.
+//   Cross-interactions:
+//   - Solar UV → vitamin D synthesis (nutrition)
+//   - Synaptic density (grey_matter) → biofield coherence
+//   - Magnetic storms → sleep quality
+//   - Schumann alignment → serotonin, consciousness
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
@@ -19,16 +19,15 @@ use serde::{Deserialize, Serialize};
 use crate::config::FieldsConfig;
 use crate::world::ChemistryAdjustment;
 
-// ─── Champ universel ────────────────────────────────────────────────────────
-
-/// Champ electromagnetique universel (resonance de Schumann, radiation cosmique).
+// ─── Universal field ────────────────────────────────────────────────────────
+/// Universal electromagnetic field (Schumann resonance, cosmic radiation).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UniversalField {
-    /// Frequence de resonance de Schumann (Hz, nominale ~7.83)
+    /// Schumann resonance frequency (Hz, nominal ~7.83)
     pub schumann_resonance: f64,
-    /// Niveau de radiation cosmique de fond (0-1)
+    /// Background cosmic radiation level (0-1)
     pub cosmic_radiation: f64,
-    /// Alignement harmonique (coherence cerveau-Schumann, 0-1)
+    /// Harmonic alignment (brain-Schumann coherence, 0-1)
     pub harmonic_alignment: f64,
 }
 
@@ -42,16 +41,15 @@ impl Default for UniversalField {
     }
 }
 
-// ─── Champ solaire ──────────────────────────────────────────────────────────
-
-/// Champ electromagnetique solaire (activite, vent, UV).
+// ─── Solar field ──────────────────────────────────────────────────────────
+/// Solar electromagnetic field (activity, wind, UV).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SolarField {
-    /// Indice d'activite solaire (0-1, cycle ~11 ans)
+    /// Solar activity index (0-1, ~11 year cycle)
     pub activity_index: f64,
-    /// Intensite du vent solaire (0-1)
+    /// Solar wind intensity (0-1)
     pub solar_wind: f64,
-    /// Indice UV (0-1)
+    /// UV index (0-1)
     pub uv_index: f64,
 }
 
@@ -65,16 +63,15 @@ impl Default for SolarField {
     }
 }
 
-// ─── Champ terrestre ────────────────────────────────────────────────────────
-
-/// Champ geomagnetique terrestre.
+// ─── Terrestrial field ────────────────────────────────────────────────────────
+/// Terrestrial geomagnetic field.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TerrestrialField {
-    /// Intensite du champ geomagnetique (0-1)
+    /// Geomagnetic field intensity (0-1)
     pub geomagnetic_strength: f64,
-    /// Intensite des orages magnetiques (0-1)
+    /// Magnetic storm intensity (0-1)
     pub storm_intensity: f64,
-    /// Courants telluriques (0-1)
+    /// Telluric currents (0-1)
     pub telluric_currents: f64,
 }
 
@@ -88,18 +85,17 @@ impl Default for TerrestrialField {
     }
 }
 
-// ─── Biochamp individuel ────────────────────────────────────────────────────
-
-/// Champ electromagnetique individuel (biochamp, aura).
+// ─── Individual biofield ────────────────────────────────────────────────────
+/// Individual electromagnetic field (biofield, aura).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IndividualBiofield {
-    /// Champ EM cardiaque (le coeur genere le plus fort champ EM du corps)
+    /// Cardiac EM field (the heart generates the strongest EM field in the body)
     pub cardiac_em: f64,
-    /// Coherence des ondes cerebrales (synchronisation inter-regionale)
+    /// Brainwave coherence (inter-regional synchronization)
     pub brainwave_coherence: f64,
-    /// Integrite du biochamp (resilience, protection)
+    /// Biofield integrity (resilience, protection)
     pub biofield_integrity: f64,
-    /// Luminosite de l'aura (composite de tous les sous-champs)
+    /// Aura luminosity (composite of all sub-fields)
     pub aura_luminosity: f64,
 }
 
@@ -114,9 +110,8 @@ impl Default for IndividualBiofield {
     }
 }
 
-// ─── Systeme de champs EM complet ───────────────────────────────────────────
-
-/// Systeme de champs electromagnetiques complet.
+// ─── Complete EM fields system ───────────────────────────────────────────
+/// Complete electromagnetic fields system.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ElectromagneticFields {
     pub enabled: bool,
@@ -124,14 +119,14 @@ pub struct ElectromagneticFields {
     pub solar: SolarField,
     pub terrestrial: TerrestrialField,
     pub biofield: IndividualBiofield,
-    /// Phase du cycle solaire (rad, 0..2pi)
+    /// Solar cycle phase (rad, 0..2pi)
     pub solar_cycle_phase: f64,
-    /// Phase geomagnetique (rad, 0..2pi)
+    /// Geomagnetic phase (rad, 0..2pi)
     pub geomagnetic_phase: f64,
 }
 
 impl ElectromagneticFields {
-    /// Cree un nouveau systeme EM depuis la config.
+    /// Creates a new EM system from the config.
     pub fn new(config: &FieldsConfig) -> Self {
         Self {
             enabled: config.enabled,
@@ -144,14 +139,14 @@ impl ElectromagneticFields {
         }
     }
 
-    /// Tick des champs EM : cycles cosmiques, biochamp.
+    /// EM fields tick: cosmic cycles, biofield.
     ///
-    /// Parametres d'entree :
-    /// - `hrv_coherence` : coherence HRV du coeur (body)
-    /// - `brain_sync` : synchronisation cerebrale (brain_regions workspace)
-    /// - `vitality` : vitalite globale (body vitality)
-    /// - `consciousness_level` : niveau de conscience (consciousness)
-    /// - `synaptic_density` : densite synaptique (grey_matter → biochamp)
+    /// Input parameters:
+    /// - `hrv_coherence`: HRV coherence from the heart (body)
+    /// - `brain_sync`: brain synchronization (brain_regions workspace)
+    /// - `vitality`: overall vitality (body vitality)
+    /// - `consciousness_level`: consciousness level (consciousness)
+    /// - `synaptic_density`: synaptic density (grey_matter → biofield)
     pub fn tick(
         &mut self,
         config: &FieldsConfig,
@@ -163,19 +158,19 @@ impl ElectromagneticFields {
     ) {
         if !self.enabled { return; }
 
-        // ─── Cycle solaire ──────────────────────────────────────────────────
-        // Cycle sinusoidal lent (~11 ans simule par avance lente)
+        // ─── Solar cycle ──────────────────────────────────────────────────
+        // Slow sinusoidal cycle (~11 years simulated by slow advance)
         self.solar_cycle_phase += config.solar_cycle_speed;
         if self.solar_cycle_phase > std::f64::consts::TAU {
             self.solar_cycle_phase -= std::f64::consts::TAU;
         }
         self.solar.activity_index = 0.3 + 0.3 * self.solar_cycle_phase.sin();
         self.solar.solar_wind = (self.solar.activity_index * 0.8 + 0.1).clamp(0.0, 1.0);
-        // UV correle a l'activite solaire + bruit
+        // UV correlated to solar activity + noise
         self.solar.uv_index = (0.3 + self.solar.activity_index * 0.4).clamp(0.0, 1.0);
 
-        // ─── Orages magnetiques ─────────────────────────────────────────────
-        // Derives du vent solaire (quand le vent est fort)
+        // ─── Magnetic storms ─────────────────────────────────────────────
+        // Derived from solar wind (when the wind is strong)
         self.geomagnetic_phase += config.solar_cycle_speed * 3.0;
         if self.geomagnetic_phase > std::f64::consts::TAU {
             self.geomagnetic_phase -= std::f64::consts::TAU;
@@ -184,69 +179,69 @@ impl ElectromagneticFields {
         let storm_variation = 0.2 * (self.geomagnetic_phase * 7.0).sin().abs();
         self.terrestrial.storm_intensity = (storm_base + storm_variation).clamp(0.0, 1.0);
 
-        // Champ geomagnetique varie lentement
+        // Geomagnetic field varies slowly
         self.terrestrial.geomagnetic_strength = 0.5 + 0.1 * (self.geomagnetic_phase * 0.3).sin();
         self.terrestrial.telluric_currents = self.terrestrial.storm_intensity * 0.5 + 0.1;
 
-        // ─── Resonance de Schumann ──────────────────────────────────────────
-        // Varie autour de 7.83 Hz ± variance
+        // ─── Schumann resonance ──────────────────────────────────────────
+        // Varies around 7.83 Hz +/- variance
         let schumann_noise = (self.solar_cycle_phase * 13.0).sin() * config.schumann_variance;
         self.universal.schumann_resonance = 7.83 + schumann_noise;
 
-        // Radiation cosmique inversement proportionnelle au champ geomagnetique
+        // Cosmic radiation inversely proportional to geomagnetic field
         self.universal.cosmic_radiation = (0.4 - self.terrestrial.geomagnetic_strength * 0.3).clamp(0.05, 0.6);
 
-        // ─── Biochamp individuel ────────────────────────────────────────────
-        // EM cardiaque : derive de la coherence HRV + vitalite
+        // ─── Individual biofield ────────────────────────────────────────────
+        // Cardiac EM: derived from HRV coherence + vitality
         self.biofield.cardiac_em = (hrv_coherence * 0.5 + vitality * 0.3 + 0.2).clamp(0.0, 1.0);
 
-        // Coherence ondes cerebrales : synchronisation cerebrale + densite synaptique
+        // Brainwave coherence: brain synchronization + synaptic density
         self.biofield.brainwave_coherence = (brain_sync * 0.5 + synaptic_density * 0.3 + 0.2).clamp(0.0, 1.0);
 
-        // Integrite du biochamp : lissage vers la moyenne des composantes
+        // Biofield integrity: smoothing towards the average of the components
         let target_integrity = (self.biofield.cardiac_em + self.biofield.brainwave_coherence + vitality) / 3.0;
         self.biofield.biofield_integrity = self.biofield.biofield_integrity * 0.95 + target_integrity * 0.05;
 
-        // Aura = composite de tous les facteurs
+        // Aura = composite of all factors
         self.biofield.aura_luminosity =
             self.biofield.cardiac_em * 0.25
             + self.biofield.brainwave_coherence * 0.25
             + self.biofield.biofield_integrity * 0.25
             + consciousness_level * 0.25;
 
-        // ─── Alignement harmonique ──────────────────────────────────────────
-        // Resonance entre Schumann et coherence cerebrale
-        // Plus la frequence Schumann est proche de 7.83 et la coherence cerebrale haute,
-        // plus l'alignement est fort
+        // ─── Harmonic alignment ──────────────────────────────────────────
+        // Resonance between Schumann and brainwave coherence
+        // The closer Schumann frequency is to 7.83 and the higher brain coherence,
+        // the stronger the alignment
         let schumann_alignment = 1.0 - ((self.universal.schumann_resonance - 7.83).abs() / config.schumann_variance).min(1.0);
         self.universal.harmonic_alignment = schumann_alignment * self.biofield.brainwave_coherence;
     }
 
-    /// Influence des champs EM sur la neurochimie.
+    /// Influence of EM fields on neurochemistry.
     pub fn chemistry_influence(&self, config: &FieldsConfig) -> ChemistryAdjustment {
         let mut adj = ChemistryAdjustment::default();
         if !self.enabled { return adj; }
 
-        // Orages magnetiques → cortisol +, serotonine -
+        // Magnetic storms → cortisol +, serotonin -
         if self.terrestrial.storm_intensity > config.storm_threshold {
             let storm_excess = self.terrestrial.storm_intensity - config.storm_threshold;
             adj.cortisol += storm_excess * config.storm_anxiety_factor;
             adj.serotonin -= storm_excess * config.storm_anxiety_factor * 0.5;
         }
 
-        // Coherence Schumann elevee → serotonine +, cortisol -
+        // High Schumann coherence → serotonin +, cortisol -
         if self.universal.harmonic_alignment > 0.6 {
             let alignment_bonus = self.universal.harmonic_alignment - 0.6;
             adj.serotonin += alignment_bonus * 0.03;
             adj.cortisol -= alignment_bonus * 0.02;
         }
 
-        // Fort biochamp → endorphine + (bien-etre)
+        // Strong biofield → endorphin + (well-being)
         if self.biofield.aura_luminosity > 0.7 {
             adj.endorphin += (self.biofield.aura_luminosity - 0.7) * 0.02;
         }
 
-        // Forte activite solaire → noradrenaline + (eveil, vigilance)
+        // High solar activity → noradrenaline + (arousal, vigilance)
         if self.solar.activity_index > 0.5 {
             adj.noradrenaline += (self.solar.activity_index - 0.5) * 0.02;
         }
@@ -254,17 +249,17 @@ impl ElectromagneticFields {
         adj
     }
 
-    /// Retourne l'indice UV (utile pour la synthese de vitamine D dans nutrition).
+    /// Returns the UV index (useful for vitamin D synthesis in nutrition).
     pub fn uv_index(&self) -> f64 {
         if self.enabled { self.solar.uv_index } else { 0.4 }
     }
 
-    /// Retourne l'intensite des orages (utile pour la qualite de sommeil).
+    /// Returns the storm intensity (useful for sleep quality).
     pub fn storm_intensity(&self) -> f64 {
         if self.enabled { self.terrestrial.storm_intensity } else { 0.0 }
     }
 
-    /// Serialise l'etat en JSON pour persistance.
+    /// Serializes the state to JSON for persistence.
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::json!({
             "enabled": self.enabled,
@@ -294,7 +289,7 @@ impl ElectromagneticFields {
         })
     }
 
-    /// Restaure l'etat depuis le JSON persiste.
+    /// Restores state from persisted JSON.
     pub fn restore_from_json(&mut self, v: &serde_json::Value) {
         if let Some(u) = v.get("universal") {
             self.universal.schumann_resonance = u["schumann_resonance"].as_f64().unwrap_or(7.83);

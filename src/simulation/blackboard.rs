@@ -1,35 +1,35 @@
 // =============================================================================
-// blackboard.rs — Architecture Blackboard pour la coordination des algorithmes
+// blackboard.rs — Blackboard architecture for algorithm coordination
 //
-// Role : Tableau central ou chaque algorithme (BT, FSM, InfluenceMap, Steering,
-//        Utility AI) ecrit ses recommandations. Le Blackboard resout les conflits
-//        par priorite et genere un resume compact pour le prompt LLM.
+// Role: Central board where each algorithm (BT, FSM, InfluenceMap, Steering,
+//       Utility AI) writes its recommendations. The Blackboard resolves
+//       conflicts by priority and generates a compact summary for the LLM prompt.
 //
-// Place dans l'architecture :
-//   Remplace les injections separees de chaque algorithme par un point unique
-//   de coordination. Chaque algo ecrit dans le blackboard, et le prompt lit
-//   une synthese coherente.
+// Place in the architecture:
+//   Replaces separate injections from each algorithm with a single
+//   coordination point. Each algo writes to the blackboard, and the prompt
+//   reads a coherent synthesis.
 // =============================================================================
 
 use std::collections::HashMap;
 
-/// Entree dans le blackboard.
+/// Entry in the blackboard.
 #[derive(Debug, Clone)]
 pub struct BlackboardEntry {
-    /// Valeur textuelle de la recommandation
+    /// Textual value of the recommendation
     pub value: String,
-    /// Source de la recommandation (nom de l'algorithme)
+    /// Source of the recommendation (algorithm name)
     pub source: &'static str,
-    /// Priorite (plus haut = prioritaire)
+    /// Priority (higher = more important)
     pub priority: u8,
-    /// Cycle ou cette entree a ete ecrite
+    /// Cycle when this entry was written
     pub cycle: u64,
 }
 
-/// Tableau central de coordination inter-algorithmes.
+/// Central coordination board for inter-algorithm communication.
 #[derive(Debug, Clone)]
 pub struct Blackboard {
-    /// Slots : cle → liste d'entrees (ordonnees par priorite)
+    /// Slots: key -> list of entries (ordered by priority)
     entries: HashMap<String, Vec<BlackboardEntry>>,
 }
 
@@ -40,44 +40,44 @@ impl Default for Blackboard {
 }
 
 impl Blackboard {
-    /// Cree un blackboard vide.
+    /// Creates an empty blackboard.
     pub fn new() -> Self {
         Self {
             entries: HashMap::new(),
         }
     }
 
-    /// Ecrit une entree dans un slot du blackboard.
-    /// Si le slot existe deja, ajoute l'entree a la liste.
+    /// Writes an entry to a blackboard slot.
+    /// If the slot already exists, adds the entry to the list.
     pub fn write(&mut self, slot: &str, value: String, source: &'static str, priority: u8, cycle: u64) {
         let entry = BlackboardEntry { value, source, priority, cycle };
         self.entries.entry(slot.to_string()).or_default().push(entry);
     }
 
-    /// Lit la meilleure entree d'un slot (plus haute priorite).
+    /// Reads the best entry of a slot (highest priority).
     pub fn read_best(&self, slot: &str) -> Option<&BlackboardEntry> {
         self.entries.get(slot)
             .and_then(|entries| entries.iter().max_by_key(|e| e.priority))
     }
 
-    /// Lit toutes les entrees d'un slot.
+    /// Reads all entries of a slot.
     pub fn read_all(&self, slot: &str) -> Vec<&BlackboardEntry> {
         self.entries.get(slot)
             .map(|entries| entries.iter().collect())
             .unwrap_or_default()
     }
 
-    /// Supprime les entrees obsoletes (plus vieilles que `max_age` cycles).
+    /// Removes stale entries (older than `max_age` cycles).
     pub fn clear_stale(&mut self, current_cycle: u64, max_age: u64) {
         for entries in self.entries.values_mut() {
             entries.retain(|e| current_cycle - e.cycle <= max_age);
         }
-        // Supprimer les slots vides
+        // Remove empty slots
         self.entries.retain(|_, v| !v.is_empty());
     }
 
-    /// Genere un resume compact pour le prompt LLM.
-    /// Prend la meilleure entree par slot, max 3 lignes.
+    /// Generates a compact summary for the LLM prompt.
+    /// Takes the best entry per slot, max 3 lines.
     pub fn describe_for_prompt(&self) -> String {
         let mut lines: Vec<String> = Vec::new();
         for (slot, entries) in &self.entries {
@@ -94,12 +94,12 @@ impl Blackboard {
         }
     }
 
-    /// Reinitialise le blackboard.
+    /// Resets the blackboard.
     pub fn clear(&mut self) {
         self.entries.clear();
     }
 
-    /// Nombre de slots actifs.
+    /// Number of active slots.
     pub fn slot_count(&self) -> usize {
         self.entries.len()
     }

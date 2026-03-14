@@ -1,11 +1,11 @@
 // =============================================================================
-// db/knowledge.rs — Connaissances acquises (WebKnowledge)
+// db/knowledge.rs — Acquired knowledge (WebKnowledge)
 // =============================================================================
 
 use super::{SaphireDb, DbError};
 
 impl SaphireDb {
-    /// Enregistre une connaissance acquise (typiquement depuis une recherche web).
+    /// Records an acquired piece of knowledge (typically from a web search).
     #[allow(clippy::too_many_arguments)]
     pub async fn log_knowledge(
         &self,
@@ -27,7 +27,7 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Compte le nombre total de connaissances acquises.
+    /// Counts the total number of acquired knowledge entries.
     pub async fn count_knowledge(&self) -> Result<i64, DbError> {
         let client = self.pool.get().await?;
         let row = client.query_one(
@@ -37,7 +37,7 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Recupere les N dernieres connaissances acquises.
+    /// Retrieves the N most recent acquired knowledge entries.
     pub async fn recent_knowledge(&self, limit: i64) -> Result<Vec<(String, String, String)>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -51,11 +51,11 @@ impl SaphireDb {
         Ok(results)
     }
 
-    /// Charge les statistiques knowledge pour restauration au boot.
-    /// Retourne (titres uniques par date DESC, total recherches, article_read_count).
+    /// Loads knowledge statistics for restoration at boot.
+    /// Returns (unique titles by date DESC, total searches, article_read_count).
     pub async fn load_knowledge_stats(&self) -> Result<(Vec<String>, u64, std::collections::HashMap<String, u32>), DbError> {
         let client = self.pool.get().await?;
-        // Titres uniques tries par derniere apparition
+        // Unique titles sorted by last appearance
         let rows = client.query(
             "SELECT title, COUNT(*)::bigint as cnt FROM knowledge_log GROUP BY title ORDER BY MAX(created_at) DESC",
             &[],
@@ -73,7 +73,7 @@ impl SaphireDb {
         Ok((titles, total, read_counts))
     }
 
-    /// Liste les titres de connaissances recentes (pour anti-repetition).
+    /// Lists recent knowledge titles (for anti-repetition).
     pub async fn recent_knowledge_titles(&self, limit: i64) -> Result<Vec<String>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(

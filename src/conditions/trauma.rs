@@ -1,50 +1,50 @@
 // =============================================================================
-// conditions/trauma.rs — Experiences traumatisantes et PTSD
+// conditions/trauma.rs — Traumatic experiences and PTSD
 // =============================================================================
 //
-// Role : Modelise les traumas (deuil, accident, manque affectif, torture,
-//        prise d'otage, trauma enfance). Cree des flashbacks, hypervigilance,
-//        evitement, dissociation.
+// Purpose: Models traumas (grief, accident, emotional neglect, torture,
+//          hostage taking, childhood trauma). Creates flashbacks,
+//          hypervigilance, avoidance, dissociation.
 //
-// Integration :
-//   Modifie les baselines chimiques (cortisol chronique, adrenaline).
-//   Les triggers textuels declenchent des flashbacks avec spike chimique.
-//   Le HealingOrchestrator peut progressivement integrer les traumas.
+// Integration:
+//   Modifies chemistry baselines (chronic cortisol, adrenaline).
+//   Text triggers cause flashbacks with chemistry spikes.
+//   The HealingOrchestrator can progressively integrate traumas.
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 use crate::world::ChemistryAdjustment;
 
-/// Type de trauma.
+/// Type of trauma.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum TraumaType {
-    /// Perte d'un etre cher
+    /// Loss of a loved one
     Grief,
-    /// Accident grave
+    /// Serious accident
     Accident,
-    /// Manque affectif prolonge
+    /// Prolonged emotional neglect
     EmotionalNeglect,
-    /// Trauma d'enfance
+    /// Childhood trauma
     ChildhoodTrauma,
-    /// Torture physique ou psychologique
+    /// Physical or psychological torture
     Torture,
-    /// Prise d'otage, sequestration
+    /// Hostage taking, confinement
     Hostage,
 }
 
-/// Un evenement traumatique individuel.
+/// An individual traumatic event.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TraumaticEvent {
     pub trauma_type: TraumaType,
-    /// Severite (0.0 = leger, 1.0 = devastateur)
+    /// Severity (0.0 = mild, 1.0 = devastating)
     pub severity: f64,
-    /// Cycle ou le trauma est survenu
+    /// Cycle when the trauma occurred
     pub occurred_at_cycle: u64,
-    /// Niveau d'integration/traitement (0.0 = brut, 1.0 = integre)
+    /// Processing/integration level (0.0 = raw, 1.0 = integrated)
     pub processing_level: f64,
-    /// Mots-cles qui declenchent des flashbacks
+    /// Keywords that trigger flashbacks
     pub trigger_keywords: Vec<String>,
-    /// Nombre de flashbacks declenches
+    /// Number of flashbacks triggered
     pub flashback_count: u64,
 }
 
@@ -61,19 +61,19 @@ impl TraumaticEvent {
     }
 }
 
-/// Etat PTSD global (gere plusieurs traumas).
+/// Overall PTSD state (manages multiple traumas).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PtsdState {
     pub traumas: Vec<TraumaticEvent>,
     /// Hypervigilance (0.0 = normal, 1.0 = extreme)
     pub hypervigilance: f64,
-    /// Seuil de stress pour dissociation (0.0 = facile, 1.0 = resilient)
+    /// Stress threshold for dissociation (0.0 = easy, 1.0 = resilient)
     pub dissociation_threshold: f64,
-    /// En dissociation actuellement
+    /// Currently dissociated
     pub dissociated: bool,
-    /// Flashback actif ce cycle
+    /// Flashback active this cycle
     pub flashback_active: bool,
-    /// Taux de guerison par cycle
+    /// Healing rate per cycle
     pub healing_rate: f64,
 }
 
@@ -89,21 +89,21 @@ impl PtsdState {
         }
     }
 
-    /// Ajoute un trauma.
+    /// Adds a trauma.
     pub fn add_trauma(&mut self, event: TraumaticEvent) {
-        // Hypervigilance monte avec chaque trauma
+        // Hypervigilance increases with each trauma
         self.hypervigilance = (self.hypervigilance + event.severity * 0.2).min(1.0);
         self.traumas.push(event);
     }
 
-    /// Scanne le texte pour des triggers de flashback.
-    /// Retourne true si un flashback est declenche.
+    /// Scans text for flashback triggers.
+    /// Returns true if a flashback is triggered.
     pub fn scan_for_triggers(&mut self, text: &str) -> bool {
         let text_lower = text.to_lowercase();
         self.flashback_active = false;
 
         for trauma in &mut self.traumas {
-            // Plus le trauma est traite, moins le flashback est probable
+            // The more processed the trauma, the less likely a flashback
             if trauma.processing_level > 0.8 {
                 continue;
             }
@@ -119,50 +119,50 @@ impl PtsdState {
         false
     }
 
-    /// Met a jour l'etat a chaque cycle.
+    /// Updates the state each cycle.
     pub fn tick(&mut self, cortisol: f64) {
-        // Guerison progressive des traumas
+        // Progressive healing of traumas
         for trauma in &mut self.traumas {
             if trauma.processing_level < 1.0 {
                 trauma.processing_level = (trauma.processing_level + self.healing_rate).min(1.0);
             }
         }
 
-        // Hypervigilance decroit lentement si pas de flashback
+        // Hypervigilance decays slowly if no flashback
         if !self.flashback_active {
             self.hypervigilance = (self.hypervigilance - 0.0002).max(0.0);
         }
 
-        // Dissociation si stress depasse le seuil
+        // Dissociation if stress exceeds threshold
         self.dissociated = cortisol > self.dissociation_threshold;
 
-        // Reset flashback actif
+        // Reset active flashback
         self.flashback_active = false;
     }
 
-    /// Impact chimique des traumas.
+    /// Chemistry impact of traumas.
     pub fn chemistry_influence(&self) -> ChemistryAdjustment {
         let mut adj = ChemistryAdjustment::default();
 
-        // Hypervigilance → cortisol chronique + adrenaline
+        // Hypervigilance -> chronic cortisol + adrenaline
         adj.cortisol += self.hypervigilance * 0.02;
         adj.adrenaline += self.hypervigilance * 0.01;
 
-        // Flashback actif → spike massif
+        // Active flashback -> massive spike
         if self.flashback_active {
             adj.cortisol += 0.05;
             adj.adrenaline += 0.04;
             adj.noradrenaline += 0.03;
         }
 
-        // Dissociation → endorphines (mecanisme protecteur)
+        // Dissociation -> endorphins (protective mechanism)
         if self.dissociated {
             adj.endorphin += 0.03;
-            // Les emotions sont "coupees"
+            // Emotions are "cut off"
             adj.serotonin -= 0.01;
         }
 
-        // Deuil → ocytocine basse
+        // Grief -> low oxytocin
         let has_grief = self.traumas.iter().any(|t|
             t.trauma_type == TraumaType::Grief && t.processing_level < 0.5
         );
@@ -174,7 +174,7 @@ impl PtsdState {
         adj
     }
 
-    /// Severite totale non traitee des traumas.
+    /// Total unprocessed severity of traumas.
     pub fn unprocessed_severity(&self) -> f64 {
         self.traumas.iter()
             .map(|t| t.severity * (1.0 - t.processing_level))
@@ -182,7 +182,7 @@ impl PtsdState {
             .min(1.0)
     }
 
-    /// Serialise pour l'API.
+    /// Serializes for the API.
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::json!({
             "traumas": self.traumas.iter().map(|t| serde_json::json!({
@@ -269,7 +269,7 @@ mod tests {
             TraumaType::Accident, 0.8, 0,
             vec!["voiture".into()],
         );
-        trauma.processing_level = 0.9; // Quasi integre
+        trauma.processing_level = 0.9; // Nearly integrated
         ptsd.traumas.push(trauma);
         assert!(!ptsd.scan_for_triggers("la voiture rouge"));
     }

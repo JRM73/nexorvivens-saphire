@@ -2,7 +2,7 @@
 name = "saphire"
 version = "1.0.0"
 edition = "2021"
-description = "Saphire — Agent Cognitif Autonome"
+description = "Saphire — Autonomous Cognitive Agent"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }

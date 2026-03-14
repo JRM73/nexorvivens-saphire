@@ -1,50 +1,50 @@
 // =============================================================================
-// flocking.rs — Dynamique de Boids pour les pensees
+// flocking.rs — Boids dynamics for thoughts
 //
-// Role : Applique l'algorithme de Boids (Craig Reynolds, 1986) aux pensees
-//        actives de Saphire. Les 3 regles de Boids :
-//        1. Separation : eviter les pensees trop similaires
-//        2. Alignement : tendre vers le meme type de pensee que le groupe
-//        3. Cohesion : converger vers le centre du groupe thematique
+// Role: Applies the Boids algorithm (Craig Reynolds, 1986) to Saphire's
+//       active thoughts. The 3 Boids rules:
+//       1. Separation: avoid overly similar thoughts
+//       2. Alignment: tend toward the same thought type as the group
+//       3. Cohesion: converge toward the thematic group center
 //
-//        Cela permet de diversifier les pensees tout en maintenant une
-//        coherence thematique naturelle.
+//       This diversifies thoughts while maintaining natural thematic
+//       coherence.
 //
-// Place dans l'architecture :
-//   Consulte par le thought_engine pour ajuster les scores de selection.
-//   Chaque pensee est un "boid" dans un espace abstrait (type x recence).
+// Place in the architecture:
+//   Consulted by the thought_engine to adjust selection scores.
+//   Each thought is a "boid" in an abstract space (type x recency).
 // =============================================================================
 
 use serde::{Serialize, Deserialize};
 
-/// Un "boid" representant une pensee recente dans l'espace conceptuel.
+/// A "boid" representing a recent thought in conceptual space.
 #[derive(Debug, Clone)]
 pub struct ThoughtBoid {
-    /// Indice du type de pensee (correspond a ThoughtType::all())
+    /// Thought type index (corresponds to ThoughtType::all())
     pub type_index: usize,
-    /// Position temporelle : 0 = la plus recente, N = la plus ancienne
+    /// Temporal position: 0 = most recent, N = oldest
     pub recency: f64,
-    /// "Velocity" : tendance directionnelle (positif = type monte, negatif = descend)
+    /// "Velocity": directional tendency (positive = type rising, negative = falling)
     pub velocity: f64,
 }
 
-/// Resultat du calcul Boids : ajustement de score pour chaque type de pensee.
+/// Result of the Boids calculation: score adjustment for each thought type.
 #[derive(Debug, Clone)]
 pub struct FlockingResult {
-    /// Ajustement par type de pensee : positif = favorise, negatif = penalise
+    /// Adjustment per thought type: positive = favored, negative = penalized
     pub adjustments: Vec<f64>,
 }
 
-/// Parametres du flocking.
+/// Flocking parameters.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FlockingParams {
-    /// Poids de la separation (eviter la repetition)
+    /// Separation weight (avoid repetition)
     pub separation_weight: f64,
-    /// Poids de l'alignement (convergence thematique)
+    /// Alignment weight (thematic convergence)
     pub alignment_weight: f64,
-    /// Poids de la cohesion (gravite vers le centre)
+    /// Cohesion weight (gravity toward center)
     pub cohesion_weight: f64,
-    /// Distance en dessous de laquelle la separation s'active
+    /// Distance below which separation activates
     pub separation_radius: f64,
 }
 
@@ -59,8 +59,8 @@ impl Default for FlockingParams {
     }
 }
 
-/// Calcule les forces Boids sur les pensees recentes et retourne
-/// un vecteur d'ajustement pour chaque type de pensee.
+/// Computes Boids forces on recent thoughts and returns
+/// an adjustment vector for each thought type.
 pub fn compute_flocking(
     recent_type_indices: &[usize],
     num_types: usize,
@@ -72,7 +72,7 @@ pub fn compute_flocking(
         return FlockingResult { adjustments };
     }
 
-    // Construire les boids a partir de l'historique recent
+    // Build boids from recent history
     let boids: Vec<ThoughtBoid> = recent_type_indices.iter().enumerate()
         .map(|(i, &idx)| ThoughtBoid {
             type_index: idx,
@@ -81,7 +81,7 @@ pub fn compute_flocking(
         })
         .collect();
 
-    // Compter les occurrences de chaque type
+    // Count occurrences of each type
     let mut type_counts = vec![0usize; num_types];
     for boid in &boids {
         if boid.type_index < num_types {
@@ -89,17 +89,17 @@ pub fn compute_flocking(
         }
     }
 
-    // 1. Separation : penaliser les types trop presents
+    // 1. Separation: penalize overly present types
     for (idx, &count) in type_counts.iter().enumerate() {
         if count >= 2 {
-            // Plus un type est repete, plus il est penalise
+            // The more a type is repeated, the more it is penalized
             adjustments[idx] -= params.separation_weight * (count as f64 - 1.0) * 0.2;
         }
     }
 
-    // 2. Alignement : favoriser les types proches du type dominant recent
+    // 2. Alignment: favor types close to the recent dominant type
     if let Some(&last_type) = recent_type_indices.last() {
-        // Les types "voisins" (numeriquement proches) recoivent un leger bonus
+        // "Neighbor" types (numerically close) receive a slight bonus
         for idx in 0..num_types {
             let distance = ((idx as i64) - (last_type as i64)).unsigned_abs() as f64;
             if distance > 0.0 && distance <= 3.0 {
@@ -108,7 +108,7 @@ pub fn compute_flocking(
         }
     }
 
-    // 3. Cohesion : favoriser les types proches du "centre de masse"
+    // 3. Cohesion: favor types close to the "center of mass"
     let total_boids = boids.len() as f64;
     if total_boids > 0.0 {
         let center_type = boids.iter()
@@ -123,7 +123,7 @@ pub fn compute_flocking(
         }
     }
 
-    // Normaliser les ajustements dans [-1, 1]
+    // Normalize adjustments to [-1, 1]
     for adj in &mut adjustments {
         *adj = adj.clamp(-1.0, 1.0);
     }
@@ -131,7 +131,7 @@ pub fn compute_flocking(
     FlockingResult { adjustments }
 }
 
-/// Description du flocking pour le debug/dashboard.
+/// Description of the flocking for debug/dashboard.
 pub fn describe_flocking(result: &FlockingResult, type_names: &[&str]) -> String {
     let mut desc = String::new();
     let mut sorted: Vec<(usize, f64)> = result.adjustments.iter()
@@ -155,9 +155,9 @@ mod tests {
 
     #[test]
     fn test_separation_penalizes_repetition() {
-        let recent = vec![0, 0, 0]; // 3 fois le meme type
+        let recent = vec![0, 0, 0]; // 3 times the same type
         let result = compute_flocking(&recent, 10, &FlockingParams::default());
-        assert!(result.adjustments[0] < 0.0, "Type repete doit etre penalise");
+        assert!(result.adjustments[0] < 0.0, "Repeated type must be penalized");
     }
 
     #[test]
@@ -169,11 +169,11 @@ mod tests {
 
     #[test]
     fn test_diverse_no_penalty() {
-        let recent = vec![0, 1, 2, 3, 4]; // Tous differents
+        let recent = vec![0, 1, 2, 3, 4]; // All different
         let result = compute_flocking(&recent, 10, &FlockingParams::default());
-        // Aucun type ne devrait etre fortement penalise
+        // No type should be strongly penalized
         for adj in &result.adjustments {
-            assert!(*adj > -0.5, "Types divers ne doivent pas etre penalises");
+            assert!(*adj > -0.5, "Diverse types must not be penalized");
         }
     }
 }

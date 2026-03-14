@@ -1,8 +1,8 @@
 // =============================================================================
 // api/algorithms.rs — Handlers algorithmes (statut, catalogue, historique)
 //
-// Role : Endpoints pour l'orchestrateur d'algorithmes : statut courant,
-// catalogue complet et historique des executions recentes.
+// Role: Endpoints for the orchestrateur d'algorithmes : statut current,
+// catalogue complete et history of executions recentes.
 // =============================================================================
 
 use std::collections::HashMap;
@@ -17,7 +17,7 @@ pub async fn api_algorithms_status(State(state): State<AppState>) -> impl IntoRe
     axum::Json(agent.orchestrator.to_status_json())
 }
 
-/// GET /api/algorithms/catalog — Catalogue complet des algorithmes.
+/// GET /api/algorithms/catalog — Catalogue complete of the algorithms.
 pub async fn api_algorithms_catalog(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     axum::Json(agent.orchestrator.catalog_json())

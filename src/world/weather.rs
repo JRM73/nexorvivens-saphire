@@ -1,23 +1,23 @@
 // =============================================================================
-// world/weather.rs — Service météo (Open-Meteo, gratuit, sans clé API)
+// world/weather.rs — Weather service (Open-Meteo, free, no API key)
 // =============================================================================
 //
-// Rôle : Fournit à Saphire la conscience des conditions météorologiques
-//        actuelles via l'API gratuite Open-Meteo. La météo influence
-//        directement la chimie interne de Saphire (neurotransmetteurs),
-//        simulant l'effet de l'environnement sur l'humeur.
+// Role: Provides Saphire with awareness of current weather conditions
+//       via the free Open-Meteo API. Weather directly influences
+//       Saphire's internal chemistry (neurotransmitters), simulating
+//       the effect of the environment on mood.
 //
-// Dépendances :
-//   - std::time : gestion de l'intervalle de mise à jour (Duration, Instant)
-//   - chrono : horodatage des données météo
-//   - serde : sérialisation de l'état météo pour l'interface
-//   - ureq : client HTTP synchrone pour les appels API
-//   - super::location::GeoLocation : coordonnées GPS pour la requête
+// Dependencies:
+//   - std::time: update interval management (Duration, Instant)
+//   - chrono: weather data timestamping
+//   - serde: weather state serialization for the interface
+//   - ureq: synchronous HTTP client for API calls
+//   - super::location::GeoLocation: GPS coordinates for the request
 //
-// Place dans l'architecture :
-//   Sous-module de world/. Le WeatherService est intégré dans WorldContext
-//   et appelé à intervalles réguliers. L'état météo produit des ajustements
-//   chimiques (ChemistryAdjustment) qui sont appliqués aux neurotransmetteurs.
+// Place in architecture:
+//   Sub-module of world/. The WeatherService is integrated into WorldContext
+//   and called at regular intervals. The weather state produces chemistry
+//   adjustments (ChemistryAdjustment) that are applied to neurotransmitters.
 // =============================================================================
 
 use std::time::{Duration, Instant};
@@ -25,12 +25,12 @@ use chrono::{DateTime, Utc};
 use serde::Serialize;
 use super::location::GeoLocation;
 
-/// Erreurs possibles du service météo
+/// Possible weather service errors
 #[derive(Debug)]
 pub enum WeatherError {
-    /// Erreur réseau (timeout, connexion refusée, etc.)
+    /// Network error (timeout, connection refused, etc.)
     Network(String),
-    /// Erreur d'analyse de la réponse JSON
+    /// JSON response parsing error
     Parse(String),
 }
 
@@ -43,105 +43,105 @@ impl std::fmt::Display for WeatherError {
     }
 }
 
-/// État météo actuel — données récupérées depuis l'API Open-Meteo.
+/// Current weather state — data retrieved from the Open-Meteo API.
 #[derive(Debug, Clone, Serialize)]
 pub struct WeatherState {
-    /// Température réelle en degrés Celsius
+    /// Actual temperature in degrees Celsius
     pub temperature: f64,
-    /// Température ressentie en degrés Celsius (tenant compte du vent et de l'humidité)
+    /// Apparent temperature in degrees Celsius (accounting for wind and humidity)
     pub apparent_temperature: f64,
-    /// Code météo WMO (World Meteorological Organization) : 0 = ciel dégagé,
-    /// 1-3 = nuageux, 45-48 = brouillard, 51-57 = bruine, 61-67 = pluie,
-    /// 71-77 = neige, 80-86 = averses, 95-99 = orage
+    /// WMO (World Meteorological Organization) weather code: 0 = clear sky,
+    /// 1-3 = cloudy, 45-48 = fog, 51-57 = drizzle, 61-67 = rain,
+    /// 71-77 = snow, 80-86 = showers, 95-99 = thunderstorm
     pub weather_code: u32,
-    /// Description en français (ex: "ensoleillé", "pluvieux")
+    /// Description in French (e.g.: "ensoleillé", "pluvieux")
     pub description: String,
-    /// Vitesse du vent en km/h
+    /// Wind speed in km/h
     pub wind_speed: f64,
-    /// Vrai si c'est le jour (entre le lever et le coucher du soleil)
+    /// True if it is daytime (between sunrise and sunset)
     pub is_day: bool,
-    /// Horodatage de la dernière récupération des données
+    /// Timestamp of last data retrieval
     pub fetched_at: DateTime<Utc>,
 }
 
-/// Ajustement chimique causé par la météo — modifications des niveaux de
-/// neurotransmetteurs en réponse aux conditions météorologiques.
+/// Chemistry adjustment caused by weather — neurotransmitter level
+/// modifications in response to weather conditions.
 ///
-/// Les valeurs sont faibles (max environ ±0.04) pour représenter une influence
-/// subtile et continue, similaire à l'effet de la météo sur l'humeur humaine.
+/// Values are small (max about +/-0.04) to represent a subtle
+/// and continuous influence, similar to the effect of weather on human mood.
 #[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ChemistryAdjustment {
-    /// Ajustement de la dopamine (plaisir, motivation)
+    /// Dopamine adjustment (pleasure, motivation)
     pub dopamine: f64,
-    /// Ajustement du cortisol (stress)
+    /// Cortisol adjustment (stress)
     pub cortisol: f64,
-    /// Ajustement de la sérotonine (bien-être, stabilité)
+    /// Serotonin adjustment (well-being, stability)
     pub serotonin: f64,
-    /// Ajustement de l'adrénaline (alerte, excitation)
+    /// Adrenaline adjustment (alertness, excitement)
     pub adrenaline: f64,
-    /// Ajustement de l'ocytocine (lien social, confiance)
+    /// Oxytocin adjustment (social bonding, trust)
     pub oxytocin: f64,
-    /// Ajustement des endorphines (calme, soulagement de la douleur)
+    /// Endorphin adjustment (calm, pain relief)
     pub endorphin: f64,
-    /// Ajustement de la noradrénaline (vigilance, concentration)
+    /// Noradrenaline adjustment (vigilance, concentration)
     pub noradrenaline: f64,
 }
 
 impl WeatherState {
-    /// Calcule l'influence chimique de la météo sur les neurotransmetteurs.
+    /// Computes the chemical influence of weather on neurotransmitters.
     ///
-    /// Simule l'effet bien documenté de la météo sur l'humeur humaine :
-    /// - Le soleil booste la sérotonine (comme la vitamine D le fait chez les humains)
-    /// - La pluie apporte mélancolie (baisse sérotonine) mais aussi du calme
-    /// - L'orage est excitant (adrénaline, noradrénaline) et stressant (cortisol)
-    /// - La neige provoque de l'émerveillement (dopamine)
-    /// - Le froid extrême est stressant (cortisol, adrénaline)
-    /// - La chaleur douce est apaisante (sérotonine, endorphines)
-    /// - La nuit favorise le calme et l'introspection
+    /// Simulates the well-documented effect of weather on human mood:
+    /// - Sunshine boosts serotonin (like vitamin D does in humans)
+    /// - Rain brings melancholy (lower serotonin) but also calm
+    /// - Thunderstorms are exciting (adrenaline, noradrenaline) and stressful (cortisol)
+    /// - Snow causes wonder (dopamine)
+    /// - Extreme cold is stressful (cortisol, adrenaline)
+    /// - Mild warmth is soothing (serotonin, endorphins)
+    /// - Night promotes calm and introspection
     ///
-    /// Retourne : un ChemistryAdjustment avec les ajustements à appliquer
+    /// Returns: a ChemistryAdjustment with the adjustments to apply
     pub fn chemistry_influence(&self) -> ChemistryAdjustment {
         let mut adj = ChemistryAdjustment::default();
 
-        // Le soleil de jour booste la sérotonine (comme chez les humains)
+        // Daytime sunshine boosts serotonin (like in humans)
         if self.weather_code <= 1 && self.is_day {
             adj.serotonin += 0.03;
             adj.dopamine += 0.02;
         }
 
-        // La pluie (codes 61-65) apporte une légère mélancolie mais aussi du calme
+        // Rain (codes 61-65) brings slight melancholy but also calm
         if (61..=65).contains(&self.weather_code) {
             adj.serotonin -= 0.02;
             adj.cortisol += 0.01;
-            adj.endorphin += 0.01; // Le bruit de la pluie est apaisant
+            adj.endorphin += 0.01; // The sound of rain is soothing
         }
 
-        // L'orage (code >= 95) est excitant et un peu stressant
+        // Thunderstorm (code >= 95) is exciting and slightly stressful
         if self.weather_code >= 95 {
             adj.adrenaline += 0.03;
             adj.noradrenaline += 0.04;
             adj.cortisol += 0.02;
         }
 
-        // La neige (codes 71-77) apporte de l'émerveillement
+        // Snow (codes 71-77) brings wonder
         if (71..=77).contains(&self.weather_code) {
             adj.dopamine += 0.03;
             adj.serotonin += 0.01;
         }
 
-        // Le froid extrême (< -5 degres C) est légèrement stressant
+        // Extreme cold (< -5 degrees C) is slightly stressful
         if self.temperature < -5.0 {
             adj.cortisol += 0.02;
             adj.adrenaline += 0.01;
         }
 
-        // La chaleur douce (18-25 degres C) est apaisante
+        // Mild warmth (18-25 degrees C) is soothing
         if (18.0..=25.0).contains(&self.temperature) {
             adj.serotonin += 0.02;
             adj.endorphin += 0.01;
         }
 
-        // La nuit apporte du calme et de l'introspection
+        // Night brings calm and introspection
         if !self.is_day {
             adj.noradrenaline -= 0.02;
             adj.serotonin += 0.01;
@@ -150,67 +150,67 @@ impl WeatherState {
         adj
     }
 
-    /// Retourne une icône emoji correspondant aux conditions météo actuelles.
+    /// Returns an emoji icon corresponding to the current weather conditions.
     ///
-    /// Différencie les icônes de jour et de nuit pour plus de réalisme visuel.
+    /// Differentiates day and night icons for more visual realism.
     ///
-    /// Retourne : une chaîne statique contenant l'emoji météo
+    /// Returns: a static string containing the weather emoji
     pub fn icon(&self) -> &'static str {
-        // Icônes de nuit
+        // Night icons
         if !self.is_day {
             return match self.weather_code {
-                0..=2 => "🌙",     // Ciel dégagé la nuit
-                3 => "☁️",          // Couvert
-                45 | 48 => "🌫️",   // Brouillard
-                51..=57 => "🌧️",   // Bruine
-                61..=67 => "🌧️",   // Pluie
-                71..=77 => "🌨️",   // Neige
-                80..=82 => "🌧️",   // Averses
-                85 | 86 => "🌨️",   // Averses de neige
-                95..=99 => "⛈️",   // Orage
+                0..=2 => "🌙",     // Clear sky at night
+                3 => "☁️",          // Overcast
+                45 | 48 => "🌫️",   // Fog
+                51..=57 => "🌧️",   // Drizzle
+                61..=67 => "🌧️",   // Rain
+                71..=77 => "🌨️",   // Snow
+                80..=82 => "🌧️",   // Showers
+                85 | 86 => "🌨️",   // Snow showers
+                95..=99 => "⛈️",   // Thunderstorm
                 _ => "🌙",
             };
         }
-        // Icônes de jour
+        // Day icons
         match self.weather_code {
-            0 => "☀️",            // Ciel dégagé
-            1 => "🌤️",           // Principalement dégagé
-            2 => "⛅",            // Partiellement nuageux
-            3 => "☁️",            // Couvert
-            45 | 48 => "🌫️",     // Brouillard
-            51..=57 => "🌦️",     // Bruine
-            61..=67 => "🌧️",     // Pluie
-            71..=77 => "🌨️",     // Neige
-            80..=82 => "🌦️",     // Averses
-            85 | 86 => "🌨️",     // Averses de neige
-            95 => "⛈️",          // Orage
-            96 | 99 => "⛈️",     // Orage avec grêle
-            _ => "🌡️",           // Code inconnu
+            0 => "☀️",            // Clear sky
+            1 => "🌤️",           // Mainly clear
+            2 => "⛅",            // Partly cloudy
+            3 => "☁️",            // Overcast
+            45 | 48 => "🌫️",     // Fog
+            51..=57 => "🌦️",     // Drizzle
+            61..=67 => "🌧️",     // Rain
+            71..=77 => "🌨️",     // Snow
+            80..=82 => "🌦️",     // Showers
+            85 | 86 => "🌨️",     // Snow showers
+            95 => "⛈️",          // Thunderstorm
+            96 | 99 => "⛈️",     // Thunderstorm with hail
+            _ => "🌡️",           // Unknown code
         }
     }
 }
 
-/// Service météo — gère la récupération et le cache des données météo
-/// depuis l'API Open-Meteo (gratuite, sans clé API).
+/// Weather service — manages retrieval and caching of weather data
+/// from the Open-Meteo API (free, no API key).
 pub struct WeatherService {
-    /// Localisation pour laquelle récupérer la météo
+    /// Location for which to retrieve weather
     location: GeoLocation,
-    /// Client HTTP synchrone configuré avec un timeout de 10 secondes
+    /// Synchronous HTTP client configured with a 10-second timeout
     http_client: ureq::Agent,
-    /// Dernières données météo récupérées (None si jamais récupérées)
+    /// Last retrieved weather data (None if never retrieved)
     current: Option<WeatherState>,
-    /// Intervalle minimum entre deux requêtes API
+    /// Minimum interval between two API requests
     update_interval: Duration,
-    /// Horodatage de la dernière mise à jour réussie
+    /// Timestamp of the last successful update
     last_update: Option<Instant>,
 }
 
 impl WeatherService {
-    /// Crée un nouveau service météo.
+    /// Creates a new weather service.
     ///
-    /// Paramètre `location` : localisation GPS pour les requêtes
-    /// Paramètre `update_interval_minutes` : intervalle de rafraîchissement en minutes
-    /// Retourne : une instance de WeatherService prête à l'utilisation
+    /// Parameter `location`: GPS location for requests
+    /// Parameter `update_interval_minutes`: refresh interval in minutes
+    /// Returns: a WeatherService instance ready for use
     pub fn new(location: GeoLocation, update_interval_minutes: u64) -> Self {
         Self {
             location,
@@ -223,17 +223,17 @@ impl WeatherService {
         }
     }
 
-    /// Met à jour la météo si l'intervalle de rafraîchissement est dépassé.
+    /// Updates the weather if the refresh interval has been exceeded.
     ///
-    /// Si la mise à jour échoue (erreur réseau, etc.), les anciennes données
-    /// sont conservées pour garantir une continuité.
+    /// If the update fails (network error, etc.), the old data
+    /// is retained to guarantee continuity.
     ///
-    /// Retourne : référence vers l'état météo actuel (ou None si jamais récupéré)
+    /// Returns: reference to the current weather state (or None if never retrieved)
     pub fn update_if_needed(&mut self) -> Option<&WeatherState> {
-        // Vérifier si une mise à jour est nécessaire
+        // Check if an update is needed
         let should_update = self.last_update
             .map(|t| t.elapsed() > self.update_interval)
-            .unwrap_or(true); // Toujours mettre à jour si jamais fait
+            .unwrap_or(true); // Always update if never done
 
         if should_update {
             match self.fetch_weather() {
@@ -243,7 +243,7 @@ impl WeatherService {
                 }
                 Err(e) => {
                     tracing::warn!("Échec récupération météo: {}", e);
-                    // Garder l'ancienne valeur si disponible (dégradation gracieuse)
+                    // Keep the old value if available (graceful degradation)
                 }
             }
         }
@@ -251,25 +251,24 @@ impl WeatherService {
         self.current.as_ref()
     }
 
-    /// Accès direct à la météo actuelle sans déclencher de mise à jour.
+    /// Direct access to current weather without triggering an update.
     ///
-    /// Retourne : référence vers l'état météo actuel, ou None si pas encore récupéré
+    /// Returns: reference to the current weather state, or None if not yet retrieved
     pub fn current(&self) -> Option<&WeatherState> {
         self.current.as_ref()
     }
 
-    /// Effectue une requête HTTP vers l'API Open-Meteo pour récupérer la météo.
+    /// Performs an HTTP request to the Open-Meteo API to retrieve weather data.
     ///
-    /// L'API Open-Meteo est gratuite et ne nécessite pas de clé API.
-    /// Elle utilise les coordonnées GPS et le fuseau horaire pour retourner
-    /// les conditions météo actuelles.
+    /// The Open-Meteo API is free and does not require an API key.
+    /// It uses GPS coordinates and timezone to return current weather conditions.
     ///
-    /// Retourne : Ok(WeatherState) ou Err(WeatherError) en cas d'échec
+    /// Returns: Ok(WeatherState) or Err(WeatherError) on failure
     fn fetch_weather(&self) -> Result<WeatherState, WeatherError> {
-        // Encoder le timezone pour l'URL (remplacer / par %2F)
+        // Encode timezone for the URL (replace / with %2F)
         let tz_encoded = self.location.timezone.replace('/', "%2F");
 
-        // Construire l'URL de l'API Open-Meteo
+        // Build the Open-Meteo API URL
         let url = format!(
             "https://api.open-meteo.com/v1/forecast?\
              latitude={}&longitude={}\
@@ -280,7 +279,7 @@ impl WeatherService {
             tz_encoded,
         );
 
-        // Effectuer la requête HTTP GET
+        // Perform the HTTP GET request
         let resp_str = self.http_client
             .get(&url)
             .call()
@@ -288,13 +287,13 @@ impl WeatherService {
             .into_string()
             .map_err(|e| WeatherError::Parse(e.to_string()))?;
 
-        // Parser la réponse JSON
+        // Parse the JSON response
         let resp: serde_json::Value = serde_json::from_str(&resp_str)
             .map_err(|e| WeatherError::Parse(e.to_string()))?;
 
         let current = &resp["current_weather"];
 
-        // Extraire le code météo WMO pour la description en français
+        // Extract the WMO weather code for the French description
         let code = current["weathercode"].as_u64().unwrap_or(0) as u32;
 
         Ok(WeatherState {
@@ -308,11 +307,11 @@ impl WeatherService {
         })
     }
 
-    /// Convertit un code météo WMO (World Meteorological Organization) en
-    /// description française lisible.
+    /// Converts a WMO (World Meteorological Organization) weather code
+    /// to a readable French description.
     ///
-    /// Paramètre `code` : code météo WMO (0-99)
-    /// Retourne : description en français
+    /// Parameter `code`: WMO weather code (0-99)
+    /// Returns: description in French
     fn weather_code_to_french(code: u32) -> String {
         match code {
             0 => "ciel dégagé".into(),

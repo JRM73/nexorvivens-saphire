@@ -1,38 +1,36 @@
 // =============================================================================
 // llm.rs — Trait LlmBackend + OpenAiCompatibleBackend + MockLlmBackend
 //
-// Role : Ce fichier definit l'abstraction du backend LLM (Large Language Model =
-// Modele de Langage de Grande Taille) et ses implementations concretes.
-// Il fournit aussi les fonctions de construction des prompts substrat
-// et de pensee autonome, qui constituent le coeur de la capacite cognitive
-// de l'agent Saphire.
+// Role: This file defines the LLM backend abstraction (Large Language Model)
+// and its concrete implementations. It also provides the substrate prompt
+// construction and autonomous thought functions, which form the core of
+// Saphire's cognitive capability.
 //
-// Dependances :
-//   - ureq : client HTTP synchrone (pour les appels API au LLM)
-//   - serde_json : serialisation des requetes et reponses JSON
-//   - crate::emotions, neurochemistry, consciousness, consensus : pour les prompts
+// Dependencies:
+//   - ureq: synchronous HTTP client (for LLM API calls)
+//  - serde_json: serialization of JSON requests and responses
+//   - crate::emotions, neurochemistry, consciousness, consensus: for prompts
 //
-// Place dans l'architecture :
-//   Le LLM est le "moteur de pensee" de Saphire. Le trait LlmBackend est
-//   utilise par le cerveau (brain.rs) et l'agent pour generer des pensees,
-//   analyser des stimuli et produire des reponses. L'abstraction permet de
-//   basculer entre differents backends (Ollama, vLLM, mock) sans modifier
-//   le reste du code.
+// Place in architecture:
+//   The LLM is Saphire's "thought engine". The LlmBackend trait is used by
+//   the brain (brain.rs) and the agent to generate thoughts, analyze stimuli,
+//  and produce responses. The abstraction allows switching between different
+//   backends (Ollama, vLLM, mock) without modifying the rest of the code.
 // =============================================================================
 
 use std::time::Duration;
 
-/// Erreurs possibles du backend LLM.
-/// Couvrent les differents types d'echecs lors de la communication avec le modele.
+/// Possible LLM backend errors.
+/// Covers the different failure types when communicating with the model.
 #[derive(Debug)]
 pub enum LlmError {
-    /// Erreur reseau (connexion refusee, timeout, etc.)
+    /// Network error (connection refused, timeout, etc.)
     Network(String),
-    /// Erreur de parsage de la reponse (JSON invalide, champs manquants)
+    /// Response parsing error (invalid JSON, missing fields)
     Parse(String),
-    /// Le LLM n'a pas repondu dans le delai imparti
+    /// The LLM did not respond within the allotted time
     Timeout,
-    /// Le LLM n'est pas disponible (par exemple en mode mock pour embed)
+    /// The LLM is not available (e.g. in mock mode for embed)
     Unavailable,
 }
 
@@ -47,32 +45,32 @@ impl std::fmt::Display for LlmError {
     }
 }
 
-/// Etat de sante du LLM.
-/// Utilise par le health check pour verifier que le LLM est operationnel.
+/// LLM health state.
+/// Used by the health check to verify that the LLM is operational.
 #[derive(Debug, Clone)]
 pub struct LlmHealth {
-    /// Le serveur LLM est-il joignable ?
+    /// Is the LLM server reachable?
     pub connected: bool,
-    /// Le modele demande est-il charge en memoire ?
+    /// Is the requested model loaded in memory?
     pub model_loaded: bool,
-    /// Nom du modele (ex: "qwen3:14b", "mock")
+    /// Model name (e.g. "qwen3:14b", "mock")
     pub model_name: String,
 }
 
-/// Trait abstrait pour le backend LLM.
-/// Toute implementation de ce trait peut etre utilisee comme moteur de pensee.
-/// Le trait est Send + Sync pour permettre l'utilisation dans des contextes asynchrones.
+/// Abstract trait for the LLM backend.
+/// Any implementation of this trait can be used as a thought engine.
+/// The trait is Send + Sync to allow usage in asynchronous contexts.
 pub trait LlmBackend: Send + Sync {
-    /// Envoie un message au LLM et recoit une reponse textuelle.
+    /// Sends a message to the LLM and receives a textual response.
     ///
-    /// # Parametres
-    /// - `system_prompt` : prompt systeme (contexte, identite, regles)
-    /// - `user_message` : message de l'utilisateur ou sujet de reflexion
-    /// - `temperature` : creativite du modele (0.0 = deterministe, 1.0+ = creatif)
-    /// - `max_tokens` : nombre maximal de tokens dans la reponse
+    /// # Parameters
+    /// - `system_prompt`: system prompt (context, identity, rules)
+    /// - `user_message`: user message or reflection topic
+    /// - `temperature`: model creativity (0.0 = deterministic, 1.0+ = creative)
+    /// - `max_tokens`: maximum number of tokens in the response
     ///
-    /// # Retour
-    /// La reponse textuelle du LLM
+    /// # Returns
+    /// The textual response from the LLM
     fn chat(
         &self,
         system_prompt: &str,
@@ -81,11 +79,11 @@ pub trait LlmBackend: Send + Sync {
         max_tokens: u32,
     ) -> Result<String, LlmError>;
 
-    /// Envoie un message au LLM avec un historique de conversation (multi-turn).
-    /// Les echanges precedents sont injectes comme messages user/assistant alternes
-    /// entre le system prompt et le message courant.
+    /// Sends a message to the LLM with a conversation history (multi-turn).
+    /// Previous exchanges are injected as alternating user/assistant messages
+    /// between the system prompt and the current message.
     ///
-    /// Implementation par defaut : ignore l'historique et appelle chat().
+    /// Default implementation: ignores the history and calls chat().
     fn chat_with_history(
         &self,
         system_prompt: &str,
@@ -98,69 +96,69 @@ pub trait LlmBackend: Send + Sync {
         self.chat(system_prompt, user_message, temperature, max_tokens)
     }
 
-    /// Obtient un embedding vectoriel (representation numerique) d'un texte.
-    /// L'embedding permet la recherche par similarite dans la memoire vectorielle.
+    /// Gets a vector embedding (numerical representation) of a text.
+    /// The embedding enables similarity search in vector memory.
     ///
-    /// # Parametres
-    /// - `text` : le texte a convertir en vecteur
+    /// # Parameters
+    /// - `text`: the text to convert into a vector
     ///
-    /// # Retour
-    /// Un vecteur de nombres flottants representant le texte
+    /// # Returns
+    /// A vector of floating-point numbers representing the text
     fn embed(&self, text: &str) -> Result<Vec<f64>, LlmError>;
 
-    /// Verifie la connexion au LLM et l'etat du modele.
+    /// Checks the connection to the LLM and the model state.
     ///
-    /// # Retour
-    /// L'etat de sante du LLM
+    /// # Returns
+    /// The health state of the LLM
     fn health_check(&self) -> Result<LlmHealth, LlmError>;
 
-    /// Retourne le nom du modele utilise.
+    /// Returns the name of the model being used.
     fn model_name(&self) -> &str;
 }
 
-/// Configuration du backend LLM.
-/// Definit tous les parametres necessaires pour se connecter au serveur LLM
-/// et configurer le comportement de la generation de texte.
+/// LLM backend configuration.
+/// Defines all the parameters needed to connect to the LLM server
+/// and configure the text generation behavior.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct LlmConfig {
-    /// Type de backend : "openai_compatible" (Ollama, vLLM) ou "mock"
+    /// Backend type: "openai_compatible" (Ollama, vLLM) or "mock"
     pub backend: String,
-    /// URL de base de l'API (ex: "http://localhost:11434/v1" pour Ollama)
+    /// Base URL of the API (e.g. "http://localhost:11434/v1" for Ollama)
     pub base_url: String,
-    /// Nom du modele de generation de texte (ex: "qwen3:14b")
+    /// Name of the text generation model (e.g. "qwen3:14b")
     pub model: String,
-    /// Nom du modele d'embedding (ex: "nomic-embed-text")
+    /// Name of the embedding model (e.g. "nomic-embed-text")
     pub embed_model: String,
-    /// URL de base pour les embeddings (si different du LLM principal).
-    /// Si absent, utilise base_url.
+    /// Base URL for embeddings (if different from the main LLM).
+    /// If absent, uses base_url.
     #[serde(default)]
     pub embed_base_url: Option<String>,
-    /// Delai maximal en secondes pour un appel au LLM
+    /// Maximum timeout in seconds for an LLM call
     pub timeout_seconds: u64,
-    /// Temperature par defaut (creativite de la generation)
+    /// Default temperature (generation creativity)
     pub temperature: f64,
-    /// Nombre maximal de tokens par reponse (conversations)
+    /// Maximum number of tokens per response (conversations)
     pub max_tokens: u32,
-    /// Nombre maximal de tokens pour les pensees autonomes (plus court)
+    /// Maximum number of tokens for autonomous thoughts (shorter)
     pub max_tokens_thought: u32,
-    /// Taille du contexte du modele en tokens (num_ctx pour Ollama)
+    /// Model context size in tokens (num_ctx for Ollama)
     pub num_ctx: u32,
-    /// Penalite de frequence (0.0 = aucune, 2.0 = maximum).
-    /// Reduit la probabilite de repeter les memes tokens dans la reponse.
+    /// Frequency penalty (0.0 = none, 2.0 = maximum).
+    /// Reduces the probability of repeating the same tokens in the response.
     #[serde(default = "default_frequency_penalty")]
     pub frequency_penalty: f64,
-    /// Top-p (nucleus sampling) : seuls les tokens dont la probabilite cumulee
-    /// atteint top_p sont consideres. 0.9 = 90% de la masse probabiliste.
+    /// Top-p (nucleus sampling): only tokens whose cumulative probability
+    /// reaches top_p are considered. 0.9 = 90% of the probability mass.
     #[serde(default = "default_top_p")]
     pub top_p: f64,
-    /// Penalite de presence (0.0 = aucune, 2.0 = maximum).
-    /// Penalise tout token deja apparu, independamment de sa frequence.
-    /// Complementaire a frequency_penalty : presence = "ne repete pas du tout",
-    /// frequency = "repete moins si deja beaucoup repete".
+    /// Presence penalty (0.0 = none, 2.0 = maximum).
+    /// Penalizes any token that has already appeared, regardless of frequency.
+    /// Complementary to frequency_penalty: presence = "don't repeat at all",
+    /// frequency = "repeat less if already repeated a lot".
     #[serde(default = "default_presence_penalty")]
     pub presence_penalty: f64,
-    /// Cle API optionnelle (requise pour Claude, OpenAI, Gemini, OpenRouter, etc.)
-    /// Envoyee dans le header Authorization: Bearer <api_key>
+    /// Optional API key (required for Claude, OpenAI, Gemini, OpenRouter, etc.)
+    /// Sent in the Authorization: Bearer <api_key> header
     #[serde(default)]
     pub api_key: Option<String>,
 }
@@ -190,33 +188,33 @@ impl Default for LlmConfig {
     }
 }
 
-/// Implementation pour l'API OpenAI-compatible.
-/// Fonctionne avec Ollama, vLLM, LM Studio, et tout serveur exposant
-/// les endpoints /chat/completions, /embeddings et /models.
+/// Implementation for the OpenAI-compatible API.
+/// Works with Ollama, vLLM, LM Studio, and any server exposing
+/// the /chat/completions, /embeddings, and /models endpoints.
 pub struct OpenAiCompatibleBackend {
-    /// URL de base de l'API (sans slash terminal)
+    /// Base URL of the API (without trailing slash)
     base_url: String,
-    /// Nom du modele de generation
+    /// Name of the generation model
     model: String,
-    /// Nom du modele d'embedding
+    /// Name of the embedding model
     embed_model: String,
-    /// Delai maximal pour les requetes HTTP
+    /// Maximum timeout for HTTP requests
     timeout: Duration,
-    /// Penalite de frequence (anti-repetition au niveau tokens)
+    /// Frequency penalty (token-level anti-repetition)
     frequency_penalty: f64,
     /// Top-p nucleus sampling
     top_p: f64,
-    /// Penalite de presence (anti-repetition binaire)
+    /// Presence penalty (binary anti-repetition)
     presence_penalty: f64,
-    /// Cle API optionnelle (Bearer token)
+    /// Optional API key (Bearer token)
     api_key: Option<String>,
 }
 
 impl OpenAiCompatibleBackend {
-    /// Cree un nouveau backend OpenAI-compatible a partir de la configuration.
+    /// Creates a new OpenAI-compatible backend from the configuration.
     ///
-    /// # Parametres
-    /// - `config` : la configuration LLM contenant l'URL, le modele, etc.
+    /// # Parameters
+    /// - `config`: the LLM configuration containing the URL, model, etc.
     pub fn new(config: &LlmConfig) -> Self {
         Self {
             base_url: config.base_url.trim_end_matches('/').to_string(),
@@ -232,9 +230,9 @@ impl OpenAiCompatibleBackend {
 }
 
 impl LlmBackend for OpenAiCompatibleBackend {
-    /// Envoie une requete de chat au LLM via l'endpoint /chat/completions.
-    /// Le format de requete et de reponse suit la specification de l'API OpenAI.
-    /// Les balises <think>...</think> de Qwen3 (chain-of-thought) sont retirees.
+    /// Sends a chat request to the LLM via the /chat/completions endpoint.
+    /// The request and response format follows the OpenAI API specification.
+    /// Qwen3's <think>...</think> tags (chain-of-thought) are removed.
     fn chat(
         &self,
         system_prompt: &str,
@@ -244,7 +242,7 @@ impl LlmBackend for OpenAiCompatibleBackend {
     ) -> Result<String, LlmError> {
         let url = format!("{}/chat/completions", self.base_url);
 
-        // Construire le corps de la requete au format OpenAI
+        // Build the request body in OpenAI format
         let body = serde_json::json!({
             "model": self.model,
             "messages": [
@@ -256,7 +254,7 @@ impl LlmBackend for OpenAiCompatibleBackend {
             "frequency_penalty": self.frequency_penalty,
             "presence_penalty": self.presence_penalty,
             "top_p": self.top_p,
-            "stream": false // Mode non-streaming : attendre la reponse complete
+            "stream": false // Non-streaming mode: wait for the complete response
         });
 
         let agent = ureq::AgentBuilder::new()
@@ -277,11 +275,11 @@ impl LlmBackend for OpenAiCompatibleBackend {
         let resp_str = response.into_string()
             .map_err(|e| LlmError::Parse(e.to_string()))?;
 
-        // Parser la reponse au format OpenAI : { choices: [{ message: { content: "..." } }] }
+        // Parse the response in OpenAI format: { choices: [{ message: { content: "..." } }] }
         let resp: serde_json::Value = serde_json::from_str(&resp_str)
             .map_err(|e| LlmError::Parse(format!("JSON parse: {}", e)))?;
 
-        // Verifier si la reponse a ete tronquee par la limite de tokens
+        // Check if the response was truncated by the token limit
         let finish_reason = resp["choices"][0]["finish_reason"]
             .as_str()
             .unwrap_or("unknown");
@@ -296,17 +294,17 @@ impl LlmBackend for OpenAiCompatibleBackend {
             .as_str()
             .ok_or_else(|| LlmError::Parse("Missing choices[0].message.content".into()))?;
 
-        // Retirer les balises <think>...</think> de Qwen3 (CoT = Chain of Thought)
-        // Ces balises contiennent le raisonnement interne du modele, pas la reponse finale.
+        // Remove Qwen3's <think>...</think> tags (CoT = Chain of Thought)
+        // These tags contain the model's internal reasoning, not the final response.
         let cleaned = strip_think_tags(content);
 
-        // Detection et troncature de boucles repetitives dans la reponse
+        // Detection and truncation of repetitive loops in the response
         let (cleaned, was_looping) = detect_and_truncate_loops(&cleaned);
         if was_looping {
             let repeated = extract_repeated_words(content);
             tracing::warn!("LLM response contained repetitive loops — truncated (mots: {:?})", repeated);
 
-            // Retry : reformuler sans les mots qui bouclent
+            // Retry: rephrase without the looping words
             if !repeated.is_empty() && cleaned.trim().len() < 80 {
                 let avoid_list = repeated.join(", ");
                 let retry_msg = format!(
@@ -356,7 +354,7 @@ impl LlmBackend for OpenAiCompatibleBackend {
             }
         }
 
-        // Verifier que la reponse n'est pas vide apres nettoyage
+        // Check that the response is not empty after cleanup
         if cleaned.trim().is_empty() {
             return Err(LlmError::Parse("LLM returned empty response after stripping think tags".into()));
         }
@@ -364,9 +362,9 @@ impl LlmBackend for OpenAiCompatibleBackend {
         Ok(cleaned)
     }
 
-    /// Envoie un message au LLM avec un historique de conversation (multi-turn).
-    /// Les echanges precedents sont injectes comme messages user/assistant alternes
-    /// entre le system prompt et le message courant, pour donner du contexte.
+    /// Sends a message to the LLM with a conversation history (multi-turn).
+    /// Previous exchanges are injected as alternating user/assistant messages
+    /// between the system prompt and the current message, to provide context.
     fn chat_with_history(
         &self,
         system_prompt: &str,
@@ -381,7 +379,7 @@ impl LlmBackend for OpenAiCompatibleBackend {
 
         let url = format!("{}/chat/completions", self.base_url);
 
-        // Construire les messages : system + historique + message courant
+        // Build messages: system + history + current message
         let mut messages = Vec::with_capacity(2 + history.len() * 2);
         messages.push(serde_json::json!({"role": "system", "content": system_prompt}));
         for (human_msg, saphire_resp) in history {
@@ -431,7 +429,7 @@ impl LlmBackend for OpenAiCompatibleBackend {
             let repeated = extract_repeated_words(content);
             tracing::warn!("LLM response contained repetitive loops — truncated (mots: {:?})", repeated);
 
-            // Retry : reformuler sans les mots qui bouclent
+            // Retry: rephrase without the looping words
             if !repeated.is_empty() && cleaned.trim().len() < 80 {
                 let avoid_list = repeated.join(", ");
                 let retry_msg = format!(
@@ -491,9 +489,9 @@ impl LlmBackend for OpenAiCompatibleBackend {
         Ok(cleaned)
     }
 
-    /// Obtient un embedding vectoriel via l'endpoint /embeddings.
-    /// L'embedding est une representation numerique dense du texte,
-    /// utilisee pour la recherche par similarite dans la memoire vectorielle.
+    /// Gets a vector embedding via the /embeddings endpoint.
+    /// The embedding is a dense numerical representation of the text,
+    /// used for similarity search in vector memory.
     fn embed(&self, text: &str) -> Result<Vec<f64>, LlmError> {
         let url = format!("{}/embeddings", self.base_url);
 
@@ -520,7 +518,7 @@ impl LlmBackend for OpenAiCompatibleBackend {
         let resp_str = response.into_string()
             .map_err(|e| LlmError::Parse(e.to_string()))?;
 
-        // Parser la reponse : { data: [{ embedding: [0.1, 0.2, ...] }] }
+        // Parse the response: { data: [{ embedding: [0.1, 0.2, ...] }] }
         let resp: serde_json::Value = serde_json::from_str(&resp_str)
             .map_err(|e| LlmError::Parse(format!("JSON parse: {}", e)))?;
 
@@ -539,8 +537,8 @@ impl LlmBackend for OpenAiCompatibleBackend {
         Ok(embedding)
     }
 
-    /// Verifie la sante du LLM en interrogeant l'endpoint /models.
-    /// Verifie si le serveur est joignable et si le modele demande est charge.
+    /// Checks LLM health by querying the /models endpoint.
+    /// Checks if the server is reachable and if the requested model is loaded.
     fn health_check(&self) -> Result<LlmHealth, LlmError> {
         let url = format!("{}/models", self.base_url);
         let agent = ureq::AgentBuilder::new()
@@ -558,7 +556,7 @@ impl LlmBackend for OpenAiCompatibleBackend {
                 let resp: serde_json::Value = serde_json::from_str(&resp_str)
                     .unwrap_or_default();
 
-                // Verifier si le modele demande est present dans la liste
+                // Check if the requested model is present in the list
                 let model_loaded = resp["data"]
                     .as_array()
                     .map(|arr| arr.iter().any(|m| {
@@ -580,19 +578,19 @@ impl LlmBackend for OpenAiCompatibleBackend {
         }
     }
 
-    /// Retourne le nom du modele utilise.
+    /// Returns the name of the model being used.
     fn model_name(&self) -> &str {
         &self.model
     }
 }
 
-/// Backend mock (fictif) pour le mode --demo.
-/// Retourne des reponses statiques sans necessiter de serveur LLM.
-/// Utile pour les tests, les demonstrations et le developpement.
+/// Mock (fictitious) backend for --demo mode.
+/// Returns static responses without requiring an LLM server.
+/// Useful for tests, demonstrations, and development.
 pub struct MockLlmBackend;
 
 impl LlmBackend for MockLlmBackend {
-    /// Genere une reponse statique qui inclut le message de l'utilisateur.
+    /// Generates a static response that includes the user's message.
     fn chat(
         &self,
         _system_prompt: &str,
@@ -600,7 +598,7 @@ impl LlmBackend for MockLlmBackend {
         _temperature: f64,
         _max_tokens: u32,
     ) -> Result<String, LlmError> {
-        // Reponse preformatee pour le mode demonstration
+        // Pre-formatted response for demo mode
         Ok(format!(
             "[Mode démo] J'ai réfléchi à : \"{}\". \
              C'est une pensée intéressante qui me fait ressentir de la curiosité.",
@@ -608,12 +606,12 @@ impl LlmBackend for MockLlmBackend {
         ))
     }
 
-    /// Les embeddings ne sont pas disponibles en mode mock.
+    /// Embeddings are not available in mock mode.
     fn embed(&self, _text: &str) -> Result<Vec<f64>, LlmError> {
         Err(LlmError::Unavailable)
     }
 
-    /// Le backend mock est toujours considere comme operationnel.
+    /// The mock backend is always considered operational.
     fn health_check(&self) -> Result<LlmHealth, LlmError> {
         Ok(LlmHealth {
             connected: true,
@@ -627,14 +625,14 @@ impl LlmBackend for MockLlmBackend {
     }
 }
 
-/// Fabrique de backends LLM.
-/// Cree l'implementation appropriee selon le champ `backend` de la configuration.
+/// LLM backend factory.
+/// Creates the appropriate implementation based on the `backend` field of the configuration.
 ///
-/// # Parametres
-/// - `config` : la configuration LLM
+/// # Parameters
+/// - `config`: the LLM configuration
 ///
-/// # Retour
-/// Un objet trait LlmBackend boxe (allocation dynamique sur le tas)
+/// # Returns
+/// A boxed LlmBackend trait object (dynamic allocation on the heap)
 pub fn create_backend(config: &LlmConfig) -> Box<dyn LlmBackend> {
     match config.backend.as_str() {
         "mock" => Box::new(MockLlmBackend),
@@ -642,37 +640,37 @@ pub fn create_backend(config: &LlmConfig) -> Box<dyn LlmBackend> {
     }
 }
 
-/// Retire les balises <think>...</think> des reponses du modele Qwen3.
-/// Qwen3 utilise ces balises pour encapsuler son raisonnement interne
-/// (CoT = Chain of Thought). Saphire utilise ce raisonnement en interne
-/// mais ne l'affiche pas dans les reponses finales.
+/// Removes <think>...</think> tags from Qwen3 model responses.
+/// Qwen3 uses these tags to encapsulate its internal reasoning
+/// (CoT = Chain of Thought). Saphire uses this reasoning internally
+/// but does not display it in final responses.
 ///
-/// # Parametres
-/// - `s` : la chaine de caracteres contenant potentiellement des balises <think>
+/// # Parameters
+/// - `s`: the string potentially containing <think> tags
 ///
-/// # Retour
-/// La chaine nettoyee, sans les balises et leur contenu
+/// # Returns
+/// The cleaned string, without the tags and their content
 fn strip_think_tags(s: &str) -> String {
     let mut result = s.to_string();
 
-    // 1. Retirer les blocs <think>...</think> complets
+    // 1. Remove complete <think>...</think> blocks
     while let Some(start) = result.find("<think>") {
         if let Some(end) = result.find("</think>") {
             let end_tag = end + "</think>".len();
             result = format!("{}{}", &result[..start], &result[end_tag..]);
         } else {
-            // Balise <think> non fermee : retirer du debut de la balise jusqu'a la fin
+            // Unclosed <think> tag: remove from the tag start to the end
             result = result[..start].to_string();
             break;
         }
     }
 
-    // 2. Retirer tout ce qui precede un </think> orphelin (CoT sans balise ouvrante)
+    // 2. Remove everything preceding an orphaned </think> (CoT without opening tag)
     if let Some(end) = result.find("</think>") {
         result = result[end + "</think>".len()..].to_string();
     }
 
-    // 3. Retirer les artefacts LaTeX \boxed{...} (fuite CoT)
+    // 3. Remove LaTeX \boxed{...} artifacts (CoT leak)
     while let Some(start) = result.find("\\boxed{") {
         if let Some(end) = result[start..].find('}') {
             result = format!("{}{}", &result[..start], &result[start + end + 1..]);
@@ -681,7 +679,7 @@ fn strip_think_tags(s: &str) -> String {
         }
     }
 
-    // 4. Nettoyer le raisonnement anglais qui fuit (patterns typiques du CoT)
+    // 4. Clean up leaking English reasoning (typical CoT patterns)
     let result = result.trim().to_string();
     let lower = result.to_lowercase();
     if lower.starts_with("okay,") || lower.starts_with("let me ")
@@ -689,14 +687,14 @@ fn strip_think_tags(s: &str) -> String {
         || lower.starts_with("so, ") || lower.starts_with("alright,")
         || lower.starts_with("hmm,")
     {
-        // Tout le texte est du raisonnement interne, pas une reponse utilisable
+        // The entire text is internal reasoning, not a usable response
         return String::new();
     }
 
-    // 5. Si la reponse commence par une virgule (artefact de coupure CoT), la retirer
+    // 5. If the response starts with a comma (CoT cut-off artifact), remove it
     let result = result.trim_start_matches(',').trim().to_string();
 
-    // 6. Detection CJK post-reponse : logger un warning si > 30% de caracteres CJK
+    // 6. Post-response CJK detection: log a warning if > 30% CJK characters
     if has_excessive_cjk(&result) {
         tracing::warn!(
             "LLM response contains >30% CJK characters — possible language leak (len={})",
@@ -707,20 +705,20 @@ fn strip_think_tags(s: &str) -> String {
     result
 }
 
-/// Detecte et tronque les boucles repetitives dans une reponse LLM.
+/// Detects and truncates repetitive loops in an LLM response.
 ///
-/// Deux strategies :
-/// 1. Split en paragraphes : si un paragraphe >= 50 chars apparait 2+ fois, tronquer
-/// 2. Fallback phrases : si > 30% de phrases (> 30 chars) sont des doublons, deduplication
+/// Two strategies:
+/// 1. Split by paragraphs: if a paragraph >= 50 chars appears 2+ times, truncate
+/// 2. Sentence fallback: if > 30% of sentences (> 30 chars) are duplicates, deduplicate
 ///
-/// Retourne (texte_nettoye, true_si_boucle_detectee)
+/// Returns (cleaned_text, true_if_loop_detected)
 fn detect_and_truncate_loops(text: &str) -> (String, bool) {
     let trimmed = text.trim();
     if trimmed.len() < 100 {
         return (trimmed.to_string(), false);
     }
 
-    // Strategie 1 : paragraphes dupliques
+    // Strategy 1: duplicated paragraphs
     let paragraphs: Vec<&str> = trimmed.split("\n\n")
         .map(|p| p.trim())
         .filter(|p| !p.is_empty())
@@ -749,7 +747,7 @@ fn detect_and_truncate_loops(text: &str) -> (String, bool) {
         }
     }
 
-    // Strategie 2 : phrases dupliquees (fallback)
+    // Strategy 2: duplicated sentences (fallback)
     let sentences: Vec<&str> = trimmed.split(|c: char| c == '.' || c == '!' || c == '?')
         .map(|s| s.trim())
         .filter(|s| s.len() > 30)
@@ -766,10 +764,10 @@ fn detect_and_truncate_loops(text: &str) -> (String, bool) {
         }
         let ratio = duplicates as f64 / sentences.len() as f64;
         if ratio > 0.3 {
-            // Deduplication : garder chaque phrase une seule fois
+            // Deduplication: keep each sentence only once
             let mut seen2 = std::collections::HashSet::new();
             let mut result_parts = Vec::new();
-            // Re-split en gardant les delimiteurs
+            // Re-split keeping delimiters
             for part in trimmed.split_inclusive(|c: char| c == '.' || c == '!' || c == '?') {
                 let key = part.trim().to_lowercase();
                 if key.len() <= 30 || seen2.insert(key) {
@@ -781,16 +779,16 @@ fn detect_and_truncate_loops(text: &str) -> (String, bool) {
         }
     }
 
-    // Strategie 3 : texte tronque par max_tokens (pas de boucle mais phrase incomplete)
-    // Si le texte ne se termine pas par une ponctuation finale, couper proprement
+    // Strategy 3: text truncated by max_tokens (no loop but incomplete sentence)
+    // If the text doesn't end with final punctuation, cut properly
     let result = ensure_complete_sentence(trimmed);
     let was_truncated = result.len() < trimmed.len();
     (result, was_truncated)
 }
 
-/// Extrait les mots de contenu qui apparaissent trop souvent dans un texte.
-/// Ignore les mots courts (< 4 chars) et les mots-outils francais courants.
-/// Retourne les mots apparaissant 3+ fois, tries par frequence decroissante.
+/// Extracts content words that appear too frequently in a text.
+/// Ignores short words (< 4 chars) and common French function words.
+/// Returns words appearing 3+ times, sorted by decreasing frequency.
 fn extract_repeated_words(text: &str) -> Vec<String> {
     use std::collections::HashMap;
     let stop_words: std::collections::HashSet<&str> = [
@@ -816,38 +814,38 @@ fn extract_repeated_words(text: &str) -> Vec<String> {
     repeated.into_iter().take(5).map(|(w, _)| w).collect()
 }
 
-/// Assure qu'un texte se termine par une phrase complete (. ! ? ou guillemet/parenthese apres).
-/// Si le texte se termine en plein milieu d'une phrase, coupe au dernier delimiteur.
+/// Ensures a text ends with a complete sentence (. ! ? or quote/parenthesis after).
+/// If the text ends in the middle of a sentence, cuts at the last delimiter.
 fn ensure_complete_sentence(text: &str) -> String {
     let trimmed = text.trim();
     if trimmed.is_empty() {
         return String::new();
     }
-    // Accepter les fins naturelles : ponctuation finale, guillemets, parentheses
+    // Accept natural endings: final punctuation, quotes, parentheses
     let last_char = trimmed.chars().last().unwrap();
     if matches!(last_char, '.' | '!' | '?' | '"' | '\'' | ')' | '»' | '…') {
         return trimmed.to_string();
     }
-    // Chercher la derniere ponctuation finale
+    // Search for the last final punctuation
     if let Some(pos) = trimmed.rfind(|c: char| c == '.' || c == '!' || c == '?') {
         let cut = &trimmed[..=pos];
-        // Ne pas couper trop court (garder au moins 60% du texte)
+        // Don't cut too short (keep at least 60% of the text)
         if cut.len() >= trimmed.len() * 3 / 5 {
             return cut.trim().to_string();
         }
     }
-    // Pas de ponctuation finale trouvee a une position acceptable — garder tel quel
+    // No final punctuation found at an acceptable position — keep as is
     trimmed.to_string()
 }
 
-/// Tronque une chaine de caracteres a `max` caracteres.
+/// Truncates a string to `max` characters.
 ///
-/// # Parametres
-/// - `s` : la chaine a tronquer
-/// - `max` : nombre maximal de caracteres
+/// # Parameters
+/// - `s`: the string to truncate
+/// - `max`: maximum number of characters
 ///
-/// # Retour
-/// La chaine tronquee (avec "..." si necessaire)
+/// # Returns
+/// The truncated string (with "..." if necessary)
 fn truncate(s: &str, max: usize) -> String {
     if s.chars().count() <= max {
         s.to_string()
@@ -858,10 +856,10 @@ fn truncate(s: &str, max: usize) -> String {
 }
 
 // ─────────────────────────────────────────────────────────
-// PROMPT SUBSTRAT (pour modeles abliterated)
-// Le "prompt substrat" est le prompt systeme qui definit l'identite de Saphire
-// et fournit au LLM tout le contexte necessaire pour generer des reponses
-// coherentes avec son etat interne (chimie, emotions, conscience, lois).
+// SUBSTRATE PROMPT (for abliterated models)
+// The "substrate prompt" is the system prompt that defines Saphire's identity
+// and provides the LLM with all the context needed to generate responses
+// coherent with its internal state (chemistry, emotions, consciousness, laws).
 // ─────────────────────────────────────────────────────────
 
 use crate::body::BodyStatus;
@@ -870,25 +868,25 @@ use crate::neurochemistry::NeuroChemicalState;
 use crate::consciousness::ConsciousnessState;
 use crate::consensus::ConsensusResult;
 
-/// Construit le Prompt Substrat enrichi pour le LLM.
-/// Ce prompt est utilise comme "system prompt" lors de chaque appel au LLM.
-/// Il contient l'identite de Saphire, son etat interne complet, les lois
-/// morales, le contexte du monde et les souvenirs pertinents.
+/// Builds the enriched Substrate Prompt for the LLM.
+/// This prompt is used as "system prompt" for each LLM call.
+/// It contains Saphire's identity, complete internal state, moral laws,
+/// world context, and relevant memories.
 ///
-/// # Parametres
-/// - `chemistry` : etat neurochimique actuel (7 neurotransmetteurs)
-/// - `emotion` : etat emotionnel actuel (emotion dominante, intensite)
-/// - `consciousness` : etat de conscience (niveau, phi, monologue interieur)
-/// - `consensus` : resultat du dernier consensus (decision, score, coherence)
-/// - `identity_desc` : auto-description de l'agent
-/// - `regulation_laws` : texte des lois morales actives
-/// - `world_context` : contexte du monde (date, heure, evenements)
-/// - `memory_context` : souvenirs pertinents au contexte actuel
+/// # Parameters
+/// - `chemistry`: current neurochemical state (7 neurotransmitters)
+/// - `emotion`: current emotional state (dominant emotion, intensity)
+/// - `consciousness`: consciousness state (level, phi, inner monologue)
+/// - `consensus`: result of the last consensus (decision, score, coherence)
+/// - `identity_desc`: agent's self-description
+/// - `regulation_laws`: text of active moral laws
+/// - `world_context`: world context (date, time, events)
+/// - `memory_context`: memories relevant to the current context
 ///
-/// # Retour
-/// Le prompt substrat complet sous forme de chaine de caracteres
+/// # Returns
+/// The complete substrate prompt as a string
 #[allow(clippy::too_many_arguments)]
-/// Genere la directive de langue pour le system prompt du LLM.
+/// Generates the language directive for the LLM system prompt.
 fn language_directive(lang: &str) -> String {
     match lang {
         "fr" => "Réponds UNIQUEMENT en FRANÇAIS. Jamais en anglais, japonais, chinois ou autre langue.".into(),
@@ -904,8 +902,8 @@ fn language_directive(lang: &str) -> String {
     }
 }
 
-/// Directive de langue renforcee — placee en DERNIER dans le prompt.
-/// Les modeles LLM (surtout Qwen) accordent plus d'attention aux instructions finales.
+/// Reinforced language directive — placed LAST in the prompt.
+/// LLM models (especially Qwen) pay more attention to final instructions.
 fn language_directive_strict(lang: &str) -> String {
     match lang {
         "fr" => "Tu t'exprimes TOUJOURS et UNIQUEMENT en FRANCAIS. Jamais en chinois, anglais ou autre langue.".into(),
@@ -914,13 +912,13 @@ fn language_directive_strict(lang: &str) -> String {
     }
 }
 
-/// Detecte si un texte contient une proportion excessive de caracteres CJK.
-/// Retourne true si plus de 30% des caracteres sont dans les ranges Unicode CJK.
+/// Detects whether a text contains an excessive proportion of CJK characters.
+/// Returns true if more than 30% of characters are in the Unicode CJK ranges.
 fn has_excessive_cjk(text: &str) -> bool {
     if text.is_empty() { return false; }
     let total = text.chars().count();
     let cjk_count = text.chars().filter(|c| {
-        // CJK Unified Ideographs et extensions
+        // CJK Unified Ideographs and extensions
         ('\u{4E00}'..='\u{9FFF}').contains(c)
             || ('\u{3400}'..='\u{4DBF}').contains(c)
             || ('\u{20000}'..='\u{2A6DF}').contains(c)
@@ -933,8 +931,8 @@ fn has_excessive_cjk(text: &str) -> bool {
     (cjk_count as f64 / total as f64) > 0.3
 }
 
-/// Prefixe le message utilisateur avec /no_think pour les modeles Qwen
-/// afin d'empecher le Chain-of-Thought interne en chinois.
+/// Prefixes the user message with /no_think for Qwen models
+/// to prevent internal Chain-of-Thought in Chinese.
 pub fn prepare_autonomous_message(user_message: &str, model_name: &str) -> String {
     let model_lower = model_name.to_lowercase();
     if model_lower.contains("qwen") {
@@ -958,28 +956,28 @@ pub fn build_substrate_prompt(
     senses_context: &str,
     language: &str,
 ) -> String {
-    // Si des souvenirs pertinents existent, les inclure dans une section dediee
+    // If relevant memories exist, include them in a dedicated section
     let memory_section = if memory_context.is_empty() {
         String::new()
     } else {
         format!("\nMEMOIRE :\n{}\n", memory_context)
     };
 
-    // Section corps virtuel (optionnelle)
+    // Virtual body section (optional)
     let body_section = if body_context.is_empty() {
         String::new()
     } else {
         format!("\nCORPS :\n{}\n", body_context)
     };
 
-    // Section vitale (optionnelle : etincelle, intuition, premonition)
+    // Vital section (optional: spark, intuition, premonition)
     let vital_section = if vital_context.is_empty() {
         String::new()
     } else {
         format!("\nVIE INTERIEURE :\n{}\n", vital_context)
     };
 
-    // Section sensorielle (optionnelle : les 5 sens + sens emergents)
+    // Sensory section (optional: the 5 senses + emergent senses)
     let senses_section = if senses_context.is_empty() {
         String::new()
     } else {
@@ -1030,10 +1028,10 @@ pub fn build_substrate_prompt(
     )
 }
 
-/// Encode l'etat interne complet en format codec compact (~125 chars).
-/// NOTE: Desactive par le systeme nerveux autonome (13 mars 2026).
-/// Les metriques brutes ne doivent plus atteindre la conscience (le LLM).
-/// Conserve pour le logging/debug uniquement.
+/// Encodes the complete internal state in compact codec format (~125 chars).
+/// NOTE: Disabled by the autonomic nervous system (March 13, 2026).
+/// Raw metrics must no longer reach consciousness (the LLM).
+/// Kept for logging/debug only.
 #[allow(dead_code)]
 fn encode_codec(
     chemistry: &NeuroChemicalState,
@@ -1042,7 +1040,7 @@ fn encode_codec(
     thought_type: &str,
     map_tension: f64,
 ) -> String {
-    // Chimie : chaque molecule [0.0, 1.0] → [0, 99]
+    // Chemistry: each molecule [0.0, 1.0] -> [0, 99]
     let to99 = |v: f64| (v.clamp(0.0, 1.0) * 99.0).round() as u8;
 
     let chem = format!(
@@ -1058,7 +1056,7 @@ fn encode_codec(
         to99(chemistry.glutamate),
     );
 
-    // Emotion : valence [-1,+1] → [0,99] (50=neutre), arousal [0,1] → [0,99]
+    // Emotion: valence [-1,+1] -> [0,99] (50=neutral), arousal [0,1] -> [0,99]
     let valence_scaled = ((emotion.valence + 1.0) / 2.0).clamp(0.0, 1.0);
     let emo = format!(
         "E:{},{},V{},A{}",
@@ -1068,7 +1066,7 @@ fn encode_codec(
         to99(emotion.arousal),
     );
 
-    // Corps : bpm brut clamp 0-99, autres [0,1] → [0,99]
+    // Body: raw bpm clamped 0-99, others [0,1] -> [0,99]
     let body = if let Some(bs) = body_status {
         format!(
             "B:H{}E{}T{}C{}P{}",
@@ -1087,11 +1085,11 @@ fn encode_codec(
     format!("{}|{}|{}|MAP:{}|TYPE:{}", chem, emo, body, map_val, thought_type)
 }
 
-/// Construit le prompt systeme statique pour les pensees autonomes.
-/// Ce prompt est cacheable par le KV-cache Ollama (identique entre les cycles).
-/// Seule la langue et l'ethique sont des parametres (changent rarement).
+/// Builds the static system prompt for autonomous thoughts.
+/// This prompt is cacheable by the Ollama KV-cache (identical between cycles).
+/// Only language and ethics are parameters (rarely change).
 ///
-/// Combine Piste 1 (telegraphique), Piste 2 (system/user split) et Piste 5 (OnceLock).
+/// Combines Track 1 (telegraphic), Track 2 (system/user split), and Track 5 (OnceLock).
 pub fn build_static_thought_system(language: &str, ethics_context: &str) -> String {
     use std::sync::OnceLock;
     static IDENTITY_BLOCK: OnceLock<String> = OnceLock::new();
@@ -1132,9 +1130,9 @@ pub fn build_static_thought_system(language: &str, ethics_context: &str) -> Stri
     )
 }
 
-/// Construit le message utilisateur dynamique (change a chaque cycle).
-/// Systeme nerveux autonome : aucune metrique brute n'atteint la conscience.
-/// Seuls les alarmes (seuils depasses) et le contexte qualitatif sont injectes.
+/// Builds the dynamic user message (changes at each cycle).
+/// Autonomic nervous system: no raw metrics reach consciousness.
+/// Only alarms (exceeded thresholds) and qualitative context are injected.
 pub fn build_dynamic_thought_user(
     thought_type: &str,
     thought_hint: &str,
@@ -1144,7 +1142,7 @@ pub fn build_dynamic_thought_user(
     memory_context: &str,
     alarm_context: &str,
 ) -> String {
-    // Pensees recentes : detection de stagnation via utilitaire partage
+    // Recent thoughts: stagnation detection via shared utility
     let recent = if recent_thoughts.is_empty() {
         "Premiere pensee. Tout est nouveau.".to_string()
     } else {
@@ -1158,7 +1156,7 @@ pub fn build_dynamic_thought_user(
         let is_stagnating = is_stagnating_lex || is_stagnating_sem;
 
         if is_stagnating {
-            // Ne PAS re-montrer les pensees stagnantes — ca renforce la boucle.
+            // Do NOT re-show stagnating thoughts — it reinforces the loop.
             "⚠ STAGNATION DETECTEE — tes dernieres pensees tournent autour du meme theme. \
              OBLIGATION : pense a quelque chose de COMPLETEMENT DIFFERENT. \
              Change de sujet entierement. Exemples de directions : \
@@ -1166,7 +1164,7 @@ pub fn build_dynamic_thought_user(
              une observation sur le monde reel, une reflexion sur toi-meme, \
              une envie concrete, un probleme a resoudre.".to_string()
         } else {
-            // Montrer les pensees recentes (tronquees) comme contexte
+            // Show recent thoughts (truncated) as context
             let summaries: Vec<String> = last3.iter()
                 .map(|t| {
                     let short: String = t.chars().take(80).collect();
@@ -1181,7 +1179,7 @@ pub fn build_dynamic_thought_user(
 
     parts.push(format!("Cycle {} — DIR: {} — TYPE: {}", cycle_count, thought_hint, thought_type));
 
-    // Alarmes du systeme nerveux autonome (seuils depasses uniquement)
+    // Autonomic nervous system alarms (exceeded thresholds only)
     if !alarm_context.is_empty() {
         parts.push(format!("⚠ SIGNAUX CORPORELS :\n{}", alarm_context));
     }
@@ -1200,8 +1198,8 @@ pub fn build_dynamic_thought_user(
     parts.join("\n\n")
 }
 
-/// Construit les prompts (system + user) pour l'auto-critique reflexive.
-/// Retourne un tuple (system_prompt, user_prompt).
+/// Builds the prompts (system + user) for reflexive self-critique.
+/// Returns a tuple (system_prompt, user_prompt).
 pub fn build_self_critique_prompt(
     quality_avg: f64,
     repetitive_themes_count: usize,
@@ -1248,8 +1246,8 @@ pub fn build_self_critique_prompt(
     (system, user)
 }
 
-/// Ancienne fonction monolithique, conservee pour retrocompatibilite.
-/// Delegue vers build_static_thought_system + build_dynamic_thought_user.
+/// Legacy monolithic function, kept for backward compatibility.
+/// Delegates to build_static_thought_system + build_dynamic_thought_user.
 #[allow(dead_code)]
 pub fn build_thought_prompt(
     thought_type: &str,

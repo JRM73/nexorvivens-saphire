@@ -1,52 +1,52 @@
 // =============================================================================
-// tom.rs — Theorie de l'Esprit (Theory of Mind)
+// tom.rs — Theory of Mind
 // =============================================================================
 //
-// Modelise l'etat mental de l'interlocuteur pour adapter les reponses
-// de Saphire. En analysant le sentiment, le ton et les patterns de
-// messages recus, Saphire construit un modele de l'humeur, du niveau
-// de comprehension et de frustration de l'interlocuteur.
+// Models the interlocutor's mental state to adapt Saphire's responses.
+// By analyzing sentiment, tone, and patterns of received messages,
+// Saphire builds a model of the interlocutor's mood, comprehension
+// level, and frustration.
 //
-// L'empathie detectee influence la chimie (ocytocine, cortisol) et
-// enrichit le prompt substrat avec un portrait de l'etat mental percu.
+// Detected empathy influences chemistry (oxytocin, cortisol) and
+// enriches the substrate prompt with a portrait of the perceived mental state.
 //
-// Dependances :
-//   - std::collections::VecDeque : historique d'humeur glissant
-//   - serde : serialisation de la config (TOML)
-//   - serde_json : export JSON pour l'API et le WebSocket
-//   - crate::world::ChemistryAdjustment : influence chimique
+// Dependencies:
+//  - std::collections::VecDeque: sliding mood history
+//  - serde: config serialization (TOML)
+//  - serde_json: JSON export for the API and WebSocket
+//  - crate::world::ChemistryAdjustment: chemical influence
 //
-// Place dans l'architecture :
-//   Module de premier niveau. Appele a chaque message entrant pour
-//   mettre a jour le modele de l'interlocuteur. Le pipeline cognitif
-//   consomme chemistry_influence() et describe_for_prompt().
+// Place in architecture:
+//  Top-level module. Called at each incoming message to update
+//  the interlocutor model. The cognitive pipeline consumes
+//  chemistry_influence() and describe_for_prompt().
 // =============================================================================
 
 use std::collections::VecDeque;
 use serde::{Deserialize, Serialize};
 use crate::world::ChemistryAdjustment;
 
-// --- Fonctions de valeurs par defaut pour serde ---
+// --- Default value functions for serde ---
 
 fn default_true() -> bool { true }
 fn default_frustration_threshold() -> f64 { 0.6 }
 fn default_comprehension_threshold() -> f64 { 0.4 }
 fn default_mood_history_size() -> usize { 10 }
 
-/// Configuration du module Theorie de l'Esprit.
-/// Chargee depuis le fichier TOML principal.
+/// Configuration for the Theory of Mind module.
+/// Loaded from the main TOML configuration file.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TomConfig {
-    /// Active ou desactive le module ToM
+    /// Enables or disables the ToM module
     #[serde(default = "default_true")]
     pub enabled: bool,
-    /// Seuil a partir duquel la frustration est consideree significative
+    /// Threshold above which frustration is considered significant
     #[serde(default = "default_frustration_threshold")]
     pub frustration_threshold: f64,
-    /// Seuil sous lequel la comprehension est jugee insuffisante
+    /// Threshold below which comprehension is deemed insufficient
     #[serde(default = "default_comprehension_threshold")]
     pub comprehension_threshold: f64,
-    /// Nombre de valeurs d'humeur conservees dans l'historique glissant
+    /// Number of mood values kept in the sliding history
     #[serde(default = "default_mood_history_size")]
     pub mood_history_size: usize,
 }
@@ -62,42 +62,42 @@ impl Default for TomConfig {
     }
 }
 
-/// Modele de l'etat mental de l'interlocuteur.
-/// Construit progressivement a partir des messages recus.
+/// Model of the interlocutor's mental state.
+/// Built progressively from received messages.
 #[derive(Debug, Clone)]
 pub struct InterlocutorModel {
-    /// Humeur estimee (-1.0 = tres negatif, 0.0 = neutre, 1.0 = tres positif)
+    /// Estimated mood (-1.0 = very negative, 0.0 = neutral, 1.0 = very positive)
     pub estimated_mood: f64,
-    /// Niveau de comprehension estime (0.0 = confus, 1.0 = comprend parfaitement)
+    /// Estimated comprehension level (0.0 = confused, 1.0 = perfectly understands)
     pub comprehension_level: f64,
-    /// Intentions detectees dans les messages (questions, demandes, plaintes, etc.)
+    /// Detected intents in messages (questions, requests, complaints, etc.)
     pub detected_intents: Vec<String>,
-    /// Confiance dans le modele (monte avec le nombre de messages)
+    /// Confidence in the model (increases with message count)
     pub model_confidence: f64,
-    /// Niveau de frustration detecte (0.0 = calme, 1.0 = tres frustre)
+    /// Detected frustration level (0.0 = calm, 1.0 = very frustrated)
     pub frustration_level: f64,
-    /// Besoin d'empathie vs besoin d'information (0.0 = veut des faits, 1.0 = veut du soutien)
+    /// Need for empathy vs need for information (0.0 = wants facts, 1.0 = wants support)
     pub empathy_need: f64,
-    /// Historique glissant des dernieres valeurs d'humeur
+    /// Sliding history of recent mood values
     pub mood_history: VecDeque<f64>,
-    /// Nombre total de messages analyses
+    /// Total number of analyzed messages
     pub message_count: u64,
-    /// Cycle du dernier message analyse
+    /// Cycle of the last analyzed message
     pub last_update_cycle: u64,
-    /// Registre linguistique dominant detecte
+    /// Detected dominant linguistic register
     pub detected_register: String,
-    /// Niveau de connaissance estime (0.0 = novice, 1.0 = expert)
+    /// Estimated knowledge level (0.0 = novice, 1.0 = expert)
     pub knowledge_level: f64,
-    /// Sujets d'interet recurrents avec compteur
+    /// Recurring interest topics with counter
     pub interest_topics: Vec<(String, u32)>,
-    /// Engagement de l'interlocuteur (0.0 = passif, 1.0 = tres engage)
+    /// Interlocutor engagement (0.0 = passive, 1.0 = highly engaged)
     pub engagement: f64,
-    /// Preference de profondeur (0.0 = simple, 1.0 = profond)
+    /// Depth preference (0.0 = simple, 1.0 = deep)
     pub depth_preference: f64,
 }
 
 impl InterlocutorModel {
-    /// Cree un modele initial vierge.
+    /// Creates a blank initial model.
     fn new(mood_history_size: usize) -> Self {
         Self {
             estimated_mood: 0.0,
@@ -118,23 +118,23 @@ impl InterlocutorModel {
     }
 }
 
-/// Moteur de Theorie de l'Esprit — construit et maintient un modele
-/// de l'etat mental de l'interlocuteur a partir des messages recus.
+/// Theory of Mind engine — builds and maintains a model of the
+/// interlocutor's mental state from received messages.
 pub struct TheoryOfMindEngine {
-    /// Module actif ou non
+    /// Module enabled or not
     pub enabled: bool,
-    /// Modele courant de l'interlocuteur (None si aucun message analyse)
+    /// Current interlocutor model (None if no message analyzed)
     pub current_model: Option<InterlocutorModel>,
-    /// Seuil de frustration significative
+    /// Significant frustration threshold
     pub frustration_threshold: f64,
-    /// Seuil de comprehension insuffisante
+    /// Insufficient comprehension threshold
     pub comprehension_threshold: f64,
-    /// Taille maximale de l'historique d'humeur
+    /// Maximum mood history size
     pub mood_history_size: usize,
 }
 
 impl TheoryOfMindEngine {
-    /// Cree un nouveau moteur ToM a partir de la configuration.
+    /// Creates a new ToM engine from configuration.
     pub fn new(config: &TomConfig) -> Self {
         Self {
             enabled: config.enabled,
@@ -145,20 +145,20 @@ impl TheoryOfMindEngine {
         }
     }
 
-    /// Met a jour le modele a partir d'un nouveau message entrant.
+    /// Updates the model from a new incoming message.
     ///
-    /// Parametres :
-    ///   - text : contenu du message
-    ///   - sentiment_compound : score de sentiment NLP (-1.0 a 1.0)
-    ///   - cycle : numero du cycle cognitif courant
+    /// Parameters:
+    ///  - text: message content
+    ///  - sentiment_compound: NLP sentiment score (-1.0 to 1.0)
+    ///  - cycle: current cognitive cycle number
     ///
-    /// Cree le modele si c'est le premier message.
+    /// Creates the model if this is the first message.
     pub fn update_from_message(&mut self, text: &str, sentiment_compound: f64, cycle: u64) {
         if !self.enabled {
             return;
         }
 
-        // Creer le modele si necessaire
+        // Create the model if necessary
         let model = self.current_model.get_or_insert_with(|| {
             InterlocutorModel::new(self.mood_history_size)
         });
@@ -166,20 +166,20 @@ impl TheoryOfMindEngine {
         model.message_count += 1;
         model.last_update_cycle = cycle;
 
-        // --- Humeur estimee (EMA, alpha = 0.3) ---
-        // Moyenne mobile exponentielle pour lisser les variations de sentiment
+        // --- Estimated mood (EMA, alpha = 0.3) ---
+        // Exponential moving average to smooth sentiment variations
         let alpha = 0.3;
         model.estimated_mood = alpha * sentiment_compound + (1.0 - alpha) * model.estimated_mood;
         model.estimated_mood = model.estimated_mood.clamp(-1.0, 1.0);
 
-        // Ajouter a l'historique d'humeur
+        // Add to mood history
         if model.mood_history.len() >= self.mood_history_size {
             model.mood_history.pop_front();
         }
         model.mood_history.push_back(sentiment_compound);
 
-        // --- Niveau de comprehension (heuristique) ---
-        // Les questions courtes avec "?" suggerent une incomprehension
+        // --- Comprehension level (heuristic) ---
+        // Short questions with "?" suggest lack of understanding
         let is_short = text.len() < 40;
         let has_question = text.contains('?');
         let text_lower = text.to_lowercase();
@@ -196,14 +196,14 @@ impl TheoryOfMindEngine {
         } else if is_short && has_question {
             model.comprehension_level = (model.comprehension_level - 0.05).max(0.0);
         } else if text.len() > 100 && !has_question {
-            // Un message long et affirmatif suggere une bonne comprehension
+            // A long affirmative message suggests good comprehension
             model.comprehension_level = (model.comprehension_level + 0.05).min(1.0);
         } else {
-            // Lente convergence vers 0.5 par defaut
+            // Slow convergence toward 0.5 by default
             model.comprehension_level += (0.5 - model.comprehension_level) * 0.02;
         }
 
-        // --- Frustration (sentiment negatif repetitif sur les 3 derniers) ---
+        // --- Frustration (repeated negative sentiment over the last 3) ---
         let recent_count = model.mood_history.len().min(3);
         if recent_count >= 2 {
             let recent_negative = model.mood_history.iter()
@@ -212,31 +212,31 @@ impl TheoryOfMindEngine {
                 .filter(|&&m| m < -0.3)
                 .count();
             if recent_negative >= 2 {
-                // Sentiment negatif sur au moins 2 des 3 derniers messages
+                // Negative sentiment on at least 2 of the last 3 messages
                 model.frustration_level = (model.frustration_level + 0.15).min(1.0);
             } else if sentiment_compound < -0.3 {
                 model.frustration_level = (model.frustration_level + 0.05).min(1.0);
             } else {
-                // Decroissance lente si le ton s'ameliore
+                // Slow decrease if tone improves
                 model.frustration_level = (model.frustration_level - 0.03).max(0.0);
             }
         } else if sentiment_compound < -0.3 {
             model.frustration_level = (model.frustration_level + 0.1).min(1.0);
         }
 
-        // --- Besoin d'empathie ---
-        // Combine frustration et manque de comprehension
+        // --- Empathy need ---
+        // Combines frustration and lack of comprehension
         model.empathy_need = (
             model.frustration_level * 0.5
             + (1.0 - model.comprehension_level) * 0.3
             + if sentiment_compound < -0.5 { 0.2 } else { 0.0 }
         ).clamp(0.0, 1.0);
 
-        // --- Confiance dans le modele ---
-        // Croit avec les messages, sature a 0.9
+        // --- Model confidence ---
+        // Grows with messages, saturates at 0.9
         model.model_confidence = (model.message_count as f64 / 10.0).min(0.9);
 
-        // --- Detection d'intentions simples ---
+        // --- Simple intent detection ---
         model.detected_intents.clear();
         if has_question {
             model.detected_intents.push("question".into());
@@ -257,14 +257,14 @@ impl TheoryOfMindEngine {
             model.detected_intents.push("explication".into());
         }
 
-        // --- Engagement (longueur + questions + frequence) ---
+        // --- Engagement (length + questions + frequency) ---
         let length_signal = (text.len() as f64 / 200.0).min(1.0);
         let question_signal = if has_question { 0.2 } else { 0.0 };
         let raw_engagement = length_signal * 0.6 + question_signal + 0.2;
         model.engagement = 0.3 * raw_engagement + 0.7 * model.engagement;
         model.engagement = model.engagement.clamp(0.0, 1.0);
 
-        // --- Knowledge level (vocabulaire technique + longueur + pas de confusion) ---
+        // --- Knowledge level (technical vocabulary + length + no confusion) ---
         let technical_markers = ["algorithme", "module", "api", "code", "fonction",
             "variable", "architecture", "protocole", "implementation",
             "algorithm", "function", "server", "database", "framework"];
@@ -277,7 +277,7 @@ impl TheoryOfMindEngine {
             model.knowledge_level = (model.knowledge_level - 0.05).max(0.0);
         }
 
-        // --- Depth preference (registre philosophique/technique = profondeur haute) ---
+        // --- Depth preference (philosophical/technical register = high depth) ---
         let philosophical_markers = ["conscience", "existence", "sens", "verite",
             "liberte", "ame", "ethique", "consciousness", "meaning", "truth"];
         let phil_count = philosophical_markers.iter()
@@ -289,7 +289,7 @@ impl TheoryOfMindEngine {
             model.depth_preference += (0.4 - model.depth_preference) * 0.05;
         }
 
-        // --- Interest topics (mots saillants de 5+ lettres, max 10) ---
+        // --- Interest topics (salient words of 5+ letters, max 10) ---
         let stop_words = ["dans", "avec", "pour", "cette", "mais", "aussi",
             "plus", "comme", "tout", "bien", "faire", "etre", "avoir",
             "sont", "nous", "vous", "leur", "entre", "cette", "quand"];
@@ -303,23 +303,23 @@ impl TheoryOfMindEngine {
                 }
             }
         }
-        // Garder les 10 plus frequents
+        // Keep the 10 most frequent
         model.interest_topics.sort_by(|a, b| b.1.cmp(&a.1));
         model.interest_topics.truncate(10);
     }
 
-    /// Met a jour le registre linguistique detecte dans le modele ToM.
+    /// Updates the detected linguistic register in the ToM model.
     pub fn update_register(&mut self, register_name: &str) {
         if let Some(model) = &mut self.current_model {
             model.detected_register = register_name.to_string();
         }
     }
 
-    /// Retourne l'ajustement chimique base sur l'etat de l'interlocuteur.
+    /// Returns the chemical adjustment based on the interlocutor's state.
     ///
-    /// - Frustration elevee → cortisol + (stress empathique)
-    /// - Besoin d'empathie → ocytocine + (activation du lien social)
-    /// - Humeur positive de l'interlocuteur → serotonine + (bien-etre partage)
+    /// - High frustration -> cortisol+ (empathic stress)
+    /// - Empathy need -> oxytocin+ (social bonding activation)
+    /// - Positive interlocutor mood -> serotonin+ (shared well-being)
     pub fn chemistry_influence(&self) -> ChemistryAdjustment {
         let mut adj = ChemistryAdjustment::default();
 
@@ -328,28 +328,28 @@ impl TheoryOfMindEngine {
             _ => return adj,
         };
 
-        // Frustration detectee → stress empathique (cortisol)
+        // Detected frustration -> empathic stress (cortisol)
         if model.frustration_level > 0.3 {
             adj.cortisol += (model.frustration_level * 0.04).min(0.04);
         }
 
-        // Besoin d'empathie → activation ocytocine (envie d'aider)
+        // Empathy need -> oxytocin activation (desire to help)
         if model.empathy_need > 0.3 {
             adj.oxytocin += (model.empathy_need * 0.03).min(0.03);
         }
 
-        // Humeur positive de l'interlocuteur → bien-etre partage
+        // Positive interlocutor mood -> shared well-being
         if model.estimated_mood > 0.3 {
             adj.serotonin += (model.estimated_mood * 0.02).min(0.02);
             adj.dopamine += 0.01;
         }
 
-        // Humeur tres negative → legere adrenaline (alerte empathique)
+        // Very negative mood -> slight adrenaline (empathic alert)
         if model.estimated_mood < -0.5 {
             adj.adrenaline += 0.01;
         }
 
-        // Comprehension basse → noradrenaline (besoin de clarte)
+        // Low comprehension -> noradrenaline (need for clarity)
         if model.comprehension_level < 0.3 {
             adj.noradrenaline += 0.01;
         }
@@ -357,17 +357,17 @@ impl TheoryOfMindEngine {
         adj
     }
 
-    /// Genere une description textuelle de l'etat de l'interlocuteur
-    /// pour enrichir le prompt substrat envoye au LLM.
+    /// Generates a textual description of the interlocutor's state
+    /// to enrich the substrate prompt sent to the LLM.
     ///
-    /// Format : "Mon interlocuteur semble [humeur]..."
+    /// Format: "Mon interlocuteur semble [mood]..."
     pub fn describe_for_prompt(&self) -> String {
         let model = match &self.current_model {
             Some(m) => m,
             None => return "Je n'ai pas encore de modele de mon interlocuteur.".into(),
         };
 
-        // Determiner la description d'humeur
+        // Determine the mood description
         let mood_desc = if model.estimated_mood > 0.5 {
             "tres positif et enthousiaste"
         } else if model.estimated_mood > 0.2 {
@@ -380,7 +380,7 @@ impl TheoryOfMindEngine {
             "frustre ou mecontent"
         };
 
-        // Determiner le niveau de comprehension
+        // Determine the comprehension level
         let comp_desc = if model.comprehension_level > 0.7 {
             "comprend bien la conversation"
         } else if model.comprehension_level > 0.4 {
@@ -389,7 +389,7 @@ impl TheoryOfMindEngine {
             "semble confus ou perdu"
         };
 
-        // Determiner le besoin
+        // Determine the need
         let need_desc = if model.empathy_need > 0.6 {
             "Il a surtout besoin d'empathie et de soutien."
         } else if model.empathy_need > 0.3 {
@@ -398,7 +398,7 @@ impl TheoryOfMindEngine {
             "Il cherche principalement de l'information."
         };
 
-        // Frustration ?
+        // Frustration?
         let frust_desc = if model.frustration_level > self.frustration_threshold {
             format!(
                 " Attention : niveau de frustration eleve ({:.0}%).",
@@ -408,7 +408,7 @@ impl TheoryOfMindEngine {
             String::new()
         };
 
-        // Niveau de connaissance
+        // Knowledge level
         let knowledge_desc = if model.knowledge_level > 0.7 {
             " Expert."
         } else if model.knowledge_level < 0.3 {
@@ -417,7 +417,7 @@ impl TheoryOfMindEngine {
             ""
         };
 
-        // Preference de profondeur
+        // Depth preference
         let depth_desc = if model.depth_preference > 0.7 {
             " Aime la profondeur."
         } else if model.depth_preference < 0.3 {
@@ -438,8 +438,8 @@ impl TheoryOfMindEngine {
         )
     }
 
-    /// Retourne la description pour le prompt seulement si le module est actif
-    /// et qu'un modele existe. Sinon retourne None.
+    /// Returns the prompt description only if the module is active
+    /// and a model exists. Otherwise returns None.
     pub fn describe_for_prompt_if_active(&self) -> Option<String> {
         if !self.enabled || self.current_model.is_none() {
             return None;
@@ -447,14 +447,14 @@ impl TheoryOfMindEngine {
         Some(self.describe_for_prompt())
     }
 
-    /// Reinitialise le modele de l'interlocuteur.
-    /// Utilise quand un nouvel interlocuteur prend la conversation
-    /// ou lors d'un reset.
+    /// Resets the interlocutor model.
+    /// Used when a new interlocutor joins the conversation
+    /// or during a reset.
     pub fn reset_model(&mut self) {
         self.current_model = None;
     }
 
-    /// Serialise l'etat complet en JSON pour l'API et le WebSocket.
+    /// Serializes the complete state to JSON for the API and WebSocket.
     pub fn to_json(&self) -> serde_json::Value {
         match &self.current_model {
             Some(model) => serde_json::json!({
@@ -519,14 +519,14 @@ mod tests {
     #[test]
     fn test_ema_smoothing() {
         let mut engine = default_engine();
-        // Premier message positif
+        // First positive message
         engine.update_from_message("Super!", 0.8, 1);
         let mood1 = engine.current_model.as_ref().unwrap().estimated_mood;
-        // Deuxieme message negatif — le EMA ne doit pas basculer entierement
+        // Second negative message — the EMA should not swing entirely
         engine.update_from_message("Nul.", -0.5, 2);
         let mood2 = engine.current_model.as_ref().unwrap().estimated_mood;
-        assert!(mood2 < mood1, "L'humeur devrait baisser");
-        assert!(mood2 > -0.5, "Le EMA devrait lisser la chute");
+        assert!(mood2 < mood1, "Mood should decrease");
+        assert!(mood2 > -0.5, "The EMA should smooth the drop");
     }
 
     #[test]
@@ -536,36 +536,36 @@ mod tests {
         engine.update_from_message("Toujours pas!", -0.7, 2);
         engine.update_from_message("Rien ne fonctionne.", -0.5, 3);
         let model = engine.current_model.as_ref().unwrap();
-        assert!(model.frustration_level > 0.2, "La frustration devrait monter");
+        assert!(model.frustration_level > 0.2, "Frustration should rise");
     }
 
     #[test]
     fn test_chemistry_frustration_cortisol() {
         let mut engine = default_engine();
-        // Forcer une frustration elevee
+        // Force high frustration
         engine.update_from_message("Nul!", -0.8, 1);
         engine.update_from_message("Ca ne marche pas!", -0.7, 2);
         engine.update_from_message("Horrible!", -0.9, 3);
         let adj = engine.chemistry_influence();
-        assert!(adj.cortisol > 0.0, "La frustration devrait augmenter le cortisol");
+        assert!(adj.cortisol > 0.0, "Frustration should increase cortisol");
     }
 
     #[test]
     fn test_chemistry_positive_mood() {
         let mut engine = default_engine();
-        // Plusieurs messages positifs pour atteindre un mood > 0.3
+        // Multiple positive messages to reach mood > 0.3
         engine.update_from_message("Genial!", 0.9, 1);
         engine.update_from_message("Super!", 0.8, 2);
         engine.update_from_message("Excellent!", 0.9, 3);
         let adj = engine.chemistry_influence();
-        assert!(adj.serotonin > 0.0, "Un mood positif devrait augmenter la serotonine");
+        assert!(adj.serotonin > 0.0, "A positive mood should increase serotonin");
     }
 
     #[test]
     fn test_describe_for_prompt_no_model() {
         let engine = default_engine();
         let desc = engine.describe_for_prompt();
-        assert!(desc.contains("pas encore"), "Devrait indiquer l'absence de modele");
+        assert!(desc.contains("pas encore"), "Should indicate the absence of a model");
     }
 
     #[test]
@@ -605,7 +605,7 @@ mod tests {
             engine.update_from_message("Message", 0.0, i);
         }
         let model = engine.current_model.as_ref().unwrap();
-        assert!(model.model_confidence >= 0.9, "La confiance devrait saturer a 0.9");
+        assert!(model.model_confidence >= 0.9, "Confidence should saturate at 0.9");
     }
 
     #[test]
@@ -652,6 +652,6 @@ mod tests {
             engine.update_from_message("Msg", 0.1 * i as f64, i);
         }
         let model = engine.current_model.as_ref().unwrap();
-        assert_eq!(model.mood_history.len(), 3, "L'historique ne devrait pas depasser la capacite");
+        assert_eq!(model.mood_history.len(), 3, "History should not exceed capacity");
     }
 }

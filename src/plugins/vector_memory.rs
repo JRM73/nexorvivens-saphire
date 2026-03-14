@@ -1,49 +1,49 @@
 // =============================================================================
-// vector_memory.rs — Plugin memoire vectorielle
+// vector_memory.rs — Vector memory plugin
 //
-// Role : Ce plugin gere une memoire vectorielle en RAM et calcule la
-// personnalite emergente de l'agent a partir de l'historique des emotions.
-// Les souvenirs sont stockes comme des vecteurs d'embedding permettant
-// la recherche par similarite cosinus.
+// Role: This plugin manages a vector memory in RAM and computes the
+// agent's emergent personality from the emotion history.
+// Memories are stored as embedding vectors enabling
+// cosine similarity search.
 //
-// Dependances :
-//   - super : trait Plugin, BrainEvent, PluginAction (systeme de plugins)
-//   - crate::vectorstore : VectorStore (stockage et recherche vectorielle en RAM)
-//   - crate::vectorstore::personality : EmergentPersonality (traits de personnalite)
+// Dependencies:
+//   - super: Plugin trait, BrainEvent, PluginAction (plugin system)
+//   - crate::vectorstore: VectorStore (vector storage and search in RAM)
+//   - crate::vectorstore::personality: EmergentPersonality (personality traits)
 //
-// Place dans l'architecture :
-//   Ce plugin est enregistre dans le PluginManager. Il reagit aux evenements
-//   CycleCompleted (pour recalculer la personnalite periodiquement) et
-//   ThoughtEmitted (pour stocker les pensees comme souvenirs vectoriels).
-//   La personnalite emergente est utilisee par l'agent pour enrichir
-//   son auto-description et adapter son comportement.
+// Place in architecture:
+//   This plugin is registered in the PluginManager. It reacts to
+//   CycleCompleted events (to periodically recompute personality) and
+//   ThoughtEmitted events (to store thoughts as vector memories).
+//   The emergent personality is used by the agent to enrich
+//   its self-description and adapt its behavior.
 // =============================================================================
 
 use super::{Plugin, BrainEvent, PluginAction};
 use crate::vectorstore::VectorStore;
 use crate::vectorstore::personality::EmergentPersonality;
 
-/// Plugin de memoire vectorielle avec personnalite emergente.
-/// Stocke des souvenirs sous forme de vecteurs d'embedding et calcule
-/// periodiquement des traits de personnalite a partir de l'historique emotionnel.
+/// Vector memory plugin with emergent personality.
+/// Stores memories as embedding vectors and periodically computes
+/// personality traits from the emotional history.
 pub struct VectorMemoryPlugin {
-    /// Le magasin de vecteurs en RAM (stockage + recherche par similarite)
+    /// The vector store in RAM (storage + similarity search)
     store: VectorStore,
-    /// Personnalite emergente calculee a partir des emotions des souvenirs.
-    /// Se met a jour periodiquement a mesure que l'agent accumule des experiences.
+    /// Emergent personality computed from memory emotions.
+    /// Updates periodically as the agent accumulates experiences.
     personality: EmergentPersonality,
-    /// Nombre de cycles entre chaque recalcul de la personnalite
+    /// Number of cycles between each personality recomputation
     update_interval: u64,
-    /// Compteur de cycles depuis la creation du plugin
+    /// Cycle counter since plugin creation
     cycle_count: u64,
 }
 
 impl VectorMemoryPlugin {
-    /// Cree un nouveau plugin de memoire vectorielle.
+    /// Creates a new vector memory plugin.
     ///
-    /// # Parametres
-    /// - `embedding_dim` : nombre de dimensions des vecteurs d'embedding
-    /// - `max_memories` : nombre maximal de souvenirs stockes en RAM
+    /// # Parameters
+    /// - `embedding_dim`: number of dimensions for embedding vectors
+    /// - `max_memories`: maximum number of memories stored in RAM
     pub fn new(embedding_dim: usize, max_memories: usize) -> Self {
         Self {
             store: VectorStore::new(embedding_dim, max_memories),
@@ -52,33 +52,33 @@ impl VectorMemoryPlugin {
                 description: "Personnalité en formation...".into(),
                 memory_count: 0,
             },
-            update_interval: 20, // Recalcul tous les 20 cycles
+            update_interval: 20, // Recompute every 20 cycles
             cycle_count: 0,
         }
     }
 
-    /// Retourne une reference en lecture seule vers le magasin de vecteurs.
-    /// Utilise par l'agent pour effectuer des recherches par similarite.
+    /// Returns a read-only reference to the vector store.
+    /// Used by the agent to perform similarity searches.
     pub fn store(&self) -> &VectorStore {
         &self.store
     }
 
-    /// Retourne une reference mutable vers le magasin de vecteurs.
-    /// Utilise par l'agent pour ajouter des souvenirs.
+    /// Returns a mutable reference to the vector store.
+    /// Used by the agent to add memories.
     pub fn store_mut(&mut self) -> &mut VectorStore {
         &mut self.store
     }
 
-    /// Retourne une reference vers la personnalite emergente.
-    /// La personnalite est recalculee periodiquement et reflette
-    /// les emotions dominantes dans l'historique des souvenirs.
+    /// Returns a reference to the emergent personality.
+    /// The personality is periodically recomputed and reflects
+    /// the dominant emotions in the memory history.
     pub fn personality(&self) -> &EmergentPersonality {
         &self.personality
     }
 
-    /// Recalcule la personnalite emergente a partir des emotions de tous les souvenirs.
-    /// Extrait la liste des emotions, puis utilise EmergentPersonality::compute()
-    /// pour deduire les traits de personnalite (ex: "curieuse", "empathique").
+    /// Recomputes the emergent personality from all memory emotions.
+    /// Extracts the list of emotions, then uses EmergentPersonality::compute()
+    /// to derive personality traits (e.g., "curious", "empathetic").
     fn update_personality(&mut self) {
         let emotions: Vec<String> = self.store.memories().iter()
             .map(|m| m.emotion.clone())
@@ -88,42 +88,42 @@ impl VectorMemoryPlugin {
 }
 
 impl Plugin for VectorMemoryPlugin {
-    /// Retourne le nom du plugin.
+    /// Returns the plugin name.
     fn name(&self) -> &str {
         "VectorMemory"
     }
 
-    /// Reagit aux evenements du cerveau :
+    /// Reacts to brain events:
     ///
-    /// - CycleCompleted : incremente le compteur de cycles et recalcule la
-    ///   personnalite si l'intervalle est atteint. Le recalcul periodique
-    ///   (plutot qu'a chaque cycle) evite une charge CPU excessive.
+    /// - CycleCompleted: increments the cycle counter and recomputes the
+    ///   personality if the interval is reached. Periodic recomputation
+    ///   (rather than every cycle) avoids excessive CPU load.
     ///
-    /// - ThoughtEmitted : chaque pensee autonome est stockee comme souvenir
-    ///   vectoriel via une action StoreMemory, avec une importance moyenne (0.5).
-    ///   Cela permet a l'agent de se souvenir de ses propres reflexions.
+    /// - ThoughtEmitted: each autonomous thought is stored as a vector
+    ///   memory via a StoreMemory action, with medium importance (0.5).
+    ///   This allows the agent to remember its own reflections.
     ///
-    /// # Parametres
-    /// - `event` : l'evenement du cerveau
+    /// # Parameters
+    /// - `event`: the brain event
     ///
-    /// # Retour
-    /// Liste d'actions (StoreMemory pour les pensees, vide sinon)
+    /// # Returns
+    /// List of actions (StoreMemory for thoughts, empty otherwise)
     fn on_event(&mut self, event: &BrainEvent) -> Vec<PluginAction> {
         match event {
             BrainEvent::CycleCompleted { emotion: _, .. } => {
                 self.cycle_count += 1;
-                // Mettre a jour la personnalite emergente periodiquement
+                // Periodically update the emergent personality
                 if self.cycle_count.is_multiple_of(self.update_interval) {
                     self.update_personality();
                 }
                 vec![]
             },
             BrainEvent::ThoughtEmitted { content, .. } => {
-                // Stocker les pensees autonomes comme souvenirs vectoriels
+                // Store autonomous thoughts as vector memories
                 vec![PluginAction::StoreMemory {
                     text: content.clone(),
-                    emotion: String::new(), // L'emotion sera determinee par l'agent
-                    importance: 0.5,        // Importance moyenne par defaut
+                    emotion: String::new(), // The emotion will be determined by the agent
+                    importance: 0.5,        // Medium importance by default
                 }]
             },
             _ => vec![],

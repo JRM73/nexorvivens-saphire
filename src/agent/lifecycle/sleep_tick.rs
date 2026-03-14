@@ -1,8 +1,8 @@
 // =============================================================================
-// lifecycle/sleep_tick.rs — Tick de sommeil et initiation du sommeil
+// lifecycle/sleep_tick.rs — Sleep tick and sleep initiation
 //
-// Role : Gere chaque cycle quand Saphire dort. Chaque phase produit des
-// effets specifiques sur la chimie, le corps, la memoire, les reves, etc.
+// Role: Manages each cycle when Saphire sleeps. Each phase produces
+// specific effects on chemistry, body, memory, dreams, etc.
 // =============================================================================
 
 use crate::logging::{LogLevel, LogCategory};
@@ -13,15 +13,15 @@ use crate::llm;
 use super::SaphireAgent;
 
 impl SaphireAgent {
-    /// Execute un tick de sommeil : applique les effets de la phase courante,
-    /// decremente le compteur, et transitionne vers la phase suivante si besoin.
+    /// Executes a sleep tick: applies the effects of the current phase,
+    /// decrements the counter, and transitions to the next phase if needed.
     pub async fn sleep_tick(&mut self) {
         let phase = match self.sleep.current_cycle {
             Some(ref c) => c.phase.clone(),
             None => return,
         };
 
-        // Collecter les facteurs de qualite a chaque tick
+        // Collect quality factors at each tick
         if let Some(ref mut c) = self.sleep.current_cycle {
             c.quality_factors.cortisol_sum += self.chemistry.cortisol;
             c.quality_factors.tick_count += 1;
@@ -29,17 +29,17 @@ impl SaphireAgent {
 
         match phase {
             SleepPhase::Hypnagogic => {
-                // Chimie : apaisement progressif
+                // Chemistry: progressive calming
                 self.chemistry.cortisol = (self.chemistry.cortisol - 0.02).max(0.0);
                 self.chemistry.boost(Molecule::Serotonin, 0.02);
                 self.chemistry.adrenaline = (self.chemistry.adrenaline - 0.03).max(0.0);
                 self.chemistry.noradrenaline = (self.chemistry.noradrenaline - 0.02).max(0.0);
-                // Subconscient s'active
+                // Subconscious activates
                 self.subconscious.activation = (self.subconscious.activation + 0.1).min(1.0);
-                // Energie remonte legerement
+                // Energy rises slightly
                 self.body.soma.energy = (self.body.soma.energy + 0.005).min(1.0);
 
-                // Image hypnagogique en fin de phase
+                // Hypnagogic image at end of phase
                 if let Some(ref c) = self.sleep.current_cycle {
                     if c.phase_remaining <= 3 {
                         self.log(LogLevel::Debug, LogCategory::Sleep,
@@ -57,15 +57,13 @@ impl SaphireAgent {
                 self.chemistry.cortisol = (self.chemistry.cortisol - 0.01).max(0.0);
                 // Energie remonte
                 self.body.soma.energy = (self.body.soma.energy + 0.01).min(1.0);
-                // Coeur ralentit
-                self.body.heart.calm_down(60.0);
+                // Heart slows down                self.body.heart.calm_down(60.0);
                 // Subconscient travaille
                 self.subconscious.background_process(0.0, "sommeil leger");
                 // Fatigue attentionnelle se reduit
                 self.attention_orch.reduce_fatigue(0.02);
 
-                // Algorithmes de sommeil leger (une seule fois, debut de phase)
-                if let Some(ref c) = self.sleep.current_cycle {
+                // Light sleep algorithms (once only, start of phase)                if let Some(ref c) = self.sleep.current_cycle {
                     let dur = self.sleep.phase_duration(&SleepPhase::LightSleep);
                     if c.phase_remaining == dur.saturating_sub(1) {
                         self.sleep_light_algorithms().await;
@@ -74,7 +72,7 @@ impl SaphireAgent {
             },
 
             SleepPhase::DeepSleep => {
-                // Compteur sommeil profond pour qualite
+                // Deep sleep counter for quality
                 if let Some(ref mut c) = self.sleep.current_cycle {
                     c.quality_factors.deep_sleep_ticks += 1;
                 }
@@ -106,7 +104,7 @@ impl SaphireAgent {
                 self.chemistry.boost(Molecule::Endorphin, 0.02);
                 self.chemistry.boost(Molecule::Serotonin, 0.01);
 
-                // 6. Algorithmes de sommeil profond (milieu de phase)
+                // 6. Algorithmes de sleep profond (milieu de phase)
                 if let Some(ref c) = self.sleep.current_cycle {
                     let dur = self.sleep.phase_duration(&SleepPhase::DeepSleep);
                     if c.phase_remaining == dur / 2 {
@@ -116,10 +114,10 @@ impl SaphireAgent {
             },
 
             SleepPhase::REM => {
-                // Subconscient au maximum
+                // Subconscious at maximum
                 self.subconscious.activation = 1.0;
 
-                // Debut de phase REM : generer un reve
+                // Start of REM phase: generate a dream
                 let is_rem_start = self.sleep.current_cycle.as_ref()
                     .map(|c| {
                         let rem_dur = self.sleep.phase_duration(&SleepPhase::REM);
@@ -128,7 +126,7 @@ impl SaphireAgent {
                     .unwrap_or(false);
 
                 if is_rem_start && self.dream_orch.enabled {
-                    // Determiner le type de reve
+                    // Determine the dream type
                     let dream_type = self.dream_orch.determine_dream_type(
                         self.chemistry.cortisol,
                         self.chemistry.dopamine,
@@ -136,7 +134,7 @@ impl SaphireAgent {
                         !self.subconscious.incubating_problems.is_empty(),
                     );
 
-                    // Construire le prompt
+                    // Build the prompt
                     let recent_memories: Vec<String> = self.working_memory.items()
                         .iter().take(3)
                         .map(|i| i.content.clone())
@@ -163,7 +161,7 @@ impl SaphireAgent {
                             &dream_text, dream_type, vec![], &emotions, &unresolved,
                         );
 
-                        // Log enrichi du reve
+                        // Enriched dream log
                         let narrative_preview: String = dream.narrative.chars().take(100).collect();
                         self.log(LogLevel::Info, LogCategory::Sleep,
                             format!("Reve ({}) : {}...", dream.dream_type.as_str(), narrative_preview),
@@ -173,14 +171,14 @@ impl SaphireAgent {
                                 "insight": dream.insight,
                             }));
 
-                        // Collecter les facteurs de qualite du reve
+                        // Collect dream quality factors
                         let is_nightmare = matches!(dream.dream_type,
                             crate::orchestrators::dreams::DreamType::Nightmare);
                         if let Some(ref mut c) = self.sleep.current_cycle {
                             c.quality_factors.dreams_total += 1;
                         }
                         if is_nightmare {
-                            // Perturbation chimique du cauchemar
+                            // Chemical disruption from nightmare
                             self.chemistry.boost(Molecule::Cortisol, 0.05);
                             self.chemistry.boost(Molecule::Adrenaline, 0.03);
                             self.chemistry.boost(Molecule::Noradrenaline, 0.02);
@@ -195,7 +193,7 @@ impl SaphireAgent {
                                 }));
                         }
 
-                        // Vectoriser le reve
+                        // Vectorize the dream
                         let narr = dream.narrative.clone();
                         let emo = dream.dominant_emotion.clone();
                         self.dream_orch.record_dream(dream, true);
@@ -217,7 +215,7 @@ impl SaphireAgent {
                 self.chemistry.boost(Molecule::Noradrenaline, 0.01);
                 // Coeur varie (mouvements oculaires rapides)
                 self.body.heart.vary_bpm(5.0);
-                // Traiter les emotions refoulees
+                // Process repressed emotions
                 self.subconscious.process_repressed_emotions();
             },
 
@@ -225,7 +223,7 @@ impl SaphireAgent {
                 // Subconscient se calme
                 self.subconscious.activation = (self.subconscious.activation - 0.15).max(0.0);
 
-                // Calculer la qualite prevue pour adapter le reveil
+                // Compute expected quality to adapt waking
                 let mut quality = self.sleep.current_cycle.as_ref()
                     .map(|c| {
                         let expected_deep = self.sleep.config().deep_duration
@@ -234,7 +232,7 @@ impl SaphireAgent {
                     })
                     .unwrap_or(1.0);
 
-                // Orages magnetiques degradent la qualite de sommeil
+                // Magnetic storms degrade sleep quality
                 if self.config.fields.enabled {
                     let storm = self.em_fields.storm_intensity();
                     if storm > self.config.fields.storm_threshold {
@@ -244,13 +242,13 @@ impl SaphireAgent {
                     }
                 }
 
-                // Chimie de reveil influencee par la qualite
+                // Wake-up chemistry influenced by quality
                 if quality < 0.5 {
                     // Mauvaise nuit : cortisol residuel, peu de dopamine
                     self.chemistry.boost(Molecule::Cortisol, 0.04);
                     self.chemistry.boost(Molecule::Adrenaline, 0.01);
                 } else {
-                    // Bonne nuit : chimie equilibree
+                    // Bonne nuit : chemistry equilibree
                     self.chemistry.boost(Molecule::Cortisol, 0.02);
                     self.chemistry.boost(Molecule::Adrenaline, 0.02);
                     self.chemistry.boost(Molecule::Serotonin, 0.02 * quality);
@@ -261,18 +259,18 @@ impl SaphireAgent {
                 self.body.soma.energy = (self.body.soma.energy + 0.02).min(1.0);
                 self.body.heart.wake_up_bpm(70.0);
 
-                // Fatigue proportionnelle a la qualite du sommeil
+                // Fatigue proportional to sleep quality
                 // Bonne nuit (1.0) → reset total, mauvaise nuit (0.3) → 70% fatigue reste
                 self.attention_orch.partial_reset_fatigue(quality);
                 self.psychology.will.decision_fatigue *= 1.0 - quality;
             },
 
             SleepPhase::Awake => {
-                // Ne devrait pas arriver pendant sleep_tick
+                // Should not happen during sleep_tick
             },
         }
 
-        // Decrementer le compteur de phase et gerer les transitions
+        // Decrement the phase counter and handle transitions
         let should_transition;
         let mut next_phase_opt = None;
 
@@ -284,7 +282,7 @@ impl SaphireAgent {
         }
 
         if should_transition {
-            // Calculer la prochaine phase (borrow immutable)
+            // Compute the next phase (immutable borrow)
             if let Some(ref cycle) = self.sleep.current_cycle {
                 next_phase_opt = self.sleep.next_phase(cycle);
             }
@@ -297,7 +295,7 @@ impl SaphireAgent {
                         phase.as_str(), next_phase.as_str()),
                     serde_json::json!({}));
 
-                // Si on revient en LightSleep depuis REM, c'est un nouveau cycle
+                // If returning to LightSleep from REM, it's a new cycle
                 if next_phase == SleepPhase::LightSleep && phase == SleepPhase::REM {
                     if let Some(ref mut c) = self.sleep.current_cycle {
                         c.sleep_cycle_number += 1;
@@ -310,10 +308,10 @@ impl SaphireAgent {
                     c.phase_remaining = duration;
                 }
 
-                // Synchroniser la phase avec le DreamOrchestrator
+                // Synchronize the phase with DreamOrchestrator
                 self.dream_orch.current_phase = next_phase;
             } else {
-                // Fin du sommeil — capturer les stats avant finalize
+                // End of sleep — capture stats before finalize
                 let (dreams_count, mem_consolidated, conn_created, nightmare_count) = {
                     let c = self.sleep.current_cycle.as_ref().unwrap();
                     (self.dream_orch.dream_journal.len(),
@@ -321,15 +319,15 @@ impl SaphireAgent {
                      c.quality_factors.nightmare_count)
                 };
 
-                // finalize_wake_up calcule la qualite dynamique
+                // finalize_wake_up computes dynamic quality
                 self.sleep.finalize_wake_up();
                 self.dream_orch.wake_up();
 
-                // Recuperer la qualite calculee depuis le dernier record
+                // Retrieve computed quality from the last record
                 let quality = self.sleep.sleep_history.last()
                     .map(|r| r.quality).unwrap_or(1.0);
 
-                // Sauvegarder le record de sommeil en DB
+                // Save the sleep record to DB
                 if let Some(ref db) = self.db {
                     if let Some(record) = self.sleep.sleep_history.last() {
                         let _ = db.save_sleep_record(record).await;
@@ -350,16 +348,16 @@ impl SaphireAgent {
                         "interrupted": false,
                     }));
 
-                // Broadcast reveil
+                // Broadcast waking
                 self.broadcast_wake_up(quality, dreams_count, mem_consolidated, conn_created);
             }
         }
 
-        // Broadcast l'etat du sommeil
+        // Broadcast sleep state
         self.broadcast_sleep_state().await;
     }
 
-    /// Initie le processus d'endormissement.
+    /// Initiates the falling-asleep process.
     pub async fn initiate_sleep(&mut self) {
         if !self.config.sleep.enabled { return; }
 
@@ -373,7 +371,7 @@ impl SaphireAgent {
         let planned_cycles = self.sleep.current_cycle.as_ref()
             .map(|c| c.total_sleep_cycles).unwrap_or(1);
 
-        // Synchroniser la phase avec le DreamOrchestrator
+        // Synchronize the phase with DreamOrchestrator
         self.dream_orch.current_phase = SleepPhase::Hypnagogic;
 
         // Log enrichi
@@ -397,13 +395,13 @@ impl SaphireAgent {
                 }));
         }
 
-        // Broadcast debut de sommeil
+        // Broadcast debut de sleep
         self.broadcast_sleep_started();
         self.broadcast_sleep_state().await;
     }
 
-    /// Met a jour la pression de sommeil et le subconscient de fond.
-    /// Appele depuis la boucle principale quand Saphire est eveillee.
+    /// Updates sleep pressure and background subconscious.
+    /// Called from the main loop when Saphire is awake.
     pub async fn update_sleep_pressure(&mut self) {
         let energy = self.body.soma.energy;
         let attn_fatigue = self.attention_orch.fatigue();
@@ -413,10 +411,10 @@ impl SaphireAgent {
         let in_conv = self.in_conversation;
         self.sleep.drive.update(energy, attn_fatigue, dec_fatigue, cortisol, adrenaline, in_conv);
 
-        // Subconscient travaille en arriere-plan meme eveillee
+        // Subconscious works in the background even while awake
         self.subconscious.background_process(0.0, "eveil");
 
-        // Analyses algorithmiques periodiques du subconscient
+        // Periodic algorithmic analyses of the subconscious
         if self.orchestrator.enabled && self.cycle_count > 0 {
             if self.cycle_count % 100 == 0 {
                 self.subconscious_dbscan().await;
@@ -426,7 +424,7 @@ impl SaphireAgent {
             }
         }
 
-        // Detecter et broadcaster les insights du subconscient
+        // Detect and broadcast subconscious insights
         if let Some(insight) = self.subconscious.surface_insight() {
             self.log(LogLevel::Info, LogCategory::Subconscious,
                 format!("Insight emerge : {}", insight.content),
@@ -443,7 +441,7 @@ impl SaphireAgent {
         }
     }
 
-    /// Verifie si Saphire devrait s'endormir (pression suffisante + pas en conversation).
+    /// Checks if Saphire should fall asleep (sufficient pressure + not in conversation).
     pub fn should_initiate_sleep(&self) -> bool {
         self.config.sleep.enabled
             && self.sleep.drive.should_sleep()

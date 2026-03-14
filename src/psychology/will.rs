@@ -1,14 +1,14 @@
 // =============================================================================
-// psychology/will.rs — Module de Volonte (deliberation interne)
+// psychology/will.rs — Will Module (internal deliberation)
 //
-// Capacite de deliberation volontaire (~5% du temps). Quand une situation
-// significative se presente (conflit psychique, dilemme ethique, risque
-// tolteque, intuition forte, ego submerge), Saphire s'arrete et delibere
-// entre des options evaluees par le Ca, le Surmoi, Maslow, Tolteques et
-// le pragmatisme. La chimie influence les poids.
+// Voluntary deliberation capacity (~5% of the time). When a significant
+// situation arises (psychic conflict, ethical dilemma, Toltec risk,
+// strong intuition, overwhelmed ego), Saphire stops and deliberates
+// between options evaluated by the Id, Superego, Maslow, Toltec and
+// pragmatism. Chemistry influences the weights.
 //
-// La deliberation est un processus INTERNE structure (pas d'appel LLM).
-// Les options sont generees determiniquement selon le type de declencheur.
+// Deliberation is a structured INTERNAL process (no LLM call).
+// Options are generated deterministically based on trigger type.
 // =============================================================================
 
 use chrono::{DateTime, Utc};
@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 
 // ─── Configuration ─────────────────────────────────────────────────────────
 
-/// Configuration du module de volonte.
+/// Will module configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WillConfig {
     #[serde(default = "default_true")]
@@ -69,24 +69,24 @@ impl Default for WillConfig {
     }
 }
 
-// ─── Types de declencheurs ─────────────────────────────────────────────────
+// ─── Trigger types ─────────────────────────────────────────────────
 
-/// Type de situation declenchant une deliberation volontaire.
+/// Type of situation triggering a voluntary deliberation.
 #[derive(Debug, Clone, Serialize)]
 pub enum TriggerType {
-    /// Conflit psychique (Ca vs Surmoi) — internal_conflict eleve
+    /// Psychic conflict (Id vs Superego) — high internal_conflict
     PsychicConflict,
-    /// Dilemme ethique — beaucoup de principes actifs + conscience elevee
+    /// Ethical dilemma — many active principles + high consciousness
     EthicalDilemma,
-    /// Risque tolteque — un accord avec alignment bas
+    /// Toltec risk — an agreement with low alignment
     ToltecRisk { accord: u8 },
-    /// Intuition forte — pattern a haute confiance
+    /// Strong intuition — high confidence pattern
     StrongIntuition { pattern: String },
-    /// Ego submerge — strategie Overwhelmed
+    /// Overwhelmed ego — Overwhelmed strategy
     EgoOverwhelmed,
 }
 
-/// Declencheur de deliberation avec ses metriques.
+/// Deliberation trigger with its metrics.
 #[derive(Debug, Clone, Serialize)]
 pub struct DeliberationTrigger {
     pub trigger_type: TriggerType,
@@ -95,9 +95,9 @@ pub struct DeliberationTrigger {
     pub stakes: f64,
 }
 
-// ─── Options et evaluation ─────────────────────────────────────────────────
+// ─── Options and evaluation ─────────────────────────────────────────────────
 
-/// Une option evaluee lors d'une deliberation.
+/// An option evaluated during a deliberation.
 #[derive(Debug, Clone, Serialize)]
 pub struct DeliberationOption {
     pub description: String,
@@ -109,30 +109,30 @@ pub struct DeliberationOption {
     pub weighted_score: f64,
 }
 
-/// Influence de la chimie sur les poids de deliberation.
+/// Chemistry influence on deliberation weights.
 #[derive(Debug, Clone, Serialize)]
 pub struct ChemistryInfluence {
-    /// Audace (dopamine)
+    /// Boldness (dopamine)
     pub boldness: f64,
-    /// Prudence (cortisol)
+    /// Caution (cortisol)
     pub caution: f64,
-    /// Sagesse (serotonine)
+    /// Wisdom (serotonin)
     pub wisdom: f64,
-    /// Efficacite (1 - adrenaline)
+    /// Efficiency (1 - adrenaline)
     pub efficiency: f64,
-    /// Urgence (adrenaline)
+    /// Urgency (adrenaline)
     pub urgency: f64,
-    /// Empathie (ocytocine)
+    /// Empathy (oxytocin)
     pub empathy: f64,
 }
 
-/// Resultat complet d'une deliberation.
+/// Complete deliberation result.
 #[derive(Debug, Clone, Serialize)]
 pub struct Deliberation {
     pub trigger: DeliberationTrigger,
     pub options: Vec<DeliberationOption>,
     pub chosen: usize,
-    /// Raisonnement en premiere personne
+    /// First-person reasoning
     pub reasoning: String,
     pub chemistry_influence: ChemistryInfluence,
     pub confidence: f64,
@@ -141,7 +141,7 @@ pub struct Deliberation {
 }
 
 impl Deliberation {
-    /// Reconstruit une deliberation a partir du JSON sauvegarde au shutdown.
+    /// Reconstructs a deliberation from JSON saved at shutdown.
     pub fn from_persisted_json(j: &serde_json::Value) -> Option<Self> {
         let trigger_str = j.get("trigger")?.as_str()?;
         let chosen_desc = j.get("chosen")?.as_str().unwrap_or("?").to_string();
@@ -153,7 +153,7 @@ impl Deliberation {
             .and_then(|s| s.parse::<DateTime<Utc>>().ok())
             .unwrap_or_else(Utc::now);
 
-        // Reconstruire le trigger (type simplifie, metriques par defaut)
+        // Reconstruct the trigger (simplified type, default metrics)
         let trigger_type = if trigger_str.contains("PsychicConflict") {
             TriggerType::PsychicConflict
         } else if trigger_str.contains("EthicalDilemma") {
@@ -175,7 +175,7 @@ impl Deliberation {
             stakes: 0.5,
         };
 
-        // Reconstruire l'influence chimique
+        // Reconstruct the chemistry influence
         let chem = if let Some(ci) = j.get("chemistry_influence") {
             ChemistryInfluence {
                 boldness: ci.get("boldness").and_then(|v| v.as_f64()).unwrap_or(0.5),
@@ -192,7 +192,7 @@ impl Deliberation {
             }
         };
 
-        // Option unique reconstituee (le choix fait)
+        // Single reconstructed option (the choice made)
         let option = DeliberationOption {
             description: chosen_desc,
             id_score: 0.5,
@@ -216,13 +216,13 @@ impl Deliberation {
     }
 }
 
-// ─── WillInput : snapshot pour eviter les borrow conflicts ─────────────────
+// ─── WillInput: snapshot to avoid borrow conflicts ─────────────────
 
-/// Snapshot de l'etat interne necessaire pour la deliberation.
-/// Copie les valeurs depuis l'agent avant d'appeler should_deliberate/deliberate.
+/// Snapshot of the internal state needed for deliberation.
+/// Copies values from the agent before calling should_deliberate/deliberate.
 #[derive(Debug, Clone)]
 pub struct WillInput {
-    // Chimie (7 molecules)
+    // Chemistry (7 molecules)
     pub dopamine: f64,
     pub cortisol: f64,
     pub serotonin: f64,
@@ -243,8 +243,8 @@ pub struct WillInput {
     pub superego_guilt: f64,
     pub superego_pride: f64,
 
-    // Tolteques
-    pub toltec_alignments: Vec<(u8, f64)>,  // (numero, alignment)
+    // Toltec
+    pub toltec_alignments: Vec<(u8, f64)>,  // (number, alignment)
     pub toltec_overall: f64,
 
     // Maslow
@@ -256,41 +256,41 @@ pub struct WillInput {
     pub intuition_top_confidence: f64,
     pub intuition_top_description: String,
 
-    // Ethique
+    // Ethics
     pub ethics_active_count: usize,
 
-    // Conscience
+    // Consciousness
     pub consciousness_level: f64,
 
-    // Desirs
+    // Desires
     pub desires_active_count: usize,
     pub desires_top_description: String,
 
-    // Apprentissage
+    // Learning
     pub learning_confirmed_count: usize,
 }
 
 // ─── WillModule ────────────────────────────────────────────────────────────
 
-/// Module de volonte — deliberation interne structuree.
+/// Will module — structured internal deliberation.
 #[derive(Debug, Clone, Serialize)]
 pub struct WillModule {
-    /// Force de volonte (grandit avec les decisions reussies)
+    /// Willpower (grows with successful decisions)
     pub willpower: f64,
-    /// Fatigue decisionnelle (grandit avec les deliberations, recovery par cycle)
+    /// Decision fatigue (grows with deliberations, recovery per cycle)
     pub decision_fatigue: f64,
-    /// Deliberations recentes (max configurable)
+    /// Recent deliberations (max configurable)
     pub recent_deliberations: Vec<Deliberation>,
-    /// Total de deliberations depuis la creation
+    /// Total deliberations since creation
     pub total_deliberations: u64,
-    /// Decisions dont Saphire est fiere
+    /// Decisions Saphire is proud of
     pub proud_decisions: u64,
-    /// Decisions regrettees
+    /// Regretted decisions
     pub regretted_decisions: u64,
-    /// Boost de conflit externe (injecte par la dissonance cognitive)
+    /// External conflict boost (injected by cognitive dissonance)
     pub external_conflict_boost: f64,
 
-    // Config (non serialise, copie a l'init)
+    // Config (not serialized, copied at init)
     #[serde(skip)]
     fatigue_per_deliberation: f64,
     #[serde(skip)]
@@ -311,7 +311,7 @@ pub struct WillModule {
 }
 
 impl WillModule {
-    /// Cree un nouveau WillModule depuis la configuration.
+    /// Creates a new WillModule from the configuration.
     pub fn new(config: &WillConfig) -> Self {
         Self {
             willpower: config.initial_willpower,
@@ -332,20 +332,20 @@ impl WillModule {
         }
     }
 
-    /// Recoit un signal de dissonance cognitive qui booste le conflit interne.
+    /// Receives a cognitive dissonance signal that boosts internal conflict.
     pub fn receive_dissonance_signal(&mut self, tension: f64) {
         self.external_conflict_boost = (tension * 0.3).clamp(0.0, 0.5);
     }
 
-    /// Determine si une deliberation doit etre declenchee.
-    /// Retourne None en mode reactif (pas de situation significative).
+    /// Determines if a deliberation should be triggered.
+    /// Returns None in reactive mode (no significant situation).
     pub fn should_deliberate(&self, input: &WillInput) -> Option<DeliberationTrigger> {
-        // Trop fatiguee pour deliberer
+        // Too fatigued to deliberate
         if self.decision_fatigue > self.fatigue_threshold {
             return None;
         }
 
-        // Priorite 1 : ego submerge
+        // Priority 1: overwhelmed ego
         if input.ego_strategy_overwhelmed {
             return Some(DeliberationTrigger {
                 trigger_type: TriggerType::EgoOverwhelmed,
@@ -355,7 +355,7 @@ impl WillModule {
             });
         }
 
-        // Priorite 2 : conflit psychique (augmente par la dissonance cognitive)
+        // Priority 2: psychic conflict (boosted by cognitive dissonance)
         let effective_conflict = input.internal_conflict + self.external_conflict_boost;
         if effective_conflict > self.psychic_conflict_trigger {
             return Some(DeliberationTrigger {
@@ -366,7 +366,7 @@ impl WillModule {
             });
         }
 
-        // Priorite 3 : risque tolteque
+        // Priority 3: Toltec risk
         for &(num, alignment) in &input.toltec_alignments {
             if alignment < self.toltec_alignment_trigger {
                 return Some(DeliberationTrigger {
@@ -378,7 +378,7 @@ impl WillModule {
             }
         }
 
-        // Priorite 4 : intuition forte
+        // Priority 4: strong intuition
         if input.intuition_top_confidence > self.intuition_confidence_trigger {
             return Some(DeliberationTrigger {
                 trigger_type: TriggerType::StrongIntuition {
@@ -390,7 +390,7 @@ impl WillModule {
             });
         }
 
-        // Priorite 5 : dilemme ethique (beaucoup de principes + conscience elevee)
+        // Priority 5: ethical dilemma (many principles + high consciousness)
         if input.ethics_active_count >= 3 && input.consciousness_level > 0.6 {
             return Some(DeliberationTrigger {
                 trigger_type: TriggerType::EthicalDilemma,
@@ -400,14 +400,14 @@ impl WillModule {
             });
         }
 
-        // Mode reactif : pas de deliberation
+        // Reactive mode: no deliberation
         None
     }
 
-    /// Execute une deliberation interne structuree.
-    /// Genere des options, les evalue et choisit la meilleure.
+    /// Executes a structured internal deliberation.
+    /// Generates options, evaluates them and chooses the best one.
     pub fn deliberate(&mut self, trigger: DeliberationTrigger, input: &WillInput) -> Deliberation {
-        // 1. Generer les options selon le type de declencheur
+        // 1. Generate options based on trigger type
         let option_descriptions = match &trigger.trigger_type {
             TriggerType::PsychicConflict => vec![
                 "Ceder a la pulsion".to_string(),
@@ -436,7 +436,7 @@ impl WillModule {
             ],
         };
 
-        // 2. Calculer l'influence chimique
+        // 2. Calculate chemistry influence
         let chem = ChemistryInfluence {
             boldness: input.dopamine.clamp(0.0, 1.0),
             caution: input.cortisol.clamp(0.0, 1.0),
@@ -446,11 +446,11 @@ impl WillModule {
             empathy: input.oxytocin.clamp(0.0, 1.0),
         };
 
-        // 3. Evaluer chaque option
+        // 3. Evaluate each option
         let options: Vec<DeliberationOption> = option_descriptions.iter().map(|desc| {
             let desc_lower = desc.to_lowercase();
 
-            // id_score : base 0.5, ajuste selon pulsions
+            // id_score: base 0.5, adjusted by drives
             let id_score = if desc_lower.contains("pulsion") || desc_lower.contains("instinct") {
                 0.5 + input.id_drive_strength * 0.3
             } else if desc_lower.contains("intuition") {
@@ -459,7 +459,7 @@ impl WillModule {
                 0.5
             };
 
-            // superego_score : base 0.7, penalise les options impulsives
+            // superego_score: base 0.7, penalizes impulsive options
             let superego_score = if desc_lower.contains("ignorer") || desc_lower.contains("ceder") {
                 0.3
             } else if desc_lower.contains("morale") || desc_lower.contains("principes") {
@@ -468,9 +468,9 @@ impl WillModule {
                 0.7
             };
 
-            // maslow_score : bonus si l'option adresse le besoin actif
+            // maslow_score: bonus if option addresses the active need
             let maslow_score = if desc_lower.contains("recul") || desc_lower.contains("aide") {
-                // Besoins de securite
+                // Safety needs
                 if input.maslow_active_level <= 1 { 0.8 } else { 0.6 }
             } else if desc_lower.contains("compromis") || desc_lower.contains("alternative") {
                 0.7
@@ -478,7 +478,7 @@ impl WillModule {
                 0.6
             };
 
-            // toltec_score : base 1.0, penalise les options non-alignees
+            // toltec_score: base 1.0, penalizes non-aligned options
             let toltec_score = if desc_lower.contains("ignorer") || desc_lower.contains("accepter l'ecart") {
                 0.4
             } else if desc_lower.contains("corriger") || desc_lower.contains("reflechir") {
@@ -487,7 +487,7 @@ impl WillModule {
                 0.7
             };
 
-            // pragmatic_score : base 0.6, bonus pour observation/prudence
+            // pragmatic_score: base 0.6, bonus for observation/caution
             let pragmatic_score = if desc_lower.contains("observer") || desc_lower.contains("recul") || desc_lower.contains("prudence") {
                 0.8
             } else if desc_lower.contains("ceder") || desc_lower.contains("instinct") {
@@ -496,7 +496,7 @@ impl WillModule {
                 0.6
             };
 
-            // Score pondere par chimie
+            // Chemistry-weighted score
             let weighted = id_score * (0.15 + chem.boldness * 0.10)
                 + superego_score * (0.20 + chem.wisdom * 0.10)
                 + maslow_score * (0.20 + chem.caution * 0.05)
@@ -514,28 +514,28 @@ impl WillModule {
             }
         }).collect();
 
-        // 4. Choix : si ego faible, le Ca ou Surmoi impose
+        // 4. Choice: if ego weak, the Id or Superego imposes
         let chosen = if input.ego_strength < 0.4 {
-            // Ego trop faible — la dimension dominante choisit
+            // Ego too weak — the dominant dimension chooses
             if input.id_drive_strength > input.superego_strength {
-                // Le Ca impose : option avec id_score max
+                // The Id imposes: option with max id_score
                 options.iter().enumerate()
                     .max_by(|a, b| a.1.id_score.partial_cmp(&b.1.id_score).unwrap())
                     .map(|(i, _)| i).unwrap_or(0)
             } else {
-                // Le Surmoi impose : option avec superego_score max
+                // The Superego imposes: option with max superego_score
                 options.iter().enumerate()
                     .max_by(|a, b| a.1.superego_score.partial_cmp(&b.1.superego_score).unwrap())
                     .map(|(i, _)| i).unwrap_or(0)
             }
         } else {
-            // Ego fort : choix rationnel pondère
+            // Strong ego: weighted rational choice
             options.iter().enumerate()
                 .max_by(|a, b| a.1.weighted_score.partial_cmp(&b.1.weighted_score).unwrap())
                 .map(|(i, _)| i).unwrap_or(0)
         };
 
-        // 5. Confidence basee sur l'ecart entre les scores
+        // 5. Confidence based on the gap between scores
         let best_score = options[chosen].weighted_score;
         let second_best = options.iter().enumerate()
             .filter(|(i, _)| *i != chosen)
@@ -543,7 +543,7 @@ impl WillModule {
             .fold(0.0_f64, f64::max);
         let confidence = ((best_score - second_best) / best_score.max(0.01)).clamp(0.0, 1.0);
 
-        // 6. Reasoning en premiere personne
+        // 6. First-person reasoning
         let trigger_desc = match &trigger.trigger_type {
             TriggerType::PsychicConflict => "un conflit entre mes pulsions et ma morale".to_string(),
             TriggerType::EthicalDilemma => "un dilemme ethique qui me tiraille".to_string(),
@@ -570,7 +570,7 @@ impl WillModule {
             confidence * 100.0
         );
 
-        // 7. Mettre a jour la fatigue et les compteurs
+        // 7. Update fatigue and counters
         self.decision_fatigue = (self.decision_fatigue + self.fatigue_per_deliberation).min(1.0);
         self.total_deliberations += 1;
 
@@ -585,7 +585,7 @@ impl WillModule {
             created_at: Utc::now(),
         };
 
-        // Garder dans l'historique recent
+        // Keep in recent history
         self.recent_deliberations.push(deliberation.clone());
         if self.recent_deliberations.len() > self.max_recent_deliberations {
             self.recent_deliberations.remove(0);
@@ -594,12 +594,12 @@ impl WillModule {
         deliberation
     }
 
-    /// Recovery de la fatigue decisionnelle (appelee a chaque cycle).
+    /// Decision fatigue recovery (called each cycle).
     pub fn update_fatigue_recovery(&mut self) {
         self.decision_fatigue = (self.decision_fatigue - self.fatigue_recovery_per_cycle).max(0.0);
     }
 
-    /// Description concise pour le prompt LLM.
+    /// Concise description for the LLM prompt.
     pub fn describe_for_prompt(&self) -> String {
         let mut parts = Vec::new();
 
@@ -610,7 +610,7 @@ impl WillModule {
         ));
 
         if let Some(last) = self.recent_deliberations.last() {
-            // Seulement si la deliberation est recente (< 5 min)
+            // Only if the deliberation is recent (< 5 min)
             let age = Utc::now().signed_duration_since(last.created_at);
             if age.num_seconds() < 300 {
                 parts.push(format!(
@@ -623,7 +623,7 @@ impl WillModule {
         format!("\n--- MA VOLONTE ---\n{}\n", parts.join(". "))
     }
 
-    /// Serialise l'etat complet pour le broadcast WebSocket.
+    /// Serializes the complete state for WebSocket broadcast.
     pub fn to_broadcast_json(&self) -> serde_json::Value {
         serde_json::json!({
             "type": "will_update",

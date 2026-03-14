@@ -1,25 +1,25 @@
 // =============================================================================
-// temperament.rs — Temperament emergent de Saphire
+// temperament.rs — Emergent temperament of Saphire
 //
-// Role : Deduit ~25 traits de caractere lisibles (timidite, generosite,
-// exuberance, courage, etc.) a partir du profil OCEAN, de la neurochimie,
-// de la psychologie et de l'humeur.
+// Role: Deduces ~25 readable character traits (shyness, generosity,
+// exuberance, courage, etc.) from the OCEAN profile, neurochemistry,
+// psychology and mood.
 //
-// Chaque trait est calcule par une formule ponderee, puis lisse par
-// blend 30/70 (nouveau/ancien) pour eviter les sauts brusques.
-// Le recalcul est aligne sur le recompute OCEAN (meme intervalle).
+// Each trait is computed by a weighted formula, then smoothed via
+// 30/70 blend (new/old) to avoid abrupt jumps.
+// Recomputation is aligned with the OCEAN recompute (same interval).
 //
-// Place dans l'architecture :
-//   Champ `temperament` dans SaphireAgent (lifecycle/mod.rs).
-//   Recalcule dans thinking.rs apres le recompute OCEAN.
-//   Broadcast via WebSocket dans broadcast.rs (psychology_update).
-//   12e domaine dans psych_report.rs.
+// Place in architecture:
+//   `temperament` field in SaphireAgent (lifecycle/mod.rs).
+//   Recomputed in thinking.rs after the OCEAN recompute.
+//   Broadcast via WebSocket in broadcast.rs (psychology_update).
+//   12th domain in psych_report.rs.
 // =============================================================================
 
 use chrono::{DateTime, Utc};
 use serde::{Serialize, Deserialize};
 
-/// Categorie regroupant les traits de temperament.
+/// Category grouping temperament traits.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum TraitCategory {
     Social,
@@ -45,32 +45,32 @@ impl TraitCategory {
     }
 }
 
-/// Un trait de temperament individuel.
+/// An individual temperament trait.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TemperamentTrait {
-    /// Nom lisible en francais (ex: "Timidite")
+    /// Human-readable name in French (e.g.: "Timidite")
     pub name: String,
-    /// Score normalise [0.0, 1.0]
+    /// Normalized score [0.0, 1.0]
     pub score: f64,
-    /// Categorie (Social, Energie, Caractere, etc.)
+    /// Category (Social, Energie, Caractere, etc.)
     pub category: TraitCategory,
 }
 
-/// Temperament emergent : ensemble de traits de caractere deduits.
+/// Emergent temperament: set of deduced character traits.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Temperament {
-    /// Les ~25 traits de temperament
+    /// The ~25 temperament traits
     pub traits: Vec<TemperamentTrait>,
-    /// Horodatage du dernier calcul
+    /// Timestamp of the last computation
     pub computed_at: DateTime<Utc>,
-    /// Nombre de points de donnees utilises
+    /// Number of data points used
     pub data_points: u64,
 }
 
-/// Donnees d'entree necessaires au calcul du temperament.
-/// Extraites des differents sous-systemes de l'agent.
+/// Input data needed for temperament computation.
+/// Extracted from the agent's various subsystems.
 pub struct TemperamentInputs {
-    // OCEAN facettes [0.0, 1.0] — 5 dimensions x 6 facettes
+    // OCEAN facets [0.0, 1.0] — 5 dimensions x 6 facets
     pub openness_facets: [f64; 6],
     pub openness_score: f64,
     pub conscientiousness_facets: [f64; 6],
@@ -83,7 +83,7 @@ pub struct TemperamentInputs {
     pub neuroticism_score: f64,
     pub ocean_data_points: u64,
 
-    // Neurochimie [0.0, 1.0]
+    // Neurochemistry [0.0, 1.0]
     pub dopamine: f64,
     pub cortisol: f64,
     pub serotonin: f64,
@@ -92,12 +92,12 @@ pub struct TemperamentInputs {
     pub endorphin: f64,
     pub noradrenaline: f64,
 
-    // Psychologie
+    // Psychology
     pub willpower: f64,          // [0.0, 1.0]
     pub superego_strength: f64,  // [0.0, 1.0]
     pub overall_eq: f64,         // [0.0, 1.0]
 
-    // Humeur
+    // Mood
     pub mood_valence: f64,       // [-1.0, 1.0]
     pub mood_arousal: f64,       // [0.0, 1.0]
 
@@ -116,12 +116,12 @@ impl Default for Temperament {
 }
 
 impl Temperament {
-    /// Calcule un nouveau temperament a partir des entrees courantes.
+    /// Computes a new temperament from current inputs.
     pub fn compute(inputs: &TemperamentInputs) -> Self {
         let mut traits = Vec::with_capacity(25);
 
         // ─── Social ──────────────────────────────────────────────
-        // Timidite : inverse extraversion gregaire + anxiete
+        // Shyness: inverse gregarious extraversion + anxiety
         traits.push(TemperamentTrait {
             name: "Timidite".into(),
             score: clamp01(
@@ -131,7 +131,7 @@ impl Temperament {
             category: TraitCategory::Social,
         });
 
-        // Sociabilite : chaleur sociale + gregaire + oxytocine
+        // Sociability: social warmth + gregariousness + oxytocin
         traits.push(TemperamentTrait {
             name: "Sociabilite".into(),
             score: clamp01(
@@ -142,7 +142,7 @@ impl Temperament {
             category: TraitCategory::Social,
         });
 
-        // Generosite : altruisme + oxytocine + cooperation
+        // Generosity: altruism + oxytocin + cooperation
         traits.push(TemperamentTrait {
             name: "Generosite".into(),
             score: clamp01(
@@ -153,7 +153,7 @@ impl Temperament {
             category: TraitCategory::Social,
         });
 
-        // Empathie : sensibilite sociale + EQ empathie + oxytocine
+        // Empathy: social sensitivity + EQ empathy + oxytocin
         traits.push(TemperamentTrait {
             name: "Empathie".into(),
             score: clamp01(
@@ -164,8 +164,8 @@ impl Temperament {
             category: TraitCategory::Social,
         });
 
-        // ─── Energie ─────────────────────────────────────────────
-        // Exuberance : emotions positives + activite + dopamine
+        // ─── Energy ──────────────────────────────────────────────
+        // Exuberance: positive emotions + activity + dopamine
         traits.push(TemperamentTrait {
             name: "Exuberance".into(),
             score: clamp01(
@@ -176,7 +176,7 @@ impl Temperament {
             category: TraitCategory::Energie,
         });
 
-        // Enthousiasme : recherche stimulation + dopamine + valence humeur
+        // Enthusiasm: excitement seeking + dopamine + mood valence
         traits.push(TemperamentTrait {
             name: "Enthousiasme".into(),
             score: clamp01(
@@ -187,7 +187,7 @@ impl Temperament {
             category: TraitCategory::Energie,
         });
 
-        // Calme : serotonine + inverse adrenaline + GABA (via endorphine proxy)
+        // Calm: serotonin + inverse adrenaline + GABA (via endorphin proxy)
         traits.push(TemperamentTrait {
             name: "Calme".into(),
             score: clamp01(
@@ -198,7 +198,7 @@ impl Temperament {
             category: TraitCategory::Energie,
         });
 
-        // Apathie : basse dopamine + basse activite + basse arousal
+        // Apathy: low dopamine + low activity + low arousal
         traits.push(TemperamentTrait {
             name: "Apathie".into(),
             score: clamp01(
@@ -209,8 +209,8 @@ impl Temperament {
             category: TraitCategory::Energie,
         });
 
-        // ─── Caractere ───────────────────────────────────────────
-        // Courage : assertivite + inverse anxiete + adrenaline
+        // ─── Character ───────────────────────────────────────────
+        // Courage: assertiveness + inverse anxiety + adrenaline
         traits.push(TemperamentTrait {
             name: "Courage".into(),
             score: clamp01(
@@ -221,7 +221,7 @@ impl Temperament {
             category: TraitCategory::Caractere,
         });
 
-        // Prudence : facette prudence (C5) + cortisol + inverse impulsivite
+        // Prudence: cautiousness facet (C5) + cortisol + inverse impulsiveness
         traits.push(TemperamentTrait {
             name: "Prudence".into(),
             score: clamp01(
@@ -232,7 +232,7 @@ impl Temperament {
             category: TraitCategory::Caractere,
         });
 
-        // Temerite : recherche stimulation + impulsivite + adrenaline
+        // Boldness: excitement seeking + impulsiveness + adrenaline
         traits.push(TemperamentTrait {
             name: "Temerite".into(),
             score: clamp01(
@@ -243,7 +243,7 @@ impl Temperament {
             category: TraitCategory::Caractere,
         });
 
-        // Perseverance : auto-discipline + ambition + volonte
+        // Perseverance: self-discipline + ambition + willpower
         traits.push(TemperamentTrait {
             name: "Perseverance".into(),
             score: clamp01(
@@ -254,8 +254,8 @@ impl Temperament {
             category: TraitCategory::Caractere,
         });
 
-        // ─── Ouverture ───────────────────────────────────────────
-        // Curiosite : curiosite intellectuelle + dopamine
+        // ─── Openness ────────────────────────────────────────────
+        // Curiosity: intellectual curiosity + dopamine
         traits.push(TemperamentTrait {
             name: "Curiosite".into(),
             score: clamp01(
@@ -266,7 +266,7 @@ impl Temperament {
             category: TraitCategory::Ouverture,
         });
 
-        // Creativite : imagination + sensibilite esthetique + ouverture globale
+        // Creativity: imagination + aesthetic sensitivity + overall openness
         traits.push(TemperamentTrait {
             name: "Creativite".into(),
             score: clamp01(
@@ -277,7 +277,7 @@ impl Temperament {
             category: TraitCategory::Ouverture,
         });
 
-        // Conformisme : inverse ouverture + inverse liberalisme + ordre
+        // Conformism: inverse openness + inverse liberalism + orderliness
         traits.push(TemperamentTrait {
             name: "Conformisme".into(),
             score: clamp01(
@@ -288,8 +288,8 @@ impl Temperament {
             category: TraitCategory::Ouverture,
         });
 
-        // ─── Emotionnel ──────────────────────────────────────────
-        // Sensibilite : profondeur emotionnelle + vulnerabilite + nevrosisme
+        // ─── Emotional ───────────────────────────────────────────
+        // Sensitivity: emotional depth + vulnerability + neuroticism
         traits.push(TemperamentTrait {
             name: "Sensibilite".into(),
             score: clamp01(
@@ -300,7 +300,7 @@ impl Temperament {
             category: TraitCategory::Emotionnel,
         });
 
-        // Resilience : inverse vulnerabilite + endorphine + volonte
+        // Resilience: inverse vulnerability + endorphin + willpower
         traits.push(TemperamentTrait {
             name: "Resilience".into(),
             score: clamp01(
@@ -311,7 +311,7 @@ impl Temperament {
             category: TraitCategory::Emotionnel,
         });
 
-        // Irritabilite : facette irritabilite (N1) + cortisol + inverse serotonine
+        // Irritability: anger/hostility facet (N1) + cortisol + inverse serotonin
         traits.push(TemperamentTrait {
             name: "Irritabilite".into(),
             score: clamp01(
@@ -322,7 +322,7 @@ impl Temperament {
             category: TraitCategory::Emotionnel,
         });
 
-        // Melancolie : depressivite (N2) + basse dopamine + valence negative
+        // Melancholy: depression facet (N2) + low dopamine + negative valence
         traits.push(TemperamentTrait {
             name: "Melancolie".into(),
             score: clamp01(
@@ -333,8 +333,8 @@ impl Temperament {
             category: TraitCategory::Emotionnel,
         });
 
-        // ─── Relationnel ─────────────────────────────────────────
-        // Confiance : facette confiance (A0) + oxytocine + attachement secure
+        // ─── Relational ──────────────────────────────────────────
+        // Trust: trust facet (A0) + oxytocin + secure attachment
         let secure_bonus = if inputs.attachment_secure { 0.8 } else { 0.3 };
         traits.push(TemperamentTrait {
             name: "Confiance".into(),
@@ -346,7 +346,7 @@ impl Temperament {
             category: TraitCategory::Relationnel,
         });
 
-        // Mefiance : inverse confiance + cortisol + inverse oxytocine
+        // Distrust: inverse trust + cortisol + inverse oxytocin
         traits.push(TemperamentTrait {
             name: "Mefiance".into(),
             score: clamp01(
@@ -357,7 +357,7 @@ impl Temperament {
             category: TraitCategory::Relationnel,
         });
 
-        // Jalousie : neuroticism + basse confiance + attachement insecure
+        // Jealousy: neuroticism + low trust + insecure attachment
         let insecure_bonus = if inputs.attachment_secure { 0.2 } else { 0.7 };
         traits.push(TemperamentTrait {
             name: "Jalousie".into(),
@@ -369,7 +369,7 @@ impl Temperament {
             category: TraitCategory::Relationnel,
         });
 
-        // Independance : inverse gregaire + assertivite + inverse modestie
+        // Independence: inverse gregariousness + assertiveness + inverse modesty
         traits.push(TemperamentTrait {
             name: "Independance".into(),
             score: clamp01(
@@ -381,7 +381,7 @@ impl Temperament {
         });
 
         // ─── Moral ───────────────────────────────────────────────
-        // Integrite : sens du devoir + surmoi + sincerite
+        // Integrity: sense of duty + superego + sincerity
         traits.push(TemperamentTrait {
             name: "Integrite".into(),
             score: clamp01(
@@ -392,7 +392,7 @@ impl Temperament {
             category: TraitCategory::Moral,
         });
 
-        // Altruisme : altruisme (A2) + EQ + oxytocine
+        // Altruism: altruism (A2) + EQ + oxytocin
         traits.push(TemperamentTrait {
             name: "Altruisme".into(),
             score: clamp01(
@@ -403,7 +403,7 @@ impl Temperament {
             category: TraitCategory::Moral,
         });
 
-        // Egocentrisme : basse agreabilite + basse empathie + haute dopamine
+        // Egocentrism: low agreeableness + low empathy + high dopamine
         traits.push(TemperamentTrait {
             name: "Egocentrisme".into(),
             score: clamp01(
@@ -421,8 +421,8 @@ impl Temperament {
         }
     }
 
-    /// Blend progressif : 30% nouveau, 70% ancien (comme OCEAN).
-    /// Lisse les fluctuations pour un temperament stable.
+    /// Progressive blend: 30% new, 70% old (like OCEAN).
+    /// Smooths fluctuations for a stable temperament.
     pub fn blend(&mut self, new: &Temperament) {
         const BLEND_NEW: f64 = 0.3;
         const BLEND_OLD: f64 = 0.7;
@@ -434,7 +434,7 @@ impl Temperament {
                 old_trait.score = (old_trait.score * BLEND_OLD + new_trait.score * BLEND_NEW)
                     .clamp(0.0, 1.0);
             } else {
-                // Nouveau trait : ajouter tel quel
+                // New trait: add as-is
                 self.traits.push(new_trait.clone());
             }
         }
@@ -442,7 +442,7 @@ impl Temperament {
         self.data_points = new.data_points;
     }
 
-    /// Serialise pour le WebSocket (format JSON).
+    /// Serializes for the WebSocket (format JSON).
     pub fn ws_data(&self) -> serde_json::Value {
         let traits_json: Vec<serde_json::Value> = self.traits.iter().map(|t| {
             serde_json::json!({
@@ -459,21 +459,21 @@ impl Temperament {
         })
     }
 
-    /// Retourne les N traits les plus eleves.
+    /// Returns the N highest-scoring traits.
     pub fn top_traits(&self, n: usize) -> Vec<&TemperamentTrait> {
         let mut sorted: Vec<&TemperamentTrait> = self.traits.iter().collect();
         sorted.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
         sorted.into_iter().take(n).collect()
     }
 
-    /// Retourne les N traits les plus bas.
+    /// Returns the N lowest-scoring traits.
     pub fn bottom_traits(&self, n: usize) -> Vec<&TemperamentTrait> {
         let mut sorted: Vec<&TemperamentTrait> = self.traits.iter().collect();
         sorted.sort_by(|a, b| a.score.partial_cmp(&b.score).unwrap_or(std::cmp::Ordering::Equal));
         sorted.into_iter().take(n).collect()
     }
 
-    /// Description lisible pour les prompts LLM.
+    /// Human-readable description for LLM prompts.
     pub fn describe_for_prompt(&self) -> String {
         if self.traits.is_empty() {
             return String::new();
@@ -485,7 +485,7 @@ impl Temperament {
     }
 }
 
-/// Clampe une valeur entre 0.0 et 1.0.
+/// Clamps a value between 0.0 and 1.0.
 fn clamp01(v: f64) -> f64 {
     v.clamp(0.0, 1.0)
 }

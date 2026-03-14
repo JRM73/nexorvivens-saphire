@@ -1,15 +1,15 @@
 // =============================================================================
-// conditions/mod.rs — Conditions, afflictions et etats physiologiques
+// conditions/mod.rs — Conditions, afflictions, and physiological states
 // =============================================================================
 //
-// Role : Regroupe les modules de conditions qui affectent Saphire :
-//        phobies, cinetose, troubles alimentaires, etc.
-//        Chaque condition peut impacter la chimie, le corps, la cognition.
+// Purpose: Groups condition modules that affect Saphire:
+//          phobias, motion sickness, eating disorders, etc.
+//          Each condition can impact chemistry, body, and cognition.
 //
-// Place dans l'architecture :
-//   Les conditions sont verifiees dans le pipeline cognitif et peuvent
-//   modifier les baselines chimiques, declencher des reactions somatiques,
-//   ou degrader la cognition.
+// Architecture:
+//   Conditions are checked in the cognitive pipeline and can
+//   modify chemical baselines, trigger somatic reactions,
+//   or degrade cognition.
 // =============================================================================
 
 pub mod motion_sickness;

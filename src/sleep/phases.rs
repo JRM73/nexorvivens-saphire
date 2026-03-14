@@ -1,13 +1,13 @@
 // =============================================================================
-// sleep/phases.rs — Descriptions et helpers pour les phases de sommeil
+// sleep/phases.rs — Descriptions and helpers for sleep phases
 //
-// Role : Fournit des descriptions textuelles et des constantes utilitaires
-// pour chaque phase de sommeil. La logique de transition est dans sleep_tick.rs.
+// Role: Provides textual descriptions and utility constants for each sleep
+// phase. Transition logic is in sleep_tick.rs.
 // =============================================================================
 
 use crate::orchestrators::dreams::SleepPhase;
 
-/// Description humaine d'une phase de sommeil pour les logs et l'IU.
+/// Human-readable description of a sleep phase for logs and UI.
 pub fn phase_description(phase: &SleepPhase) -> &'static str {
     match phase {
         SleepPhase::Awake => "Eveillee — conscience pleine, tous les systemes actifs",
@@ -29,7 +29,7 @@ pub fn phase_description(phase: &SleepPhase) -> &'static str {
     }
 }
 
-/// Emoji representant une phase (pour les logs terminal).
+/// Emoji representing a phase (for terminal logs).
 pub fn phase_emoji(phase: &SleepPhase) -> &'static str {
     match phase {
         SleepPhase::Awake => "☀",
@@ -41,7 +41,7 @@ pub fn phase_emoji(phase: &SleepPhase) -> &'static str {
     }
 }
 
-/// Niveau d'activation du subconscient selon la phase.
+/// Subconscious activation level for a given phase.
 pub fn subconscious_activation_for_phase(phase: &SleepPhase) -> f64 {
     match phase {
         SleepPhase::Awake => 0.2,

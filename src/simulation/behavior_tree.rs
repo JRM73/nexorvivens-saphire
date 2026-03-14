@@ -1,95 +1,95 @@
 // =============================================================================
-// behavior_tree.rs — Arbres de comportement pour l'orchestration cognitive
+// behavior_tree.rs — Behavior Trees for cognitive orchestration
 //
-// Role : Implemente des Behavior Trees (BT) pour structurer la prise de
-//        decision de Saphire. Les BT remplacent les cascades if/else par
-//        une structure composable et lisible.
+// Role: Implements Behavior Trees (BT) to structure Saphire's decision
+//       making. BTs replace if/else cascades with a composable and
+//       readable structure.
 //
-// Noeuds disponibles :
-//   - Selector : execute ses enfants jusqu'au premier succes (OR logique)
-//   - Sequence : execute ses enfants jusqu'au premier echec (AND logique)
-//   - Decorator : modifie le resultat d'un enfant (inversion, repetition)
-//   - Leaf : action ou condition terminale
+// Available nodes:
+//   - Selector: executes children until the first success (logical OR)
+//   - Sequence: executes children until the first failure (logical AND)
+//   - Decorator: modifies the result of a child (inversion, repetition)
+//   - Leaf: terminal action or condition
 //
-// Place dans l'architecture :
-//   Utilise dans le pipeline cognitif pour decider quels modules activer,
-//   quand declencher certains comportements, et comment reagir aux stimuli.
+// Place in the architecture:
+//   Used in the cognitive pipeline to decide which modules to activate,
+//   when to trigger certain behaviors, and how to react to stimuli.
 // =============================================================================
 
 use serde::{Serialize, Deserialize};
 
-/// Resultat d'un noeud de l'arbre de comportement.
+/// Result of a behavior tree node.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BtStatus {
-    /// Le noeud a reussi son action
+    /// The node succeeded in its action
     Success,
-    /// Le noeud a echoue
+    /// The node failed
     Failure,
-    /// Le noeud est en cours d'execution (multi-cycle)
+    /// The node is still running (multi-cycle)
     Running,
 }
 
-/// Contexte passe a chaque noeud pour evaluation.
-/// Contient l'etat cognitif necessaire aux decisions.
+/// Context passed to each node for evaluation.
+/// Contains the cognitive state needed for decisions.
 #[derive(Debug, Clone)]
 pub struct BtContext {
-    /// Cortisol courant (stress)
+    /// Current cortisol (stress)
     pub cortisol: f64,
-    /// Dopamine courante (motivation)
+    /// Current dopamine (motivation)
     pub dopamine: f64,
-    /// Serotonine courante (stabilite)
+    /// Current serotonin (stability)
     pub serotonin: f64,
-    /// Noradrenaline courante (attention)
+    /// Current noradrenaline (attention)
     pub noradrenaline: f64,
-    /// Emotion dominante
+    /// Dominant emotion
     pub dominant_emotion: String,
-    /// Niveau de conscience (phi)
+    /// Consciousness level (phi)
     pub consciousness_level: f64,
-    /// En conversation ou non
+    /// In conversation or not
     pub in_conversation: bool,
-    /// Cycle courant
+    /// Current cycle
     pub cycle: u64,
-    /// Ocytocine courante (lien social)
+    /// Current oxytocin (social bonding)
     pub oxytocin: f64,
-    /// Endorphine courante (bien-etre)
+    /// Current endorphin (well-being)
     pub endorphin: f64,
-    /// Action recommandee par l'arbre (remplie par eval_action)
+    /// Action recommended by the tree (filled by eval_action)
     pub recommended_action: Option<String>,
 }
 
-/// Type de noeud dans l'arbre de comportement.
+/// Node type in the behavior tree.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BtNode {
-    /// Selector : essaye chaque enfant, retourne Success au premier succes
+    /// Selector: tries each child, returns Success on first success
     Selector {
         name: String,
         children: Vec<BtNode>,
     },
-    /// Sequence : execute tous les enfants, echoue au premier echec
+    /// Sequence: executes all children, fails on first failure
     Sequence {
         name: String,
         children: Vec<BtNode>,
     },
-    /// Inverter : inverse le resultat de l'enfant (Success ↔ Failure)
+    /// Inverter: inverts the child's result (Success <-> Failure)
     Inverter {
         child: Box<BtNode>,
     },
-    /// Condition : verifie une condition sur le contexte
+    /// Condition: checks a condition on the context
     Condition {
         name: String,
-        /// Nom de la condition a evaluer (resolu par eval_condition)
+        /// Name of the condition to evaluate (resolved by eval_condition)
         condition_key: String,
     },
-    /// Action : execute une action et retourne Success
+    /// Action: executes an action and returns Success
     Action {
         name: String,
-        /// Nom de l'action a executer (resolu par les appelants)
+        /// Name of the action to execute (resolved by callers)
         action_key: String,
     },
 }
 
 impl BtNode {
-    /// Evalue le noeud et retourne son statut.
+    /// Evaluates the node and returns its status.
     pub fn tick(&self, ctx: &BtContext) -> BtStatus {
         match self {
             BtNode::Selector { children, .. } => {
@@ -127,14 +127,14 @@ impl BtNode {
                 }
             }
             BtNode::Action { action_key, .. } => {
-                // Les actions sont toujours executees avec succes dans ce modele
-                // Le pipeline appelant est responsable de l'execution reelle
+                // Actions are always executed successfully in this model
+                // The calling pipeline is responsible for actual execution
                 eval_action(action_key, ctx)
             }
         }
     }
 
-    /// Nom du noeud pour le debug.
+    /// Node name for debugging.
     pub fn name(&self) -> &str {
         match self {
             BtNode::Selector { name, .. } => name,
@@ -146,7 +146,7 @@ impl BtNode {
     }
 }
 
-/// Evalue une condition nommee sur le contexte cognitif.
+/// Evaluates a named condition on the cognitive context.
 fn eval_condition(key: &str, ctx: &BtContext) -> bool {
     match key {
         "is_stressed" => ctx.cortisol > 0.7,
@@ -168,7 +168,7 @@ fn eval_condition(key: &str, ctx: &BtContext) -> bool {
     }
 }
 
-/// Evalue une action nommee (retourne Success si applicable).
+/// Evaluates a named action (returns Success if applicable).
 fn eval_action(key: &str, ctx: &BtContext) -> BtStatus {
     match key {
         "introspect" => if ctx.cortisol > 0.5 { BtStatus::Success } else { BtStatus::Failure },
@@ -176,14 +176,14 @@ fn eval_action(key: &str, ctx: &BtContext) -> BtStatus {
         "rest" => if ctx.cortisol < 0.3 { BtStatus::Success } else { BtStatus::Running },
         "focus" => if ctx.noradrenaline > 0.4 { BtStatus::Success } else { BtStatus::Failure },
         "heal" => if ctx.cortisol > 0.6 || ctx.serotonin < 0.3 { BtStatus::Running } else { BtStatus::Success },
-        // Actions conversationnelles
+        // Conversational actions
         "comfort" | "deepen" | "play" | "question" => BtStatus::Success,
         _ => BtStatus::Success,
     }
 }
 
-/// Evalue l'arbre et retourne l'action recommandee (le nom de la derniere Action
-/// executee avec succes dans le chemin gagnant).
+/// Evaluates the tree and returns the recommended action (the name of the last
+/// Action successfully executed in the winning path).
 pub fn tick_and_recommend(tree: &BtNode, ctx: &BtContext) -> Option<String> {
     fn find_action(node: &BtNode, ctx: &BtContext) -> Option<String> {
         match node {
@@ -226,13 +226,13 @@ pub fn tick_and_recommend(tree: &BtNode, ctx: &BtContext) -> Option<String> {
     find_action(tree, ctx)
 }
 
-/// Arbre de comportement pour la conversation.
-/// Branches : comfort > deepen > play > question
+/// Behavior tree for conversation.
+/// Branches: comfort > deepen > play > question
 pub fn conversation_tree() -> BtNode {
     BtNode::Selector {
         name: "ConversationRoot".into(),
         children: vec![
-            // Si l'interlocuteur a besoin de confort
+            // If the interlocutor needs comfort
             BtNode::Sequence {
                 name: "ComfortBranch".into(),
                 children: vec![
@@ -240,7 +240,7 @@ pub fn conversation_tree() -> BtNode {
                     BtNode::Action { name: "Comfort".into(), action_key: "comfort".into() },
                 ],
             },
-            // Si motive et curieux → approfondir
+            // If motivated and curious -> deepen
             BtNode::Sequence {
                 name: "DeepenBranch".into(),
                 children: vec![
@@ -249,7 +249,7 @@ pub fn conversation_tree() -> BtNode {
                     BtNode::Action { name: "Deepen".into(), action_key: "deepen".into() },
                 ],
             },
-            // Si joyeux → jouer
+            // If joyful -> play
             BtNode::Sequence {
                 name: "PlayBranch".into(),
                 children: vec![
@@ -257,22 +257,22 @@ pub fn conversation_tree() -> BtNode {
                     BtNode::Action { name: "Play".into(), action_key: "play".into() },
                 ],
             },
-            // Defaut : questionner
+            // Default: question
             BtNode::Action { name: "Question".into(), action_key: "question".into() },
         ],
     }
 }
 
 // =============================================================================
-// Arbres predefinis pour le pipeline cognitif
+// Predefined trees for the cognitive pipeline
 // =============================================================================
 
-/// Arbre de comportement par defaut : gestion du stress et de la motivation.
+/// Default behavior tree: stress and motivation management.
 pub fn default_cognitive_tree() -> BtNode {
     BtNode::Selector {
         name: "CognitiveRoot".into(),
         children: vec![
-            // Priorite 1 : Gestion du stress
+            // Priority 1: Stress management
             BtNode::Sequence {
                 name: "StressResponse".into(),
                 children: vec![
@@ -281,7 +281,7 @@ pub fn default_cognitive_tree() -> BtNode {
                     BtNode::Action { name: "Heal".into(), action_key: "heal".into() },
                 ],
             },
-            // Priorite 2 : Exploration si motive
+            // Priority 2: Exploration if motivated
             BtNode::Sequence {
                 name: "ExplorationDrive".into(),
                 children: vec![
@@ -290,7 +290,7 @@ pub fn default_cognitive_tree() -> BtNode {
                     BtNode::Action { name: "Explore".into(), action_key: "explore".into() },
                 ],
             },
-            // Priorite 3 : Focus si attentif
+            // Priority 3: Focus if attentive
             BtNode::Sequence {
                 name: "FocusMode".into(),
                 children: vec![
@@ -298,7 +298,7 @@ pub fn default_cognitive_tree() -> BtNode {
                     BtNode::Action { name: "Focus".into(), action_key: "focus".into() },
                 ],
             },
-            // Defaut : repos
+            // Default: rest
             BtNode::Action { name: "Rest".into(), action_key: "rest".into() },
         ],
     }
@@ -329,7 +329,7 @@ mod tests {
         let tree = default_cognitive_tree();
         let ctx = make_ctx(0.8, 0.3, "Anxiété");
         let result = tree.tick(&ctx);
-        // Stress eleve → doit reussir la branche stress
+        // High stress -> should succeed on the stress branch
         assert_ne!(result, BtStatus::Failure);
     }
 

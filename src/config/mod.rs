@@ -1,9 +1,9 @@
 // =============================================================================
-// config/mod.rs — Configuration de Saphire (saphire.toml + variables d'env)
+// config/mod.rs — Saphire configuration (saphire.toml + environment variables)
 //
-// Role : Ce module definit toutes les structures de configuration de Saphire.
-// Il charge les parametres depuis un fichier TOML et permet la surcharge par
-// des variables d'environnement (utile pour les deploiements Docker).
+// Purpose: Defines all configuration structures for Saphire.
+// Loads parameters from a TOML file and allows overrides via
+// environment variables (useful for Docker deployments).
 // =============================================================================
 
 mod structures;

@@ -1,7 +1,7 @@
 // =============================================================================
-// api/spine.rs — Endpoint API pour la colonne vertebrale (reflexes, routage)
+// api/spine.rs — Endpoint API for the spinal cord (reflexes, routage)
 //
-// Role : Expose l'etat de la colonne vertebrale de Saphire (reflexes,
+// Role: Expose l'state of the spinal cord de Saphire (reflexes,
 // signaux traites, routage) via un endpoint HTTP GET protege.
 // =============================================================================
 
@@ -11,7 +11,7 @@ use serde_json::Value;
 
 use super::state::AppState;
 
-/// GET /api/spine/status — Etat de la colonne vertebrale.
+/// GET /api/spine/status — Etat de la spinal cord.
 pub async fn api_spine_status(
     State(state): State<AppState>,
 ) -> Json<Value> {

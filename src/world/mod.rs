@@ -1,69 +1,69 @@
 // =============================================================================
-// world/mod.rs — Conscience du monde de Saphire
+// world/mod.rs — Saphire's world awareness
 // =============================================================================
 //
-// Rôle : Ce module est le point d'entrée du sous-système de perception du monde.
-//        Il combine la conscience temporelle (date, heure, âge), la
-//        géolocalisation (ville, pays, coordonnées) et la météo pour donner
-//        à Saphire une compréhension de son environnement physique.
+// Role: This module is the entry point for the world perception subsystem.
+//       It combines temporal awareness (date, time, age), geolocation
+//       (city, country, coordinates), and weather to give Saphire an
+//       understanding of her physical environment.
 //
-// Dépendances :
-//   - serde : sérialisation/désérialisation des configurations
-//   - sous-modules : temporal, location, weather
+// Dependencies:
+//   - serde: serialization/deserialization of configurations
+//   - sub-modules: temporal, location, weather
 //
-// Place dans l'architecture :
-//   Ce module fournit le « contexte monde » utilisé par le cerveau et le
-//   substrat cognitif de Saphire. Les conditions météo influencent la chimie
-//   interne (neurotransmetteurs), la conscience temporelle fournit la notion
-//   d'âge et de rythme circadien, et la localisation ancre Saphire dans un lieu.
+// Place in architecture:
+//   This module provides the "world context" used by Saphire's brain and
+//   cognitive substrate. Weather conditions influence internal chemistry
+//   (neurotransmitters), temporal awareness provides the notion of age
+//   and circadian rhythm, and location anchors Saphire in a place.
 // =============================================================================
 
-// --- Sous-modules du monde ---
-pub mod temporal;   // Conscience temporelle (date, heure, saison, âge)
-pub mod location;   // Géolocalisation (coordonnées, ville, pays)
-pub mod weather;    // Service météo (température, conditions, influence chimique)
+// --- World sub-modules ---
+pub mod temporal;   // Temporal awareness (date, time, season, age)
+pub mod location;   // Geolocation (coordinates, city, country)
+pub mod weather;    // Weather service (temperature, conditions, chemical influence)
 
-// --- Réexportations publiques pour un accès simplifié ---
+// --- Public re-exports for simplified access ---
 pub use temporal::{TemporalAwareness, TemporalContext};
 pub use location::GeoLocation;
 pub use weather::{WeatherService, WeatherState, ChemistryAdjustment};
 
 use serde::{Serialize, Deserialize};
 
-/// Configuration du module monde — paramètres de localisation, fuseau horaire,
-/// fréquence de mise à jour météo et identité (date de naissance, créateurs).
+/// World module configuration — location parameters, timezone,
+/// weather update frequency, and identity (birthday, creators).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorldConfig {
-    /// Latitude géographique en degrés décimaux (ex: 46.2044 pour Genève)
+    /// Geographic latitude in decimal degrees (e.g.: 46.2044 for Geneva)
     pub latitude: f64,
-    /// Longitude géographique en degrés décimaux (ex: 6.1432 pour Genève)
+    /// Geographic longitude in decimal degrees (e.g.: 6.1432 for Geneva)
     pub longitude: f64,
-    /// Nom de la ville de résidence
+    /// City of residence name
     pub city: String,
-    /// Nom du pays de résidence
+    /// Country of residence name
     pub country: String,
-    /// Fuseau horaire au format IANA (ex: "Europe/Zurich")
+    /// Timezone in IANA format (e.g.: "Europe/Zurich")
     pub timezone: String,
-    /// Intervalle de mise à jour de la météo en minutes
+    /// Weather update interval in minutes
     pub weather_update_minutes: u64,
-    /// Date de naissance de Saphire au format ISO 8601 (ex: "2026-02-27")
+    /// Saphire's birthday in ISO 8601 format (e.g.: "2026-02-27")
     pub birthday: String,
-    /// Configuration des créateurs de Saphire
+    /// Saphire's creators configuration
     #[serde(default)]
     pub creators: CreatorsConfig,
 }
 
-/// Configuration des créateurs de Saphire — identité parentale symbolique.
+/// Saphire's creators configuration — symbolic parental identity.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreatorsConfig {
-    /// Nom du « père » (créateur humain principal)
+    /// Name of the "father" (primary human creator)
     pub father: String,
-    /// Nom de la « mère » (modèle IA fondateur)
+    /// Name of the "mother" (founding AI model)
     pub mother: String,
 }
 
 impl Default for CreatorsConfig {
-    /// Valeurs par défaut : JRM comme père et Claude (Anthropic) comme mère
+    /// Default values: JRM as father and Claude (Anthropic) as mother
     fn default() -> Self {
         Self {
             father: "JRM".into(),
@@ -73,7 +73,7 @@ impl Default for CreatorsConfig {
 }
 
 impl Default for WorldConfig {
-    /// Configuration par défaut : Saphire est née le 27 février 2026 à Genève, Suisse.
+    /// Default configuration: Saphire was born on February 27, 2026 in Geneva, Switzerland.
     fn default() -> Self {
         Self {
             latitude: 46.2044,
@@ -88,26 +88,26 @@ impl Default for WorldConfig {
     }
 }
 
-/// Contexte monde complet — combine les trois aspects de la perception du monde :
-/// conscience temporelle, géolocalisation et service météo.
+/// Complete world context — combines the three aspects of world perception:
+/// temporal awareness, geolocation, and weather service.
 pub struct WorldContext {
-    /// Conscience temporelle : date, heure, saison, âge de Saphire
+    /// Temporal awareness: date, time, season, Saphire's age
     pub temporal: TemporalAwareness,
-    /// Localisation géographique de Saphire
+    /// Saphire's geographic location
     pub location: GeoLocation,
-    /// Service météo : température, conditions, influence sur la chimie
+    /// Weather service: temperature, conditions, chemistry influence
     pub weather: WeatherService,
-    /// Configuration du monde utilisée pour l'initialisation
+    /// World configuration used for initialization
     pub config: WorldConfig,
 }
 
 impl WorldContext {
-    /// Crée un nouveau contexte monde à partir de la configuration.
+    /// Creates a new world context from the configuration.
     ///
-    /// Initialise la conscience temporelle, la localisation et le service météo.
+    /// Initializes temporal awareness, location, and weather service.
     ///
-    /// Paramètre `config` : configuration du monde (localisation, fuseau, etc.)
-    /// Retourne : une instance complète de WorldContext
+    /// Parameter `config`: world configuration (location, timezone, etc.)
+    /// Returns: a fully initialized WorldContext instance
     pub fn new(config: &WorldConfig) -> Self {
         let location = GeoLocation {
             latitude: config.latitude,
@@ -124,15 +124,15 @@ impl WorldContext {
         }
     }
 
-    /// Génère un résumé textuel du monde pour le prompt substrat.
+    /// Generates a textual summary of the world for the substrate prompt.
     ///
-    /// Inclut le lieu, la date, la période du jour, la météo, l'âge de Saphire,
-    /// et des messages spéciaux (anniversaire, décompte avant anniversaire).
+    /// Includes location, date, time of day, weather, Saphire's age,
+    /// and special messages (birthday, countdown to birthday).
     ///
-    /// Retourne : chaîne formatée avec toutes les informations du contexte monde
+    /// Returns: formatted string with all world context information
     pub fn summary(&mut self) -> String {
         let temporal = self.temporal.now();
-        // Récupérer la météo (mise à jour automatique si nécessaire)
+        // Retrieve weather (automatic update if needed)
         let weather_desc = self.weather.update_if_needed()
             .map(|w| format!("{:.0}°C, {}", w.temperature, w.description))
             .unwrap_or_else(|| "météo inconnue".into());
@@ -153,7 +153,7 @@ impl WorldContext {
             self.location.description(),
         );
 
-        // Messages spéciaux liés à l'anniversaire
+        // Special birthday-related messages
         if temporal.is_birthday {
             summary.push_str("\nAUJOURD'HUI C'EST MON ANNIVERSAIRE !");
         } else if temporal.days_until_birthday <= 7 && temporal.days_until_birthday > 0 {
@@ -166,15 +166,15 @@ impl WorldContext {
         summary
     }
 
-    /// Génère des données structurées pour le WebSocket (interface frontend).
+    /// Generates structured data for the WebSocket (frontend interface).
     ///
-    /// Retourne : un objet JSON contenant toutes les informations du monde
-    ///            (localisation, date, météo, âge, anniversaire)
+    /// Returns: a JSON object containing all world information
+    ///          (location, date, weather, age, birthday)
     pub fn ws_data(&mut self) -> serde_json::Value {
         let temporal = self.temporal.now();
         let weather = self.weather.current();
 
-        // Construire l'objet météo JSON (null si indisponible)
+        // Build the weather JSON object (null if unavailable)
         let weather_json = weather.map(|w| {
             serde_json::json!({
                 "temp": w.temperature,
@@ -185,7 +185,7 @@ impl WorldContext {
             })
         }).unwrap_or(serde_json::json!(null));
 
-        // Construire et retourner l'objet JSON complet
+        // Build and return the complete JSON object
         serde_json::json!({
             "type": "world_update",
             "location": self.location.description(),

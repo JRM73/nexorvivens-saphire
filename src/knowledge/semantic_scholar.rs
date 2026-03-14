@@ -1,58 +1,58 @@
 // =============================================================================
-// knowledge/semantic_scholar.rs — Client API Semantic Scholar
+// knowledge/semantic_scholar.rs — Semantic Scholar API client
 // =============================================================================
 //
-// Role : Recherche d'articles academiques sur Semantic Scholar, une base de
-//        donnees gratuite couvrant 200M+ articles scientifiques (informatique,
-//        neurosciences, psychologie, philosophie, biologie, etc.).
+// Purpose: Searches academic articles on Semantic Scholar, a free database
+//          covering 200M+ scientific papers (computer science, neuroscience,
+//          psychology, philosophy, biology, etc.).
 //
-// API : https://api.semanticscholar.org/graph/v1/paper/search
-//       - Gratuite, sans cle API
-//       - Limite : 100 requetes / 5 minutes
-//       - Champs demandes : title, abstract, url, authors, year, citationCount
-//       - Retourne jusqu'a 3 resultats par requete
+// API: https://api.semanticscholar.org/graph/v1/paper/search
+//      - Free, no API key required
+//      - Limit: 100 requests / 5 minutes
+//      - Requested fields: title, abstract, url, authors, year, citationCount
+//      - Returns up to 3 results per query
 //
-// Traduction : les requetes en francais sont traduites en anglais via
-//              translate_query_to_english() (partage avec arxiv.rs).
+// Translation: French queries are translated to English via
+//              translate_query_to_english() (shared with arxiv.rs).
 //
-// Score de pertinence : 0.85 + bonus citations (max +0.10 pour 1000+ citations)
-//   Formule : 0.85 + min(citationCount / 1000, 0.10)
-//   Un article avec 500 citations -> score 0.90
-//   Un article avec 2000 citations -> score 0.95 (cap)
+// Relevance score: 0.85 + citation bonus (max +0.10 for 1000+ citations)
+//   Formula: 0.85 + min(citationCount / 1000, 0.10)
+//   A paper with 500 citations -> score 0.90
+//   A paper with 2000 citations -> score 0.95 (cap)
 // =============================================================================
 
 use chrono::Utc;
 use super::{WebKnowledge, KnowledgeResult, KnowledgeError};
 
 impl WebKnowledge {
-    /// Recherche des articles academiques sur Semantic Scholar.
+    /// Search for academic articles on Semantic Scholar.
     ///
-    /// Processus :
-    ///   1. Traduire la requete FR -> EN (dictionnaire de termes courants)
-    ///   2. Encoder l'URL et envoyer la requete a l'API Graph v1
-    ///   3. Parser les resultats JSON (title, abstract, authors, year, citations)
-    ///   4. Filtrer les articles sans abstract substantiel (<50 chars)
-    ///   5. Calculer le score de pertinence (base + bonus citations)
+    /// Process:
+    ///   1. Translate the query FR -> EN (dictionary of common terms)
+    ///   2. URL-encode and send the request to the Graph v1 API
+    ///   3. Parse JSON results (title, abstract, authors, year, citations)
+    ///   4. Filter articles without a substantial abstract (<50 chars)
+    ///   5. Compute relevance score (base + citation bonus)
     ///
-    /// Retourne un Vec car l'API peut retourner jusqu'a 3 resultats.
+    /// Returns a Vec since the API may return up to 3 results.
     pub fn search_semantic_scholar(&self, query: &str) -> Result<Vec<KnowledgeResult>, KnowledgeError> {
-        // Traduire la requete en anglais (la majorite des articles sont en EN)
-        // Utilise la meme fonction que arxiv.rs (pub(crate))
+        // Translate the query to English (most articles are in EN)
+        // Uses the same function as arxiv.rs (pub(crate))
         let english_query = Self::translate_query_to_english(query);
         let encoded = Self::url_encode(&english_query);
 
-        // Construire l'URL de l'API avec les champs necessaires
+        // Build the API URL with required fields
         let url = format!(
             "https://api.semanticscholar.org/graph/v1/paper/search?query={}&limit=3&fields=title,abstract,url,authors,year,citationCount",
             encoded
         );
 
-        // Securite : verifier que le domaine est dans la whitelist
+        // Safety: verify the domain is in the whitelist
         if !Self::is_url_allowed(&url) {
             return Err(KnowledgeError::DomainBlocked);
         }
 
-        // Envoyer la requete a l'API
+        // Send the API request
         let resp_str = self.http_client
             .get(&url)
             .set("User-Agent", "Saphire/1.0 (Autonomous Cognitive Entity; academic research)")
@@ -64,18 +64,18 @@ impl WebKnowledge {
             .into_string()
             .map_err(|e| KnowledgeError::Parse(e.to_string()))?;
 
-        // Parser la reponse JSON
+        // Parse the JSON response
         let resp: serde_json::Value = serde_json::from_str(&resp_str)
             .map_err(|e| KnowledgeError::Parse(e.to_string()))?;
 
-        // Les resultats sont dans le champ "data" (tableau de papers)
+        // Results are in the "data" field (array of papers)
         let papers = resp["data"]
             .as_array()
             .ok_or(KnowledgeError::NotFound)?;
 
         let max_chars = self.config.max_content_chars;
 
-        // Transformer chaque paper en KnowledgeResult
+        // Transform each paper into a KnowledgeResult
         let results: Vec<KnowledgeResult> = papers.iter()
             .filter_map(|paper| {
                 let title = paper["title"].as_str()?.to_string();
@@ -86,7 +86,7 @@ impl WebKnowledge {
                 let year = paper["year"].as_u64().unwrap_or(0);
                 let citations = paper["citationCount"].as_u64().unwrap_or(0);
 
-                // Extraire les noms des auteurs
+                // Extract author names
                 let authors: Vec<String> = paper["authors"]
                     .as_array()
                     .map(|a| a.iter()
@@ -94,7 +94,7 @@ impl WebKnowledge {
                         .collect()
                     ).unwrap_or_default();
 
-                // Ignorer les articles sans abstract substantiel
+                // Skip articles without a substantial abstract
                 if abstract_text.len() < 50 { return None; }
 
                 let first_author = authors.first()
@@ -106,10 +106,10 @@ impl WebKnowledge {
                     title: format!("{} — {}", title, first_author),
                     url: paper_url,
                     extract: abstract_text.chars().take(max_chars).collect(),
-                    section_titles: vec![], // Les abstracts n'ont pas de sections
+                    section_titles: vec![], // Abstracts have no sections
                     total_length: abstract_text.len(),
-                    // Score de pertinence : base 0.85 + bonus proportionnel aux citations
-                    // Le bonus est plafonné a 0.10 (pour 1000+ citations)
+                    // Relevance score: base 0.85 + citation-proportional bonus
+                    // Bonus is capped at 0.10 (for 1000+ citations)
                     relevance_score: 0.85 + (citations as f64 / 1000.0).min(0.1),
                     fetched_at: Utc::now(),
                 })

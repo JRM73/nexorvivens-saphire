@@ -1,14 +1,14 @@
 // =============================================================================
-// db/lora.rs — CRUD pour la table lora_training_data
+// db/lora.rs — CRUD for the lora_training_data table
 //
-// Role : Stocker les pensees de haute qualite pour constituer un dataset
-// de fine-tuning LoRA. Export JSONL pour entrainement supervisé.
+// Role: Store high-quality thoughts to build a LoRA fine-tuning dataset.
+// JSONL export for supervised training.
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 use super::{SaphireDb, DbError};
 
-/// Echantillon LoRA recupere depuis la base.
+/// LoRA sample retrieved from the database.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LoraSample {
     pub id: i64,
@@ -26,7 +26,7 @@ pub struct LoraSample {
 }
 
 impl SaphireDb {
-    /// Insere un nouvel echantillon LoRA dans la base.
+    /// Inserts a new LoRA sample into the database.
     pub async fn store_lora_sample(
         &self,
         system_prompt: &str,
@@ -56,14 +56,14 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Nombre total d'echantillons LoRA.
+    /// Total number of LoRA samples.
     pub async fn count_lora_samples(&self) -> Result<i64, DbError> {
         let client = self.pool.get().await?;
         let row = client.query_one("SELECT COUNT(*) FROM lora_training_data", &[]).await?;
         Ok(row.get(0))
     }
 
-    /// Qualite moyenne des echantillons LoRA.
+    /// Average quality of LoRA samples.
     pub async fn avg_lora_quality(&self) -> Result<f64, DbError> {
         let client = self.pool.get().await?;
         let row = client.query_one(
@@ -73,7 +73,7 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Exporte les meilleurs echantillons LoRA (par qualite decroissante).
+    /// Exports the best LoRA samples (by descending quality).
     pub async fn export_lora_jsonl(
         &self,
         min_quality: f32,
@@ -107,7 +107,7 @@ impl SaphireDb {
         }).collect())
     }
 
-    /// Elagage des echantillons LoRA les plus anciens/faibles quand on depasse max_count.
+    /// Prunes the oldest/weakest LoRA samples when max_count is exceeded.
     pub async fn prune_lora_samples(&self, max_count: i64) -> Result<u64, DbError> {
         let client = self.pool.get().await?;
         let row = client.query_one("SELECT COUNT(*) FROM lora_training_data", &[]).await?;

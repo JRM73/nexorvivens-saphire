@@ -1,7 +1,7 @@
 // =============================================================================
-// api/mortality.rs — Endpoints mortalite
+// api/mortality.rs — Mortality endpoints
 //
-// Role : Etat de mortalite, injection de poison (test), reanimation.
+// Role: Mortality state, poison injection (test), resuscitation.
 // =============================================================================
 
 use axum::extract::State;
@@ -9,13 +9,13 @@ use axum::response::IntoResponse;
 
 use super::state::AppState;
 
-/// GET /api/mortality — Etat de mortalite courant.
+/// GET /api/mortality — Current mortality state.
 pub async fn api_mortality_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     axum::Json(agent.body.mortality.to_json())
 }
 
-/// POST /api/mortality/poison — Injecter un poison (test/scenario).
+/// POST /api/mortality/poison — Inject a poison (test/scenario).
 /// Body: { "amount": 0.5 }
 pub async fn api_mortality_poison(
     State(state): State<AppState>,
@@ -30,12 +30,12 @@ pub async fn api_mortality_poison(
     }))
 }
 
-/// POST /api/mortality/revive — Reanimation (reset mortalite a Alive).
-/// Ne fonctionne que si allow_reboot_after_death est active.
+/// POST /api/mortality/revive — Resuscitation (reset mortality to Alive).
+/// Only works if allow_reboot_after_death is active.
 pub async fn api_mortality_revive(State(state): State<AppState>) -> impl IntoResponse {
     let mut agent = state.agent.lock().await;
     if agent.body.mortality.state.is_dead() {
-        // Reset le moniteur de mortalite
+        // Reset the mortality monitor
         let agony_cycles = agent.body.mortality.agony_max_cycles;
         agent.body.mortality = crate::body::mortality::MortalityMonitor::new(agony_cycles);
         axum::Json(serde_json::json!({ "status": "revived" }))

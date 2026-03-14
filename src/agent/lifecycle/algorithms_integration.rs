@@ -1,5 +1,5 @@
 // =============================================================================
-// lifecycle/algorithms_integration.rs — Orchestrateur d'algorithmes
+// lifecycle/algorithms_integration.rs — Algorithm orchestrator
 // =============================================================================
 
 use crate::logging::{LogLevel, LogCategory};
@@ -7,20 +7,20 @@ use crate::logging::{LogLevel, LogCategory};
 use super::SaphireAgent;
 
 impl SaphireAgent {
-    /// Execute les analyses algorithmiques automatiques selon les intervalles configures.
-    /// Chaque analyse tourne a son propre rythme : lissage toutes les 20 cycles,
-    /// clustering toutes les 100 cycles, etc.
+    /// Executes automatic algorithmic analyses according to the configured intervals.
+    /// Each analysis runs at its own pace: smoothing every 20 cycles,
+    /// clustering every 100 cycles, etc.
     pub(super) async fn run_auto_algorithms(&mut self) {
         use crate::algorithms::orchestrator::AlgorithmInput;
 
         let cycle = self.cycle_count;
 
-        // Toutes les 20 cycles : lissage exponentiel sur la chimie
+        // Every 20 cycles: exponential smoothing on the chemistry
         if self.orchestrator.smoothing_interval > 0
             && cycle.is_multiple_of(self.orchestrator.smoothing_interval)
             && self.chemistry_history.len() >= 10
         {
-            // Utiliser la dopamine comme serie representative
+            // Use dopamine as a representative time series
             let series: Vec<f64> = self.chemistry_history.iter().map(|h| h[0]).collect();
             let input = AlgorithmInput {
                 time_series: Some(series),
@@ -32,7 +32,7 @@ impl SaphireAgent {
             }
         }
 
-        // Toutes les 50 cycles : regles d'association pensee → emotion
+        // Every 50 cycles: thought → emotion association rules
         if self.orchestrator.association_interval > 0
             && cycle.is_multiple_of(self.orchestrator.association_interval)
         {
@@ -54,11 +54,11 @@ impl SaphireAgent {
             }
         }
 
-        // Toutes les 100 cycles : clustering des souvenirs + detection d'anomalies
+        // Every 100 cycles: memory clustering + anomaly detection
         if self.orchestrator.clustering_interval > 0
             && cycle.is_multiple_of(self.orchestrator.clustering_interval)
         {
-            // K-Means sur l'historique chimique (7 dimensions = 7 molecules)
+            // K-Means on chemical history (7 dimensions = 7 molecules)
             if self.chemistry_history.len() >= 30 {
                 let vectors: Vec<Vec<f64>> = self.chemistry_history.iter()
                     .map(|h| h.to_vec())
@@ -73,7 +73,7 @@ impl SaphireAgent {
                 }
             }
 
-            // Detection d'anomalies sur l'historique chimique
+            // Anomaly detection on chemical history
             if self.orchestrator.anomaly_interval > 0
                 && self.chemistry_history.len() >= 20
             {
@@ -101,7 +101,7 @@ impl SaphireAgent {
             }
         }
 
-        // Toutes les 200 cycles : detection de points de rupture
+        // Every 200 cycles: change point detection
         if self.orchestrator.changepoint_interval > 0
             && cycle.is_multiple_of(self.orchestrator.changepoint_interval)
             && self.chemistry_history.len() >= 20
@@ -117,14 +117,14 @@ impl SaphireAgent {
         }
     }
 
-    /// Traite une demande d'algorithme du LLM (mode demande).
+    /// Processes an algorithm request from the LLM (on-demand mode).
     pub(super) async fn handle_algorithm_request(
         &mut self,
         request: &crate::algorithms::orchestrator::AlgorithmRequest,
     ) {
         use crate::algorithms::orchestrator::AlgorithmInput;
 
-        // Preparer les donnees selon l'algorithme demande
+        // Prepare the data according to the requested algorithm
         let input = match request.algorithm_id.as_str() {
             "kmeans" => {
                 if self.chemistry_history.len() >= 20 {
@@ -181,7 +181,7 @@ impl SaphireAgent {
                     } else { None }
                 } else { None }
             }
-            _ => None, // Algorithme non gere en mode demande
+            _ => None, // Algorithm not handled in on-demand mode
         };
 
         if let Some(input) = input {
@@ -211,7 +211,7 @@ impl SaphireAgent {
         }
     }
 
-    /// Construit le contexte corps pour les prompts LLM.
+    /// Builds the body context for LLM prompts.
     #[allow(dead_code)]
     pub(super) fn build_body_context(&self) -> String {
         if !self.config.body.enabled {

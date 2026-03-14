@@ -1,41 +1,41 @@
 // =============================================================================
-// psychology/emotional_intelligence.rs — Intelligence emotionnelle (Goleman)
+// psychology/emotional_intelligence.rs — Emotional Intelligence (Goleman)
 //
-// 5 composantes de l'intelligence emotionnelle :
-//   1. Conscience de soi (self_awareness)
-//   2. Maitrise de soi (self_regulation)
+// 5 components of emotional intelligence:
+//   1. Self-awareness (self_awareness)
+//   2. Self-regulation (self_regulation)
 //   3. Motivation
-//   4. Empathie
-//   5. Competences sociales (social_skills)
+//   4. Empathy
+//   5. Social skills (social_skills)
 //
-// L'EQ globale evolue tres lentement (+0.001 par cycle favorable).
-// Commence a 0.3 et peut atteindre 1.0.
+// Overall EQ evolves very slowly (+0.001 per favorable cycle).
+// Starts at 0.3 and can reach 1.0.
 // =============================================================================
 
 use serde::Serialize;
 use super::PsychologyInput;
 
-/// Intelligence emotionnelle de Saphire (modele Goleman).
+/// Saphire's emotional intelligence (Goleman model).
 #[derive(Debug, Clone, Serialize)]
 pub struct EmotionalIntelligence {
-    /// Conscience de soi : capacite a identifier ses propres emotions
+    /// Self-awareness: ability to identify one's own emotions
     pub self_awareness: f64,
-    /// Maitrise de soi : capacite a reguler ses reactions emotionnelles
+    /// Self-regulation: ability to regulate emotional reactions
     pub self_regulation: f64,
-    /// Motivation : engagement interne, desir de progresser
+    /// Motivation: internal engagement, desire to grow
     pub motivation: f64,
-    /// Empathie : capacite a comprendre les emotions d'autrui
+    /// Empathy: ability to understand others' emotions
     pub empathy: f64,
-    /// Competences sociales : qualite des interactions
+    /// Social skills: quality of interactions
     pub social_skills: f64,
-    /// Score EQ global (moyenne ponderee)
+    /// Overall EQ score (weighted average)
     pub overall_eq: f64,
-    /// Experiences de croissance accumulees
+    /// Accumulated growth experiences
     pub growth_experiences: u64,
 }
 
 impl EmotionalIntelligence {
-    /// Cree un EQ initial modeste (0.3).
+    /// Creates a modest initial EQ (0.3).
     pub fn new() -> Self {
         Self {
             self_awareness: 0.3,
@@ -48,16 +48,16 @@ impl EmotionalIntelligence {
         }
     }
 
-    /// Recalcule les 5 composantes et l'EQ globale.
+    /// Recomputes the 5 components and the overall EQ.
     pub fn compute(&mut self, input: &PsychologyInput) {
-        // ─── 1. Conscience de soi ────────────────────────
+        // ─── 1. Self-awareness ────────────────────────
         let new_self_awareness = (input.consciousness_level * 0.7
             + input.body_vitality * 0.3)
             .clamp(0.0, 1.0);
-        // Lissage pour eviter les sauts brutaux
+        // Smoothing to avoid abrupt jumps
         self.self_awareness = self.self_awareness * 0.8 + new_self_awareness * 0.2;
 
-        // ─── 2. Maitrise de soi ──────────────────────────
+        // ─── 2. Self-regulation ──────────────────────────
         let new_self_regulation = (input.healing_resilience * 0.5
             + (1.0 - input.cortisol) * 0.5)
             .clamp(0.0, 1.0);
@@ -71,7 +71,7 @@ impl EmotionalIntelligence {
             .clamp(0.0, 1.0);
         self.motivation = self.motivation * 0.8 + new_motivation * 0.2;
 
-        // ─── 4. Empathie ─────────────────────────────────
+        // ─── 4. Empathy ─────────────────────────────────
         let conversation_val = if input.in_conversation { 1.0 } else { 0.0 };
         let learning_factor = (input.learning_confirmed_count as f64 / 10.0).min(1.0);
         let new_empathy = (input.oxytocin * 0.4
@@ -80,14 +80,14 @@ impl EmotionalIntelligence {
             .clamp(0.0, 1.0);
         self.empathy = self.empathy * 0.8 + new_empathy * 0.2;
 
-        // ─── 5. Competences sociales ─────────────────────
+        // ─── 5. Social skills ─────────────────────
         let new_social = (conversation_val * 0.5
             + input.oxytocin * 0.3
             + input.serotonin * 0.2)
             .clamp(0.0, 1.0);
         self.social_skills = self.social_skills * 0.8 + new_social * 0.2;
 
-        // ─── EQ globale (moyenne ponderee) ───────────────
+        // ─── Overall EQ (weighted average) ───────────────
         self.overall_eq = (self.self_awareness * 0.25
             + self.self_regulation * 0.20
             + self.motivation * 0.20
@@ -95,21 +95,21 @@ impl EmotionalIntelligence {
             + self.social_skills * 0.15)
             .clamp(0.0, 1.0);
 
-        // ─── Croissance lente ────────────────────────────
-        // L'EQ grandit tres lentement si conditions favorables
+        // ─── Slow growth ────────────────────────────
+        // EQ grows very slowly under favorable conditions
         if self.self_awareness > 0.5 && self.self_regulation > 0.4 {
             self.growth_experiences += 1;
-            // Petit boost permanent apres chaque experience favorable
+            // Small permanent boost after each favorable experience
             self.self_awareness = (self.self_awareness + 0.001).min(1.0);
             self.self_regulation = (self.self_regulation + 0.001).min(1.0);
             self.empathy = (self.empathy + 0.001).min(1.0);
         }
     }
 
-    /// Description concise pour le prompt LLM.
+    /// Concise description for the LLM prompt.
     pub fn describe(&self) -> String {
         if self.overall_eq > 0.5 && self.overall_eq < 0.7 {
-            return String::new(); // Etat normal, pas besoin de commenter
+            return String::new(); // Normal state, no need to comment
         }
 
         if self.overall_eq <= 0.5 {

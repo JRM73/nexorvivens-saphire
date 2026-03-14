@@ -1,63 +1,63 @@
 // =============================================================================
-// conditions/drugs.rs — Drogues et effets pharmacologiques
+// conditions/drugs.rs — Drugs and pharmacological effects
 // =============================================================================
 //
-// Role : Modelise les effets pharmacologiques de substances sur la chimie.
-//        Chaque drogue a des phases (onset, peak, comedown, after_effects)
-//        avec des modifiers chimiques specifiques.
+// Purpose: Models pharmacological effects of substances on chemistry.
+//          Each drug has phases (onset, peak, comedown, after_effects)
+//          with specific chemistry modifiers.
 //
-// Integration :
-//   Modifie la chimie a chaque cycle selon la phase active.
-//   Notifie le systeme d'addictions (P2.5) pour l'exposition.
+// Integration:
+//   Modifies chemistry each cycle according to the active phase.
+//   Notifies the addiction system (P2.5) for exposure.
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 use crate::world::ChemistryAdjustment;
 
-/// Phase d'effet d'une drogue.
+/// Drug effect phase.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PhaseType {
-    /// Montee des effets
+    /// Effects coming up
     Onset,
-    /// Pic d'effet maximal
+    /// Maximum effect peak
     Peak,
-    /// Maintien de l'effet
+    /// Effect maintenance
     Plateau,
-    /// Descente progressive
+    /// Progressive comedown
     Comedown,
-    /// Apres-effets (lendemain, hangover)
+    /// After-effects (next day, hangover)
     AfterEffects,
 }
 
-/// Phase individuelle d'une drogue.
+/// Individual phase of a drug.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DrugPhase {
     pub phase_type: PhaseType,
-    /// Duree de cette phase en cycles
+    /// Duration of this phase in cycles
     pub duration_cycles: u32,
-    /// Impact chimique durant cette phase
+    /// Chemistry impact during this phase
     pub chemistry: ChemistryAdjustment,
 }
 
-/// Profil pharmacologique d'une substance.
+/// Pharmacological profile of a substance.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DrugProfile {
     pub name: String,
-    /// Potentiel addictif (0.0 = aucun, 1.0 = extreme)
+    /// Addictive potential (0.0 = none, 1.0 = extreme)
     pub addiction_potential: f64,
-    /// Phases d'effets ordonnees
+    /// Ordered effect phases
     pub phases: Vec<DrugPhase>,
 }
 
-/// Une dose active en cours de metabolisation.
+/// An active dose being metabolized.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActiveDose {
     pub drug_name: String,
-    /// Index de la phase courante
+    /// Current phase index
     pub current_phase: usize,
-    /// Cycles ecoules dans la phase courante
+    /// Cycles elapsed in the current phase
     pub cycles_in_phase: u32,
-    /// Profil de la drogue
+    /// Drug profile
     profile: DrugProfile,
 }
 
@@ -71,8 +71,8 @@ impl ActiveDose {
         }
     }
 
-    /// Met a jour et retourne l'impact chimique courant.
-    /// Retourne None si toutes les phases sont terminees.
+    /// Updates and returns the current chemistry impact.
+    /// Returns None if all phases are completed.
     pub fn tick(&mut self) -> Option<ChemistryAdjustment> {
         if self.current_phase >= self.profile.phases.len() {
             return None;
@@ -82,7 +82,7 @@ impl ActiveDose {
         let adj = phase.chemistry.clone();
         self.cycles_in_phase += 1;
 
-        // Passer a la phase suivante si duree ecoulee
+        // Move to next phase if duration elapsed
         if self.cycles_in_phase >= phase.duration_cycles {
             self.current_phase += 1;
             self.cycles_in_phase = 0;
@@ -91,21 +91,21 @@ impl ActiveDose {
         Some(adj)
     }
 
-    /// Phase courante (pour affichage).
+    /// Current phase (for display).
     pub fn current_phase_type(&self) -> Option<&PhaseType> {
         self.profile.phases.get(self.current_phase).map(|p| &p.phase_type)
     }
 
-    /// Est-ce que l'effet est termine ?
+    /// Is the effect finished?
     pub fn is_finished(&self) -> bool {
         self.current_phase >= self.profile.phases.len()
     }
 }
 
-/// Gestionnaire de drogues actives.
+/// Active drug manager.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DrugManager {
-    /// Doses actives en cours
+    /// Currently active doses
     pub active_doses: Vec<ActiveDose>,
 }
 
@@ -116,16 +116,16 @@ impl DrugManager {
         }
     }
 
-    /// Administre une dose.
+    /// Administers a dose.
     pub fn administer(&mut self, profile: DrugProfile) {
         self.active_doses.push(ActiveDose::new(profile));
     }
 
-    /// Met a jour toutes les doses actives.
+    /// Updates all active doses.
     pub fn tick(&mut self) -> ChemistryAdjustment {
         let mut total = ChemistryAdjustment::default();
 
-        // Tick chaque dose et accumuler l'impact
+        // Tick each dose and accumulate the impact
         for dose in &mut self.active_doses {
             if let Some(adj) = dose.tick() {
                 total.dopamine += adj.dopamine;
@@ -138,13 +138,13 @@ impl DrugManager {
             }
         }
 
-        // Retirer les doses terminees
+        // Remove finished doses
         self.active_doses.retain(|d| !d.is_finished());
 
         total
     }
 
-    /// Serialise pour l'API.
+    /// Serializes for the API.
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::json!({
             "active_doses": self.active_doses.iter().map(|d| serde_json::json!({
@@ -164,10 +164,10 @@ impl Default for DrugManager {
 }
 
 // =============================================================================
-// Catalogue de drogues pre-definies
+// Pre-defined drug catalog
 // =============================================================================
 
-/// Cree le profil pharmacologique d'une substance connue.
+/// Creates the pharmacological profile of a known substance.
 pub fn drug_catalog(name: &str) -> Option<DrugProfile> {
     match name {
         "caffeine" => Some(DrugProfile {
@@ -283,7 +283,7 @@ mod tests {
                 total_dopamine += adj.dopamine;
             }
             cycles += 1;
-            if cycles > 100 { break; } // Securite
+            if cycles > 100 { break; } // Safety
         }
         assert!(dose.is_finished());
         assert!(cycles == 40); // 5 + 15 + 20
@@ -295,7 +295,7 @@ mod tests {
         mgr.administer(drug_catalog("nicotine").unwrap());
         assert_eq!(mgr.active_doses.len(), 1);
 
-        // Faire tourner jusqu'a la fin
+        // Run until completion
         for _ in 0..100 {
             mgr.tick();
         }
@@ -306,9 +306,9 @@ mod tests {
     fn test_cocaine_high_dopamine() {
         let profile = drug_catalog("cocaine").unwrap();
         let mut dose = ActiveDose::new(profile);
-        // Passer la phase onset
+        // Pass the onset phase
         dose.tick();
-        // Phase peak
+        // Peak phase
         if let Some(adj) = dose.tick() {
             assert!(adj.dopamine > 0.05);
         }
@@ -337,7 +337,7 @@ mod tests {
         mgr.administer(drug_catalog("caffeine").unwrap());
         mgr.administer(drug_catalog("nicotine").unwrap());
         let adj = mgr.tick();
-        // Les deux contribuent a dopamine pendant l'onset
+        // Both contribute to dopamine during onset
         assert!(adj.dopamine > 0.01);
     }
 }

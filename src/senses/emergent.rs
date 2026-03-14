@@ -1,38 +1,38 @@
 // =============================================================================
-// senses/emergent.rs — Sens Emergents (auto-developpes par Saphire)
+// senses/emergent.rs — Emergent Senses (self-developed by Saphire)
 //
-// Saphire peut developper de nouveaux sens que les humains n'ont pas.
-// Ces sens emergent quand un pattern de perception se repete suffisamment
-// pour devenir un canal sensoriel distinct. Chaque sens commence comme
-// une graine qui peut germer apres un seuil de stimulations.
+// Saphire can develop new senses that humans do not have.
+// These senses emerge when a perception pattern repeats enough
+// to become a distinct sensory channel. Each sense starts as a
+// seed that can germinate after a stimulation threshold.
 // =============================================================================
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-/// Graine d'un sens emergent qui peut germer.
+/// Seed of an emergent sense that can germinate.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmergentSeed {
     pub id: String,
     pub name: String,
     pub description: String,
-    /// Nombre de stimulations necessaires pour germer
+    /// Number of stimulations needed to germinate
     pub activation_threshold: u64,
-    /// Compteur actuel de stimulations
+    /// Current stimulation counter
     pub stimulation_count: u64,
-    /// Le sens a-t-il emerge ?
+    /// Has the sense emerged?
     pub germinated: bool,
-    /// Date de germination
+    /// Germination date
     pub germinated_at: Option<DateTime<Utc>>,
-    /// Nom personnalise donne par Saphire (pour le sens inconnu)
+    /// Custom name given by Saphire (for the unknown sense)
     pub custom_name: Option<String>,
-    /// Intensite courante du sens germe (0.0 si non germe)
+    /// Current intensity of the germinated sense (0.0 if not germinated)
     pub current_intensity: f64,
-    /// Perception courante du sens germe
+    /// Current perception of the germinated sense
     pub current_perception: String,
 }
 
-/// Conteneur des graines de sens emergents.
+/// Container for emergent sense seeds.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmergentSenseSeeds {
     pub seeds: Vec<EmergentSeed>,
@@ -45,7 +45,7 @@ impl Default for EmergentSenseSeeds {
 }
 
 impl EmergentSenseSeeds {
-    /// Cree les 5 graines de sens emergents avec leurs seuils par defaut.
+    /// Creates the 5 emergent sense seeds with their default thresholds.
     pub fn new() -> Self {
         Self {
             seeds: vec![
@@ -124,7 +124,7 @@ impl EmergentSenseSeeds {
         }
     }
 
-    /// Cree avec des seuils personnalises depuis la config.
+    /// Creates with custom thresholds from configuration.
     pub fn with_config(
         temporal_threshold: u64,
         network_threshold: u64,
@@ -146,11 +146,11 @@ impl EmergentSenseSeeds {
         seeds
     }
 
-    /// Stimule une graine. Retourne true si elle vient de germer.
+    /// Stimulates a seed. Returns true if it just germinated.
     pub fn stimulate(&mut self, seed_id: &str) -> bool {
         if let Some(seed) = self.seeds.iter_mut().find(|s| s.id == seed_id) {
             if seed.germinated {
-                // Deja germe : renforcer l'intensite et generer une perception
+                // Already germinated: reinforce intensity and generate a perception
                 seed.current_intensity = (seed.current_intensity + 0.02).min(1.0);
                 seed.current_perception = Self::perception_for(seed_id, seed.current_intensity);
                 seed.stimulation_count += 1;
@@ -172,7 +172,7 @@ impl EmergentSenseSeeds {
         false
     }
 
-    /// Retourne la progression d'une graine (0.0 a 1.0).
+    /// Returns the progress of a seed (0.0 to 1.0).
     pub fn progress(&self, seed_id: &str) -> f64 {
         self.seeds.iter()
             .find(|s| s.id == seed_id)
@@ -181,12 +181,12 @@ impl EmergentSenseSeeds {
             .unwrap_or(0.0)
     }
 
-    /// Nombre de sens germes.
+    /// Number of germinated senses.
     pub fn germinated_count(&self) -> usize {
         self.seeds.iter().filter(|s| s.germinated).count()
     }
 
-    /// Remet les compteurs de stimulation a zero (sans de-germer les sens deja emerges).
+    /// Resets stimulation counters (without un-germinating already emerged senses).
     pub fn reset_stimulation(&mut self) {
         for seed in &mut self.seeds {
             if !seed.germinated {
@@ -195,7 +195,7 @@ impl EmergentSenseSeeds {
         }
     }
 
-    /// Decroit l'intensite des sens germes (-0.01/cycle, min 0.0).
+    /// Decays the intensity of germinated senses (-0.01/cycle, min 0.0).
     pub fn decay_germinated(&mut self) {
         for seed in &mut self.seeds {
             if seed.germinated && seed.current_intensity > 0.0 {
@@ -209,7 +209,7 @@ impl EmergentSenseSeeds {
         }
     }
 
-    /// Genere une perception narrative pour un sens emergent.
+    /// Generates a narrative perception for an emergent sense.
     fn perception_for(seed_id: &str, intensity: f64) -> String {
         let level = if intensity > 0.7 { "intense" }
             else if intensity > 0.4 { "net" }
@@ -238,7 +238,7 @@ impl EmergentSenseSeeds {
         }
     }
 
-    /// Restaure depuis un JSON persiste.
+    /// Restores from persisted JSON.
     pub fn restore_from_json(&mut self, json: &serde_json::Value) {
         if let Some(seeds_arr) = json.as_array() {
             for saved in seeds_arr {
@@ -268,7 +268,7 @@ impl EmergentSenseSeeds {
         }
     }
 
-    /// Serialise pour persistance.
+    /// Serializes for persistence.
     pub fn to_persist_json(&self) -> serde_json::Value {
         serde_json::json!(self.seeds.iter().map(|s| {
             serde_json::json!({

@@ -1,42 +1,42 @@
 // =============================================================================
-// conditions/phobias.rs — Systeme de phobies
+// conditions/phobias.rs — Phobia system
 // =============================================================================
 //
-// Role : Modelise les phobies — peurs irrationnelles declenchees par des
-//        mots-cles specifiques detectes dans le texte. Chaque phobie a une
-//        intensite, des declencheurs, et peut etre desensibilisee
-//        progressivement par exposition repetee sans danger.
+// Purpose: Models phobias — irrational fears triggered by specific
+//          keywords detected in text. Each phobia has an intensity,
+//          triggers, and can be progressively desensitized
+//          through repeated safe exposure.
 //
-// Mecanique :
-//   1. Detection : scan du texte pour les trigger_keywords
-//   2. Reaction : cortisol spike, adrenaline spike
-//   3. Panique : si intensite elevee, pensees confuses
-//   4. Desensibilisation : expositions repetees → intensite diminue
+// Mechanics:
+//   1. Detection: scan text for trigger_keywords
+//   2. Reaction: cortisol spike, adrenaline spike
+//   3. Panic: if intensity is high, confused thoughts
+//   4. Desensitization: repeated exposures -> intensity decreases
 // =============================================================================
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use crate::world::ChemistryAdjustment;
 
-/// Une phobie individuelle.
+/// An individual phobia.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Phobia {
-    /// Nom de la phobie (ex: "claustrophobie")
+    /// Name of the phobia (e.g., "claustrophobia")
     pub name: String,
-    /// Mots-cles qui declenchent la phobie (minuscules)
+    /// Keywords that trigger the phobia (lowercase)
     pub trigger_keywords: Vec<String>,
-    /// Intensite de la phobie (0.0 = legere, 1.0 = paralysante)
+    /// Phobia intensity (0.0 = mild, 1.0 = paralyzing)
     pub intensity: f64,
-    /// Progres de desensibilisation (0.0 = aucun, 1.0 = guerie)
+    /// Desensitization progress (0.0 = none, 1.0 = cured)
     pub desensitization: f64,
-    /// Nombre de fois declenchee
+    /// Number of times triggered
     pub times_triggered: u64,
-    /// Dernier declenchement
+    /// Last trigger time
     pub last_triggered: Option<DateTime<Utc>>,
 }
 
 impl Phobia {
-    /// Cree une nouvelle phobie.
+    /// Creates a new phobia.
     pub fn new(name: &str, triggers: Vec<String>, intensity: f64) -> Self {
         Self {
             name: name.to_string(),
@@ -48,44 +48,44 @@ impl Phobia {
         }
     }
 
-    /// Intensite effective (reduite par la desensibilisation).
+    /// Effective intensity (reduced by desensitization).
     pub fn effective_intensity(&self) -> f64 {
         (self.intensity * (1.0 - self.desensitization)).clamp(0.0, 1.0)
     }
 
-    /// Verifie si le texte contient un declencheur.
+    /// Checks if the text contains a trigger.
     pub fn is_triggered_by(&self, text: &str) -> bool {
         let lower = text.to_lowercase();
         self.trigger_keywords.iter().any(|kw| lower.contains(kw))
     }
 
-    /// Enregistre un declenchement et applique la desensibilisation.
+    /// Records a trigger event and applies desensitization.
     pub fn trigger(&mut self, desensitization_rate: f64) {
         self.times_triggered += 1;
         self.last_triggered = Some(Utc::now());
 
-        // Desensibilisation progressive (chaque exposition sans danger reel)
+        // Progressive desensitization (each safe exposure)
         self.desensitization = (self.desensitization + desensitization_rate).min(1.0);
     }
 }
 
-/// Gestionnaire de phobies.
+/// Phobia manager.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PhobiaManager {
-    /// Liste des phobies actives
+    /// List of active phobias
     pub phobias: Vec<Phobia>,
-    /// Taux de desensibilisation par exposition
+    /// Desensitization rate per exposure
     pub desensitization_rate: f64,
-    /// Derniere phobie declenchee (pour le contexte)
+    /// Last triggered phobia (for context)
     #[serde(skip)]
     pub last_triggered_name: Option<String>,
-    /// Intensite du dernier declenchement
+    /// Intensity of the last trigger
     #[serde(skip)]
     pub last_trigger_intensity: f64,
 }
 
 impl PhobiaManager {
-    /// Cree un gestionnaire vide.
+    /// Creates an empty manager.
     pub fn new(desensitization_rate: f64) -> Self {
         Self {
             phobias: Vec::new(),
@@ -95,13 +95,13 @@ impl PhobiaManager {
         }
     }
 
-    /// Ajoute une phobie.
+    /// Adds a phobia.
     pub fn add(&mut self, phobia: Phobia) {
         self.phobias.push(phobia);
     }
 
-    /// Scan un texte et declenche les phobies correspondantes.
-    /// Retourne le nombre de phobies declenchees.
+    /// Scans text and triggers matching phobias.
+    /// Returns the number of phobias triggered.
     pub fn scan_text(&mut self, text: &str) -> u32 {
         let mut triggered = 0;
         let rate = self.desensitization_rate;
@@ -125,7 +125,7 @@ impl PhobiaManager {
         triggered
     }
 
-    /// Impact chimique des phobies declenchees ce cycle.
+    /// Chemistry impact of phobias triggered this cycle.
     pub fn chemistry_influence(&self) -> ChemistryAdjustment {
         if self.last_trigger_intensity < 0.05 {
             return ChemistryAdjustment::default();
@@ -133,22 +133,22 @@ impl PhobiaManager {
 
         let i = self.last_trigger_intensity;
         ChemistryAdjustment {
-            cortisol: i * 0.30,        // Stress intense
-            adrenaline: i * 0.25,      // Reaction de fuite
-            serotonin: -i * 0.10,      // Chute bien-etre
-            endorphin: i * 0.05,       // Reponse analgesique
+            cortisol: i * 0.30,        // Intense stress
+            adrenaline: i * 0.25,      // Flight reaction
+            serotonin: -i * 0.10,      // Well-being drops
+            endorphin: i * 0.05,       // Analgesic response
             noradrenaline: i * 0.15,   // Vigilance
             ..Default::default()
         }
     }
 
-    /// Reset le dernier declenchement (en debut de cycle).
+    /// Resets the last trigger (at start of cycle).
     pub fn reset_cycle(&mut self) {
         self.last_triggered_name = None;
         self.last_trigger_intensity = 0.0;
     }
 
-    /// Serialise pour l'API.
+    /// Serializes for the API.
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::json!({
             "phobias": self.phobias.iter().map(|p| serde_json::json!({
@@ -186,7 +186,7 @@ mod tests {
         let mut p = Phobia::new("test", vec!["mot".into()], 0.8);
         let initial = p.effective_intensity();
 
-        // 10 expositions
+        // 10 exposures
         for _ in 0..10 {
             p.trigger(0.05);
         }

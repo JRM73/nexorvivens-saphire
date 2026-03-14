@@ -1,12 +1,12 @@
 // =============================================================================
-// db/profiling.rs — Personnalite, profils OCEAN et profils humains
+// db/profiling.rs — Personality, OCEAN profiles and human profiles
 // =============================================================================
 
 use super::{SaphireDb, DbError};
 
 impl SaphireDb {
-    /// Sauvegarde les traits de personnalite emergents de l'agent.
-    /// Efface les anciens traits et insere les nouveaux (remplacement complet).
+    /// Saves the agent's emergent personality traits.
+    /// Deletes the old traits and inserts the new ones (full replacement).
     pub async fn save_personality_traits(&self, traits: &[(String, f32, f32)]) -> Result<(), DbError> {
         let client = self.pool.get().await?;
         client.execute("DELETE FROM personality_traits", &[]).await?;
@@ -19,7 +19,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Charge les traits de personnalite depuis la base de donnees.
+    /// Loads personality traits from the database.
     pub async fn load_personality_traits(&self) -> Result<Vec<(String, f32, f32)>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -34,7 +34,7 @@ impl SaphireDb {
         Ok(traits)
     }
 
-    /// Sauvegarde le profil OCEAN de Saphire (upsert singleton, id=1).
+    /// Saves Saphire's OCEAN profile (upsert singleton, id=1).
     pub async fn save_ocean_profile(
         &self,
         ocean_json: &serde_json::Value,
@@ -61,7 +61,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Charge le profil OCEAN de Saphire depuis la base de donnees.
+    /// Loads Saphire's OCEAN profile from the database.
     pub async fn load_ocean_profile(&self) -> Result<Option<(serde_json::Value, i64, f32)>, DbError> {
         let client = self.pool.get().await?;
         let result = client.query_opt(
@@ -74,7 +74,7 @@ impl SaphireDb {
         }
     }
 
-    /// Sauvegarde un profil humain (upsert par identifiant).
+    /// Saves a human profile (upsert by identifier).
     #[allow(clippy::too_many_arguments)]
     pub async fn save_human_profile(
         &self,
@@ -102,8 +102,8 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Charge tous les profils humains depuis la base de donnees.
-    /// Retourne les 50 profils les plus recemment vus.
+    /// Loads all human profiles from the database.
+    /// Returns the 50 most recently seen profiles.
     pub async fn load_human_profiles(&self) -> Result<Vec<(String, serde_json::Value)>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -119,7 +119,7 @@ impl SaphireDb {
         Ok(profiles)
     }
 
-    /// Recupere l'historique OCEAN.
+    /// Retrieves the OCEAN history.
     pub async fn get_ocean_history(&self) -> Result<serde_json::Value, DbError> {
         let client = self.pool.get().await?;
         let result = client.query_opt(

@@ -1,46 +1,46 @@
 // =============================================================================
-// conditions/degenerative.rs — Maladies degeneratives
+// conditions/degenerative.rs — Degenerative diseases
 // =============================================================================
 //
-// Role : Modelise Alzheimer, Parkinson, epilepsie, demence, depression
-//        profonde. Chaque maladie degrade des capacites specifiques au fil
-//        du temps et impacte la chimie.
+// Purpose: Models Alzheimer's, Parkinson's, epilepsy, dementia, and major
+//          depression. Each disease degrades specific abilities over time
+//          and impacts chemistry.
 //
-// Integration :
-//   Les effets cognitifs (memoire, vitesse, motivation) sont appliques
-//   dans le pipeline via CognitiveEffects.
+// Integration:
+//   Cognitive effects (memory, speed, motivation) are applied
+//   in the pipeline via CognitiveEffects.
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 use crate::world::ChemistryAdjustment;
 
-/// Type de maladie degenerative.
+/// Type of degenerative disease.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum DegenerativeType {
-    /// Perte progressive de memoire, reconnaissance
+    /// Progressive memory and recognition loss
     Alzheimer,
-    /// Lenteur motrice, tremblements, rigidite
+    /// Motor slowness, tremors, rigidity
     Parkinson,
-    /// Crises episodiques, confusion post-crise
+    /// Episodic seizures, post-seizure confusion
     Epilepsy,
-    /// Jugement, raisonnement, orientation degrades
+    /// Degraded judgment, reasoning, and orientation
     Dementia,
-    /// Anhedonie, perte de motivation, energie basse
+    /// Anhedonia, loss of motivation, low energy
     MajorDepression,
 }
 
-/// Effets cognitifs cumules des maladies.
+/// Cumulative cognitive effects of diseases.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CognitiveEffects {
-    /// Multiplicateur de retention memoire (1.0 = normal, 0.0 = aucune)
+    /// Memory retention multiplier (1.0 = normal, 0.0 = none)
     pub memory_retention: f64,
-    /// Multiplicateur de vitesse de reponse (1.0 = normal)
+    /// Response speed multiplier (1.0 = normal)
     pub response_speed: f64,
-    /// Clarte du raisonnement (1.0 = clair, 0.0 = confus)
+    /// Reasoning clarity (1.0 = clear, 0.0 = confused)
     pub reasoning_clarity: f64,
-    /// Motivation (1.0 = motivee, 0.0 = apathique)
+    /// Motivation (1.0 = motivated, 0.0 = apathetic)
     pub motivation: f64,
-    /// Risque de crise epileptique (0.0 = aucun, 1.0 = imminent)
+    /// Seizure risk (0.0 = none, 1.0 = imminent)
     pub seizure_risk: f64,
 }
 
@@ -56,21 +56,21 @@ impl Default for CognitiveEffects {
     }
 }
 
-/// Une maladie degenerative individuelle.
+/// An individual degenerative condition.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DegenerativeCondition {
     pub disease_type: DegenerativeType,
-    /// Progression (0.0 = debut, 1.0 = terminal)
+    /// Progression (0.0 = onset, 1.0 = terminal)
     pub progression: f64,
-    /// Taux de progression par cycle
+    /// Progression rate per cycle
     pub progression_rate: f64,
-    /// Sous traitement (ralentit la progression)
+    /// Under treatment (slows progression)
     pub under_treatment: bool,
-    /// Cycles depuis le debut
+    /// Cycles since onset
     pub cycles_since_onset: u64,
-    /// En crise (epilepsie)
+    /// In crisis (epilepsy)
     pub in_crisis: bool,
-    /// Compteur de crises (epilepsie)
+    /// Crisis counter (epilepsy)
     pub crisis_count: u64,
 }
 
@@ -87,21 +87,21 @@ impl DegenerativeCondition {
         }
     }
 
-    /// Met a jour la progression.
+    /// Updates the progression.
     pub fn tick(&mut self) {
         self.cycles_since_onset += 1;
 
         let rate = if self.under_treatment {
-            self.progression_rate * 0.3 // Traitement ralentit
+            self.progression_rate * 0.3 // Treatment slows progression
         } else {
             self.progression_rate
         };
 
         self.progression = (self.progression + rate).min(1.0);
 
-        // Epilepsie : crises aleatoires basees sur la progression
+        // Epilepsy: random seizures based on progression
         if self.disease_type == DegenerativeType::Epilepsy {
-            // Crise si progression * hash_cycle donne un resultat critique
+            // Seizure if progression * hash_cycle gives a critical result
             let crisis_chance = self.progression * 0.02;
             let pseudo_random = ((self.cycles_since_onset * 17 + 31) % 100) as f64 / 100.0;
             self.in_crisis = pseudo_random < crisis_chance;
@@ -113,7 +113,7 @@ impl DegenerativeCondition {
         }
     }
 
-    /// Effets cognitifs de cette maladie.
+    /// Cognitive effects of this disease.
     pub fn cognitive_effects(&self) -> CognitiveEffects {
         let p = self.progression;
         match self.disease_type {
@@ -144,7 +144,7 @@ impl DegenerativeCondition {
         }
     }
 
-    /// Impact chimique.
+    /// Chemistry impact.
     pub fn chemistry_influence(&self) -> ChemistryAdjustment {
         let p = self.progression;
         let mut adj = ChemistryAdjustment::default();
@@ -155,7 +155,7 @@ impl DegenerativeCondition {
                 adj.serotonin -= p * 0.01;
             }
             DegenerativeType::Parkinson => {
-                adj.dopamine -= p * 0.02; // Deficit dopaminergique
+                adj.dopamine -= p * 0.02; // Dopaminergic deficit
             }
             DegenerativeType::Epilepsy => {
                 if self.in_crisis {
@@ -187,7 +187,7 @@ impl DegenerativeCondition {
     }
 }
 
-/// Gestionnaire de maladies degeneratives.
+/// Degenerative disease manager.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DegenerativeManager {
     pub conditions: Vec<DegenerativeCondition>,
@@ -208,7 +208,7 @@ impl DegenerativeManager {
         }
     }
 
-    /// Effets cognitifs cumules (multiplicatifs).
+    /// Cumulative cognitive effects (multiplicative).
     pub fn cumulative_effects(&self) -> CognitiveEffects {
         let mut effects = CognitiveEffects::default();
         for c in &self.conditions {
@@ -222,7 +222,7 @@ impl DegenerativeManager {
         effects
     }
 
-    /// Impact chimique cumule.
+    /// Cumulative chemistry impact.
     pub fn chemistry_influence(&self) -> ChemistryAdjustment {
         let mut adj = ChemistryAdjustment::default();
         for c in &self.conditions {

@@ -1,15 +1,15 @@
 // =============================================================================
-// api/psychology.rs — Endpoints API pour les cadres psychologiques
+// api/psychology.rs — Endpoints API for the cadres psychologiques
 //
 // 22 handlers au total :
 //   7 endpoints /api/psychology/* — vues d'ensemble (existants)
 //   3 endpoints /api/psyche/*    — detail Freud (Ca/Moi/Surmoi)
-//   3 endpoints /api/maslow/*    — pyramide des besoins
+//  3 endpoints /api/maslow/* — pyramide of the needs
 //   2 endpoints /api/toltec/*    — 4 accords tolteques
 //   2 endpoints /api/shadow/*    — ombre jungienne
 //   2 endpoints /api/eq/*        — intelligence emotionnelle
-//   2 endpoints /api/flow/*      — etat de flow
-//   1 endpoint  /api/model/info  — info modele LLM
+//  2 endpoints /api/flow/* — etat de flow
+//   1 endpoint  /api/model/info  — info model LLM
 // =============================================================================
 
 use std::collections::HashMap;
@@ -19,7 +19,6 @@ use axum::response::IntoResponse;
 use super::state::AppState;
 
 // ─── /api/psychology/* — Vues d'ensemble ────────────────────────────────────
-
 /// GET /api/psychology/status — Vue d'ensemble des 6 cadres.
 pub async fn api_psychology_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
@@ -56,7 +55,7 @@ pub async fn api_psychology_status(State(state): State<AppState>) -> impl IntoRe
     }))
 }
 
-/// GET /api/psychology/freudian — Detail du modele freudien.
+/// GET /api/psychology/freudian — Detail du model freudien.
 pub async fn api_psychology_freudian(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let f = &agent.psychology.freudian;
@@ -147,7 +146,6 @@ pub async fn api_psychology_flow(State(state): State<AppState>) -> impl IntoResp
 }
 
 // ─── /api/psyche/* — Detail Freud (Ca/Moi/Surmoi) ──────────────────────────
-
 /// GET /api/psyche/status — Etat psychique complet (forces, equilibre, sante).
 pub async fn api_psyche_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
@@ -178,7 +176,7 @@ pub async fn api_psyche_status(State(state): State<AppState>) -> impl IntoRespon
     }))
 }
 
-/// GET /api/psyche/defenses — Mecanismes de defense actifs.
+/// GET /api/psyche/defenses — Mecanismes de defense active.
 pub async fn api_psyche_defenses(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let f = &agent.psychology.freudian;
@@ -201,9 +199,8 @@ pub async fn api_psyche_drives(State(state): State<AppState>) -> impl IntoRespon
     }))
 }
 
-// ─── /api/maslow/* — Pyramide des besoins ───────────────────────────────────
-
-/// GET /api/maslow/pyramid — Pyramide complete avec tous les niveaux.
+// ─── /api/maslow/* — Pyramide of the needs ───────────────────────────────────
+/// GET /api/maslow/pyramid — Pyramide complete with tous the levels.
 pub async fn api_maslow_pyramid(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let m = &agent.psychology.maslow;
@@ -214,7 +211,7 @@ pub async fn api_maslow_pyramid(State(state): State<AppState>) -> impl IntoRespo
     }))
 }
 
-/// GET /api/maslow/ceiling — Plafond actuel de la pyramide.
+/// GET /api/maslow/ceiling — Plafond current de la pyramide.
 pub async fn api_maslow_ceiling(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let m = &agent.psychology.maslow;
@@ -255,7 +252,6 @@ pub async fn api_maslow_needs(State(state): State<AppState>) -> impl IntoRespons
 }
 
 // ─── /api/toltec/* — Accords tolteques ──────────────────────────────────────
-
 /// GET /api/toltec/agreements — Detail des 4 accords.
 pub async fn api_toltec_agreements(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
@@ -289,7 +285,6 @@ pub async fn api_toltec_history(State(state): State<AppState>) -> impl IntoRespo
 }
 
 // ─── /api/shadow/* — Ombre jungienne ────────────────────────────────────────
-
 /// GET /api/shadow/status — Etat de l'ombre et des archetypes.
 pub async fn api_shadow_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
@@ -325,7 +320,6 @@ pub async fn api_shadow_archetype_history(
 }
 
 // ─── /api/eq/* — Intelligence emotionnelle ──────────────────────────────────
-
 /// GET /api/eq/status — Score EQ et 5 composantes.
 pub async fn api_eq_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
@@ -358,7 +352,6 @@ pub async fn api_eq_history(
 }
 
 // ─── /api/flow/* — Etat de flow ─────────────────────────────────────────────
-
 /// GET /api/flow/status — Etat de flow actuel.
 pub async fn api_flow_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
@@ -390,7 +383,6 @@ pub async fn api_flow_history(
 }
 
 // ─── /api/will/* — Module de volonte ─────────────────────────────────────────
-
 /// GET /api/will/status — Etat du module de volonte (deliberation interne).
 pub async fn api_will_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
@@ -473,7 +465,7 @@ pub async fn api_will_history(State(state): State<AppState>) -> impl IntoRespons
 pub async fn api_will_stats(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let w = &agent.psychology.will;
-    // Influence chimique moyenne des deliberations recentes
+    // Influence chemical moyenne des deliberations recentes
     let avg_chem = if w.recent_deliberations.is_empty() {
         serde_json::json!({})
     } else {
@@ -508,16 +500,16 @@ pub async fn api_will_stats(State(state): State<AppState>) -> impl IntoResponse 
     }))
 }
 
-/// GET /api/monologue/current — Monologue interieur du cycle courant.
+/// GET /api/monologue/current — Monologue interieur du cycle current.
 pub async fn api_monologue_current(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
-    // Le monologue est la description du prompt de volonte
+    // Le monologue est the description du prompt de volonte
     let will_desc = if agent.config().will.enabled {
         agent.psychology.will.describe_for_prompt()
     } else {
         String::new()
     };
-    // L'emotion depuis la chimie courante
+    // L'emotion from the chemistry current
     let emotion_state = crate::emotions::EmotionalState::compute(&agent.chemistry);
     let emotion_feeling = crate::psychology::ownership::describe_emotion_as_feeling(
         &emotion_state.dominant
@@ -532,7 +524,7 @@ pub async fn api_monologue_current(State(state): State<AppState>) -> impl IntoRe
     }))
 }
 
-/// GET /api/metrics/will — Metriques de volonte sur le temps.
+/// GET /api/metrics/will — Metriques de volonte over time.
 pub async fn api_metrics_will(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -548,9 +540,8 @@ pub async fn api_metrics_will(
     }
 }
 
-// ─── /api/model/* — Info modele LLM ─────────────────────────────────────────
-
-/// GET /api/model/info — Information sur le modele LLM utilise.
+// ─── /api/model/* — Info model LLM ─────────────────────────────────────────
+/// GET /api/model/info — Information sur le model LLM utilise.
 pub async fn api_model_info(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let cfg = agent.config();

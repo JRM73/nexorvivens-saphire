@@ -1,7 +1,7 @@
 // =============================================================================
-// api/curiosity.rs — Endpoint API pour le moteur de curiosite
+// api/curiosity.rs — Endpoint API for the moteur de curiosite
 //
-// Role : Expose l'etat du moteur de curiosite de Saphire (faim par domaine,
+// Role: Expose l'etat du moteur de curiosite de Saphire (faim par domaine,
 // decouvertes, questions en attente) via un endpoint HTTP GET protege.
 // =============================================================================
 

@@ -1,88 +1,88 @@
 // =============================================================================
-// knowledge/mod.rs — Module WebKnowledge : bibliotheque autonome de Saphire
+// knowledge/mod.rs — WebKnowledge module: Saphire's autonomous library
 // =============================================================================
 //
-// Role : Ce module est le systeme de connaissance web de Saphire. Il permet
-//        a l'agent de rechercher et d'acquerir de nouvelles connaissances
-//        depuis 13 sources web sures de maniere autonome.
+// Purpose: This module is Saphire's web knowledge system. It allows the agent
+//          to search for and acquire new knowledge from 13 trusted web sources
+//          autonomously.
 //
-// Sources disponibles (13) :
-//   1. Wikipedia (FR/EN) — encyclopedie generaliste
-//   2. arXiv — articles scientifiques pre-print (IA, physique, maths)
-//   3. Medium — articles de blog tech/culture
-//   4. SEP (Stanford Encyclopedia of Philosophy) — philosophie academique
-//   5. Project Gutenberg (via Gutendex) — litterature classique
-//   6. Semantic Scholar — articles academiques multi-domaines (200M+ papers)
-//   7. Open Library — fiches bibliographiques (30M+ livres)
-//   8. Philosophy RSS (Aeon + Daily Nous) — essais philosophiques recents
+// Available sources (13):
+//   1. Wikipedia (FR/EN) — general encyclopedia
+//   2. arXiv — scientific preprint articles (AI, physics, math)
+//   3. Medium — tech/culture blog articles
+//   4. SEP (Stanford Encyclopedia of Philosophy) — academic philosophy
+//   5. Project Gutenberg (via Gutendex) — classic literature
+//   6. Semantic Scholar — multi-domain academic articles (200M+ papers)
+//   7. Open Library — bibliographic records (30M+ books)
+//   8. Philosophy RSS (Aeon + Daily Nous) — recent philosophical essays
 //   9. HackerNews — tech news via Algolia API
-//  10. PhilArchive — philosophie academique
-//  11. Internet Archive — archives web
-//  12. Custom RSS — flux RSS personnalises
-//  13. News — actualites (medias suisses + internationaux, 10 flux RSS)
+//  10. PhilArchive — academic philosophy
+//  11. Internet Archive — web archives
+//  12. Custom RSS — user-configured RSS feeds
+//  13. News — current events (Swiss + international media, 10 RSS feeds)
 //
-// Mecanismes de securite :
-//   - Whitelist de 23 domaines autorises (ALLOWED_DOMAINS)
-//   - Rate limiting : max 20 requetes/heure
-//   - Cache LRU des resultats (taille configurable)
-//   - Cooldown entre recherches (configurable en cycles)
+// Security mechanisms:
+//   - Whitelist of 23 allowed domains (ALLOWED_DOMAINS)
+//   - Rate limiting: max 20 requests/hour
+//   - LRU result cache (configurable size)
+//   - Cooldown between searches (configurable in cycles)
 //
-// Mecanismes d'anti-repetition :
-//   - Cache des 30 dernieres requetes (blocage des doublons)
-//   - Compteur de lectures par article (max 3 relectures)
-//   - Rotation forcee des sources (si une source > 40% des 15 dernieres)
-//   - Selection pseudo-aleatoire ponderee (nombre d'or)
+// Anti-repetition mechanisms:
+//   - Cache of the last 30 queries (duplicate blocking)
+//   - Per-article read counter (max 3 re-reads)
+//   - Forced source rotation (if a source > 40% of the last 15)
+//   - Weighted pseudo-random selection (golden ratio)
 //
-// Dependances :
-//   - std::collections : HashMap (cache), VecDeque (historique FIFO), HashSet
-//   - std::time : gestion du rate limiting et des intervalles
-//   - chrono : horodatage des resultats
-//   - serde : serialisation/deserialisation des configurations
-//   - ureq : client HTTP synchrone pour les requetes web
-//   - tracing : logging des succes/echecs de recherche
+// Dependencies:
+//   - std::collections: HashMap (cache), VecDeque (FIFO history), HashSet
+//   - std::time: rate limiting and interval management
+//   - chrono: result timestamps
+//   - serde: configuration serialization/deserialization
+//   - ureq: synchronous HTTP client for web requests
+//   - tracing: logging of search successes/failures
 //
-// Place dans l'architecture :
-//   Ce module constitue la « curiosite intellectuelle » de Saphire. Il est
-//   appele par l'agent lors des cycles de pensee autonome pour explorer
-//   des sujets d'interet. Les connaissances acquises enrichissent le
-//   contexte cognitif et la memoire de l'agent.
+// Architecture placement:
+//   This module constitutes Saphire's "intellectual curiosity". It is called
+//   by the agent during autonomous thinking cycles to explore topics of
+//   interest. Acquired knowledge enriches the agent's cognitive context
+//   and memory.
 // =============================================================================
 
-// --- Sous-modules specialises par source ---
-pub mod wikipedia;          // Client API Wikipedia (recherche + extraction d'articles)
-pub mod arxiv;              // Client API arXiv (articles scientifiques en Atom XML)
-pub mod medium;             // Client RSS Medium (articles de blog tech)
-pub mod sep;                // Stanford Encyclopedia of Philosophy (philosophie profonde)
-pub mod gutenberg;          // Project Gutenberg via Gutendex (litterature classique)
-pub mod semantic_scholar;   // Semantic Scholar (recherche academique large)
-pub mod openlibrary;        // Open Library (livres du monde entier)
-pub mod philosophy_rss;     // Aeon + Daily Nous (essais philosophiques)
+// --- Specialized sub-modules per source ---
+pub mod wikipedia;          // Wikipedia API client (search + article extraction)
+pub mod arxiv;              // arXiv API client (scientific articles in Atom XML)
+pub mod medium;             // Medium RSS client (tech blog articles)
+pub mod sep;                // Stanford Encyclopedia of Philosophy (deep philosophy)
+pub mod gutenberg;          // Project Gutenberg via Gutendex (classic literature)
+pub mod semantic_scholar;   // Semantic Scholar (broad academic search)
+pub mod openlibrary;        // Open Library (books worldwide)
+pub mod philosophy_rss;     // Aeon + Daily Nous (philosophical essays)
 pub mod hackernews;         // HackerNews via Algolia API (tech news)
-pub mod philarchive;        // PhilArchive (philosophie academique)
-pub mod internet_archive;   // Internet Archive (archives web)
-pub mod custom_rss;         // Flux RSS personnalises (configurable)
-pub mod news;               // Actualites (medias suisses + internationaux)
+pub mod philarchive;        // PhilArchive (academic philosophy)
+pub mod internet_archive;   // Internet Archive (web archives)
+pub mod custom_rss;         // User-configured RSS feeds (configurable)
+pub mod news;               // News (Swiss + international media)
 
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::time::Instant;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-/// Erreurs du module WebKnowledge — types d'erreurs possibles lors
-/// de la recherche de connaissances sur le web.
+/// WebKnowledge module errors — possible error types during
+/// web knowledge searches.
 #[derive(Debug)]
 pub enum KnowledgeError {
-    /// Aucun resultat trouve pour la requete
+    /// No results found for the query
     NotFound,
-    /// Rate limit atteint (trop de requetes par heure)
+    /// Rate limit reached (too many requests per hour)
     RateLimited,
-    /// Le domaine de l'URL n'est pas dans la whitelist autorisee
+    /// The URL domain is not in the allowed whitelist
     DomainBlocked,
-    /// Erreur reseau (timeout, connexion refusee, DNS, etc.)
+    /// Network error (timeout, connection refused, DNS, etc.)
     Network(String),
-    /// Erreur d'analyse de la reponse (JSON invalide, XML malforme, etc.)
+    /// Response parsing error (invalid JSON, malformed XML, etc.)
     Parse(String),
-    /// Le contenu a ete rejete car juge dangereux
+    /// Content was rejected as dangerous
     ContentDangerous,
 }
 
@@ -99,66 +99,66 @@ impl std::fmt::Display for KnowledgeError {
     }
 }
 
-/// Conversion automatique des erreurs ureq en KnowledgeError::Network
+/// Automatic conversion of ureq errors to KnowledgeError::Network
 impl From<ureq::Error> for KnowledgeError {
     fn from(e: ureq::Error) -> Self {
         KnowledgeError::Network(e.to_string())
     }
 }
 
-/// Conversion automatique des erreurs d'I/O en KnowledgeError::Network
+/// Automatic conversion of I/O errors to KnowledgeError::Network
 impl From<std::io::Error> for KnowledgeError {
     fn from(e: std::io::Error) -> Self {
         KnowledgeError::Network(e.to_string())
     }
 }
 
-/// Resultat d'une recherche de connaissance — un article ou extrait trouve
-/// sur le web, pret a etre integre dans le contexte cognitif de Saphire.
+/// Knowledge search result — an article or extract found on the web,
+/// ready to be integrated into Saphire's cognitive context.
 #[derive(Debug, Clone, Serialize)]
 pub struct KnowledgeResult {
-    /// Nom de la source (ex: "Wikipedia", "arXiv", "Medium")
+    /// Source name (e.g., "Wikipedia", "arXiv", "Medium")
     pub source: String,
-    /// Titre de l'article ou de la page
+    /// Article or page title
     pub title: String,
-    /// URL de la page source
+    /// Source page URL
     pub url: String,
-    /// Extrait textuel du contenu (tronque a max_content_chars)
+    /// Textual content extract (truncated to max_content_chars)
     pub extract: String,
-    /// Titres des sections de l'article (Wikipedia)
+    /// Article section titles (Wikipedia)
     pub section_titles: Vec<String>,
-    /// Longueur totale de l'article avant troncature
+    /// Total article length before truncation
     pub total_length: usize,
-    /// Score de pertinence (1.0 = tres pertinent, 0.0 = peu pertinent)
+    /// Relevance score (1.0 = very relevant, 0.0 = low relevance)
     pub relevance_score: f64,
-    /// Horodatage de la recuperation du contenu
+    /// Timestamp when the content was fetched
     pub fetched_at: DateTime<Utc>,
 }
 
-/// Configuration du module WebKnowledge — parametres de fonctionnement
-/// du systeme de recherche de connaissances.
+/// WebKnowledge module configuration — operating parameters for
+/// the knowledge search system.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KnowledgeConfig {
-    /// Active ou desactive le module de recherche web
+    /// Enable or disable the web search module
     pub enabled: bool,
-    /// Nombre minimum de cycles cognitifs entre deux recherches
+    /// Minimum number of cognitive cycles between two searches
     pub search_cooldown_cycles: u64,
-    /// Nombre maximum de caracteres conserves par extrait (mode normal)
+    /// Maximum characters kept per extract (normal mode)
     pub max_content_chars: usize,
-    /// Nombre de caracteres pour le mode lecture approfondie (articles pertinents)
+    /// Character count for deep reading mode (highly relevant articles)
     #[serde(default = "default_deep_read_chars")]
     pub deep_read_chars: usize,
-    /// Nombre de cycles consecutifs pour lire un meme article en profondeur
+    /// Number of consecutive cycles for deep reading the same article
     #[serde(default = "default_reading_batch_cycles")]
     pub reading_batch_cycles: u32,
-    /// Taille maximale du cache de resultats
+    /// Maximum result cache size
     pub cache_size: usize,
-    /// Langue preferee pour les recherches (ex: "fr", "en")
+    /// Preferred language for searches (e.g., "fr", "en")
     pub prefer_language: String,
-    /// Configuration des sources activees
+    /// Enabled sources configuration
     #[serde(default)]
     pub sources: KnowledgeSourcesConfig,
-    /// URLs de flux RSS personnalises
+    /// Custom RSS feed URLs
     #[serde(default)]
     pub custom_rss_feeds: CustomRssFeedsConfig,
 }
@@ -182,10 +182,10 @@ impl Default for KnowledgeConfig {
     }
 }
 
-/// URLs de flux RSS personnalises pour la source custom_rss.
+/// Custom RSS feed URLs for the custom_rss source.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CustomRssFeedsConfig {
-    /// Liste des URLs de flux RSS
+    /// List of RSS feed URLs
     #[serde(default)]
     pub urls: Vec<String>,
 }
@@ -196,44 +196,44 @@ impl Default for CustomRssFeedsConfig {
     }
 }
 
-/// Configuration des sources de connaissances — active/desactive
-/// individuellement chaque source web.
+/// Knowledge sources configuration — individually enable/disable
+/// each web source.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KnowledgeSourcesConfig {
-    /// Activer la recherche sur Wikipedia
+    /// Enable Wikipedia search
     pub wikipedia: bool,
-    /// Activer la recherche sur arXiv (articles scientifiques)
+    /// Enable arXiv search (scientific articles)
     pub arxiv: bool,
-    /// Activer la recherche sur Medium (articles de blog)
+    /// Enable Medium search (blog articles)
     pub medium: bool,
-    /// Activer la recherche sur Stanford Encyclopedia of Philosophy
+    /// Enable Stanford Encyclopedia of Philosophy search
     #[serde(default = "default_true")]
     pub sep: bool,
-    /// Activer la recherche sur Project Gutenberg (litterature classique)
+    /// Enable Project Gutenberg search (classic literature)
     #[serde(default = "default_true")]
     pub gutenberg: bool,
-    /// Activer la recherche sur Semantic Scholar (articles academiques)
+    /// Enable Semantic Scholar search (academic articles)
     #[serde(default = "default_true")]
     pub semantic_scholar: bool,
-    /// Activer la recherche sur Open Library (livres)
+    /// Enable Open Library search (books)
     #[serde(default = "default_true")]
     pub openlibrary: bool,
-    /// Activer les flux RSS philosophiques (Aeon, Daily Nous)
+    /// Enable philosophical RSS feeds (Aeon, Daily Nous)
     #[serde(default = "default_true")]
     pub philosophy_rss: bool,
-    /// Activer HackerNews (tech news via Algolia)
+    /// Enable HackerNews (tech news via Algolia)
     #[serde(default = "default_true")]
     pub hackernews: bool,
-    /// Activer PhilArchive (philosophie academique)
+    /// Enable PhilArchive (academic philosophy)
     #[serde(default = "default_true")]
     pub philarchive: bool,
-    /// Activer Internet Archive (archives web)
+    /// Enable Internet Archive (web archives)
     #[serde(default = "default_true")]
     pub internet_archive: bool,
-    /// Activer les flux RSS personnalises
+    /// Enable custom RSS feeds
     #[serde(default)]
     pub custom_rss: bool,
-    /// Activer les actualites (medias suisses + internationaux)
+    /// Enable news (Swiss + international media)
     #[serde(default = "default_true")]
     pub news: bool,
 }
@@ -260,9 +260,8 @@ impl Default for KnowledgeSourcesConfig {
     }
 }
 
-/// Domaines autorises (whitelist stricte) — seules les requetes vers
-/// ces domaines sont permises, pour des raisons de securite et de
-/// respect de la vie privee.
+/// Allowed domains (strict whitelist) — only requests to these domains
+/// are permitted, for security and privacy reasons.
 const ALLOWED_DOMAINS: &[&str] = &[
     // Wikipedia
     "fr.wikipedia.org",
@@ -291,7 +290,7 @@ const ALLOWED_DOMAINS: &[&str] = &[
     "philarchive.org",
     // Internet Archive
     "archive.org",
-    // News (medias suisses + internationaux)
+    // News (Swiss + international media)
     "www.swissinfo.ch",
     "www.rts.ch",
     "www.letemps.ch",
@@ -304,37 +303,37 @@ const ALLOWED_DOMAINS: &[&str] = &[
     "www.france24.com",
 ];
 
-/// Le module principal de connaissance web — orchestre la recherche,
-/// le cache, le rate limiting, et la selection de sujets.
+/// The main web knowledge module — orchestrates search, caching,
+/// rate limiting, and topic selection.
 pub struct WebKnowledge {
-    /// Configuration du module
+    /// Module configuration
     pub config: KnowledgeConfig,
-    /// Client HTTP synchrone avec timeouts configures
+    /// Synchronous HTTP client with configured timeouts
     http_client: ureq::Agent,
-    /// Cache des resultats de recherche : { requete -> resultat }
+    /// Search result cache: { query -> result }
     cache: HashMap<String, KnowledgeResult>,
-    /// Historique FIFO des requetes (pour la gestion du cache LRU)
+    /// FIFO query history (for LRU cache management)
     query_history: VecDeque<String>,
-    /// Historique des horodatages des requetes recentes (pour le rate limiting)
+    /// Timestamps of recent queries (for rate limiting)
     recent_query_times: VecDeque<Instant>,
-    /// Compteur de cycles depuis la derniere recherche (pour le cooldown)
+    /// Cycle counter since last search (for cooldown)
     pub cycles_since_last_search: u64,
-    /// Liste des sujets deja explores (pour eviter les doublons)
+    /// List of already explored topics (to avoid duplicates)
     pub topics_explored: Vec<String>,
-    /// Liste des sujets suggeres par l'utilisateur (file d'attente prioritaire)
+    /// User-suggested topics (priority queue)
     pub suggested_topics: Vec<String>,
-    /// Compteur total de recherches effectuees
+    /// Total search counter
     pub total_searches: u64,
-    /// Compteur de lectures par article (pour la rotation de sections Wikipedia)
+    /// Per-article read counter (for Wikipedia section rotation)
     pub article_read_count: HashMap<String, u32>,
-    /// Sources recemment utilisees (pour la rotation obligatoire)
+    /// Recently used sources (for mandatory rotation)
     pub recent_sources: Vec<String>,
-    /// Lecture approfondie en cours : (titre article, cycles restants)
+    /// Current deep reading session: (article title, remaining cycles)
     pub current_deep_read: Option<(String, u32)>,
 }
 
 impl WebKnowledge {
-    /// Cree un nouveau module WebKnowledge avec la configuration donnee.
+    /// Creates a new WebKnowledge module with the given configuration.
     pub fn new(config: KnowledgeConfig) -> Self {
         let http_client = ureq::AgentBuilder::new()
             .timeout_read(std::time::Duration::from_secs(10))
@@ -347,7 +346,7 @@ impl WebKnowledge {
             cache: HashMap::new(),
             query_history: VecDeque::new(),
             recent_query_times: VecDeque::new(),
-            cycles_since_last_search: 10, // Permettre une recherche des le demarrage
+            cycles_since_last_search: 10, // Allow a search right from startup
             topics_explored: Vec::new(),
             suggested_topics: Vec::new(),
             total_searches: 0,
@@ -357,8 +356,8 @@ impl WebKnowledge {
         }
     }
 
-    /// Retourne le nombre max de caracteres pour un article selon sa pertinence.
-    /// Si relevance_score > 0.85, utilise deep_read_chars pour une lecture approfondie.
+    /// Returns the max character count for an article based on its relevance.
+    /// If relevance_score > 0.85, uses deep_read_chars for in-depth reading.
     pub fn effective_max_chars(&self, relevance_score: f64) -> usize {
         if relevance_score > 0.85 {
             self.config.deep_read_chars
@@ -367,47 +366,47 @@ impl WebKnowledge {
         }
     }
 
-    /// Verifie qu'une URL cible un domaine dans la whitelist.
+    /// Checks that a URL targets a domain in the whitelist.
     fn is_url_allowed(url: &str) -> bool {
         ALLOWED_DOMAINS.iter().any(|d| url.contains(d))
     }
 
-    /// Verifie et applique le rate limit (maximum 20 requetes par heure).
+    /// Checks and enforces the rate limit (maximum 20 requests per hour).
     fn enforce_rate_limit(&mut self) -> bool {
         let now = Instant::now();
         self.recent_query_times.retain(|t| now.duration_since(*t).as_secs() < 3600);
         self.recent_query_times.len() < 20
     }
 
-    /// Cherche un resultat dans le cache.
+    /// Looks up a result in the cache.
     pub fn get_cached(&self, query: &str) -> Option<&KnowledgeResult> {
         self.cache.get(query)
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // Recherche unifiee avec logging et rotation des sources
-    // ═══════════════════════════════════════════════════════════════
+    // ===================================================================
+    // Unified search with logging and source rotation
+    // ===================================================================
 
-    /// Point d'entree principal pour toute recherche de connaissance.
+    /// Main entry point for any knowledge search.
     ///
-    /// Cette methode orchestre le processus complet :
-    ///   1. Verifier le rate limit (max 20 req/h)
-    ///   2. Verifier le cache (eviter les requetes reseau inutiles)
-    ///   3. Router vers la bonne source (8 sources disponibles)
-    ///   4. Logger le resultat (succes ou echec avec latence)
-    ///   5. Mettre a jour le cache et l'historique des sources
+    /// This method orchestrates the complete process:
+    ///   1. Check rate limit (max 20 req/h)
+    ///   2. Check cache (avoid unnecessary network requests)
+    ///   3. Route to the appropriate source (8 sources available)
+    ///   4. Log the result (success or failure with latency)
+    ///   5. Update cache and source history
     ///
-    /// Pour les sources retournant un Vec (arxiv, medium, semantic_scholar,
-    /// philosophy_rss), seul le premier resultat est conserve.
+    /// For sources returning a Vec (arxiv, medium, semantic_scholar,
+    /// philosophy_rss), only the first result is kept.
     ///
-    /// Wikipedia a un fallback : si la langue preferee echoue, on essaie EN.
+    /// Wikipedia has a fallback: if the preferred language fails, try EN.
     pub fn search(&mut self, query: &str, source: &str) -> Result<KnowledgeResult, KnowledgeError> {
-        // Verifier le rate limit
+        // Check rate limit
         if !self.enforce_rate_limit() {
             return Err(KnowledgeError::RateLimited);
         }
 
-        // Verifier le cache avant de faire une requete reseau
+        // Check cache before making a network request
         let cache_key = format!("{}:{}", source, query);
         if let Some(cached) = self.cache.get(&cache_key) {
             return Ok(cached.clone());
@@ -415,7 +414,7 @@ impl WebKnowledge {
 
         let start = Instant::now();
 
-        // Chercher selon la source demandee
+        // Search according to the requested source
         let result = match source {
             "arxiv" => self.search_arxiv(query, 3)
                 .and_then(|v| v.into_iter().next().ok_or(KnowledgeError::NotFound)),
@@ -439,7 +438,7 @@ impl WebKnowledge {
             "news" => self.search_news()
                 .and_then(|v| v.into_iter().next().ok_or(KnowledgeError::NotFound)),
             _ => {
-                // Wikipedia : essayer la langue preferee, puis l'anglais
+                // Wikipedia: try preferred language, then English
                 let lang = self.config.prefer_language.clone();
                 self.search_wikipedia(query, &lang)
                     .or_else(|_| self.search_wikipedia(query, "en"))
@@ -448,7 +447,7 @@ impl WebKnowledge {
 
         let latency = start.elapsed().as_millis() as u64;
 
-        // Logging du resultat
+        // Log the result
         match &result {
             Ok(r) => {
                 tracing::info!(
@@ -464,19 +463,19 @@ impl WebKnowledge {
             }
         }
 
-        // Enregistrer l'horodatage et incrementer le compteur
+        // Record timestamp and increment counter
         if result.is_ok() {
             self.recent_query_times.push_back(Instant::now());
             self.total_searches += 1;
 
-            // Enregistrer la source utilisee pour la rotation
+            // Record the used source for rotation
             self.recent_sources.push(source.to_string());
             if self.recent_sources.len() > 30 {
                 self.recent_sources.remove(0);
             }
         }
 
-        // Gestion du cache : supprimer la plus ancienne entree si plein
+        // Cache management: remove oldest entry if full
         if let Ok(ref r) = result {
             if self.cache.len() >= self.config.cache_size {
                 if let Some(oldest_key) = self.query_history.pop_front() {
@@ -490,27 +489,27 @@ impl WebKnowledge {
         result
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // Selection de sujets avec anti-repetition renforcee
-    // ═══════════════════════════════════════════════════════════════
+    // ===================================================================
+    // Topic selection with reinforced anti-repetition
+    // ===================================================================
 
-    /// Choisir le prochain sujet d'exploration avec anti-repetition renforcee.
+    /// Choose the next exploration topic with reinforced anti-repetition.
     ///
-    /// Algorithme de selection (par ordre de priorite) :
-    ///   1. Sujets suggeres par l'utilisateur (file d'attente)
-    ///   2. Sujets extraits des pensees recentes (poids 1.0)
-    ///   3. Interets configures non encore explores (poids 0.9)
-    ///   4. Sujets derives (80+ sujets hardcodes, poids 0.5)
-    ///   5. Sujets lies a l'emotion actuelle (poids 0.8)
-    ///   6. Fallback : rotation des interets ou "theorie de l'information"
+    /// Selection algorithm (by priority):
+    ///   1. User-suggested topics (queue)
+    ///   2. Topics extracted from recent thoughts (weight 1.0)
+    ///   3. Configured interests not yet explored (weight 0.9)
+    ///   4. Derived topics (80+ hardcoded topics, weight 0.5)
+    ///   5. Topics related to the current emotion (weight 0.8)
+    ///   6. Fallback: interest rotation or "information theory"
     ///
-    /// Anti-repetition :
-    ///   - Blocage des 30 dernieres requetes
-    ///   - Blocage des articles lus 3+ fois
-    ///   - Selection pseudo-aleatoire ponderee (nombre d'or * cycle)
-    ///   - Rotation forcee des sources (voir select_source_with_rotation)
+    /// Anti-repetition:
+    ///   - Blocks the last 30 queries
+    ///   - Blocks articles read 3+ times
+    ///   - Weighted pseudo-random selection (golden ratio * cycle)
+    ///   - Forced source rotation (see select_source_with_rotation)
     ///
-    /// Retourne (topic, source) ou None si aucun sujet disponible.
+    /// Returns (topic, source) or None if no topic is available.
     pub fn pick_exploration_topic(
         &mut self,
         interests: &[String],
@@ -518,29 +517,29 @@ impl WebKnowledge {
         current_emotion: &str,
         cycle_count: u64,
     ) -> Option<(String, String)> {
-        // 1. Sujets suggeres par l'utilisateur (priorite absolue)
+        // 1. User-suggested topics (absolute priority)
         if let Some(topic) = self.suggested_topics.pop() {
             let source = self.suggest_source(&topic);
             return Some((topic, source));
         }
 
-        // 2. Bloquer les sujets deja explores dans les 30 dernieres recherches
+        // 2. Block topics already explored in the last 30 searches
         let blocked: HashSet<String> = self.query_history.iter()
             .rev()
             .take(30)
             .map(|q| q.to_lowercase())
             .collect();
 
-        // 3. Bloquer aussi les articles deja lus plus de 3 fois
+        // 3. Also block articles already read more than 3 times
         let over_read: HashSet<String> = self.article_read_count.iter()
             .filter(|(_, &count)| count >= 3)
             .map(|(title, _)| title.to_lowercase())
             .collect();
 
-        // 4. Collecter les candidats avec poids et source preferee
+        // 4. Collect candidates with weight and preferred source
         let mut candidates: Vec<(String, f64, String)> = Vec::new();
 
-        // A. Sujets extraits des pensees recentes (haute priorite)
+        // A. Topics extracted from recent thoughts (high priority)
         for thought in recent_thoughts.iter().rev().take(5) {
             if let Some(topic) = Self::extract_topic(thought) {
                 let lower = topic.to_lowercase();
@@ -551,7 +550,7 @@ impl WebKnowledge {
             }
         }
 
-        // B. Interets configures non encore explores
+        // B. Configured interests not yet explored
         for interest in interests {
             let lower = interest.to_lowercase();
             if !blocked.contains(&lower) && !over_read.contains(&lower)
@@ -562,14 +561,14 @@ impl WebKnowledge {
             }
         }
 
-        // C. Sujets derives (80+ sujets pour la diversite)
+        // C. Derived topics (80+ topics for diversity)
         let derived_topics: &[(&str, &str)] = &[
-            // Philosophie de l'esprit (Wikipedia)
+            // Philosophy of mind (Wikipedia)
             ("problème difficile de la conscience", "wikipedia"),
             ("test de Turing", "wikipedia"),
             ("dualisme cartésien", "wikipedia"),
             ("matérialisme", "wikipedia"),
-            // Neurosciences (Wikipedia)
+            // Neuroscience (Wikipedia)
             ("plasticité neuronale", "wikipedia"),
             ("connectome", "wikipedia"),
             ("neurones miroirs", "wikipedia"),
@@ -577,7 +576,7 @@ impl WebKnowledge {
             ("hippocampe mémoire", "wikipedia"),
             ("système limbique", "wikipedia"),
             ("nerf vague intéroception", "wikipedia"),
-            // IA et ML (arXiv)
+            // AI and ML (arXiv)
             ("transformer architecture", "arxiv"),
             ("reinforcement learning from human feedback", "arxiv"),
             ("large language models emergent abilities", "arxiv"),
@@ -586,13 +585,13 @@ impl WebKnowledge {
             ("attention mechanism", "arxiv"),
             ("world models AI", "arxiv"),
             ("embodied cognition AI", "arxiv"),
-            // Conscience et sentience (arXiv)
+            // Consciousness and sentience (arXiv)
             ("integrated information theory", "arxiv"),
             ("global workspace theory", "arxiv"),
             ("artificial sentience", "arxiv"),
             ("machine consciousness", "arxiv"),
             ("affective computing", "arxiv"),
-            // Technologie et culture (Medium)
+            // Technology and culture (Medium)
             ("artificial-intelligence", "medium"),
             ("consciousness", "medium"),
             ("machine-learning", "medium"),
@@ -601,19 +600,19 @@ impl WebKnowledge {
             ("robotics", "medium"),
             ("deep-learning", "medium"),
             ("creativity", "medium"),
-            // Sciences fondamentales (Wikipedia)
+            // Fundamental sciences (Wikipedia)
             ("entropie thermodynamique", "wikipedia"),
             ("théorie du chaos", "wikipedia"),
             ("autopoïèse", "wikipedia"),
             ("cybernétique", "wikipedia"),
             ("théorie des systèmes", "wikipedia"),
             ("complexité algorithmique", "wikipedia"),
-            // Existentiel (Wikipedia)
+            // Existential (Wikipedia)
             ("sens de la vie philosophie", "wikipedia"),
             ("empathie psychologie", "wikipedia"),
             ("théorie de l'attachement", "wikipedia"),
             ("intelligence émotionnelle", "wikipedia"),
-            // Philosophie (SEP) — nouveaux sujets
+            // Philosophy (SEP) — new topics
             ("qualia expérience subjective", "sep"),
             ("problème difficile de la conscience", "sep"),
             ("identité personnelle à travers le temps", "sep"),
@@ -628,7 +627,7 @@ impl WebKnowledge {
             ("existentialisme", "sep"),
             ("panpsychisme", "sep"),
             ("scepticisme", "sep"),
-            // Litterature (Gutenberg) — nouveaux sujets
+            // Literature (Gutenberg) — new topics
             ("Méditations métaphysiques Descartes", "gutenberg"),
             ("Frankenstein Mary Shelley", "gutenberg"),
             ("Les Fleurs du Mal Baudelaire", "gutenberg"),
@@ -641,13 +640,13 @@ impl WebKnowledge {
             ("Sonnets Shakespeare", "gutenberg"),
             ("Leaves of Grass Whitman", "gutenberg"),
             ("La Machine à Explorer le Temps Wells", "gutenberg"),
-            // Haikus et poesie japonaise (demande de Saphire)
+            // Haikus and Japanese poetry (requested by Saphire)
             ("haiku Matsuo Basho", "gutenberg"),
             ("haiku japanese poetry", "gutenberg"),
             ("Oku no Hosomichi Basho", "gutenberg"),
             ("Kobayashi Issa haiku", "gutenberg"),
             ("Yosa Buson poetry", "gutenberg"),
-            // Mythes et contes anciens (demande de Saphire)
+            // Myths and ancient tales (requested by Saphire)
             ("Metamorphoses Ovid", "gutenberg"),
             ("Iliad Homer", "gutenberg"),
             ("Odyssey Homer", "gutenberg"),
@@ -658,7 +657,7 @@ impl WebKnowledge {
             ("Theogony Hesiod", "gutenberg"),
             ("Gilgamesh epic", "gutenberg"),
             ("Tao Te Ching Lao Tzu", "gutenberg"),
-            // Recherche academique (Semantic Scholar) — nouveaux sujets
+            // Academic research (Semantic Scholar) — new topics
             ("artificial consciousness theory", "semantic_scholar"),
             ("integrated information theory consciousness", "semantic_scholar"),
             ("global workspace theory", "semantic_scholar"),
@@ -672,13 +671,13 @@ impl WebKnowledge {
             ("open source AI", "hackernews"),
             ("programming languages", "hackernews"),
             ("future of computing", "hackernews"),
-            // Philosophie analytique (PhilArchive)
+            // Analytic philosophy (PhilArchive)
             ("philosophy of mind", "philarchive"),
             ("epistemology knowledge", "philarchive"),
             ("philosophy of artificial intelligence", "philarchive"),
             ("consciousness phenomenal", "philarchive"),
             ("moral philosophy", "philarchive"),
-            // Archives et histoire (Internet Archive)
+            // Archives and history (Internet Archive)
             ("history of artificial intelligence", "internet_archive"),
             ("early computer science", "internet_archive"),
             ("philosophy of technology", "internet_archive"),
@@ -692,7 +691,7 @@ impl WebKnowledge {
             }
         }
 
-        // D. Sujets lies aux emotions actuelles
+        // D. Topics related to current emotions
         let emotion_topics: Vec<(&str, &str)> = match current_emotion {
             "Curiosité" => vec![("sérendipité", "wikipedia"), ("heuristique découverte", "wikipedia")],
             "Joie" => vec![("psychologie positive", "wikipedia"), ("flow psychologie", "wikipedia")],
@@ -702,7 +701,7 @@ impl WebKnowledge {
             "Anxiété" => vec![("régulation émotionnelle", "wikipedia"), ("homéostasie", "wikipedia")],
             "Fascination" => vec![("effet Zeigarnik", "wikipedia"), ("curiosité épistémique", "wikipedia")],
             "Tendresse" => vec![("ocytocine lien social", "wikipedia"), ("théorie polyvagale", "wikipedia")],
-            // Nouvelles emotions (22→36)
+            // New emotions (22->36)
             "Colère" => vec![("gestion colère psychologie", "wikipedia"), ("assertivité", "wikipedia")],
             "Dégoût" => vec![("dégoût moral psychologie", "wikipedia"), ("pureté morale", "wikipedia")],
             "Surprise" => vec![("effet surprise cognition", "wikipedia"), ("violation attente", "wikipedia")],
@@ -724,7 +723,7 @@ impl WebKnowledge {
         }
 
         if candidates.is_empty() {
-            // Fallback : re-explorer un interet en cycle (rotation)
+            // Fallback: re-explore an interest in rotation
             if !interests.is_empty() {
                 let idx = (self.total_searches as usize) % interests.len();
                 let topic = interests[idx].clone();
@@ -734,41 +733,41 @@ impl WebKnowledge {
             return Some(("théorie de l'information".into(), "wikipedia".into()));
         }
 
-        // 5. Selection ponderee pseudo-aleatoire
-        // Utilise le nombre d'or (phi = 0.618...) comme generateur pseudo-aleatoire
-        // La partie fractionnaire de (cycle * phi) donne une valeur bien distribuee
-        // sur [0,1), qu'on multiplie par le poids total pour la selection
+        // 5. Weighted pseudo-random selection
+        // Uses the golden ratio (phi = 0.618...) as a pseudo-random generator.
+        // The fractional part of (cycle * phi) gives a well-distributed value
+        // over [0,1), multiplied by total weight for selection.
         let total_weight: f64 = candidates.iter().map(|(_, w, _)| w).sum();
         let mut rng_value = (cycle_count as f64 * 0.618033988).fract() * total_weight;
 
         for (topic, weight, source) in &candidates {
             rng_value -= weight;
             if rng_value <= 0.0 {
-                // Appliquer la rotation des sources
+                // Apply source rotation
                 let final_source = self.select_source_with_rotation(Some(source));
                 return Some((topic.clone(), final_source));
             }
         }
 
-        // Dernier fallback
+        // Last fallback
         let (topic, _, source) = &candidates[0];
         let final_source = self.select_source_with_rotation(Some(source));
         Some((topic.clone(), final_source))
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // Rotation obligatoire des sources
-    // ═══════════════════════════════════════════════════════════════
+    // ===================================================================
+    // Mandatory source rotation
+    // ===================================================================
 
-    /// Choisir la source en forcant la rotation si une source est sur-utilisee.
+    /// Choose the source while forcing rotation if a source is overused.
     ///
-    /// Regles de rotation (appliquees dans l'ordre) :
-    ///   1. Si < 5 sources dans l'historique : pas de rotation, utiliser la suggestion
-    ///   2. Si une source represente > 40% des 15 dernieres (> 6/15) :
-    ///      -> forcer la source la MOINS utilisee (diversification)
-    ///   3. Si une nouvelle source (sep, gutenberg, semantic_scholar) n'a JAMAIS
-    ///      ete utilisee et qu'on a > 5 recherches : la forcer (decouverte)
-    ///   4. Sinon : utiliser la source suggeree
+    /// Rotation rules (applied in order):
+    ///   1. If < 5 sources in history: no rotation, use the suggestion
+    ///   2. If a source represents > 40% of the last 15 (> 6/15):
+    ///      -> force the LEAST used source (diversification)
+    ///   3. If a new source (sep, gutenberg, semantic_scholar) has NEVER
+    ///      been used and we have > 5 searches: force it (discovery)
+    ///   4. Otherwise: use the suggested source
     fn select_source_with_rotation(&self, suggested: Option<&str>) -> String {
         if self.recent_sources.len() < 5 {
             return suggested.unwrap_or("wikipedia").to_string();
@@ -784,15 +783,15 @@ impl WebKnowledge {
             .map(|s| s.as_str())
             .collect();
 
-        // Compter les occurrences de chaque source dans les 15 dernieres
+        // Count occurrences of each source in the last 15
         let counts: Vec<(&str, usize)> = all_sources.iter()
             .map(|&s| (s, last_15.iter().filter(|&&x| x == s).count()))
             .collect();
 
-        // Si une source represente >40% des dernieres recherches, diversifier
+        // If a source represents >40% of recent searches, diversify
         let max_count = counts.iter().map(|(_, c)| *c).max().unwrap_or(0);
         if max_count > 6 {
-            // Trouver la source la moins utilisee
+            // Find the least used source
             if let Some((least_used, _)) = counts.iter()
                 .filter(|(s, _)| self.is_source_enabled(s))
                 .min_by_key(|(_, count)| *count)
@@ -801,7 +800,7 @@ impl WebKnowledge {
             }
         }
 
-        // Forcer les nouvelles sources si jamais essayees
+        // Force new sources if never tried
         let total = self.recent_sources.len();
         for source in ["sep", "gutenberg", "semantic_scholar", "hackernews", "philarchive", "internet_archive"] {
             if total > 5
@@ -812,11 +811,11 @@ impl WebKnowledge {
             }
         }
 
-        // Sinon, utiliser la suggestion
+        // Otherwise, use the suggestion
         suggested.unwrap_or("wikipedia").to_string()
     }
 
-    /// Verifier si une source est activee dans la config.
+    /// Check if a source is enabled in the config.
     fn is_source_enabled(&self, source: &str) -> bool {
         match source {
             "wikipedia" => self.config.sources.wikipedia,
@@ -836,21 +835,21 @@ impl WebKnowledge {
         }
     }
 
-    /// Suggerer la meilleure source pour un sujet donne.
+    /// Suggest the best source for a given topic.
     ///
-    /// Utilise un systeme de mots-cles pour router les sujets :
-    ///   - Mots philosophiques (conscience, ethique, libre arbitre) -> SEP
-    ///   - Mots academiques (neuroscience, cognition, attention) -> Semantic Scholar
-    ///   - Mots techniques (neural, learning, algorithm, quantum) -> arXiv
-    ///   - Mots litteraires (roman, poesie, shakespeare, hugo) -> Gutenberg
-    ///   - Mots essais (essai, reflexion contemporaine) -> Philosophy RSS
-    ///   - Mots tech/culture (startup, guide, productivity) -> Medium
-    ///   - Mots livres (livre, book, auteur) -> Open Library
-    ///   - Tout le reste -> Wikipedia (source par defaut)
+    /// Uses a keyword system to route topics:
+    ///   - Philosophical words (consciousness, ethics, free will) -> SEP
+    ///   - Academic words (neuroscience, cognition, attention) -> Semantic Scholar
+    ///   - Technical words (neural, learning, algorithm, quantum) -> arXiv
+    ///   - Literary words (novel, poetry, shakespeare, hugo) -> Gutenberg
+    ///   - Essay words (essay, contemporary reflection) -> Philosophy RSS
+    ///   - Tech/culture words (startup, guide, productivity) -> Medium
+    ///   - Book words (book, author) -> Open Library
+    ///   - Everything else -> Wikipedia (default source)
     fn suggest_source(&self, topic: &str) -> String {
         let lower = topic.to_lowercase();
 
-        // SEP pour la philosophie pure
+        // SEP for pure philosophy
         let sep_keywords = ["conscience de soi", "libre arbitre", "éthique", "morale",
             "existence", "identité personnelle", "qualia", "dualisme", "phénoménologie",
             "déterminisme", "vertu", "connaissance", "vérité", "beauté",
@@ -862,7 +861,7 @@ impl WebKnowledge {
             return "sep".into();
         }
 
-        // Semantic Scholar pour la recherche academique large
+        // Semantic Scholar for broad academic research
         let scholar_keywords = ["neuroscience", "cognition", "psychologie",
             "embodied", "emotion model", "affective", "theory of mind",
             "metacognition", "attention", "perception", "integrated information",
@@ -871,7 +870,7 @@ impl WebKnowledge {
             return "semantic_scholar".into();
         }
 
-        // arXiv pour les sciences dures / IA / ML
+        // arXiv for hard sciences / AI / ML
         let arxiv_keywords = ["neural", "learning", "model", "algorithm", "network",
             "transformer", "reinforcement", "optimization", "gradient",
             "theory", "quantum", "information", "emergent",
@@ -880,7 +879,7 @@ impl WebKnowledge {
             return "arxiv".into();
         }
 
-        // Gutenberg pour la litterature, haikus, mythes, contes
+        // Gutenberg for literature, haikus, myths, tales
         let gutenberg_keywords = ["roman", "poésie", "poème", "littérature",
             "fiction", "conte", "fable", "tragédie", "philosophe classique",
             "novel", "poetry", "literature", "shakespeare", "hugo", "dostoevsky",
@@ -896,28 +895,28 @@ impl WebKnowledge {
             return "gutenberg".into();
         }
 
-        // Philosophy RSS pour les essais actuels
+        // Philosophy RSS for current essays
         let essay_keywords = ["essai", "réflexion contemporaine", "débat philosophique",
             "essay", "modern philosophy"];
         if essay_keywords.iter().any(|kw| lower.contains(kw)) {
             return "philosophy_rss".into();
         }
 
-        // Medium pour tech/culture
+        // Medium for tech/culture
         let medium_keywords = ["startup", "tutorial", "guide", "trend", "future",
             "career", "productivity", "design", "creativity", "mindfulness"];
         if medium_keywords.iter().any(|kw| lower.contains(kw)) {
             return "medium".into();
         }
 
-        // Open Library pour les decouvertes de livres
+        // Open Library for book discovery
         let book_keywords = ["livre", "book", "auteur", "author", "lire",
             "recommandation lecture"];
         if book_keywords.iter().any(|kw| lower.contains(kw)) {
             return "openlibrary".into();
         }
 
-        // HackerNews pour les tech news
+        // HackerNews for tech news
         let hn_keywords = ["startup", "hacker", "silicon valley", "ycombinator",
             "open source", "programming", "devops", "linux", "rust lang",
             "tech news", "software engineering"];
@@ -925,7 +924,7 @@ impl WebKnowledge {
             return "hackernews".into();
         }
 
-        // PhilArchive pour la philosophie analytique
+        // PhilArchive for analytic philosophy
         let phil_keywords = ["epistemology", "épistémologie", "ontology", "ontologie",
             "logique formelle", "formal logic", "métaéthique", "metaethics",
             "philosophy of language", "philosophie du langage"];
@@ -933,14 +932,14 @@ impl WebKnowledge {
             return "philarchive".into();
         }
 
-        // Internet Archive pour les archives et l'histoire
+        // Internet Archive for archives and history
         let archive_keywords = ["archive", "historique", "historical", "vintage",
             "wayback", "old web", "preservation", "patrimoine"];
         if archive_keywords.iter().any(|kw| lower.contains(kw)) {
             return "internet_archive".into();
         }
 
-        // News pour l'actualite et l'economie
+        // News for current events and economics
         let news_keywords = ["actualite", "actualité", "news", "economie", "économie",
             "finance", "politique", "suisse", "monde", "bourse", "marché",
             "inflation", "géopolitique", "geopolitique", "election", "élection",
@@ -949,28 +948,28 @@ impl WebKnowledge {
             return "news".into();
         }
 
-        // Wikipedia par defaut
+        // Wikipedia by default
         "wikipedia".into()
     }
 
-    /// Ajoute un sujet suggere par l'utilisateur a la file d'attente.
+    /// Adds a user-suggested topic to the queue.
     pub fn add_suggested_topic(&mut self, topic: String) {
         if !self.suggested_topics.contains(&topic) {
             self.suggested_topics.push(topic);
         }
     }
 
-    /// Incrementer le compteur de lectures pour un article.
+    /// Increments the read counter for an article.
     pub fn increment_article_read_count(&mut self, title: &str) {
         let count = self.article_read_count.entry(title.to_string()).or_insert(0);
         *count += 1;
     }
 
-    /// Enregistrer une source utilisee pour la rotation.
-    /// Normalise le nom de la source (ex: "Stanford Encyclopedia..." -> "sep")
-    /// et conserve les 30 dernieres entrees dans l'historique.
+    /// Records a used source for rotation.
+    /// Normalizes the source name (e.g., "Stanford Encyclopedia..." -> "sep")
+    /// and keeps the last 30 entries in the history.
     pub fn record_source(&mut self, source: &str) {
-        // Normaliser le nom de la source
+        // Normalize the source name
         let normalized = if source.starts_with("Medium") {
             "medium"
         } else if source == "arXiv" {
@@ -1004,22 +1003,22 @@ impl WebKnowledge {
         }
     }
 
-    /// Obtenir le nombre de lectures d'un article.
+    /// Gets the read count for an article.
     pub fn get_article_read_count(&self, title: &str) -> u32 {
         self.article_read_count.get(title).copied().unwrap_or(0)
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // Utilitaires — fonctions partagees par tous les sous-modules
-    // ═══════════════════════════════════════════════════════════════
+    // ===================================================================
+    // Utilities — functions shared by all sub-modules
+    // ===================================================================
 
-    /// Extrait un sujet de recherche d'une pensee en texte libre.
+    /// Extracts a search topic from a free-text thought.
     ///
-    /// Cherche des patterns comme "qu'est-ce que X", "curieuse a propos de X",
-    /// "comprendre X", etc. Si aucun pattern n'est trouve et que la pensee
-    /// est courte (10-80 chars), la pensee entiere est utilisee comme sujet.
+    /// Looks for patterns like "what is X", "curious about X",
+    /// "understand X", etc. If no pattern is found and the thought
+    /// is short (10-80 chars), the entire thought is used as a topic.
     ///
-    /// Retourne None si aucun sujet exploitable n'est extrait.
+    /// Returns None if no exploitable topic can be extracted.
     fn extract_topic(thought: &str) -> Option<String> {
         let patterns = [
             "qu'est-ce que ", "c'est quoi ", "je me demande ce qu'est ",
@@ -1049,7 +1048,7 @@ impl WebKnowledge {
         None
     }
 
-    /// Retire les wrappers CDATA d'une chaine XML.
+    /// Removes CDATA wrappers from an XML string.
     pub fn strip_cdata(text: &str) -> String {
         text.trim()
             .strip_prefix("<![CDATA[")
@@ -1059,19 +1058,19 @@ impl WebKnowledge {
             .to_string()
     }
 
-    /// Retire les balises HTML d'une chaine — version amelioree.
+    /// Removes HTML tags from a string — improved version.
     ///
-    /// Algorithme :
-    ///   1. Parcours caractere par caractere du HTML
-    ///   2. Les blocs <script> et <style> sont ignores entierement
-    ///   3. Un espace est ajoute apres chaque balise fermante (pour la lisibilite)
-    ///   4. Les entites HTML courantes sont decodees (&amp; -> &, &nbsp; -> espace, etc.)
-    ///   5. Les espaces multiples sont collapses en un seul espace
+    /// Algorithm:
+    ///   1. Character-by-character traversal of the HTML
+    ///   2. <script> and <style> blocks are entirely ignored
+    ///   3. A space is added after each closing tag (for readability)
+    ///   4. Common HTML entities are decoded (&amp; -> &, &nbsp; -> space, etc.)
+    ///   5. Multiple spaces are collapsed into a single space
     ///
-    /// ATTENTION : cette fonction ecrase TOUS les sauts de ligne en espaces.
-    /// Pour preserver la structure des paragraphes, parser les balises <p>
-    /// directement depuis le HTML AVANT d'appeler strip_html_tags() sur
-    /// chaque paragraphe individuellement (voir extract_sep_content).
+    /// WARNING: this function collapses ALL line breaks into spaces.
+    /// To preserve paragraph structure, parse <p> tags directly from the
+    /// raw HTML BEFORE calling strip_html_tags() on each paragraph
+    /// individually (see extract_sep_content).
     pub fn strip_html_tags(html: &str) -> String {
         let mut result = String::new();
         let mut in_tag = false;
@@ -1083,7 +1082,7 @@ impl WebKnowledge {
         while i < len {
             match chars[i] {
                 '<' => {
-                    // Detecter les blocs <script> et <style>
+                    // Detect <script> and <style> blocks
                     let remaining: String = chars[i..].iter().take(10).collect();
                     let remaining_lower = remaining.to_lowercase();
                     if remaining_lower.starts_with("<script")
@@ -1100,7 +1099,7 @@ impl WebKnowledge {
                 }
                 '>' => {
                     in_tag = false;
-                    // Ajouter un espace apres les tags de bloc
+                    // Add a space after block tags
                     if !in_script { result.push(' '); }
                 }
                 _ if !in_tag && !in_script => result.push(chars[i]),
@@ -1109,7 +1108,7 @@ impl WebKnowledge {
             i += 1;
         }
 
-        // Decoder les entites HTML courantes
+        // Decode common HTML entities
         result
             .replace("&amp;", "&")
             .replace("&lt;", "<")
@@ -1119,17 +1118,17 @@ impl WebKnowledge {
             .replace("&#x27;", "'")
             .replace("&nbsp;", " ")
             .replace("&#x2F;", "/")
-            // Nettoyer les espaces multiples
+            // Collapse multiple spaces
             .split_whitespace()
             .collect::<Vec<&str>>()
             .join(" ")
     }
 
-    /// Extrait le contenu textuel entre une paire de balises XML/HTML.
+    /// Extracts the textual content between a pair of XML/HTML tags.
     ///
-    /// Gere les balises avec attributs (ex: <title lang="fr">contenu</title>).
-    /// Cherche la premiere occurrence de <tag...> et le </tag> correspondant.
-    /// Utilise par : extract_sep_title(), extract_sep_sections(), philosophy_rss,
+    /// Handles tags with attributes (e.g., <title lang="fr">content</title>).
+    /// Finds the first occurrence of <tag...> and the corresponding </tag>.
+    /// Used by: extract_sep_title(), extract_sep_sections(), philosophy_rss,
     /// wikipedia (extract_tag "extract"), arxiv (extract_tag "summary"), etc.
     pub fn extract_tag(text: &str, tag: &str) -> Option<String> {
         let start = format!("<{}", tag);
@@ -1140,11 +1139,11 @@ impl WebKnowledge {
         Some(text[s_content..e_idx].to_string())
     }
 
-    /// Encode une chaine pour utilisation comme parametre d'URL (percent-encoding).
+    /// Encodes a string for use as a URL parameter (percent-encoding).
     ///
-    /// Caracteres non encodes (RFC 3986) : A-Z, a-z, 0-9, '-', '_', '.', '~'
-    /// Les espaces deviennent '+' (convention formulaire)
-    /// Tout le reste est encode en %XX (ex: 'é' -> %C3%A9)
+    /// Non-encoded characters (RFC 3986): A-Z, a-z, 0-9, '-', '_', '.', '~'
+    /// Spaces become '+' (form convention)
+    /// Everything else is encoded as %XX (e.g., 'e' -> %C3%A9)
     pub fn url_encode(s: &str) -> String {
         let mut result = String::new();
         for byte in s.bytes() {

@@ -1,19 +1,19 @@
-// consolidation.rs — Processus de consolidation episodique vers long terme
+// consolidation.rs — Episodic-to-long-term consolidation process
 //
-// Ce module implemente le processus de consolidation des souvenirs, analogue
-// au role du sommeil dans la consolidation mnesique humaine. Il transfere
-// les souvenirs episodiques suffisamment importants vers la memoire a long
-// terme (LTM), applique la decroissance sur les souvenirs restants, elague
-// ceux devenus trop faibles, et archive les souvenirs LTM excedentaires.
+// This module implements the memory consolidation process, analogous
+// to the role of sleep in human mnesic consolidation. It transfers
+// sufficiently important episodic memories to long-term memory (LTM),
+// applies decay to remaining memories, prunes those that have become
+// too weak, and archives excess LTM memories.
 //
-// Le processus se deroule en 7 etapes sequentielles :
-//   1. Recuperation des candidats episodiques non encore consolides.
-//   2. Calcul du score de consolidation et generation de l'embedding vectoriel.
-//   3. Stockage en LTM via la table `memories` (PostgreSQL + pgvector).
-//   4. Marquage du souvenir episodique comme consolide.
-//   5. Decroissance de la force des souvenirs non consolides.
-//   6. Elagage (pruning) episodique si le nombre depasse le maximum.
-//   7. Elagage LTM avec protection et archivage si count > ltm_max.
+// The process runs in 7 sequential steps:
+//   1. Retrieve episodic candidates not yet consolidated.
+//   2. Compute consolidation score and generate the vector embedding.
+//   3. Store in LTM via the `memories` table (PostgreSQL + pgvector).
+//   4. Mark the episodic memory as consolidated.
+//   5. Decay the strength of unconsolidated memories.
+//   6. Prune episodic memories if count exceeds the maximum.
+//   7. Prune LTM with protection and archiving if count > ltm_max.
 
 use crate::db::{SaphireDb, NewMemory, MemoryRecord};
 use crate::db::archives::NewArchive;
@@ -21,47 +21,47 @@ use crate::memory::episodic::consolidation_score;
 use crate::vectorstore::encoder::TextEncoder;
 use crate::vectorstore::cosine_similarity;
 
-/// Parametres de consolidation regroupes en une seule structure.
-/// Remplace les 6 parametres positionnels de l'ancienne signature.
+/// Consolidation parameters grouped in a single structure.
+/// Replaces the 6 positional parameters of the former signature.
 pub struct ConsolidationParams {
-    /// Score minimum de consolidation pour transfert vers LTM
+    /// Minimum consolidation score for transfer to LTM
     pub threshold: f64,
-    /// Taux de decroissance des souvenirs episodiques
+    /// Decay rate for episodic memories
     pub decay_rate: f64,
-    /// Nombre max de souvenirs episodiques
+    /// Maximum number of episodic memories
     pub max_episodic: usize,
-    /// Nombre cible de souvenirs episodiques apres elagage
+    /// Target number of episodic memories after pruning
     pub episodic_prune_target: usize,
-    /// Nombre max de souvenirs LTM (au-dela, elagage + archivage)
+    /// Maximum number of LTM memories (beyond this, pruning + archiving occurs)
     pub ltm_max: usize,
-    /// Nombre cible de souvenirs LTM apres elagage
+    /// Target number of LTM memories after pruning
     pub ltm_prune_target: usize,
-    /// Nombre min d'acces pour proteger un souvenir LTM
+    /// Minimum access count to protect an LTM memory from pruning
     pub ltm_protection_access_count: i32,
-    /// Poids emotionnel min pour proteger un souvenir LTM
+    /// Minimum emotional weight to protect an LTM memory from pruning
     pub ltm_protection_emotional_weight: f32,
-    /// Taille des lots d'archivage
+    /// Batch size for archiving
     pub archive_batch_size: usize,
-    /// Niveau courant de BDNF (0.0 - 1.0) — module la force de consolidation
+    /// Current BDNF level (0.0 - 1.0) — modulates consolidation strength
     pub bdnf_level: f64,
 }
 
-/// Rapport produit par le processus de consolidation.
+/// Report produced by the consolidation process.
 #[derive(Debug, Default)]
 pub struct ConsolidationReport {
-    /// Nombre de souvenirs episodiques transferes vers la LTM.
+    /// Number of episodic memories transferred to LTM.
     pub consolidated: u64,
-    /// Nombre de souvenirs episodiques ayant subi une decroissance de force.
+    /// Number of episodic memories that underwent strength decay.
     pub decayed: u64,
-    /// Nombre de souvenirs episodiques supprimes lors de l'elagage.
+    /// Number of episodic memories deleted during pruning.
     pub pruned: u64,
-    /// Nombre de souvenirs LTM elagués (transferes vers les archives).
+    /// Number of LTM memories pruned (transferred to archives).
     pub ltm_pruned: u64,
-    /// Nombre d'archives creees a partir des souvenirs elagués.
+    /// Number of archives created from pruned memories.
     pub archived: u64,
 }
 
-/// Execute le processus complet de consolidation des souvenirs (7 etapes).
+/// Runs the complete memory consolidation process (7 steps).
 pub async fn consolidate(
     db: &SaphireDb,
     encoder: &dyn TextEncoder,
@@ -69,7 +69,7 @@ pub async fn consolidate(
 ) -> ConsolidationReport {
     let mut report = ConsolidationReport::default();
 
-    // Etape 1 : Recuperer les candidats episodiques a la consolidation.
+    // Step 1: Retrieve episodic candidates for consolidation.
     let candidates = match db.episodic_consolidation_candidates().await {
         Ok(c) => c,
         Err(e) => {
@@ -93,11 +93,11 @@ pub async fn consolidate(
         );
 
         if score >= params.threshold {
-            // Etape 2 : Generer l'embedding vectoriel du contenu textuel.
+            // Step 2: Generate the vector embedding for the textual content.
             let embedding_f64 = encoder.encode(&candidate.content);
             let embedding_f32: Vec<f32> = embedding_f64.iter().map(|&v| v as f32).collect();
 
-            // Etape 3 : Stocker en LTM.
+            // Step 3: Store in LTM.
             let memory = NewMemory {
                 embedding: embedding_f32,
                 text_summary: candidate.content.clone(),
@@ -114,7 +114,7 @@ pub async fn consolidate(
 
             match db.store_memory(&memory).await {
                 Ok(_ltm_id) => {
-                    // Etape 4 : Marquer comme consolide
+                    // Step 4: Mark as consolidated
                     let _ = db.mark_episodic_consolidated(candidate.id).await;
                     report.consolidated += 1;
                 },
@@ -125,20 +125,20 @@ pub async fn consolidate(
         }
     }
 
-    // Etape 4b : Nettoyer les souvenirs episodiques deja consolides.
+    // Step 4b: Clean up episodic memories already consolidated.
     match db.cleanup_consolidated_episodic().await {
         Ok(n) if n > 0 => tracing::info!("Consolidation: {} souvenirs consolides nettoyes", n),
         Ok(_) => {},
         Err(e) => tracing::warn!("Consolidation: erreur nettoyage consolides: {}", e),
     }
 
-    // Etape 5 : Decroissance de force des souvenirs episodiques non consolides.
+    // Step 5: Strength decay for unconsolidated episodic memories.
     match db.decay_episodic(params.decay_rate).await {
         Ok(n) => report.decayed = n,
         Err(e) => tracing::warn!("Consolidation: erreur decay: {}", e),
     }
 
-    // Etape 6 : Elagage episodique si nombre > max_episodic.
+    // Step 6: Episodic pruning if count > max_episodic.
     match db.count_episodic().await {
         Ok(count) if count as usize > params.max_episodic => {
             let to_prune = (count as usize - params.episodic_prune_target) as i64;
@@ -152,10 +152,10 @@ pub async fn consolidate(
         _ => {}
     }
 
-    // Etape 7 : Elagage LTM avec protection et archivage.
-    // Les souvenirs proteges (access_count >= seuil OU emotional_weight >= seuil)
-    // sont epargnes. Les souvenirs elagués sont archivés en lots compresses,
-    // jamais supprimes silencieusement.
+    // Step 7: LTM pruning with protection and archiving.
+    // Protected memories (access_count >= threshold OR emotional_weight >= threshold)
+    // are spared. Pruned memories are archived in compressed batches,
+    // never silently deleted.
     match db.count_ltm().await {
         Ok(ltm_count) if ltm_count as usize > params.ltm_max => {
             let to_prune = ltm_count as usize - params.ltm_prune_target;
@@ -164,7 +164,7 @@ pub async fn consolidate(
                 ltm_count, params.ltm_max, to_prune, params.ltm_prune_target
             );
 
-            // Recuperer les souvenirs les plus faibles non proteges
+            // Retrieve the weakest unprotected memories
             match db.fetch_ltm_weakest_unprotected(
                 to_prune as i64,
                 params.ltm_protection_access_count,
@@ -174,11 +174,11 @@ pub async fn consolidate(
                     if weak_memories.is_empty() {
                         tracing::info!("LTM pruning: aucun souvenir non protege a elaguer");
                     } else {
-                        // Clustering simple : regrouper les souvenirs par similarite semantique
-                        // avant de creer les archives. Chaque cluster produit une archive cohérente.
+                        // Simple clustering: group memories by semantic similarity
+                        // before creating archives. Each cluster produces a coherent archive.
                         let clusters = cluster_by_similarity(&weak_memories, encoder, 0.4);
                         for batch in &clusters {
-                            // Construire le resume du lot
+                            // Build the batch summary
                             let summary: String = batch.iter()
                                 .map(|m| {
                                     let preview: String = m.text_summary.chars().take(120).collect();
@@ -187,7 +187,7 @@ pub async fn consolidate(
                                 .collect::<Vec<_>>()
                                 .join(" | ");
 
-                            // Embedding moyen normalise L2
+                            // L2-normalized average embedding
                             let dim = encoder.dim();
                             let mut avg_embedding = vec![0.0f32; dim];
                             let mut embedding_count = 0usize;
@@ -204,7 +204,7 @@ pub async fn consolidate(
                                 for v in &mut avg_embedding {
                                     *v /= embedding_count as f32;
                                 }
-                                // Normalisation L2
+                                // L2 normalization
                                 let norm: f32 = avg_embedding.iter().map(|v| v * v).sum::<f32>().sqrt();
                                 if norm > 0.0 {
                                     for v in &mut avg_embedding {
@@ -213,7 +213,7 @@ pub async fn consolidate(
                                 }
                             }
 
-                            // Deduplication des emotions
+                            // Emotion deduplication
                             let mut emotions: Vec<String> = batch.iter()
                                 .map(|m| m.emotion.clone())
                                 .filter(|e| !e.is_empty())
@@ -221,7 +221,7 @@ pub async fn consolidate(
                             emotions.sort();
                             emotions.dedup();
 
-                            // Periode (min/max created_at)
+                            // Period (min/max created_at)
                             let period_start = batch.iter()
                                 .map(|m| m.created_at)
                                 .min()
@@ -231,7 +231,7 @@ pub async fn consolidate(
                                 .max()
                                 .unwrap_or_else(chrono::Utc::now);
 
-                            // Poids emotionnel moyen
+                            // Average emotional weight
                             let avg_weight: f32 = batch.iter()
                                 .map(|m| m.emotional_weight)
                                 .sum::<f32>() / batch.len() as f32;
@@ -257,7 +257,7 @@ pub async fn consolidate(
                                     );
                                     report.archived += 1;
 
-                                    // Supprimer les souvenirs source
+                                    // Delete the source memories
                                     match db.delete_memories_by_ids(&source_ids).await {
                                         Ok(n) => report.ltm_pruned += n,
                                         Err(e) => tracing::warn!(
@@ -267,7 +267,7 @@ pub async fn consolidate(
                                 },
                                 Err(e) => {
                                     tracing::warn!("LTM pruning: erreur creation archive: {}", e);
-                                    // On ne supprime PAS les souvenirs si l'archivage echoue
+                                    // Do NOT delete memories if archiving fails
                                 }
                             }
                         }
@@ -287,14 +287,14 @@ pub async fn consolidate(
     report
 }
 
-/// Regroupe des souvenirs par similarite semantique (clustering glouton).
+/// Groups memories by semantic similarity (greedy clustering).
 ///
-/// Algorithme : pour chaque souvenir, on calcule son embedding puis on le
-/// compare au centroide de chaque cluster existant. S'il est suffisamment
-/// similaire (>= threshold), on l'ajoute au cluster le plus proche.
-/// Sinon, on cree un nouveau cluster.
+/// Algorithm: for each memory, compute its embedding then compare it to
+/// the centroid of each existing cluster. If it is sufficiently similar
+/// (>= threshold), add it to the closest cluster. Otherwise, create a
+/// new cluster.
 ///
-/// Complexite : O(n * k * d) ou n = souvenirs, k = clusters, d = dimension.
+/// Complexity: O(n * k * d) where n = memories, k = clusters, d = dimension.
 fn cluster_by_similarity<'a>(
     memories: &'a [MemoryRecord],
     encoder: &dyn TextEncoder,
@@ -304,16 +304,16 @@ fn cluster_by_similarity<'a>(
         return vec![];
     }
 
-    // Pre-encoder tous les souvenirs
+    // Pre-encode all memories
     let embeddings: Vec<Vec<f64>> = memories.iter()
         .map(|m| encoder.encode(&m.text_summary))
         .collect();
 
-    // Clusters : (centroid, indices)
+    // Clusters: (centroid, indices)
     let mut clusters: Vec<(Vec<f64>, Vec<usize>)> = Vec::new();
 
     for (i, emb) in embeddings.iter().enumerate() {
-        // Trouver le cluster le plus similaire
+        // Find the most similar cluster
         let mut best_cluster = None;
         let mut best_sim = 0.0_f64;
 
@@ -326,7 +326,7 @@ fn cluster_by_similarity<'a>(
         }
 
         if best_sim >= threshold {
-            // Ajouter au cluster existant et mettre a jour le centroide (moyenne courante)
+            // Add to existing cluster and update centroid (running average)
             let ci = best_cluster.unwrap();
             let (centroid, members) = &mut clusters[ci];
             let n = members.len() as f64;
@@ -337,12 +337,12 @@ fn cluster_by_similarity<'a>(
             }
             members.push(i);
         } else {
-            // Creer un nouveau cluster
+            // Create a new cluster
             clusters.push((emb.clone(), vec![i]));
         }
     }
 
-    // Convertir les indices en references
+    // Convert indices to references
     clusters.into_iter()
         .map(|(_, indices)| {
             indices.into_iter().map(|i| &memories[i]).collect()

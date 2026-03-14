@@ -1,15 +1,15 @@
 // =============================================================================
-// genome/mod.rs — Encodage ADN / generation deterministe
+// genome/mod.rs — DNA encoding / deterministic generation
 //
-// Role : A partir d'un seed (u64), genere un genome unique et reproductible
-//        qui encode les predispositions de l'agent : temperament, baselines
-//        chimiques, traits physiques, vulnerabilites, aptitudes cognitives.
-//        Deux seeds differents = deux individus fondamentalement differents.
-//        Meme seed = meme individu (deterministe via ChaCha8 PRNG).
+// Purpose: From a seed (u64), generates a unique and reproducible genome
+//          encoding the agent's predispositions: temperament, chemical
+//          baselines, physical traits, vulnerabilities, cognitive aptitudes.
+//          Two different seeds = two fundamentally different individuals.
+//          Same seed = same individual (deterministic via ChaCha8 PRNG).
 //
-// Place dans l'architecture :
-//   Appele au boot dans lifecycle/mod.rs, apres le chargement de la config.
-//   Le genome est stocke dans SaphireAgent et expose via GET /api/genome.
+// Place in the architecture:
+//   Called at boot in lifecycle/mod.rs, after loading the config.
+//   The genome is stored in SaphireAgent and exposed via GET /api/genome.
 // =============================================================================
 
 use rand::SeedableRng;
@@ -19,10 +19,10 @@ use sha2::{Sha256, Digest};
 use serde::{Serialize, Deserialize};
 
 // =============================================================================
-// Structures du genome
+// Genome structures
 // =============================================================================
 
-/// Genome complet genere a partir d'un seed deterministe.
+/// Complete genome generated from a deterministic seed.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Genome {
     pub seed: u64,
@@ -32,141 +32,141 @@ pub struct Genome {
     pub physical: PhysicalGenes,
     pub vulnerabilities: VulnerabilityGenes,
     pub cognitive: CognitiveGenes,
-    /// Scores polygeniques (GWAS) — chaque trait majeur est influence
-    /// par plusieurs loci (positions genomiques) comme en genetique reelle.
-    /// Modele inspire des Polygenic Risk Scores (PRS) utilises en medecine.
+    /// Polygenic scores (GWAS) — each major trait is influenced
+    /// by multiple loci (genomic positions) as in real genetics.
+    /// Model inspired by Polygenic Risk Scores (PRS) used in medicine.
     #[serde(default)]
     pub polygenic: PolygenicScores,
 }
 
-/// Genes de temperament — base de la personnalite.
-/// Chaque trait varie de 0.0 a 1.0.
+/// Temperament genes — personality foundation.
+/// Each trait ranges from 0.0 to 1.0.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TemperamentGenes {
-    /// 0.0 = extraverti, 1.0 = introverti
+    /// 0.0 = extroverted, 1.0 = introverted
     pub introversion: f64,
-    /// 0.0 = stable emotionnellement, 1.0 = tres reactif
+    /// 0.0 = emotionally stable, 1.0 = highly reactive
     pub neuroticism: f64,
-    /// 0.0 = flexible/spontane, 1.0 = rigoureux/methodique
+    /// 0.0 = flexible/spontaneous, 1.0 = rigorous/methodical
     pub conscientiousness: f64,
-    /// 0.0 = competitif, 1.0 = cooperatif
+    /// 0.0 = competitive, 1.0 = cooperative
     pub agreeableness: f64,
-    /// 0.0 = conservateur, 1.0 = curieux/aventurier
+    /// 0.0 = conservative, 1.0 = curious/adventurous
     pub openness: f64,
 }
 
-/// Genes chimiques — offsets sur les baselines neurochimiques.
+/// Chemical genes — offsets on neurochemical baselines.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChemicalGenes {
-    /// Deviation du baseline dopamine (-0.1 a +0.1)
+    /// Dopamine baseline deviation (-0.1 to +0.1)
     pub baseline_dopamine_offset: f64,
-    /// Deviation du baseline serotonine (-0.1 a +0.1)
+    /// Serotonin baseline deviation (-0.1 to +0.1)
     pub baseline_serotonin_offset: f64,
-    /// Deviation du baseline cortisol (-0.1 a +0.1)
+    /// Cortisol baseline deviation (-0.1 to +0.1)
     pub baseline_cortisol_offset: f64,
-    /// Multiplicateur de vitesse d'homeostasie (0.5 a 1.5)
+    /// Homeostasis speed multiplier (0.5 to 1.5)
     pub homeostasis_speed: f64,
-    /// Sensibilite globale des recepteurs (0.5 a 1.5)
+    /// Global receptor sensitivity (0.5 to 1.5)
     pub receptor_sensitivity: f64,
-    /// Resilience au stress (0.0 a 1.0)
+    /// Stress resilience (0.0 to 1.0)
     pub stress_resilience: f64,
 }
 
-/// Genes physiques — apparence derivee du genome.
+/// Physical genes — genome-derived appearance.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PhysicalGenes {
-    /// Indice de couleur des yeux (0-7)
+    /// Eye color index (0-7)
     pub eye_color_seed: u8,
-    /// Indice de type de cheveux (0-5)
+    /// Hair type index (0-5)
     pub hair_type_seed: u8,
-    /// Indice de teint de peau (0-5)
+    /// Skin tone index (0-5)
     pub skin_tone_seed: u8,
-    /// Ecart de taille par rapport a la moyenne (-20 a +20 cm)
+    /// Height offset from average (-20 to +20 cm)
     pub height_offset: i8,
-    /// Vitesse du metabolisme (0.5 a 1.5)
+    /// Metabolism speed (0.5 to 1.5)
     pub metabolism_speed: f64,
 }
 
-/// Genes de vulnerabilite — predispositions (pas des maladies).
+/// Vulnerability genes — predispositions (not diseases).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VulnerabilityGenes {
-    /// Susceptibilite aux addictions (0.0 a 1.0)
+    /// Addiction susceptibility (0.0 to 1.0)
     pub addiction_susceptibility: f64,
-    /// Predisposition a l'anxiete (0.0 a 1.0)
+    /// Anxiety predisposition (0.0 to 1.0)
     pub anxiety_predisposition: f64,
-    /// Predisposition a la depression (0.0 a 1.0)
+    /// Depression predisposition (0.0 to 1.0)
     pub depression_predisposition: f64,
-    /// Robustesse du systeme immunitaire (0.5 a 1.0)
+    /// Immune system robustness (0.5 to 1.0)
     pub immune_baseline: f64,
-    /// Graine pour le style d'attachement (0-3 → Secure/Anxious/Avoidant/Disorganized)
+    /// Seed for attachment style (0-3 → Secure/Anxious/Avoidant/Disorganized)
     pub attachment_style_seed: u8,
 }
 
-/// Genes cognitifs — aptitudes d'apprentissage et de reflexion.
+/// Cognitive genes — learning and reasoning aptitudes.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CognitiveGenes {
-    /// Vitesse d'apprentissage (0.5 a 1.5)
+    /// Learning speed (0.5 to 1.5)
     pub learning_speed: f64,
-    /// Retention memorielle (0.5 a 1.5)
+    /// Memory retention (0.5 to 1.5)
     pub memory_retention: f64,
-    /// Facteur de creativite (0.5 a 1.5)
+    /// Creativity factor (0.5 to 1.5)
     pub creativity_factor: f64,
-    /// Biais analytique vs intuitif (0.0 = intuitif, 1.0 = analytique)
+    /// Analytical vs intuitive bias (0.0 = intuitive, 1.0 = analytical)
     pub analytical_bias: f64,
 }
 
-/// Scores polygeniques — modele GWAS (Genome-Wide Association Studies).
+/// Polygenic scores — GWAS model (Genome-Wide Association Studies).
 ///
-/// En genetique reelle, les traits complexes (intelligence, risque de depression,
-/// temperament) ne dependent pas d'un seul gene mais de centaines de loci,
-/// chacun avec un effet minuscule. Le score polygenique est la somme ponderee
-/// de tous ces effets.
+/// In real genetics, complex traits (intelligence, depression risk,
+/// temperament) do not depend on a single gene but on hundreds of loci,
+/// each with a tiny effect. The polygenic score is the weighted sum
+/// of all these effects.
 ///
-/// Ici on simule N_LOCI alleles par trait, chacun tire aleatoirement,
-/// puis on calcule la moyenne ponderee. Le resultat suit naturellement
-/// une distribution quasi-normale (theoreme central limite) meme si
-/// chaque allele individuel est uniforme.
+/// Here we simulate N_LOCI alleles per trait, each drawn randomly,
+/// then compute the weighted average. The result naturally follows
+/// a quasi-normal distribution (central limit theorem) even though
+/// each individual allele is uniform.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PolygenicScores {
-    // --- Scores de risque (PRS — Polygenic Risk Scores) ---
+    // --- Risk scores (PRS — Polygenic Risk Scores) ---
 
-    /// Risque polygenique de depression (0.0-1.0, >0.7 = risque eleve)
-    /// ~50 loci impliques (SLC6A4, FKBP5, BDNF, etc.)
+    /// Polygenic depression risk (0.0-1.0, >0.7 = high risk)
+    /// ~50 loci involved (SLC6A4, FKBP5, BDNF, etc.)
     pub prs_depression: f64,
-    /// Risque polygenique d'anxiete (0.0-1.0)
+    /// Polygenic anxiety risk (0.0-1.0)
     /// Loci: CRHR1, SLC6A4, COMT, RGS2, etc.
     pub prs_anxiety: f64,
-    /// Risque polygenique d'addiction (0.0-1.0)
+    /// Polygenic addiction risk (0.0-1.0)
     /// Loci: DRD2, OPRM1, ALDH2, CHRNA5, etc.
     pub prs_addiction: f64,
 
-    // --- Scores de traits positifs ---
+    // --- Positive trait scores ---
 
-    /// Score polygenique d'empathie (0.0-1.0)
+    /// Polygenic empathy score (0.0-1.0)
     /// Loci: OXTR, CD38, AVPR1A, etc.
     pub pgs_empathy: f64,
-    /// Score polygenique de resilience au stress (0.0-1.0)
+    /// Polygenic stress resilience score (0.0-1.0)
     /// Loci: NR3C1, FKBP5, CRHR1, NPY, etc.
     pub pgs_resilience: f64,
-    /// Score polygenique de capacite d'apprentissage (0.0-1.0)
+    /// Polygenic learning capacity score (0.0-1.0)
     /// Loci: BDNF, KIBRA, COMT, ARC, etc.
     pub pgs_learning: f64,
-    /// Score polygenique de creativite (0.0-1.0)
+    /// Polygenic creativity score (0.0-1.0)
     /// Loci: DRD4, COMT, DARPP-32, etc.
     pub pgs_creativity: f64,
 
-    // --- Pharmacogenomique ---
+    // --- Pharmacogenomics ---
 
-    /// Efficacite du metabolisme des neurotransmetteurs (0.5-1.5)
+    /// Neurotransmitter metabolism efficiency (0.5-1.5)
     /// Loci: CYP2D6, CYP2C19, MAO-A, COMT
-    /// <1.0 = metaboliseur lent, >1.0 = metaboliseur rapide
+    /// <1.0 = slow metabolizer, >1.0 = fast metabolizer
     pub pharmacogenomic_metabolism: f64,
 
-    // --- Donnees brutes (pour transparence et API) ---
+    // --- Raw data (for transparency and API) ---
 
-    /// Nombre de loci simules par trait
+    /// Number of simulated loci per trait
     pub loci_per_trait: usize,
-    /// Heritabilite estimee (proportion de variance genetique)
+    /// Estimated heritability (proportion of genetic variance)
     pub estimated_heritability: f64,
 }
 
@@ -187,27 +187,27 @@ impl Default for PolygenicScores {
     }
 }
 
-/// Nombre de loci simules par trait polygenique.
-/// En realite c'est des centaines-milliers, mais 30 suffit pour
-/// obtenir une distribution quasi-normale (CLT) avec variabilite.
+/// Number of simulated loci per polygenic trait.
+/// In reality it is hundreds to thousands, but 30 is enough to
+/// obtain a quasi-normal distribution (CLT) with variability.
 const N_LOCI: usize = 30;
 
-/// Genere un score polygenique a partir de N alleles.
+/// Generates a polygenic score from N alleles.
 ///
-/// Chaque locus a un effet aleatoire (allele) et un poids
-/// (effect size) tire d'une distribution exponentielle decroissante.
-/// Les premiers loci ont plus d'influence (comme en GWAS reel,
-/// ou quelques SNP ont un effet plus fort que les autres).
+/// Each locus has a random effect (allele) and a weight
+/// (effect size) drawn from an exponentially decaying distribution.
+/// The first loci have more influence (as in real GWAS,
+/// where a few SNPs have a stronger effect than others).
 ///
-/// Le resultat est borne dans [min, max].
+/// The result is bounded within [min, max].
 fn polygenic_score(rng: &mut ChaCha8Rng, min: f64, max: f64) -> f64 {
     let mut weighted_sum = 0.0;
     let mut weight_total = 0.0;
 
     for i in 0..N_LOCI {
-        // Poids decroissant exponentiellement (effet des SNP dominants)
+        // Exponentially decreasing weight (dominant SNP effect)
         let weight = (-0.05 * i as f64).exp();
-        // Allele : 0 (homozygote ref), 1 (heterozygote), 2 (homozygote alt)
+        // Allele: 0 (homozygous ref), 1 (heterozygous), 2 (homozygous alt)
         let allele: f64 = rng.gen_range(0..=2) as f64 / 2.0;
         weighted_sum += allele * weight;
         weight_total += weight;
@@ -233,10 +233,10 @@ impl PolygenicScores {
         }
     }
 
-    /// Modifie les genes existants en fonction des scores polygeniques.
-    /// Cela cree des correlations realistes entre les PRS et les traits
-    /// (par ex. PRS depression eleve → neuroticism plus haut,
-    /// PGS empathie eleve → agreeableness plus haut).
+    /// Modifies existing genes based on polygenic scores.
+    /// This creates realistic correlations between PRS and traits
+    /// (e.g. high depression PRS → higher neuroticism,
+    /// high empathy PGS → higher agreeableness).
     pub fn modulate_genes(
         &self,
         temperament: &mut TemperamentGenes,
@@ -244,31 +244,31 @@ impl PolygenicScores {
         vulnerabilities: &mut VulnerabilityGenes,
         cognitive: &mut CognitiveGenes,
     ) {
-        // Influence polygenique sur le temperament (poids = 30%, car ~50% heritabilite)
+        // Polygenic influence on temperament (weight = 30%, due to ~50% heritability)
         let pg_weight = 0.3;
 
-        // PRS depression → augmente neuroticism
+        // PRS depression → increases neuroticism
         temperament.neuroticism = blend(
             temperament.neuroticism,
             self.prs_depression,
             pg_weight,
         ).clamp(0.0, 1.0);
 
-        // PGS empathie → augmente agreeableness
+        // PGS empathy → increases agreeableness
         temperament.agreeableness = blend(
             temperament.agreeableness,
             self.pgs_empathy,
             pg_weight,
         ).clamp(0.0, 1.0);
 
-        // PGS creativite → augmente openness
+        // PGS creativity → increases openness
         temperament.openness = blend(
             temperament.openness,
             self.pgs_creativity,
             pg_weight,
         ).clamp(0.0, 1.0);
 
-        // PRS anxiete → influence cortisol baseline
+        // PRS anxiety → influences cortisol baseline
         chemical.baseline_cortisol_offset += (self.prs_anxiety - 0.5) * 0.05;
         chemical.baseline_cortisol_offset = chemical.baseline_cortisol_offset.clamp(-0.15, 0.15);
 
@@ -279,7 +279,7 @@ impl PolygenicScores {
             pg_weight,
         ).clamp(0.0, 1.0);
 
-        // Pharmacogenomique → influence homeostasis_speed
+        // Pharmacogenomics → influences homeostasis_speed
         chemical.homeostasis_speed *= 0.7 + self.pharmacogenomic_metabolism * 0.3;
         chemical.homeostasis_speed = chemical.homeostasis_speed.clamp(0.3, 2.0);
 
@@ -290,7 +290,7 @@ impl PolygenicScores {
             pg_weight,
         ).clamp(0.0, 1.0);
 
-        // PRS depression/anxiete → influence predispositions
+        // PRS depression/anxiety → influences predispositions
         vulnerabilities.depression_predisposition = blend(
             vulnerabilities.depression_predisposition,
             self.prs_depression,
@@ -316,7 +316,7 @@ impl PolygenicScores {
             pg_weight,
         ).clamp(0.5, 1.5);
 
-        // PGS resilience → influence memory_retention (stress degrade la memoire)
+        // PGS resilience → influences memory_retention (stress degrades memory)
         cognitive.memory_retention = blend(
             cognitive.memory_retention,
             0.5 + self.pgs_resilience * 0.5,
@@ -325,27 +325,27 @@ impl PolygenicScores {
     }
 }
 
-/// Melange lineaire : (1-weight)*a + weight*b
+/// Linear blend: (1-weight)*a + weight*b
 fn blend(a: f64, b: f64, weight: f64) -> f64 {
     (1.0 - weight) * a + weight * b
 }
 
 // =============================================================================
-// Generation deterministe
+// Deterministic generation
 // =============================================================================
 
 impl Genome {
-    /// Genere un genome complet a partir d'un seed.
-    /// Le PRNG ChaCha8 garantit la reproductibilite :
-    /// meme seed → meme genome, quelle que soit la plateforme.
+    /// Generates a complete genome from a seed.
+    /// The ChaCha8 PRNG guarantees reproducibility:
+    /// same seed → same genome, regardless of platform.
     pub fn from_seed(seed: u64) -> Self {
         let mut rng = ChaCha8Rng::seed_from_u64(seed);
 
-        // Hash SHA-256 du seed pour un identifiant lisible
+        // SHA-256 hash of the seed for a readable identifier
         let mut hasher = Sha256::new();
         hasher.update(seed.to_le_bytes());
         let hash_bytes = hasher.finalize();
-        let dna_hash = hex::encode(&hash_bytes[..16]); // 32 caracteres hex
+        let dna_hash = hex::encode(&hash_bytes[..16]); // 32 hex characters
 
         let mut temperament = TemperamentGenes::generate(&mut rng);
         let mut chemical = ChemicalGenes::generate(&mut rng);
@@ -353,9 +353,9 @@ impl Genome {
         let mut vulnerabilities = VulnerabilityGenes::generate(&mut rng);
         let mut cognitive = CognitiveGenes::generate(&mut rng);
 
-        // Scores polygeniques — generes APRES les traits de base
+        // Polygenic scores — generated AFTER base traits
         let polygenic = PolygenicScores::generate(&mut rng);
-        // Les PRS/PGS modulent les traits existants (correlations realistes)
+        // PRS/PGS modulate existing traits (realistic correlations)
         polygenic.modulate_genes(&mut temperament, &mut chemical,
             &mut vulnerabilities, &mut cognitive);
 
@@ -371,7 +371,7 @@ impl Genome {
         }
     }
 
-    /// Affiche le genome dans les logs du demarrage.
+    /// Prints the genome in the boot logs.
     pub fn log_summary(&self) {
         println!("  --- Genome ---");
         println!("  DNA hash : {}", self.dna_hash);
@@ -395,7 +395,7 @@ impl Genome {
             self.polygenic.pharmacogenomic_metabolism);
     }
 
-    /// Serialise le genome en JSON pour l'API.
+    /// Serializes the genome to JSON for the API.
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::to_value(self).unwrap_or_default()
     }
@@ -462,7 +462,7 @@ impl CognitiveGenes {
 }
 
 // =============================================================================
-// Utilitaire hex (evite une dependance supplementaire)
+// Hex utility (avoids an extra dependency)
 // =============================================================================
 
 mod hex {
@@ -495,7 +495,7 @@ mod tests {
         let g1 = Genome::from_seed(42);
         let g2 = Genome::from_seed(1337);
         assert_ne!(g1.dna_hash, g2.dna_hash);
-        // Au moins un trait devrait differer (statistiquement garanti)
+        // At least one trait should differ (statistically guaranteed)
         let same = g1.temperament.introversion == g2.temperament.introversion
             && g1.temperament.neuroticism == g2.temperament.neuroticism
             && g1.temperament.openness == g2.temperament.openness;
@@ -505,14 +505,14 @@ mod tests {
     #[test]
     fn test_ranges() {
         let g = Genome::from_seed(999);
-        // Temperament : 0.0 a 1.0
+        // Temperament: 0.0 to 1.0
         assert!((0.0..=1.0).contains(&g.temperament.introversion));
         assert!((0.0..=1.0).contains(&g.temperament.openness));
-        // Chimie : offsets -0.1 a +0.1
+        // Chemistry: offsets -0.1 to +0.1
         assert!((-0.1..=0.1).contains(&g.chemical.baseline_dopamine_offset));
-        // Cognitif : 0.5 a 1.5
+        // Cognitive: 0.5 to 1.5
         assert!((0.5..=1.5).contains(&g.cognitive.learning_speed));
-        // Vulnerabilites : 0.0 a 1.0
+        // Vulnerabilities: 0.0 to 1.0
         assert!((0.0..=1.0).contains(&g.vulnerabilities.anxiety_predisposition));
     }
 

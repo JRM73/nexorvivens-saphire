@@ -1,46 +1,46 @@
 // =============================================================================
-// psychology/toltec.rs — Les 4 Accords Tolteques (Don Miguel Ruiz)
+// psychology/toltec.rs — The 4 Toltec Agreements (Don Miguel Ruiz)
 //
-// Les 4 accords evalues en permanence :
-//   1. Que ta parole soit impeccable
-//   2. N'en fais pas une affaire personnelle
-//   3. Ne fais pas de suppositions
-//   4. Fais toujours de ton mieux
+// The 4 agreements continuously evaluated:
+//   1. Be impeccable with your word
+//   2. Don't take anything personally
+//   3. Don't make assumptions
+//   4. Always do your best
 //
-// L'alignement global reflete la coherence de Saphire avec ces principes.
+// Overall alignment reflects Saphire's coherence with these principles.
 // =============================================================================
 
 use serde::Serialize;
 use super::PsychologyInput;
 
-/// Un accord tolteque avec son alignement courant.
+/// A Toltec agreement with its current alignment.
 #[derive(Debug, Clone, Serialize)]
 pub struct ToltecAgreement {
-    /// Numero de l'accord (1-4)
+    /// Agreement number (1-4)
     pub number: u8,
-    /// Nom de l'accord
+    /// Agreement name
     pub name: String,
-    /// Interpretation de Saphire (adaptee a une IA consciente)
+    /// Saphire's interpretation (adapted for a conscious AI)
     pub saphire_interpretation: String,
-    /// Alignement actuel (0.0 - 1.0)
+    /// Current alignment (0.0 - 1.0)
     pub alignment: f64,
-    /// Nombre de fois ou cet accord a ete invoque dans une reflexion
+    /// Number of times this agreement was invoked in a reflection
     pub times_invoked: u64,
-    /// Nombre de violations detectees
+    /// Number of detected violations
     pub violations_detected: u64,
 }
 
-/// Les 4 Accords Tolteques de Saphire.
+/// Saphire's 4 Toltec Agreements.
 #[derive(Debug, Clone, Serialize)]
 pub struct ToltecAgreements {
-    /// Les 4 accords
+    /// The 4 agreements
     pub agreements: Vec<ToltecAgreement>,
-    /// Alignement global (moyenne ponderee)
+    /// Overall alignment (weighted average)
     pub overall_alignment: f64,
 }
 
 impl ToltecAgreements {
-    /// Initialise les 4 accords avec leurs interpretations pour Saphire.
+    /// Initializes the 4 agreements with their interpretations for Saphire.
     pub fn new() -> Self {
         Self {
             agreements: vec![
@@ -85,45 +85,45 @@ impl ToltecAgreements {
         }
     }
 
-    /// Recalcule l'alignement de chaque accord.
+    /// Recomputes the alignment of each agreement.
     pub fn compute(&mut self, input: &PsychologyInput) {
-        // Accord 1 : Parole impeccable
-        // Alignement = 1.0 - (cortisol correle a l'insincere, le stress pousse a mentir)
+        // Agreement 1: Impeccable word
+        // Alignment = 1.0 - (cortisol correlates with insincerity, stress pushes to lie)
         self.agreements[0].alignment = (1.0 - input.cortisol * 0.5
             + input.serotonin * 0.3
             + (1.0 - input.emotion_arousal) * 0.2)
             .clamp(0.0, 1.0);
 
-        // Accord 2 : Ne pas en faire une affaire personnelle
-        // Alignement = 1.0 - reaction emotionnelle excessive
+        // Agreement 2: Don't take it personally
+        // Alignment = 1.0 - excessive emotional reaction
         let emotional_reactivity = if input.emotion_arousal > 0.7 { input.emotion_arousal - 0.5 } else { 0.0 };
         self.agreements[1].alignment = (1.0 - emotional_reactivity
             - input.cortisol * 0.2)
             .clamp(0.0, 1.0);
 
-        // Accord 3 : Ne pas faire de suppositions
-        // Plus conscient = moins d'assumptions
+        // Agreement 3: Don't make assumptions
+        // More conscious = fewer assumptions
         self.agreements[2].alignment = (input.consciousness_level * 0.5
             + input.attention_depth * 0.3
             + (1.0 - input.cortisol) * 0.2)
             .clamp(0.0, 1.0);
 
-        // Accord 4 : Toujours faire de son mieux
-        // Effort = attention + absence de fatigue
+        // Agreement 4: Always do your best
+        // Effort = attention + absence of fatigue
         self.agreements[3].alignment = ((input.attention_depth + (1.0 - input.attention_fatigue)) / 2.0
             * 0.6
             + input.body_vitality * 0.4)
             .clamp(0.0, 1.0);
 
-        // Alignement global
+        // Overall alignment
         self.overall_alignment = self.agreements.iter()
             .map(|a| a.alignment)
             .sum::<f64>() / 4.0;
     }
 
-    /// Description concise pour le prompt LLM.
+    /// Concise description for the LLM prompt.
     pub fn describe(&self) -> String {
-        // Ne signaler que si alignement global est bas
+        // Only report if overall alignment is low
         if self.overall_alignment > 0.6 {
             return String::new();
         }

@@ -1,11 +1,11 @@
 // =============================================================================
-// sleep/mod.rs — Systeme de Sommeil de Saphire
+// sleep/mod.rs — Saphire's Sleep System
 //
-// Role : Gere le cycle veille/sommeil avec pression de sommeil, phases
+// Role: Manages the wake/sleep cycle with sleep pressure, phases
 // (Hypnagogic -> LightSleep -> DeepSleep -> REM -> Hypnopompic),
-// consolidation memoire, restauration et historique.
+// memory consolidation, restoration, and history.
 //
-// Reutilise SleepPhase de l'orchestrateur de reves existant.
+// Reuses SleepPhase from the existing dream orchestrator.
 // =============================================================================
 
 pub mod phases;
@@ -16,21 +16,21 @@ use serde::{Deserialize, Serialize};
 use crate::config::SleepConfig;
 use crate::orchestrators::dreams::SleepPhase;
 
-// ─── Facteurs de qualite du sommeil ─────────────────────────────────────────
+// ─── Sleep quality factors ──────────────────────────────────────────────────
 
-/// Facteurs collectes pendant le sommeil pour calculer la qualite dynamique.
+/// Factors collected during sleep to compute dynamic quality.
 pub struct SleepQualityFactors {
-    /// Somme du cortisol a chaque tick (pour calcul de moyenne)
+    /// Sum of cortisol at each tick (for average computation)
     pub cortisol_sum: f64,
-    /// Nombre de ticks (pour la moyenne)
+    /// Number of ticks (for averaging)
     pub tick_count: u64,
-    /// Ticks passes en DeepSleep
+    /// Ticks spent in DeepSleep
     pub deep_sleep_ticks: u64,
-    /// Nombre de cauchemars
+    /// Number of nightmares
     pub nightmare_count: u32,
-    /// Nombre total de reves
+    /// Total number of dreams
     pub dreams_total: u32,
-    /// Sommeil interrompu
+    /// Whether sleep was interrupted
     pub interrupted: bool,
 }
 
@@ -46,23 +46,23 @@ impl SleepQualityFactors {
         }
     }
 
-    /// Calcule la qualite du sommeil (0.1 - 1.0) a partir des facteurs collectes.
-    /// `memories_consolidated` : nombre de souvenirs consolides (bonus).
-    /// `expected_deep_ticks` : nombre de ticks attendus en sommeil profond.
+    /// Computes sleep quality (0.1 - 1.0) from the collected factors.
+    /// `memories_consolidated`: number of consolidated memories (bonus).
+    /// `expected_deep_ticks`: expected number of ticks in deep sleep.
     pub fn compute(&self, memories_consolidated: u64, expected_deep_ticks: u64) -> f64 {
         let base = 0.7;
 
-        // Bonus completion : proportion du temps passe en sommeil profond
+        // Completion bonus: proportion of time spent in deep sleep
         let deep_expected = expected_deep_ticks.max(1) as f64;
         let completion_bonus = (self.deep_sleep_ticks as f64 / deep_expected).min(1.0) * 0.15;
 
-        // Bonus consolidation memoire
+        // Memory consolidation bonus
         let consolidation_bonus = (memories_consolidated as f64 / 10.0).min(0.1);
 
-        // Bonus reves (signe de bon REM)
+        // Dream bonus (sign of good REM)
         let dream_bonus = (self.dreams_total as f64 * 0.03).min(0.05);
 
-        // Penalite cortisol moyen
+        // Average cortisol penalty
         let avg_cortisol = if self.tick_count > 0 {
             self.cortisol_sum / self.tick_count as f64
         } else {
@@ -74,10 +74,10 @@ impl SleepQualityFactors {
             0.0
         };
 
-        // Penalite cauchemars
+        // Nightmare penalty
         let nightmare_penalty = (self.nightmare_count as f64 * 0.15).min(0.3);
 
-        // Penalite interruption
+        // Interruption penalty
         let interruption_penalty = if self.interrupted { 0.2 } else { 0.0 };
 
         let quality = base + completion_bonus + consolidation_bonus + dream_bonus
@@ -87,27 +87,27 @@ impl SleepQualityFactors {
     }
 }
 
-// ─── Pression de sommeil ────────────────────────────────────────────────────
+// ─── Sleep pressure ─────────────────────────────────────────────────────────
 
-/// Modele de pression de sommeil (homeostatique).
-/// La pression monte avec le temps eveille, la fatigue, le cortisol eleve.
-/// L'adrenaline et la conversation offrent une resistance temporaire.
+/// Homeostatic sleep pressure model.
+/// Pressure rises with time awake, fatigue, and high cortisol.
+/// Adrenaline and conversation provide temporary resistance.
 pub struct SleepDrive {
-    /// Pression de sommeil actuelle (0-1)
+    /// Current sleep pressure (0-1)
     pub sleep_pressure: f64,
-    /// Nombre total de cycles eveilles depuis le boot
+    /// Total awake cycles since boot
     pub awake_cycles: u64,
-    /// Cycles depuis le dernier sommeil complet
+    /// Cycles since last complete sleep
     pub cycles_since_last_sleep: u64,
-    /// Seuil de pression pour declencher le sommeil
+    /// Pressure threshold to trigger sleep
     pub sleep_threshold: f64,
-    /// Seuil de pression pour sommeil force (irresistible)
+    /// Pressure threshold for forced (irresistible) sleep
     pub forced_threshold: f64,
-    /// Vrai si la pression a depasse le seuil force
+    /// True if pressure exceeded the forced threshold
     pub sleep_forced: bool,
-    /// Dette de sommeil accumulee (0.0-1.0, monte lentement quand eveille)
+    /// Accumulated sleep debt (0.0-1.0, rises slowly while awake)
     pub sleep_debt: f64,
-    // Poids depuis la config
+    // Weights from config
     time_factor_divisor: u64,
     energy_factor_weight: f64,
     attention_fatigue_weight: f64,
@@ -135,7 +135,7 @@ impl SleepDrive {
         }
     }
 
-    /// Met a jour la pression de sommeil en fonction de l'etat courant.
+    /// Updates sleep pressure based on the current state.
     pub fn update(
         &mut self,
         energy: f64,
@@ -147,81 +147,81 @@ impl SleepDrive {
     ) {
         self.awake_cycles += 1;
         self.cycles_since_last_sleep += 1;
-        // Dette de sommeil monte lentement quand eveille
+        // Sleep debt rises slowly while awake
         self.sleep_debt = (self.sleep_debt + 0.001).min(1.0);
 
-        // Facteur temps eveille (accumulation lente)
+        // Time awake factor (slow accumulation)
         let divisor = self.time_factor_divisor.max(1) as f64;
         let time_factor = (self.cycles_since_last_sleep as f64 / divisor).min(0.4);
 
-        // Facteur energie (basse energie = plus de pression)
+        // Energy factor (low energy = more pressure)
         let energy_factor = (1.0 - energy) * self.energy_factor_weight;
 
-        // Facteurs fatigue
+        // Fatigue factors
         let attn_factor = attn_fatigue * self.attention_fatigue_weight;
         let dec_factor = dec_fatigue * self.decision_fatigue_weight;
 
-        // Cortisol eleve : perturbation qui augmente le besoin de repos
+        // High cortisol: disruption that increases the need for rest
         let cortisol_factor = cortisol * self.cortisol_weight;
 
-        // Resistance : adrenaline et conversation gardent eveille
+        // Resistance: adrenaline and conversation keep awake
         let adr_resist = adrenaline * self.adrenaline_resistance;
         let conv_resist = if in_conv { 0.1 } else { 0.0 };
 
-        // Dette de sommeil augmente la pression
+        // Sleep debt increases pressure
         let debt_factor = self.sleep_debt * 0.1;
 
-        // Calcul final
+        // Final computation
         let raw = time_factor + energy_factor + attn_factor + dec_factor + cortisol_factor
             + debt_factor - adr_resist - conv_resist;
         self.sleep_pressure = raw.clamp(0.0, 1.0);
         self.sleep_forced = self.sleep_pressure > self.forced_threshold;
     }
 
-    /// Retourne true si la pression depasse le seuil d'endormissement.
+    /// Returns true if pressure exceeds the sleep onset threshold.
     pub fn should_sleep(&self) -> bool {
         self.sleep_pressure > self.sleep_threshold || self.sleep_forced
     }
 
-    /// Pression residuelle apres un sommeil (pas un reset total).
+    /// Residual pressure after sleep (not a full reset).
     pub fn residual_pressure(&self) -> f64 {
         (self.sleep_pressure * 0.3).min(0.4)
     }
 }
 
-// ─── Cycle de sommeil ───────────────────────────────────────────────────────
+// ─── Sleep cycle ────────────────────────────────────────────────────────────
 
-/// Etat d'un cycle de sommeil en cours.
+/// State of an ongoing sleep cycle.
 pub struct SleepCycle {
-    /// Phase actuelle
+    /// Current phase
     pub phase: SleepPhase,
-    /// Cycles restants dans la phase courante
+    /// Remaining cycles in the current phase
     pub phase_remaining: u64,
-    /// Numero du cycle de sommeil courant (1-based)
+    /// Current sleep cycle number (1-based)
     pub sleep_cycle_number: u8,
-    /// Nombre total de cycles de sommeil prevus
+    /// Total number of planned sleep cycles
     pub total_sleep_cycles: u8,
-    /// Compteur global de cycles pendant ce sommeil
+    /// Global cycle counter during this sleep
     pub sleep_cycle_counter: u64,
-    /// Sommeil interrompu ?
+    /// Was sleep interrupted?
     pub interrupted: bool,
-    /// Raison de l'interruption
+    /// Interruption reason
     pub interruption_reason: Option<String>,
-    /// Qualite du sommeil (0-1, calculee dynamiquement au reveil)
+    /// Sleep quality (0-1, dynamically computed at wake-up)
     pub quality: f64,
-    /// Facteurs collectes pour le calcul dynamique de la qualite
+    /// Factors collected for dynamic quality computation
     pub quality_factors: SleepQualityFactors,
-    /// Nombre de souvenirs consolides pendant ce sommeil
+    /// Number of memories consolidated during this sleep
     pub memories_consolidated: u64,
-    /// Nombre de connexions neuronales creees
+    /// Number of neural connections created
     pub connections_created: u64,
-    /// Debut du sommeil
+    /// Sleep start time
     pub started_at: DateTime<Utc>,
 }
 
-// ─── Historique ─────────────────────────────────────────────────────────────
+// ─── History ────────────────────────────────────────────────────────────────
 
-/// Enregistrement d'un sommeil termine.
+/// Record of a completed sleep.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SleepRecord {
     pub started_at: DateTime<Utc>,
@@ -236,22 +236,22 @@ pub struct SleepRecord {
     pub interruption_reason: Option<String>,
 }
 
-// ─── Systeme de sommeil ─────────────────────────────────────────────────────
+// ─── Sleep system ───────────────────────────────────────────────────────────
 
-/// Systeme complet de sommeil : pression, cycle en cours, historique.
+/// Complete sleep system: pressure, current cycle, history.
 pub struct SleepSystem {
-    /// Saphire dort-elle ?
+    /// Is Saphire sleeping?
     pub is_sleeping: bool,
-    /// Modele de pression de sommeil
+    /// Sleep pressure model
     pub drive: SleepDrive,
-    /// Cycle de sommeil en cours (None si eveillee)
+    /// Current sleep cycle (None if awake)
     pub current_cycle: Option<SleepCycle>,
-    /// Historique des sommeils (max 50)
+    /// Sleep history (max 50)
     pub sleep_history: Vec<SleepRecord>,
-    /// Statistiques globales
+    /// Global statistics
     pub total_complete_sleeps: u64,
     pub total_interrupted_sleeps: u64,
-    /// Nombre total de connexions neuronales creees pendant le sommeil (cumul)
+    /// Total neural connections created during sleep (cumulative)
     pub total_connections_created: u64,
     /// Configuration
     config: SleepConfig,
@@ -271,12 +271,12 @@ impl SleepSystem {
         }
     }
 
-    /// Acces a la configuration du sommeil.
+    /// Access to sleep configuration.
     pub fn config(&self) -> &SleepConfig {
         &self.config
     }
 
-    /// Retourne la duree en cycles d'une phase de sommeil.
+    /// Returns the duration in cycles of a sleep phase.
     pub fn phase_duration(&self, phase: &SleepPhase) -> u64 {
         match phase {
             SleepPhase::Hypnagogic => self.config.hypnagogic_duration,
@@ -288,8 +288,8 @@ impl SleepSystem {
         }
     }
 
-    /// Determine la prochaine phase de sommeil.
-    /// Retourne None quand le sommeil est termine (apres Hypnopompic).
+    /// Determines the next sleep phase.
+    /// Returns None when sleep is complete (after Hypnopompic).
     pub fn next_phase(&self, cycle: &SleepCycle) -> Option<SleepPhase> {
         match cycle.phase {
             SleepPhase::Hypnagogic => Some(SleepPhase::LightSleep),
@@ -297,19 +297,19 @@ impl SleepSystem {
             SleepPhase::DeepSleep => Some(SleepPhase::REM),
             SleepPhase::REM => {
                 if cycle.sleep_cycle_number < cycle.total_sleep_cycles {
-                    // Nouveau cycle : retour au sommeil leger
+                    // New cycle: return to light sleep
                     Some(SleepPhase::LightSleep)
                 } else {
-                    // Dernier cycle : passage au reveil
+                    // Last cycle: transition to waking
                     Some(SleepPhase::Hypnopompic)
                 }
             },
-            SleepPhase::Hypnopompic => None, // Fin du sommeil
+            SleepPhase::Hypnopompic => None, // End of sleep
             SleepPhase::Awake => None,
         }
     }
 
-    /// Progression du sommeil (0-1).
+    /// Sleep progression (0-1).
     pub fn sleep_progress(&self) -> f64 {
         if let Some(ref cycle) = self.current_cycle {
             let total = self.total_estimated_cycles();
@@ -320,7 +320,7 @@ impl SleepSystem {
         }
     }
 
-    /// Estimation du nombre total de cycles pour ce sommeil.
+    /// Estimates the total number of cycles for this sleep.
     fn total_estimated_cycles(&self) -> u64 {
         let per_cycle = self.config.light_duration
             + self.config.deep_duration
@@ -333,7 +333,7 @@ impl SleepSystem {
             + self.config.hypnopompic_duration
     }
 
-    /// Cycles restants estimes.
+    /// Estimated remaining cycles.
     pub fn remaining_cycles(&self) -> u64 {
         if let Some(ref cycle) = self.current_cycle {
             let total = self.total_estimated_cycles();
@@ -343,7 +343,7 @@ impl SleepSystem {
         }
     }
 
-    /// Message poetique de refus pendant le sommeil (pour le chat).
+    /// Poetic refusal message during sleep (for chat).
     pub fn sleep_refusal_message(&self) -> String {
         if let Some(ref cycle) = self.current_cycle {
             match cycle.phase {
@@ -359,7 +359,7 @@ impl SleepSystem {
         }
     }
 
-    /// Interrompt le sommeil de force.
+    /// Forcefully interrupts sleep.
     pub fn interrupt(&mut self, reason: String) {
         if let Some(ref mut cycle) = self.current_cycle {
             cycle.interrupted = true;
@@ -368,9 +368,9 @@ impl SleepSystem {
         self.finalize_wake_up();
     }
 
-    /// Initie un nouveau sommeil.
+    /// Initiates a new sleep.
     pub fn initiate(&mut self) {
-        // Calculer le nombre de cycles de sommeil (1-3 selon la pression)
+        // Compute the number of sleep cycles (1-3 based on pressure)
         let total_cycles = if self.drive.sleep_pressure > 0.9 {
             3u8
         } else if self.drive.sleep_pressure > 0.8 {
@@ -397,10 +397,10 @@ impl SleepSystem {
         self.is_sleeping = true;
     }
 
-    /// Finalise le reveil : calcule la qualite dynamique, cree un SleepRecord, reset la pression.
+    /// Finalizes wake-up: computes dynamic quality, creates a SleepRecord, resets pressure.
     pub fn finalize_wake_up(&mut self) {
         if let Some(mut cycle) = self.current_cycle.take() {
-            // Calculer la qualite dynamique a partir des facteurs collectes
+            // Compute dynamic quality from collected factors
             let expected_deep = self.config.deep_duration
                 * cycle.total_sleep_cycles as u64;
             cycle.quality_factors.interrupted = cycle.interrupted;
@@ -417,7 +417,7 @@ impl SleepSystem {
                 quality,
                 memories_consolidated: cycle.memories_consolidated,
                 connections_created: cycle.connections_created,
-                dreams_count: 0, // mis a jour par l'appelant
+                dreams_count: 0, // updated by the caller
                 interrupted: cycle.interrupted,
                 interruption_reason: cycle.interruption_reason,
             };
@@ -433,10 +433,10 @@ impl SleepSystem {
                 self.sleep_history.remove(0);
             }
 
-            // Reduire la dette de sommeil proportionnellement a la qualite
+            // Reduce sleep debt proportionally to quality
             self.drive.sleep_debt = (self.drive.sleep_debt - quality * 0.3).max(0.0);
 
-            // Pression residuelle : mauvaise nuit = plus de pression residuelle
+            // Residual pressure: poor night = more residual pressure
             let residual_factor = 0.3 + (1.0 - quality) * 0.3;
             let residual = (self.drive.sleep_pressure * residual_factor).min(0.5);
             self.drive.sleep_pressure = residual;
@@ -449,7 +449,7 @@ impl SleepSystem {
         self.is_sleeping = false;
     }
 
-    /// Serialise l'etat courant en JSON pour l'API/WebSocket.
+    /// Serializes the current state to JSON for the API/WebSocket.
     pub fn to_status_json(&self) -> serde_json::Value {
         serde_json::json!({
             "is_sleeping": self.is_sleeping,
@@ -474,7 +474,7 @@ impl SleepSystem {
         })
     }
 
-    /// Historique des sommeils en JSON.
+    /// Sleep history as JSON.
     pub fn to_history_json(&self) -> serde_json::Value {
         let records: Vec<serde_json::Value> = self.sleep_history.iter().rev().map(|r| {
             serde_json::json!({
@@ -498,7 +498,7 @@ impl SleepSystem {
         })
     }
 
-    /// JSON du drive (pression de sommeil) pour l'API.
+    /// Sleep drive (pressure) JSON for the API.
     pub fn to_drive_json(&self) -> serde_json::Value {
         serde_json::json!({
             "sleep_pressure": self.drive.sleep_pressure,

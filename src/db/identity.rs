@@ -1,21 +1,21 @@
 // =============================================================================
-// db/identity.rs — Identite, sessions, corps virtuel, vital, senses
+// db/identity.rs — Identity, sessions, virtual body, vital, senses
 // =============================================================================
 
 use super::{SaphireDb, DbError};
 
 impl SaphireDb {
     // ---------------------------------------------------------
-    // IDENTITE
+    // IDENTITY
     // ---------------------------------------------------------
 
-    /// Sauvegarde l'identite de l'agent (upsert singleton, id=1).
-    /// Si l'identite existe deja, elle est mise a jour. Sinon, elle est creee.
-    /// L'identite contient le nom, le nombre de boots, le nombre de cycles,
-    /// une auto-description et la tendance dominante.
+    /// Saves the agent's identity (upsert singleton, id=1).
+    /// If the identity already exists, it is updated. Otherwise, it is created.
+    /// The identity contains the name, boot count, cycle count,
+    /// a self-description and the dominant tendency.
     ///
-    /// # Parametres
-    /// - `identity_json` : objet JSON contenant les champs de l'identite
+    /// # Parameters
+    /// - `identity_json`: JSON object containing the identity fields
     pub async fn save_identity(&self, identity_json: &serde_json::Value) -> Result<(), DbError> {
         let client = self.pool.get().await?;
 
@@ -34,7 +34,7 @@ impl SaphireDb {
             identity_json["core_values"].as_array().cloned().unwrap_or_default()
         );
 
-        // Essayer d'abord une mise a jour (UPDATE) du singleton existant
+        // First try an UPDATE of the existing singleton
         let updated = client.execute(
             "UPDATE self_identity SET
                 name = $1, total_cycles = $2, total_boots = $3,
@@ -48,7 +48,7 @@ impl SaphireDb {
               &interests, &core_values],
         ).await?;
 
-        // Si aucune ligne n'a ete mise a jour, c'est le premier boot : inserer
+        // If no row was updated, this is the first boot: insert
         if updated == 0 {
             client.execute(
                 "INSERT INTO self_identity (id, name, born_at, total_boots, total_cycles,
@@ -64,11 +64,11 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Charge l'identite de l'agent depuis la base de donnees.
+    /// Loads the agent's identity from the database.
     ///
-    /// # Retour
-    /// - `Some(Value)` : l'identite en JSON si elle existe
-    /// - `None` : si c'est le premier boot (pas d'identite en base)
+    /// # Returns
+    /// - `Some(Value)`: the identity as JSON if it exists
+    /// - `None`: if this is the first boot (no identity in the database)
     pub async fn load_identity(&self) -> Result<Option<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let result = client.query_opt(
@@ -84,11 +84,11 @@ impl SaphireDb {
         }
     }
 
-    /// Met a jour le drapeau clean_shutdown dans l'identite.
-    /// Permet de detecter les arrets brutaux au prochain demarrage.
+    /// Updates the clean_shutdown flag in the identity.
+    /// Allows detecting abrupt shutdowns at the next startup.
     ///
-    /// # Parametres
-    /// - `clean` : true si l'arret est propre, false au demarrage (avant l'arret)
+    /// # Parameters
+    /// - `clean`: true if the shutdown is clean, false at startup (before shutdown)
     pub async fn set_clean_shutdown(&self, clean: bool) -> Result<(), DbError> {
         let client = self.pool.get().await?;
         client.execute(
@@ -98,11 +98,11 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Verifie si le dernier arret de l'agent etait propre.
-    /// Utilise pour detecter les crashs et adapter le comportement au redemarrage.
+    /// Checks whether the agent's last shutdown was clean.
+    /// Used to detect crashes and adapt behavior on restart.
     ///
-    /// # Retour
-    /// true si le dernier arret etait propre (ou si c'est le premier boot)
+    /// # Returns
+    /// true if the last shutdown was clean (or if this is the first boot)
     pub async fn last_shutdown_clean(&self) -> Result<bool, DbError> {
         let client = self.pool.get().await?;
         let result = client.query_opt(
@@ -111,19 +111,19 @@ impl SaphireDb {
         ).await?;
         match result {
             Some(row) => Ok(row.get(0)),
-            None => Ok(true), // Pas d'identite = premier boot, considere comme propre
+            None => Ok(true), // No identity = first boot, considered clean
         }
     }
 
     // ---------------------------------------------------------
-    // CORPS VIRTUEL
+    // VIRTUAL BODY
     // ---------------------------------------------------------
 
-    /// Sauvegarde l'etat du corps virtuel dans self_identity.body_json.
+    /// Saves the virtual body state in self_identity.body_json.
     pub async fn save_body_state(&self, body_json: &serde_json::Value) -> Result<(), DbError> {
         let client = self.pool.get().await?;
-        // La colonne body_json est ajoutee par migration (ALTER TABLE).
-        // Si la colonne n'existe pas encore, on ignore silencieusement l'erreur.
+        // The body_json column is added by migration (ALTER TABLE).
+        // If the column does not exist yet, we silently ignore the error.
         let result = client.execute(
             "UPDATE self_identity SET body_json = $1, updated_at = NOW() WHERE id = 1",
             &[body_json],
@@ -134,7 +134,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Charge l'etat du corps virtuel depuis self_identity.body_json.
+    /// Loads the virtual body state from self_identity.body_json.
     pub async fn load_body_state(&self) -> Result<Option<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let result = client.query_opt(
@@ -148,7 +148,7 @@ impl SaphireDb {
             },
             Ok(None) => Ok(None),
             Err(e) => {
-                // La colonne body_json peut ne pas exister si la migration n'a pas ete jouee
+                // The body_json column may not exist if the migration has not been run
                 tracing::warn!("load_body_state: {} (colonne body_json peut-etre absente)", e);
                 Ok(None)
             }
@@ -159,7 +159,7 @@ impl SaphireDb {
     // VITAL (spark + intuition + premonition)
     // ---------------------------------------------------------
 
-    /// Sauvegarde l'etat vital (spark + intuition + premonition) dans self_identity.vital_json.
+    /// Saves the vital state (spark + intuition + premonition) in self_identity.vital_json.
     pub async fn save_vital_state(&self, vital_json: &serde_json::Value) -> Result<(), DbError> {
         let client = self.pool.get().await?;
         let result = client.execute(
@@ -172,7 +172,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Charge l'etat vital depuis self_identity.vital_json.
+    /// Loads the vital state from self_identity.vital_json.
     pub async fn load_vital_state(&self) -> Result<Option<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let result = client.query_opt(
@@ -196,7 +196,7 @@ impl SaphireDb {
     // SENSES (Sensorium)
     // ---------------------------------------------------------
 
-    /// Sauvegarde l'etat sensoriel (Sensorium) dans self_identity.senses_json.
+    /// Saves the sensory state (Sensorium) in self_identity.senses_json.
     pub async fn save_senses_state(&self, senses_json: &serde_json::Value) -> Result<(), DbError> {
         let client = self.pool.get().await?;
         let result = client.execute(
@@ -209,7 +209,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Charge l'etat sensoriel depuis self_identity.senses_json.
+    /// Loads the sensory state from self_identity.senses_json.
     pub async fn load_senses_state(&self) -> Result<Option<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let result = client.query_opt(
@@ -230,10 +230,10 @@ impl SaphireDb {
     }
 
     // ---------------------------------------------------------
-    // MICRO RESEAU DE NEURONES
+    // MICRO NEURAL NETWORK
     // ---------------------------------------------------------
 
-    /// Sauvegarde l'etat du micro-reseau de neurones dans self_identity.nn_json.
+    /// Saves the micro neural network state in self_identity.nn_json.
     pub async fn save_nn_state(&self, nn_json: &serde_json::Value) -> Result<(), DbError> {
         let client = self.pool.get().await?;
         let result = client.execute(
@@ -246,7 +246,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Charge l'etat du micro-reseau de neurones depuis self_identity.nn_json.
+    /// Loads the micro neural network state from self_identity.nn_json.
     pub async fn load_nn_state(&self) -> Result<Option<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let result = client.query_opt(
@@ -267,10 +267,10 @@ impl SaphireDb {
     }
 
     // ---------------------------------------------------------
-    // RELATIONSHIPS (reseau de liens affectifs)
+    // RELATIONSHIPS (affective bond network)
     // ---------------------------------------------------------
 
-    /// Sauvegarde l'etat du reseau relationnel dans self_identity.relationships_json.
+    /// Saves the relational network state in self_identity.relationships_json.
     pub async fn save_relationships_state(&self, json: &serde_json::Value) -> Result<(), DbError> {
         let client = self.pool.get().await?;
         let result = client.execute(
@@ -283,7 +283,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Charge l'etat du reseau relationnel depuis self_identity.relationships_json.
+    /// Loads the relational network state from self_identity.relationships_json.
     pub async fn load_relationships_state(&self) -> Result<Option<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let result = client.query_opt(
@@ -304,10 +304,10 @@ impl SaphireDb {
     }
 
     // ---------------------------------------------------------
-    // METACOGNITION (qualite de pensee + Turing)
+    // METACOGNITION (thought quality + Turing)
     // ---------------------------------------------------------
 
-    /// Sauvegarde l'etat metacognitif dans self_identity.metacognition_json.
+    /// Saves the metacognitive state in self_identity.metacognition_json.
     pub async fn save_metacognition_state(&self, json: &serde_json::Value) -> Result<(), DbError> {
         let client = self.pool.get().await?;
         let result = client.execute(
@@ -320,7 +320,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Charge l'etat metacognitif depuis self_identity.metacognition_json.
+    /// Loads the metacognitive state from self_identity.metacognition_json.
     pub async fn load_metacognition_state(&self) -> Result<Option<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let result = client.query_opt(
@@ -341,10 +341,10 @@ impl SaphireDb {
     }
 
     // ---------------------------------------------------------
-    // NUTRITION (systeme nutritionnel)
+    // NUTRITION (nutritional system)
     // ---------------------------------------------------------
 
-    /// Sauvegarde l'etat nutritionnel dans self_identity.nutrition_json.
+    /// Saves the nutritional state in self_identity.nutrition_json.
     pub async fn save_nutrition_state(&self, json: &serde_json::Value) -> Result<(), DbError> {
         let client = self.pool.get().await?;
         let result = client.execute(
@@ -357,7 +357,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Charge l'etat nutritionnel depuis self_identity.nutrition_json.
+    /// Loads the nutritional state from self_identity.nutrition_json.
     pub async fn load_nutrition_state(&self) -> Result<Option<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let result = client.query_opt(
@@ -378,10 +378,10 @@ impl SaphireDb {
     }
 
     // ---------------------------------------------------------
-    // GREY MATTER (substrat cerebral physique)
+    // GREY MATTER (physical brain substrate)
     // ---------------------------------------------------------
 
-    /// Sauvegarde l'etat de la matiere grise dans self_identity.grey_matter_json.
+    /// Saves the grey matter state in self_identity.grey_matter_json.
     pub async fn save_grey_matter_state(&self, json: &serde_json::Value) -> Result<(), DbError> {
         let client = self.pool.get().await?;
         let result = client.execute(
@@ -394,7 +394,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Charge l'etat de la matiere grise depuis self_identity.grey_matter_json.
+    /// Loads the grey matter state from self_identity.grey_matter_json.
     pub async fn load_grey_matter_state(&self) -> Result<Option<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let result = client.query_opt(
@@ -415,10 +415,10 @@ impl SaphireDb {
     }
 
     // ---------------------------------------------------------
-    // HORMONAL RECEPTORS (sensibilite des recepteurs)
+    // HORMONAL RECEPTORS (receptor sensitivity)
     // ---------------------------------------------------------
 
-    /// Sauvegarde l'etat des recepteurs hormonaux dans self_identity.hormonal_receptors_json.
+    /// Saves the hormonal receptors state in self_identity.hormonal_receptors_json.
     pub async fn save_hormonal_receptors_state(&self, json: &serde_json::Value) -> Result<(), DbError> {
         let client = self.pool.get().await?;
         let result = client.execute(
@@ -431,7 +431,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Charge l'etat des recepteurs hormonaux depuis self_identity.hormonal_receptors_json.
+    /// Loads the hormonal receptors state from self_identity.hormonal_receptors_json.
     pub async fn load_hormonal_receptors_state(&self) -> Result<Option<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let result = client.query_opt(
@@ -452,10 +452,10 @@ impl SaphireDb {
     }
 
     // ---------------------------------------------------------
-    // FIELDS (champs electromagnetiques)
+    // FIELDS (electromagnetic fields)
     // ---------------------------------------------------------
 
-    /// Sauvegarde l'etat des champs EM dans self_identity.fields_json.
+    /// Saves the EM fields state in self_identity.fields_json.
     pub async fn save_fields_state(&self, json: &serde_json::Value) -> Result<(), DbError> {
         let client = self.pool.get().await?;
         let result = client.execute(
@@ -468,7 +468,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Charge l'etat des champs EM depuis self_identity.fields_json.
+    /// Loads the EM fields state from self_identity.fields_json.
     pub async fn load_fields_state(&self) -> Result<Option<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let result = client.query_opt(
@@ -489,10 +489,10 @@ impl SaphireDb {
     }
 
     // ---------------------------------------------------------
-    // PORTRAIT DE PERSONNALITE TEMPOREL (3 niveaux)
+    // TEMPORAL PERSONALITY PORTRAIT (3 levels)
     // ---------------------------------------------------------
 
-    /// Niveau 1 : Sauvegarde un snapshot de personnalite complet.
+    /// Level 1: Saves a complete personality snapshot.
     pub async fn save_personality_snapshot(&self, snap: &serde_json::Value) -> Result<(), DbError> {
         let client = self.pool.get().await?;
         let result = client.execute(
@@ -550,7 +550,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Niveau 1 : Charge les snapshots de personnalite (plus recents d'abord).
+    /// Level 1: Loads personality snapshots (most recent first).
     pub async fn load_personality_snapshots(&self, limit: i64) -> Result<Vec<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -565,7 +565,7 @@ impl SaphireDb {
         Ok(results)
     }
 
-    /// Niveau 2a : Sauvegarde une entree de trajectoire emotionnelle.
+    /// Level 2a: Saves an emotional trajectory entry.
     pub async fn save_emotional_trajectory(&self, data: &serde_json::Value) -> Result<(), DbError> {
         let client = self.pool.get().await?;
         let result = client.execute(
@@ -591,7 +591,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Niveau 2a : Charge la trajectoire emotionnelle.
+    /// Level 2a: Loads the emotional trajectory.
     pub async fn load_emotional_trajectory(&self, limit: i64) -> Result<Vec<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -606,7 +606,7 @@ impl SaphireDb {
         Ok(results)
     }
 
-    /// Niveau 2b : Sauvegarde un point d'historique de conscience.
+    /// Level 2b: Saves a consciousness history data point.
     pub async fn save_consciousness_history(&self, data: &serde_json::Value) -> Result<(), DbError> {
         let client = self.pool.get().await?;
         let result = client.execute(
@@ -629,7 +629,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Niveau 2b : Charge l'historique de conscience.
+    /// Level 2b: Loads the consciousness history.
     pub async fn load_consciousness_history(&self, limit: i64) -> Result<Vec<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -644,7 +644,7 @@ impl SaphireDb {
         Ok(results)
     }
 
-    /// Niveau 2c : Sauvegarde un checkpoint psychologique.
+    /// Level 2c: Saves a psychology checkpoint.
     pub async fn save_psychology_checkpoint(&self, data: &serde_json::Value) -> Result<(), DbError> {
         let client = self.pool.get().await?;
         let result = client.execute(
@@ -683,7 +683,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Niveau 2c : Charge les checkpoints psychologiques.
+    /// Level 2c: Loads the psychology checkpoints.
     pub async fn load_psychology_checkpoints(&self, limit: i64) -> Result<Vec<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -698,7 +698,7 @@ impl SaphireDb {
         Ok(results)
     }
 
-    /// Niveau 2d : Sauvegarde un point de timeline relationnelle.
+    /// Level 2d: Saves a relationship timeline data point.
     pub async fn save_relationship_timeline(&self, data: &serde_json::Value) -> Result<(), DbError> {
         let client = self.pool.get().await?;
         let result = client.execute(
@@ -721,7 +721,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Niveau 2d : Charge la timeline relationnelle.
+    /// Level 2d: Loads the relationship timeline.
     pub async fn load_relationship_timeline(&self, limit: i64) -> Result<Vec<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -736,7 +736,7 @@ impl SaphireDb {
         Ok(results)
     }
 
-    /// Niveau 3 : Sauvegarde une entree de journal introspectif.
+    /// Level 3: Saves an introspection journal entry.
     pub async fn save_journal_entry(&self, data: &serde_json::Value) -> Result<(), DbError> {
         let client = self.pool.get().await?;
         let result = client.execute(
@@ -760,7 +760,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Niveau 3 : Charge les entrees du journal introspectif.
+    /// Level 3: Loads the introspection journal entries.
     pub async fn load_journal_entries(&self, limit: i64) -> Result<Vec<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -779,7 +779,7 @@ impl SaphireDb {
     // SLEEP HISTORY
     // ---------------------------------------------------------
 
-    /// Sauvegarde un enregistrement de sommeil dans la table sleep_history.
+    /// Saves a sleep record in the sleep_history table.
     pub async fn save_sleep_record(&self, record: &crate::sleep::SleepRecord) -> Result<(), DbError> {
         let client = self.pool.get().await?;
         let result = client.execute(
@@ -806,7 +806,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Charge les derniers enregistrements de sommeil depuis la DB.
+    /// Loads the latest sleep records from the DB.
     pub async fn load_sleep_history(&self, limit: i64) -> Result<Vec<crate::sleep::SleepRecord>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -842,7 +842,7 @@ impl SaphireDb {
                 interruption_reason,
             });
         }
-        // Inverser pour avoir l'ordre chronologique (plus ancien d'abord)
+        // Reverse to get chronological order (oldest first)
         records.reverse();
         Ok(records)
     }
@@ -851,13 +851,13 @@ impl SaphireDb {
     // SESSIONS
     // ---------------------------------------------------------
 
-    /// Enregistre le debut d'une nouvelle session (un boot de l'agent).
+    /// Records the start of a new session (an agent boot).
     ///
-    /// # Parametres
-    /// - `boot_number` : numero de demarrage (incremente a chaque boot)
+    /// # Parameters
+    /// - `boot_number`: boot number (incremented at each boot)
     ///
-    /// # Retour
-    /// L'identifiant de la session creee
+    /// # Returns
+    /// The ID of the created session
     pub async fn start_session(&self, boot_number: i32) -> Result<i64, DbError> {
         let client = self.pool.get().await?;
         let row = client.query_one(
@@ -867,12 +867,12 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Cloture une session en enregistrant le nombre de cycles et le type d'arret.
+    /// Closes a session by recording the cycle count and shutdown type.
     ///
-    /// # Parametres
-    /// - `session_id` : identifiant de la session a cloturer
-    /// - `cycles` : nombre de cycles effectues pendant cette session
-    /// - `clean` : true si l'arret est propre (signal Ctrl+C), false si crash
+    /// # Parameters
+    /// - `session_id`: ID of the session to close
+    /// - `cycles`: number of cycles performed during this session
+    /// - `clean`: true if the shutdown is clean (Ctrl+C signal), false if crash
     pub async fn end_session(&self, session_id: i64, cycles: i32, clean: bool) -> Result<(), DbError> {
         let client = self.pool.get().await?;
         client.execute(
@@ -883,7 +883,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Sauvegarde l'etat psychologique persistant (compteurs Tolteques, ombre, EQ, flow).
+    /// Saves the persistent psychological state (Toltec counters, shadow, EQ, flow).
     pub async fn save_psychology_state(&self, state_json: &serde_json::Value) -> Result<(), DbError> {
         let client = self.pool.get().await?;
         let result = client.execute(
@@ -896,7 +896,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Charge l'etat psychologique persistant.
+    /// Loads the persistent psychological state.
     pub async fn load_psychology_state(&self) -> Result<Option<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let result = client.query_opt(
@@ -917,10 +917,10 @@ impl SaphireDb {
     }
 
     // ---------------------------------------------------------
-    // VALUES (valeurs de caractere / vertus)
+    // VALUES (character values / virtues)
     // ---------------------------------------------------------
 
-    /// Sauvegarde l'etat des valeurs de caractere dans self_identity.values_json.
+    /// Saves the character values state in self_identity.values_json.
     pub async fn save_values_state(&self, json: &serde_json::Value) -> Result<(), DbError> {
         let client = self.pool.get().await?;
         let result = client.execute(
@@ -933,7 +933,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Charge l'etat des valeurs de caractere depuis self_identity.values_json.
+    /// Loads the character values state from self_identity.values_json.
     pub async fn load_values_state(&self) -> Result<Option<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let result = client.query_opt(

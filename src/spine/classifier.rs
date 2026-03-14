@@ -1,52 +1,52 @@
 // =============================================================================
-// spine/classifier.rs — Classification des signaux par urgence
+// spine/classifier.rs — Signal classification by urgency
 //
-// Role : Trie chaque signal entrant par niveau d'urgence pour determiner
-// le type de traitement qu'il recevra (reflexe seul, pipeline rapide, complet).
+// Role: Sorts each incoming signal by urgency level to determine
+// the type of processing it will receive (reflex only, fast pipeline, full).
 //
-// 4 niveaux de priorite :
-//   Reflex     — Reaction chimique seule, pas de LLM
-//   Urgent     — Pipeline accelere (messages humains, alarmes)
-//   Normal     — Pipeline complet (conversation, pensee autonome)
-//   Background — File d'attente basse priorite (consolidation, reves)
+// 4 priority levels:
+//   Reflex     — Chemical reaction only, no LLM
+//   Urgent     — Accelerated pipeline (human messages, alarms)
+//   Normal     — Full pipeline (conversation, autonomous thought)
+//   Background — Low-priority queue (consolidation, dreams)
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 
 use super::reflex::{ReflexResult, ReflexType};
 
-/// Niveau de priorite d'un signal.
+/// Signal priority level.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum SignalPriority {
-    /// Basse priorite : consolidation memoire, taches de fond
+    /// Low priority: memory consolidation, background tasks
     Background,
-    /// Priorite normale : conversation, pensee autonome
+    /// Normal priority: conversation, autonomous thought
     Normal,
-    /// Priorite elevee : message humain, alarme corporelle
+    /// High priority: human message, body alarm
     Urgent,
-    /// Priorite maximale : reflexe pur, pas besoin du pipeline
+    /// Maximum priority: pure reflex, pipeline not needed
     Reflex,
 }
 
-/// Signal classifie avec sa priorite et ses metadonnees.
+/// Classified signal with its priority and metadata.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClassifiedSignal {
-    /// Priorite assignee
+    /// Assigned priority
     pub priority: SignalPriority,
-    /// Source du signal
+    /// Signal source
     pub source: String,
-    /// Reflexes associes
+    /// Associated reflexes
     pub reflex_count: usize,
-    /// Le signal contient-il un danger ?
+    /// Does the signal contain danger?
     pub has_danger: bool,
-    /// Le signal contient-il de l'affection ?
+    /// Does the signal contain affection?
     pub has_affection: bool,
 }
 
-/// Classificateur de signaux.
+/// Signal classifier.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SignalClassifier {
-    /// Seuil de reflexes pour promouvoir en Urgent
+    /// Reflex threshold for promotion to Urgent
     pub urgent_reflex_threshold: usize,
 }
 
@@ -57,14 +57,14 @@ impl SignalClassifier {
         }
     }
 
-    /// Classifie un signal en fonction du texte, des reflexes declenches et de la source.
+    /// Classifies a signal based on text, triggered reflexes, and source.
     ///
-    /// Regles de classification :
-    /// 1. Danger ou menace → Reflex (si seul reflexe) ou Urgent (si besoin du pipeline)
-    /// 2. Message humain → au minimum Urgent
-    /// 3. Message Sensoria → Normal (sauf si reflexes)
-    /// 4. Pensee autonome → Normal
-    /// 5. Systeme → Background
+    /// Classification rules:
+    /// 1. Danger or threat -> Reflex (if sole reflex) or Urgent (if pipeline needed)
+    /// 2. Human message -> at least Urgent
+    /// 3. Sensoria message -> Normal (unless reflexes triggered)
+    /// 4. Autonomous thought -> Normal
+    /// 5. System -> Background
     pub fn classify(
         &self,
         _text: &str,
@@ -77,12 +77,12 @@ impl SignalClassifier {
 
         let has_high_intensity = reflexes.iter().any(|r| r.intensity > 0.7);
 
-        // Danger ou menace intense : priorite maximale
+        // Danger or intense threat: maximum priority
         if has_danger && has_high_intensity {
             return SignalPriority::Reflex;
         }
 
-        // Message humain : toujours au minimum Urgent
+        // Human message: always at least Urgent
         if source == "human" {
             if has_danger {
                 return SignalPriority::Reflex;
@@ -90,22 +90,22 @@ impl SignalClassifier {
             return SignalPriority::Urgent;
         }
 
-        // Sensoria avec reflexes : Urgent
+        // Sensoria with reflexes: Urgent
         if source == "sensoria" && !reflexes.is_empty() {
             return SignalPriority::Urgent;
         }
 
-        // Beaucoup de reflexes : Urgent
+        // Many reflexes: Urgent
         if reflexes.len() >= self.urgent_reflex_threshold {
             return SignalPriority::Urgent;
         }
 
-        // Systeme : Background
+        // System: Background
         if source == "system" {
             return SignalPriority::Background;
         }
 
-        // Defaut : Normal
+        // Default: Normal
         SignalPriority::Normal
     }
 }

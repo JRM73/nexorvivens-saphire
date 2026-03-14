@@ -1,8 +1,8 @@
 // =============================================================================
-// api/logs.rs — Handlers de logs, traces et historique LLM
+// api/logs.rs — Log, trace and LLM history handlers
 //
-// Role : Endpoints pour les logs (liste, detail, export), les traces
-// cognitives (par cycle, par session) et l'historique des requetes LLM.
+// Role: Endpoints for logs (list, detail, export), cognitive traces
+// (by cycle, by session) and LLM request history.
 // =============================================================================
 
 use std::collections::HashMap;
@@ -11,7 +11,7 @@ use axum::response::IntoResponse;
 
 use super::state::AppState;
 
-/// GET /api/logs — Liste les logs avec filtrage optionnel.
+/// GET /api/logs — List logs with optional filtering.
 pub async fn api_get_logs(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -30,7 +30,7 @@ pub async fn api_get_logs(
     }
 }
 
-/// GET /api/logs/:id — Recupere un log par ID.
+/// GET /api/logs/:id — Retrieve a log by ID.
 pub async fn api_get_log_by_id(
     State(state): State<AppState>,
     axum::extract::Path(id): axum::extract::Path<i64>,
@@ -46,7 +46,7 @@ pub async fn api_get_log_by_id(
     }
 }
 
-/// GET /api/logs/export — Exporte les logs en JSON.
+/// GET /api/logs/export — Export logs as JSON.
 pub async fn api_export_logs(State(state): State<AppState>) -> impl IntoResponse {
     if let Some(ref logs_db) = state.logs_db {
         match logs_db.export_logs(10000).await {
@@ -58,20 +58,20 @@ pub async fn api_export_logs(State(state): State<AppState>) -> impl IntoResponse
     }
 }
 
-/// GET /api/trace/:cycle — Recupere la trace cognitive d'un cycle specifique.
+/// GET /api/trace/:cycle — Retrieve the cognitive trace of a specific cycle.
 ///
-/// Parametres :
-///   - :cycle (path) : numero du cycle cognitif a recuperer
-///   - ?session_id=N (query, optionnel) : filtre par session
+/// Parameters:
+///  - :cycle (path): cognitive cycle number to retrieve
+///  - ?session_id=N (query, optional): filter by session
 ///
-/// Comportement :
-///   - Si session_id est fourni : utilise get_trace_by_cycle_and_session()
-///     pour cibler exactement la bonne trace (evite les collisions de cycles
-///     entre sessions differentes)
-///   - Si session_id est absent : utilise get_trace_by_cycle() qui retourne
-///     la trace la plus recente pour ce cycle (toutes sessions confondues)
+/// Behavior:
+///  - If session_id is provided: uses get_trace_by_cycle_and_session()
+///    to target the exact trace (avoids cycle collisions between
+///    different sessions)
+///  - If session_id is absent: uses get_trace_by_cycle() which returns
+///    the most recent trace for that cycle (across all sessions)
 ///
-/// Retourne : JSON de la trace complete (19 champs JSONB) ou {"error": ...}
+/// Returns: JSON of the complete trace (19 JSONB fields) or {"error": ...}
 pub async fn api_get_trace(
     State(state): State<AppState>,
     axum::extract::Path(cycle): axum::extract::Path<i64>,
@@ -93,21 +93,21 @@ pub async fn api_get_trace(
     }
 }
 
-/// GET /api/traces — Liste les traces cognitives avec filtres optionnels.
+/// GET /api/traces — List cognitive traces with optional filters.
 ///
-/// Parametres (query string, tous optionnels) :
-///   - session_id=N : filtrer par session (recommande)
-///   - source_type=Human|Autonomous : filtrer par type de source
-///     * "Human" : traces issues d'un message utilisateur (contient NLP du message)
-///     * "Autonomous" : traces issues de la pensee autonome (contient NLP de la pensee)
-///   - limit=50 : nombre max de traces retournees (defaut 50)
+/// Parameters (query string, all optional):
+///  - session_id=N: filter by session (recommended)
+///  - source_type=Human|Autonomous: filter by source type
+///  * "Human": traces from a user message (contains NLP of the message)
+///  * "Autonomous": traces from autonomous thought (contains NLP of the thought)
+///  - limit=50: max number of traces returned (default 50)
 ///
-/// Comportement :
-///   - Si session_id est fourni : utilise traces_by_session() avec filtre source_type
-///   - Si session_id est absent : utilise recent_traces() (sans filtre source_type)
+/// Behavior:
+///  - If session_id is provided: uses traces_by_session() with source_type filter
+///  - If session_id is absent: uses recent_traces() (without source_type filter)
 ///
-/// Retourne : {"data": [traces...]} ou {"error": ...}
-/// Utilise par le dashboard pour le listing cliquable des traces
+/// Returns: {"data": [traces...]} or {"error": ...}
+/// Used by the dashboard for the clickable trace listing
 pub async fn api_list_traces(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -130,10 +130,10 @@ pub async fn api_list_traces(
     }
 }
 
-/// GET /api/trace/last — Trace cognitive complete du dernier cycle.
+/// GET /api/trace/last — Complete cognitive trace of the last cycle.
 ///
-/// Retourne la trace la plus recente (toutes les donnees des 24 etapes du pipeline).
-/// Parametres optionnels : ?source_type=Autonomous|Human
+/// Returns the most recent trace (all data from the 24 pipeline stages).
+/// Optional parameters: ?source_type=Autonomous|Human
 pub async fn api_get_trace_last(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -158,7 +158,7 @@ pub async fn api_get_trace_last(
     }
 }
 
-/// GET /api/llm/history — Historique LLM avec pagination.
+/// GET /api/llm/history — LLM history with pagination.
 pub async fn api_llm_history(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -175,7 +175,7 @@ pub async fn api_llm_history(
     }
 }
 
-/// GET /api/llm/history/:id — Detail d'une requete LLM.
+/// GET /api/llm/history/:id — Detail of an LLM request.
 pub async fn api_llm_history_by_id(
     State(state): State<AppState>,
     axum::extract::Path(id): axum::extract::Path<i64>,

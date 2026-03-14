@@ -1,31 +1,31 @@
 // =============================================================================
-// steering.rs — Steering Behaviors pour la navigation emotionnelle
+// steering.rs — Steering Behaviors for emotional navigation
 //
-// Role : Applique les Steering Behaviors (Craig Reynolds) dans l'espace
-//        valence-arousal pour guider la regulation emotionnelle de Saphire.
+// Role: Applies Steering Behaviors (Craig Reynolds) in the valence-arousal
+//       space to guide Saphire's emotional regulation.
 //
-// Comportements disponibles :
-//   - Seek : tendre vers un etat emotionnel cible
-//   - Flee : fuir un etat emotionnel negatif
-//   - Wander : exploration aleatoire de l'espace emotionnel
-//   - Arrive : deceleation progressive en approchant la cible
+// Available behaviors:
+//   - Seek: tend toward a target emotional state
+//   - Flee: flee from a negative emotional state
+//   - Wander: random exploration of emotional space
+//   - Arrive: progressive deceleration when approaching the target
 //
-// L'espace emotionnel est 2D : (valence [-1,+1], arousal [0,1])
-// Les forces calculees sont traduites en ajustements chimiques.
+// The emotional space is 2D: (valence [-1,+1], arousal [0,1])
+// The computed forces are translated into chemistry adjustments.
 //
-// Place dans l'architecture :
-//   Consulte dans le pipeline apres le calcul emotionnel pour produire
-//   des forces de regulation qui modifient la chimie vers l'equilibre.
+// Place in the architecture:
+//   Consulted in the pipeline after emotional computation to produce
+//   regulation forces that modify chemistry toward equilibrium.
 // =============================================================================
 
 use serde::{Serialize, Deserialize};
 
-/// Position dans l'espace emotionnel 2D (valence, arousal).
+/// Position in 2D emotional space (valence, arousal).
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct EmotionalPos {
-    /// Valence [-1, +1] : plaisant ↔ deplaisant
+    /// Valence [-1, +1]: pleasant <-> unpleasant
     pub valence: f64,
-    /// Arousal [0, 1] : calme ↔ active
+    /// Arousal [0, 1]: calm <-> activated
     pub arousal: f64,
 }
 
@@ -37,7 +37,7 @@ impl EmotionalPos {
         }
     }
 
-    /// Distance euclidienne vers une autre position.
+    /// Euclidean distance to another position.
     pub fn distance_to(&self, other: &EmotionalPos) -> f64 {
         let dv = self.valence - other.valence;
         let da = self.arousal - other.arousal;
@@ -45,12 +45,12 @@ impl EmotionalPos {
     }
 }
 
-/// Force directrice 2D dans l'espace emotionnel.
+/// 2D steering force in emotional space.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct SteeringForce {
-    /// Composante valence (positif = vers plaisir, negatif = vers deplaisir)
+    /// Valence component (positive = toward pleasure, negative = toward displeasure)
     pub dv: f64,
-    /// Composante arousal (positif = activation, negatif = calme)
+    /// Arousal component (positive = activation, negative = calm)
     pub da: f64,
 }
 
@@ -61,7 +61,7 @@ impl SteeringForce {
         (self.dv * self.dv + self.da * self.da).sqrt()
     }
 
-    /// Additionne deux forces.
+    /// Adds two forces.
     pub fn add(&self, other: &SteeringForce) -> SteeringForce {
         SteeringForce {
             dv: self.dv + other.dv,
@@ -69,7 +69,7 @@ impl SteeringForce {
         }
     }
 
-    /// Limite la magnitude de la force.
+    /// Limits the force magnitude.
     pub fn truncate(&self, max: f64) -> SteeringForce {
         let mag = self.magnitude();
         if mag > max && mag > 1e-10 {
@@ -83,18 +83,18 @@ impl SteeringForce {
     }
 }
 
-/// Parametres des steering behaviors.
+/// Steering behavior parameters.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SteeringParams {
-    /// Force maximale appliquee par cycle
+    /// Maximum force applied per cycle
     pub max_force: f64,
-    /// Rayon de ralentissement pour Arrive
+    /// Slowdown radius for Arrive
     pub arrive_radius: f64,
-    /// Rayon de fuite pour Flee
+    /// Flee radius for Flee
     pub flee_radius: f64,
-    /// Amplitude du Wander
+    /// Wander amplitude
     pub wander_strength: f64,
-    /// Cible d'equilibre emotionnel (etat souhaite)
+    /// Emotional equilibrium target (desired state)
     pub equilibrium: EmotionalPos,
 }
 
@@ -105,13 +105,13 @@ impl Default for SteeringParams {
             arrive_radius: 0.3,
             flee_radius: 0.4,
             wander_strength: 0.02,
-            // Equilibre : legerement positif, arousal modere
+            // Equilibrium: slightly positive, moderate arousal
             equilibrium: EmotionalPos::new(0.2, 0.35),
         }
     }
 }
 
-/// Seek : force vers une position cible.
+/// Seek: force toward a target position.
 pub fn seek(current: &EmotionalPos, target: &EmotionalPos) -> SteeringForce {
     SteeringForce {
         dv: target.valence - current.valence,
@@ -119,7 +119,7 @@ pub fn seek(current: &EmotionalPos, target: &EmotionalPos) -> SteeringForce {
     }
 }
 
-/// Flee : force eloignant d'une position (avec rayon de fuite).
+/// Flee: force away from a position (with flee radius).
 pub fn flee(current: &EmotionalPos, threat: &EmotionalPos, radius: f64) -> SteeringForce {
     let dist = current.distance_to(threat);
     if dist > radius || dist < 1e-10 {
@@ -132,14 +132,14 @@ pub fn flee(current: &EmotionalPos, threat: &EmotionalPos, radius: f64) -> Steer
     }
 }
 
-/// Arrive : seek avec deceleration progressive.
+/// Arrive: seek with progressive deceleration.
 pub fn arrive(current: &EmotionalPos, target: &EmotionalPos, radius: f64) -> SteeringForce {
     let dist = current.distance_to(target);
     if dist < 1e-10 {
         return SteeringForce::zero();
     }
     let speed_factor = if dist < radius {
-        dist / radius // Deceleration dans le rayon
+        dist / radius // Deceleration within the radius
     } else {
         1.0
     };
@@ -149,19 +149,19 @@ pub fn arrive(current: &EmotionalPos, target: &EmotionalPos, radius: f64) -> Ste
     }
 }
 
-/// Wander : mouvement aleatoire dans l'espace emotionnel.
-/// Utilise un compteur de cycle pour la pseudo-aleatoire.
+/// Wander: random movement in emotional space.
+/// Uses a cycle counter for pseudo-randomness.
 pub fn wander(cycle: u64, strength: f64) -> SteeringForce {
-    // Pseudo-aleatoire simple base sur le cycle
+    // Simple pseudo-random based on cycle
     let angle = ((cycle * 7919) % 360) as f64 * std::f64::consts::PI / 180.0;
     SteeringForce {
         dv: angle.cos() * strength,
-        da: angle.sin().abs() * strength * 0.5, // Arousal ne descend pas trop
+        da: angle.sin().abs() * strength * 0.5, // Arousal doesn't drop too much
     }
 }
 
-/// Moteur de steering complet : combine seek/flee/arrive/wander
-/// pour calculer la force de regulation emotionnelle.
+/// Complete steering engine: combines seek/flee/arrive/wander
+/// to compute the emotional regulation force.
 pub struct SteeringEngine {
     pub params: SteeringParams,
 }
@@ -171,25 +171,25 @@ impl SteeringEngine {
         Self { params }
     }
 
-    /// Calcule la force de regulation totale.
-    /// Combine :
-    ///   - Arrive vers l'equilibre (tendance naturelle)
-    ///   - Flee des zones de stress extreme (cortisol eleve)
-    ///   - Wander pour l'exploration emotionnelle
+    /// Computes the total regulation force.
+    /// Combines:
+    ///   - Arrive toward equilibrium (natural tendency)
+    ///   - Flee from extreme stress zones (high cortisol)
+    ///   - Wander for emotional exploration
     pub fn compute_regulation(
         &self,
         current: &EmotionalPos,
         cycle: u64,
         cortisol: f64,
     ) -> SteeringForce {
-        // Force principale : Arrive vers l'equilibre
+        // Main force: Arrive toward equilibrium
         let equilibrium_force = arrive(
             current,
             &self.params.equilibrium,
             self.params.arrive_radius,
         );
 
-        // Flee : fuir les zones de stress extreme
+        // Flee: escape extreme stress zones
         let stress_zone = EmotionalPos::new(-0.8, 0.9);
         let flee_force = if cortisol > 0.6 {
             flee(current, &stress_zone, self.params.flee_radius)
@@ -197,10 +197,10 @@ impl SteeringEngine {
             SteeringForce::zero()
         };
 
-        // Wander : exploration emotionnelle legere
+        // Wander: light emotional exploration
         let wander_force = wander(cycle, self.params.wander_strength);
 
-        // Combiner les forces avec poids
+        // Combine forces with weights
         let combined = equilibrium_force
             .add(&flee_force)
             .add(&wander_force)
@@ -209,9 +209,9 @@ impl SteeringEngine {
         combined
     }
 
-    /// Traduit la force emotionnelle en ajustements chimiques.
-    /// dv positif → boost serotonine/dopamine, baisse cortisol
-    /// da positif → boost noradrenaline/adrenaline
+    /// Translates the emotional force into chemistry adjustments.
+    /// Positive dv -> boosts serotonin/dopamine, lowers cortisol
+    /// Positive da -> boosts noradrenaline/adrenaline
     pub fn force_to_chemistry(&self, force: &SteeringForce) -> ChemistryAdjustment {
         ChemistryAdjustment {
             dopamine: force.dv * 0.3,
@@ -231,7 +231,7 @@ impl Default for SteeringEngine {
     }
 }
 
-/// Ajustements chimiques produits par le steering.
+/// Chemistry adjustments produced by steering.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChemistryAdjustment {
     pub dopamine: f64,
@@ -252,7 +252,7 @@ mod tests {
         let current = EmotionalPos::new(0.0, 0.5);
         let target = EmotionalPos::new(0.5, 0.5);
         let force = seek(&current, &target);
-        assert!(force.dv > 0.0, "Seek vers valence positive doit pousser dv > 0");
+        assert!(force.dv > 0.0, "Seek toward positive valence should push dv > 0");
     }
 
     #[test]
@@ -260,7 +260,7 @@ mod tests {
         let current = EmotionalPos::new(-0.5, 0.8);
         let threat = EmotionalPos::new(-0.6, 0.9);
         let force = flee(&current, &threat, 0.5);
-        assert!(force.magnitude() > 0.0, "Flee doit generer une force dans le rayon");
+        assert!(force.magnitude() > 0.0, "Flee should generate a force within radius");
     }
 
     #[test]
@@ -268,7 +268,7 @@ mod tests {
         let current = EmotionalPos::new(0.5, 0.3);
         let threat = EmotionalPos::new(-0.8, 0.9);
         let force = flee(&current, &threat, 0.3);
-        assert!(force.magnitude() < 0.001, "Flee ne doit pas agir hors du rayon");
+        assert!(force.magnitude() < 0.001, "Flee should not act outside radius");
     }
 
     #[test]
@@ -279,7 +279,7 @@ mod tests {
         let force_far = arrive(&far, &target, 0.3);
         let force_close = arrive(&close, &target, 0.3);
         assert!(force_far.magnitude() > force_close.magnitude(),
-            "Arrive doit decelerer pres de la cible");
+            "Arrive should decelerate near the target");
     }
 
     #[test]
@@ -287,7 +287,7 @@ mod tests {
         let engine = SteeringEngine::default();
         let pos = EmotionalPos::new(-0.5, 0.8);
         let force = engine.compute_regulation(&pos, 100, 0.7);
-        assert!(force.magnitude() > 0.0, "La regulation doit produire une force");
+        assert!(force.magnitude() > 0.0, "Regulation should produce a force");
     }
 
     #[test]
@@ -295,8 +295,8 @@ mod tests {
         let engine = SteeringEngine::default();
         let positive_force = SteeringForce { dv: 0.05, da: 0.02 };
         let adj = engine.force_to_chemistry(&positive_force);
-        assert!(adj.dopamine > 0.0, "Force positive doit booster dopamine");
-        assert!(adj.cortisol < 0.0, "Force positive doit reduire cortisol");
+        assert!(adj.dopamine > 0.0, "Positive force should boost dopamine");
+        assert!(adj.cortisol < 0.0, "Positive force should reduce cortisol");
     }
 
     #[test]

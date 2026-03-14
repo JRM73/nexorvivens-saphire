@@ -1,16 +1,15 @@
 // =============================================================================
 // api/needs.rs — Handlers besoins primaires (faim, soif)
 //
-// Role : Endpoints pour consulter l'etat des besoins primaires et declencher
-// manuellement les actions de manger/boire.
-// =============================================================================
+// Role: Endpoints for consulter l'state ofs besoins primaires et declencher
+// manually the eat/drink actions.// =============================================================================
 
 use axum::extract::State;
 use axum::response::IntoResponse;
 
 use super::state::AppState;
 
-/// GET /api/needs — Etat complet des besoins primaires.
+/// GET /api/needs — Etat complete of the needs primaires.
 pub async fn api_needs_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     axum::Json(agent.needs.to_status_json())
@@ -25,8 +24,7 @@ pub async fn api_needs_eat(State(state): State<AppState>) -> impl IntoResponse {
     let cycle = agent.cycle_count;
     let config = agent.config().needs.clone();
     let result = agent.needs.eat(cycle, &config);
-    // Appliquer le boost sur la physiologie
-    agent.body.physiology.glycemia = result.glycemia_target;
+    // Apply the boost to the physiology    agent.body.physiology.glycemia = result.glycemia_target;
     agent.chemistry.dopamine = (agent.chemistry.dopamine + result.dopamine_boost).min(1.0);
     axum::Json(serde_json::json!({
         "action": "eat",
@@ -46,8 +44,7 @@ pub async fn api_needs_drink(State(state): State<AppState>) -> impl IntoResponse
     let cycle = agent.cycle_count;
     let config = agent.config().needs.clone();
     let result = agent.needs.drink(cycle, &config);
-    // Appliquer le boost sur la physiologie
-    agent.body.physiology.hydration = result.hydration_target;
+    // Apply the boost to the physiology    agent.body.physiology.hydration = result.hydration_target;
     agent.chemistry.dopamine = (agent.chemistry.dopamine + result.dopamine_boost).min(1.0);
     axum::Json(serde_json::json!({
         "action": "drink",

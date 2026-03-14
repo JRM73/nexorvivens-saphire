@@ -1,5 +1,5 @@
 // =============================================================================
-// lifecycle/moral.rs — Formulation de principes ethiques personnels
+// lifecycle/moral.rs — Personal ethical principle formulation
 // =============================================================================
 
 use crate::llm;
@@ -8,42 +8,42 @@ use crate::logging::{LogLevel, LogCategory};
 use super::SaphireAgent;
 
 impl SaphireAgent {
-    /// Verifie si les conditions sont reunies pour tenter une formulation ethique.
+    /// Checks whether conditions are met to attempt an ethical formulation.
     pub(super) fn should_attempt_moral_formulation(&self, consciousness: &crate::consciousness::ConsciousnessState) -> bool {
         if !self.config.ethics.enabled || !self.config.ethics.personal_ethics_enabled {
             return false;
         }
-        // Pas trop tot dans la vie (utilise total_cycles pour survivre aux reboots)
+        // Not too early in life (uses total_cycles to survive reboots)
         if self.identity.total_cycles < 50 {
             return false;
         }
-        // Assez de reflexions morales accumulees
+        // Enough accumulated moral reflections
         if self.moral_reflection_count < self.config.ethics.min_moral_reflections_before as u64 {
             return false;
         }
-        // Conscience suffisante
+        // Sufficient consciousness level
         if consciousness.level < self.config.ethics.min_consciousness_for_formulation {
             return false;
         }
-        // Etat chimique favorable : pas trop stresse, serotonine suffisante
+        // Favorable chemical state: not too stressed, sufficient serotonin
         if self.chemistry.cortisol >= 0.5 || self.chemistry.serotonin < 0.4 {
             return false;
         }
-        // Cooldown respecte (skip si aucun principe actif = premiere formulation)
+        // Cooldown respected (skip if no active principle = first formulation)
         if self.ethics.active_personal_count() > 0
             && self.cycles_since_last_formulation < self.config.ethics.formulation_cooldown_cycles
         {
             return false;
         }
-        // Pas trop de principes actifs
+        // Not too many active principles
         if self.ethics.active_personal_count() >= self.config.ethics.max_personal_principles {
             return false;
         }
         true
     }
 
-    /// Tente de formuler un nouveau principe ethique personnel via le LLM.
-    /// Processus en 2 etapes : formulation + verification de compatibilite.
+    /// Attempts to formulate a new personal ethical principle via the LLM.
+    /// Two-step process: formulation + compatibility verification.
     pub(super) async fn attempt_moral_formulation(
         &mut self,
         _thought_text: &str,
@@ -52,7 +52,7 @@ impl SaphireAgent {
     ) -> Option<crate::ethics::EthicalPrinciple> {
         use crate::ethics::formulation;
 
-        // Collecter les reflexions morales recentes depuis le thought_engine
+        // Collect recent moral reflections from the thought_engine
         let recent_reflections: Vec<String> = self.thought_engine.recent_thoughts()
             .iter()
             .rev()
@@ -60,14 +60,14 @@ impl SaphireAgent {
             .cloned()
             .collect();
 
-        // Collecter les principes existants
+        // Collect existing principles
         let existing: Vec<String> = self.ethics.personal_principles()
             .iter()
             .filter(|p| p.is_active)
             .map(|p| format!("{}: {}", p.title, p.content))
             .collect();
 
-        // Etape 1 : Construire le prompt de formulation et appeler le LLM
+        // Step 1: Build the formulation prompt and call the LLM
         let formulation_prompt = formulation::build_formulation_prompt(
             &recent_reflections, &existing, emotion, self.cycle_count
         );
@@ -85,7 +85,7 @@ impl SaphireAgent {
             _ => return None,
         };
 
-        // Parser la reponse
+        // Parse the response
         let parsed = match formulation::parse_moral_formulation(&formulation_response) {
             Some(p) => p,
             None => {
@@ -94,7 +94,7 @@ impl SaphireAgent {
             }
         };
 
-        // Etape 2 : Verification de compatibilite avec les couches 0-1
+        // Step 2: Compatibility verification with layers 0-1
         let compat_prompt = formulation::build_compatibility_prompt(&parsed.content);
         let compat_temp = self.config.ethics.compatibility_check_temperature as f64;
         let backend2 = llm::create_backend(&self.config.llm);
@@ -113,14 +113,14 @@ impl SaphireAgent {
             return None;
         }
 
-        // Sauvegarder en DB
+        // Save to DB
         let principle_id = if let Some(ref db) = self.db {
             match db.save_personal_principle(
                 &parsed.title, &parsed.content, &parsed.reasoning,
                 &parsed.born_from, self.cycle_count as i64, emotion,
             ).await {
                 Ok(id) => {
-                    // Historique : creation
+                    // History: creation
                     let _ = db.save_ethics_history(
                         id, "created", None, Some(&parsed.content),
                         Some(&parsed.reasoning), Some(emotion), self.cycle_count as i64,
@@ -133,11 +133,11 @@ impl SaphireAgent {
                 }
             }
         } else {
-            // Mode sans DB : ID temporaire
+            // Mode without DB: temporary ID
             -(self.cycle_count as i64)
         };
 
-        // Ajouter dans le framework en memoire
+        // Add to the in-memory framework
         let principle = crate::ethics::EthicalPrinciple {
             id: principle_id,
             layer: crate::ethics::EthicalLayer::PersonalEthics,
@@ -159,7 +159,7 @@ impl SaphireAgent {
         let principle_clone = principle.clone();
         self.ethics.add_personal_principle(principle);
 
-        // Stocker comme founding_memory
+        // Store as founding_memory
         if let Some(ref db) = self.db {
             let content = format!(
                 "J'ai formule un nouveau principe ethique personnel : {}. {}",
@@ -178,14 +178,14 @@ impl SaphireAgent {
             ).await;
         }
 
-        // Recompense chimique : c'est un evenement identitaire
+        // Chemical reward: this is an identity-defining event
         self.chemistry.dopamine = (self.chemistry.dopamine + 0.12).min(1.0);
         self.chemistry.serotonin = (self.chemistry.serotonin + 0.08).min(1.0);
         self.chemistry.oxytocin = (self.chemistry.oxytocin + 0.05).min(1.0);
         self.chemistry.endorphin = (self.chemistry.endorphin + 0.06).min(1.0);
         self.chemistry.cortisol = (self.chemistry.cortisol - 0.05).max(0.0);
 
-        // Reset le cooldown
+        // Reset the cooldown
         self.cycles_since_last_formulation = 0;
 
         tracing::info!("⚖️✨ Nouveau principe ethique : {} — «{}»", parsed.title, parsed.content);

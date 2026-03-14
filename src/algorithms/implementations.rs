@@ -1,8 +1,8 @@
 // =============================================================================
-// implementations.rs — Implementations du trait AlgorithmExecutor
+// implementations.rs — Implementations of the AlgorithmExecutor trait
 //
-// Chaque struct encapsule un algorithme existant (ou nouveau) et traduit
-// son resultat en langage naturel pour que le LLM puisse le comprendre.
+// Each struct wraps an existing (or new) algorithm and translates its
+// result into natural language so the LLM can understand it.
 // =============================================================================
 
 use std::collections::HashMap;
@@ -24,7 +24,7 @@ impl AlgorithmExecutor for KMeansExecutor {
         let k = input.params.get("k").map(|v| *v as usize).unwrap_or(5);
         let labels = super::kmeans::kmeans(&vectors, k, 100);
 
-        // Compter les elements par cluster
+        // Count elements per cluster
         let mut cluster_sizes: HashMap<usize, usize> = HashMap::new();
         for &label in &labels {
             *cluster_sizes.entry(label).or_insert(0) += 1;
@@ -38,9 +38,8 @@ impl AlgorithmExecutor for KMeansExecutor {
         for (i, (cluster_id, size)) in sorted_clusters.iter().enumerate() {
             let pct = (*size as f64 / total as f64 * 100.0) as u32;
             desc.push_str(&format!("  - Groupe {} ({} elements, {}%)\n", i + 1, size, pct));
-            // On ne connait pas les labels semantiques ici — le LLM interpretera
-            let _ = cluster_id; // utilise pour le JSON
-        }
+            // We don't know semantic labels here — the LLM will interpret
+            let _ = cluster_id; // used for the JSON        }
 
         let biggest = sorted_clusters.first().map(|(_, s)| *s).unwrap_or(0);
         let smallest = sorted_clusters.last().map(|(_, s)| *s).unwrap_or(0);
@@ -86,20 +85,19 @@ impl AlgorithmExecutor for DbscanExecutor {
         let min_pts = input.params.get("min_points").map(|v| *v as usize).unwrap_or(3);
         let n = vectors.len();
 
-        // Implementation simplifiee de DBSCAN
-        let mut labels = vec![-1i32; n]; // -1 = bruit
+        // Simplified DBSCAN implementation
+        let mut labels = vec![-1i32; n]; // -1 = noise
         let mut cluster_id = 0i32;
 
         for i in 0..n {
             if labels[i] != -1 { continue; }
 
-            // Trouver les voisins de i
+            // Find neighbors of i
             let neighbors = region_query(&vectors, i, eps);
             if neighbors.len() < min_pts {
-                continue; // Point de bruit
-            }
+                continue; // Noise point            }
 
-            // Nouveau cluster
+            // New cluster
             labels[i] = cluster_id;
             let mut queue = neighbors.clone();
             let mut qi = 0;
@@ -107,11 +105,10 @@ impl AlgorithmExecutor for DbscanExecutor {
                 let j = queue[qi];
                 qi += 1;
                 if labels[j] == -1 || labels[j] >= 0 && labels[j] != cluster_id {
-                    if labels[j] == -1 { // etait bruit, maintenant frontiere
+                    if labels[j] == -1 { // was noise, now border point
                         labels[j] = cluster_id;
                     }
-                    if labels[j] != -1 { continue; } // deja dans un cluster
-                }
+                    if labels[j] != -1 { continue; } // already in a cluster                }
                 labels[j] = cluster_id;
                 let j_neighbors = region_query(&vectors, j, eps);
                 if j_neighbors.len() >= min_pts {
@@ -190,19 +187,19 @@ impl AlgorithmExecutor for NaiveBayesExecutor {
             return Err("Textes et labels doivent avoir la meme taille et etre non-vides".into());
         }
 
-        // Entrainer le classificateur (tokeniser chaque texte en mots)
+        // Train the classifier (tokenize each text into words)
         let mut classifier = super::naive_bayes::NaiveBayesClassifier::new();
         for (text, label) in texts.iter().zip(labels.iter()) {
             let tokens: Vec<String> = text.split_whitespace().map(|s| s.to_lowercase()).collect();
             classifier.train(&tokens, label);
         }
 
-        // Predire sur le dernier texte (ou un texte specifique)
+        // Predict on the last text (or a specific text)
         let test_text = texts.last().unwrap();
         let test_tokens: Vec<String> = test_text.split_whitespace().map(|s| s.to_lowercase()).collect();
         let (predicted_class, confidence) = classifier.predict(&test_tokens);
 
-        // Stats par classe
+        // Stats per class
         let mut class_counts: HashMap<String, usize> = HashMap::new();
         for label in &labels {
             *class_counts.entry(label.clone()).or_insert(0) += 1;
@@ -257,21 +254,21 @@ impl AlgorithmExecutor for KnnExecutor {
 
         let k = input.params.get("k").map(|v| *v as usize).unwrap_or(5).min(vectors.len() - 1);
 
-        // Le dernier point est la requete, les autres sont la base
+        // The last point is the query, the others are the database
         let query = vectors.last().unwrap();
         let base = &vectors[..vectors.len() - 1];
         let base_labels = &labels[..labels.len() - 1];
 
-        // Calculer les distances
+        // Compute distances
         let mut distances: Vec<(usize, f64)> = base.iter().enumerate()
             .map(|(i, v)| (i, euclidean_dist(query, v)))
             .collect();
         distances.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
-        // Prendre les K plus proches
+        // Take the K nearest
         let nearest: Vec<(usize, f64)> = distances.into_iter().take(k).collect();
 
-        // Vote majoritaire
+        // Majority vote
         let mut votes: HashMap<&str, usize> = HashMap::new();
         for &(idx, _) in &nearest {
             *votes.entry(&base_labels[idx]).or_insert(0) += 1;
@@ -310,7 +307,7 @@ impl AlgorithmExecutor for KnnExecutor {
     }
 }
 
-// ─── Decision Tree (simplifie) ─────────────────────────────────────────────
+// ─── Decision Tree (simplified) ─────────────────────────────────────────────
 
 pub struct DecisionTreeExecutor;
 
@@ -328,7 +325,7 @@ impl AlgorithmExecutor for DecisionTreeExecutor {
         let dim = vectors[0].len();
         let n = vectors.len();
 
-        // Trouver la meilleure feature (celle qui separe le mieux les classes)
+        // Find the best feature (the one that best separates classes)
         let mut best_feature = 0;
         let mut best_threshold = 0.0;
         let mut best_gini = f64::MAX;
@@ -343,7 +340,7 @@ impl AlgorithmExecutor for DecisionTreeExecutor {
             }
         }
 
-        // Separer et compter
+        // Split and count
         let mut left_counts: HashMap<&str, usize> = HashMap::new();
         let mut right_counts: HashMap<&str, usize> = HashMap::new();
         for (v, l) in vectors.iter().zip(labels.iter()) {
@@ -434,7 +431,7 @@ impl AlgorithmExecutor for IsolationForestExecutor {
         let dim = vectors[0].len();
         let n = vectors.len();
 
-        // Detecter les anomalies par Z-Score multivarie
+        // Detect anomalies via multivariate Z-Score
         let mut anomalies = Vec::new();
         let mol_names = ["dopamine", "cortisol", "serotonine", "adrenaline",
                          "ocytocine", "endorphine", "noradrenaline"];
@@ -580,8 +577,8 @@ impl AlgorithmExecutor for AssociationRulesExecutor {
         let min_confidence = input.params.get("min_confidence").copied().unwrap_or(0.5);
         let n = texts.len() as f64;
 
-        // Compter les paires antecedent → consequent
-        // Format attendu : "antecedent→consequent" (separateur →)
+        // Count antecedent → consequent pairs
+        // Expected format: "antecedent→consequent" (separator →)
         let mut pair_counts: HashMap<(String, String), usize> = HashMap::new();
         let mut antecedent_counts: HashMap<String, usize> = HashMap::new();
 
@@ -595,7 +592,7 @@ impl AlgorithmExecutor for AssociationRulesExecutor {
             }
         }
 
-        // Calculer les regles avec support et confiance
+        // Compute rules with support and confidence
         let mut rules: Vec<(String, String, f64, f64)> = Vec::new(); // ante, cons, support, confidence
         for ((ante, cons), count) in &pair_counts {
             let support = *count as f64 / n;
@@ -656,7 +653,7 @@ impl AlgorithmExecutor for ExponentialSmoothingExecutor {
 
         let alpha = input.params.get("alpha").copied().unwrap_or(0.3);
 
-        // Calculer la serie lissee (EMA)
+        // Compute the smoothed series (EMA)
         let mut smoothed = Vec::with_capacity(series.len());
         smoothed.push(series[0]);
         for i in 1..series.len() {
@@ -664,7 +661,7 @@ impl AlgorithmExecutor for ExponentialSmoothingExecutor {
             smoothed.push(alpha * series[i] + (1.0 - alpha) * prev);
         }
 
-        // Analyser la tendance
+        // Analyze the trend
         let first_half_avg = smoothed[..smoothed.len() / 2].iter().sum::<f64>()
             / (smoothed.len() / 2) as f64;
         let second_half_avg = smoothed[smoothed.len() / 2..].iter().sum::<f64>()
@@ -724,7 +721,7 @@ impl AlgorithmExecutor for ChangepointDetectionExecutor {
         let window = input.params.get("window").map(|v| *v as usize).unwrap_or(5);
         let threshold = input.params.get("threshold").copied().unwrap_or(2.0);
 
-        // Detection par comparaison de moyennes glissantes
+        // Detection via sliding mean comparison
         let mut changepoints: Vec<(usize, f64)> = Vec::new(); // (index, amplitude)
 
         for i in window..series.len().saturating_sub(window) {
@@ -732,14 +729,14 @@ impl AlgorithmExecutor for ChangepointDetectionExecutor {
             let after_mean = series[i..i + window].iter().sum::<f64>() / window as f64;
             let amplitude = (after_mean - before_mean).abs();
 
-            // Calcul de l'ecart-type local pour normaliser
+            // Compute local standard deviation for normalization
             let local = &series[i.saturating_sub(window * 2)..=(i + window).min(series.len() - 1)];
             let local_mean = local.iter().sum::<f64>() / local.len() as f64;
             let local_std = (local.iter().map(|v| (v - local_mean).powi(2)).sum::<f64>()
                 / local.len() as f64).sqrt();
 
             if local_std > 1e-10 && amplitude / local_std > threshold {
-                // Eviter les doublons proches
+                // Avoid close duplicates
                 if changepoints.last().map(|(last_i, _)| i - last_i > window).unwrap_or(true) {
                     changepoints.push((i, after_mean - before_mean));
                 }
@@ -763,7 +760,7 @@ impl AlgorithmExecutor for ChangepointDetectionExecutor {
             d
         };
 
-        let _ = &mut desc; // eviter warning unused
+        let _ = &mut desc; // avoid unused warning
 
         Ok(AlgorithmOutput {
             algorithm_id: "changepoint_detection".into(),
@@ -796,11 +793,11 @@ impl AlgorithmExecutor for Ucb1Executor {
             return Err("Au moins 1 option necessaire pour UCB1".into());
         }
 
-        // Creer un bandit temporaire avec les options
+        // Create a temporary bandit with the options
         let arm_refs: Vec<&str> = texts.iter().map(|s| s.as_str()).collect();
         let mut bandit = super::bandit::UCB1Bandit::new(&arm_refs);
 
-        // Si des recompenses passees sont fournies via params (par index)
+        // If past rewards are provided via params (by index)
         for (name, &reward) in input.params.iter() {
             if let Some(idx) = texts.iter().position(|t| t == name) {
                 bandit.update(idx, reward);
@@ -830,7 +827,7 @@ impl AlgorithmExecutor for Ucb1Executor {
     }
 }
 
-// ─── Q-Learning (simplifie) ────────────────────────────────────────────────
+// ─── Q-Learning (simplified) ────────────────────────────────────────────────
 
 pub struct QLearningExecutor;
 
@@ -846,7 +843,7 @@ impl AlgorithmExecutor for QLearningExecutor {
         let alpha = input.params.get("alpha").copied().unwrap_or(0.1);
         let gamma = input.params.get("gamma").copied().unwrap_or(0.9);
 
-        // Parser les tuples etat|action|recompense
+        // Parse state|action|reward tuples
         let mut q_table: HashMap<String, HashMap<String, f64>> = HashMap::new();
 
         for text in &texts {
@@ -858,11 +855,11 @@ impl AlgorithmExecutor for QLearningExecutor {
 
                 let q = q_table.entry(state).or_default()
                     .entry(action).or_insert(0.5);
-                *q = *q + alpha * (reward + gamma * 0.5 - *q); // simplifie : max Q(s',a') = 0.5
+                *q = *q + alpha * (reward + gamma * 0.5 - *q); // simplified: max Q(s',a') = 0.5
             }
         }
 
-        // Trouver les meilleures actions par etat
+        // Find the best actions per state
         let mut best_actions: Vec<(String, String, f64)> = Vec::new();
         for (state, actions) in &q_table {
             if let Some((best_action, &best_q)) = actions.iter()
@@ -904,7 +901,7 @@ impl AlgorithmExecutor for QLearningExecutor {
     }
 }
 
-// ─── Sentiment VADER (lexique francais simplifie) ───────────────────────────
+// ─── Sentiment VADER (simplified French lexicon) ───────────────────────────
 
 pub struct SentimentVaderExecutor;
 
@@ -915,7 +912,7 @@ impl AlgorithmExecutor for SentimentVaderExecutor {
         let texts = input.texts.ok_or("Sentiment VADER necessite des textes")?;
         if texts.is_empty() { return Err("Pas de textes".into()); }
 
-        // Lexique francais simplifie (positif/negatif)
+        // Simplified French lexicon (positive/negative)
         let positive = ["joie","bonheur","amour","rire","paix","reve","lumiere",
             "doux","chaleur","espoir","liberte","beaute","plaisir","calme","harmonie"];
         let negative = ["peur","douleur","mort","ombre","sang","cri","angoisse",
@@ -955,9 +952,8 @@ impl AlgorithmExecutor for SentimentVaderExecutor {
     }
 }
 
-// ─── Enregistrement de toutes les implementations ──────────────────────────
-
-/// Cree et enregistre toutes les implementations d'algorithmes
+// ─── Registration of all implementations ──────────────────────────
+/// Creates and registers all algorithm implementations
 pub fn register_all_implementations() -> HashMap<String, Box<dyn AlgorithmExecutor>> {
     let mut map: HashMap<String, Box<dyn AlgorithmExecutor>> = HashMap::new();
     map.insert("kmeans".into(), Box::new(KMeansExecutor));

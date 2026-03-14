@@ -1,5 +1,5 @@
 // =============================================================================
-// lifecycle/controls.rs — Controles interactifs (API REST)
+// lifecycle/controls.rs — Interactive controls (REST API)
 // =============================================================================
 
 use tokio::time::Duration;
@@ -9,30 +9,30 @@ use crate::config::SaphireConfig;
 use super::SaphireAgent;
 
 impl SaphireAgent {
-    /// Retourne les statistiques de la memoire de travail pour l'API REST (synchrone).
+    /// Returns the working memory statistics for the REST API (synchronous).
     pub fn memory_data(&self) -> serde_json::Value {
         serde_json::json!({
             "working": self.working_memory.ws_data(),
         })
     }
 
-    /// Retourne une reference vers la configuration globale de Saphire.
+    /// Returns a reference to Saphire's overall configuration.
     pub fn config(&self) -> &SaphireConfig {
         &self.config
     }
 
-    /// Retourne le nom du modele LLM actuellement utilise (par ex. "llama3", "gpt-4").
+    /// Returns the name of the currently used LLM model (e.g. "llama3", "gpt-4").
     pub fn llm_model(&self) -> &str {
         self.llm.model_name()
     }
 
-    /// Retourne l'intervalle de temps entre deux pensees autonomes.
+    /// Returns the time interval between two autonomous thoughts.
     ///
-    /// L'intervalle est auto-ajuste : si le temps de reponse moyen du LLM
-    /// depasse 80% de l'intervalle configure, l'intervalle est elargi a
-    /// 1.5x le temps de reponse moyen pour eviter l'accumulation de requetes.
+    /// The interval is auto-adjusted: if the average response time from the LLM
+    /// exceeds 80% of the configured interval, the interval is widened to
+    /// 1.5x the average response time to avoid request accumulation.
     pub fn thought_interval(&self) -> Duration {
-        // Auto-ajustement si le LLM est plus lent que l'intervalle de pensee
+        // Auto-adjustment if the LLM is slower than the thought interval
         if self.avg_response_time > self.thought_interval.as_secs_f64() * 0.8 {
             Duration::from_secs_f64(self.avg_response_time * 1.5)
         } else {
@@ -40,16 +40,15 @@ impl SaphireAgent {
         }
     }
 
-    // ─── Controles interactifs (API REST) ──────────────────────
-
-    /// Modifie la baseline (niveau de repos) d'un neurotransmetteur.
+    // ─── Interactive controls (REST API) ──────────────────────
+    /// Modifies the baseline (resting level) of a neurotransmitter.
     ///
-    /// La valeur est clampee entre 0.0 et 1.0. Les molecules supportees :
+    /// The value is clamped between 0.0 and 1.0. Supported molecules:
     /// dopamine, cortisol, serotonin, adrenaline, oxytocin, endorphin, noradrenaline.
     ///
-    /// Parametres :
-    /// - `molecule` : nom du neurotransmetteur (en anglais, minuscules).
-    /// - `value` : nouvelle valeur de baseline (sera clampee a [0.0, 1.0]).
+    /// Parameters:
+    /// - `molecule` : name of the neurotransmitter (English, lowercase).
+    /// - `value` : new baseline value (will be clamped to [0.0, 1.0]).
     pub fn set_baseline(&mut self, molecule: &str, value: f64) {
         let v = value.clamp(0.0, 1.0);
         match molecule {
@@ -65,8 +64,8 @@ impl SaphireAgent {
         tracing::info!("Baseline {} → {:.2}", molecule, v);
     }
 
-    /// Ajuste une baseline par un offset (positif ou negatif).
-    /// Utilise par le genome pour appliquer les predispositions chimiques.
+    /// Adjusts a baseline by an offset (positive or negative).
+    /// Used by the genome to apply chemical predispositions.
     pub fn adjust_baseline(&mut self, molecule: &str, offset: f64) {
         let current = match molecule {
             "dopamine" => self.baselines.dopamine,
@@ -81,14 +80,14 @@ impl SaphireAgent {
         self.set_baseline(molecule, current + offset);
     }
 
-    /// Modifie le poids de base d'un module cerebral dans le consensus.
+    /// Modifies the base weight of a brain module in the consensus.
     ///
-    /// La valeur est clampee entre 0.1 et 3.0. Les modules supportes :
+    /// The value is clamped between 0.1 and 3.0. Supported modules:
     /// reptilian, limbic, neocortex.
     ///
-    /// Parametres :
-    /// - `module` : nom du module cerebral (en anglais, minuscules).
-    /// - `value` : nouveau poids de base (sera clampe a [0.1, 3.0]).
+    /// Parameters:
+    /// - `module` : name of the brain module (English, lowercase).
+    /// - `value` : new base weight (will be clamped to [0.1, 3.0]).
     pub fn set_module_weight(&mut self, module: &str, value: f64) {
         let v = value.clamp(0.1, 3.0);
         match module {
@@ -100,15 +99,15 @@ impl SaphireAgent {
         tracing::info!("Module weight {} → {:.2}", module, v);
     }
 
-    /// Modifie un seuil de consensus (decision Oui ou Non).
+    /// Modifies a consensus threshold (Yes or No decision).
     ///
-    /// - "yes" : seuil au-dessus duquel le consensus est "Oui" ([0.0, 0.8]).
-    /// - "no" : seuil en-dessous duquel le consensus est "Non" ([-0.8, 0.0]).
-    ///   Entre les deux seuils, la decision est "Peut-etre" (Maybe).
+    /// - "yes" : threshold above which the consensus is "Yes" ([0.0, 0.8]).
+    /// - "no" : threshold below which the consensus is "No" ([-0.8, 0.0]).
+    ///  Between the two thresholds, the decision is "Maybe".
     ///
-    /// Parametres :
-    /// - `which` : "yes" ou "no".
-    /// - `value` : nouvelle valeur du seuil.
+    /// Parameters:
+    /// - `which` : "yes" or "no".
+    /// - `value` : new threshold value.
     pub fn set_threshold(&mut self, which: &str, value: f64) {
         match which {
             "yes" => self.tuner.current_params.threshold_yes = value.clamp(0.0, 0.8),
@@ -118,17 +117,17 @@ impl SaphireAgent {
         tracing::info!("Threshold {} → {:.2}", which, value);
     }
 
-    /// Modifie un parametre systeme de l'agent.
+    /// Modifies a system parameter of the agent.
     ///
-    /// Parametres supportes :
-    /// - "thought_interval" : intervalle entre pensees autonomes ([5, 60] secondes).
-    /// - "homeostasis_rate" : vitesse de retour vers les baselines ([0.01, 0.10]).
-    /// - "indecision_stress" : stress chimique cause par l'indecision ([0.01, 0.15]).
-    /// - "temperature" : temperature du LLM ([0.1, 1.5], plus haut = plus creatif).
+    /// Supported parameters:
+    /// - "thought_interval" : interval between autonomous thoughts ([5, 60] seconds).
+    /// - "homeostasis_rate" : speed of return towards baselines ([0.01, 0.10]).
+    /// - "indecision_stress" : chemical stress caused by indecision ([0.01, 0.15]).
+    /// - "temperature" : LLM temperature ([0.1, 1.5], higher = more creative).
     ///
-    /// Parametres :
-    /// - `param` : nom du parametre (en anglais, minuscules).
-    /// - `value` : nouvelle valeur (sera clampee selon le parametre).
+    /// Parameters:
+    /// - `param` : parameter name (English, lowercase).
+    /// - `value` : new value (will be clamped according to the parameter).
     pub fn set_param(&mut self, param: &str, value: f64) {
         match param {
             "thought_interval" => {
@@ -149,12 +148,12 @@ impl SaphireAgent {
         tracing::info!("Param {} → {:.2}", param, value);
     }
 
-    /// Stabilisation d'urgence : remet immediatement les neurotransmetteurs
-    /// dans un etat calme et equilibre.
+    /// Emergency stabilization: immediately resets neurotransmitters
+    /// to a calm and balanced state.
     ///
-    /// Utilise quand Saphire est dans un etat chimique extreme (stress tres
-    /// eleve, panique, etc.). Le cortisol et l'adrenaline sont remis a leurs
-    /// baselines, et la serotonine, endorphine et dopamine recoivent un boost.
+    /// Used when Saphire is in an extreme chemical state (very high stress,
+    /// panic, etc.). Cortisol and adrenaline are reset to their
+    /// baselines, and serotonin, endorphin and dopamine receive a boost.
     pub fn emergency_stabilize(&mut self) {
         self.chemistry.cortisol = self.baselines.cortisol;
         self.chemistry.adrenaline = self.baselines.adrenaline;
@@ -164,22 +163,22 @@ impl SaphireAgent {
         tracing::info!("Emergency stabilize applied");
     }
 
-    /// Retourne l'etat des besoins primaires (faim, soif) pour l'API.
+    /// Returns the primary needs state (hunger, thirst) for the API.
     pub fn needs_status(&self) -> serde_json::Value {
         self.needs.to_status_json()
     }
 
-    /// Retourne l'etat complet du corps virtuel pour l'API.
+    /// Returns the complete virtual body state for the API.
     pub fn body_status(&self) -> crate::body::BodyStatus {
         self.body.status()
     }
 
-    /// Retourne l'etat du coeur pour l'API.
+    /// Returns the heart state for the API.
     pub fn heart_status(&self) -> crate::body::heart::HeartStatus {
         self.body.heart.status()
     }
 
-    /// Retourne l'etat chimique actuel (9 neurotransmetteurs) en JSON pour l'API.
+    /// Returns the current chemical state (9 neurotransmitters) as JSON for the API.
     pub fn chemistry_json(&self) -> serde_json::Value {
         serde_json::json!({
             "dopamine": self.chemistry.dopamine,
@@ -194,9 +193,9 @@ impl SaphireAgent {
         })
     }
 
-    /// Retourne la configuration modifiable actuelle en JSON pour l'API.
-    /// Inclut : baselines chimiques, poids des modules, seuils de consensus,
-    /// et parametres systeme (intervalle de pensee, homeostasie, temperature LLM).
+    /// Returns the configuration modifiable current in JSON for the API.
+    /// Includes: chemical baselines, module weights, consensus thresholds,
+    /// and system parameters (thought interval, homeostasis, LLM temperature).
     pub fn config_json(&self) -> serde_json::Value {
         serde_json::json!({
             "baselines": {
@@ -226,24 +225,24 @@ impl SaphireAgent {
         })
     }
 
-    /// Accesseur interne pour le poids de base du module limbique.
+    /// Internal accessor for the limbic module base weight.
     fn baselines_limbic_weight(&self) -> f64 {
         self.tuner.current_params.weight_base_limbic
     }
 
-    /// Ajoute un sujet suggere par l'utilisateur a la file d'exploration web.
+    /// Adds a user-suggested topic to the web exploration queue.
     ///
-    /// Les sujets suggeres sont prioritaires lors du prochain cycle de recherche.
+    /// Suggested topics are prioritized during the next research cycle.
     ///
-    /// Parametre : `topic` — le sujet a explorer (par ex. "physique quantique").
+    /// Parameter: `topic` — the topic to explore (e.g. "quantum physics").
     pub fn suggest_topic(&mut self, topic: String) {
         tracing::info!("Sujet suggéré par l'utilisateur: {}", topic);
         self.knowledge.add_suggested_topic(topic);
     }
 
-    /// Retourne les statistiques du module de connaissance web pour l'interface.
-    /// Inclut : nombre total de sujets explores, nombre de recherches,
-    /// 5 derniers sujets, et nombre de suggestions en attente.
+    /// Returns the web knowledge module statistics for the interface.
+    /// Includes: total topics explored, number of searches,
+    /// last 5 topics, and number of pending suggestions.
     pub fn knowledge_stats(&self) -> serde_json::Value {
         serde_json::json!({
             "total_explored": self.knowledge.topics_explored.len(),
@@ -254,8 +253,8 @@ impl SaphireAgent {
         })
     }
 
-    /// Applique les surcharges d'un profil cognitif sur les baselines et parametres.
-    /// Retourne la liste des changements effectues pour le log.
+    /// Applies cognitive profile overrides to baselines and parameters.
+    /// Returns the list of changes applied for logging.
     pub fn apply_cognitive_profile(
         &mut self,
         overrides: &crate::orchestrators::cognitive_profile::ProfileOverrides,
@@ -298,7 +297,7 @@ impl SaphireAgent {
             };
         }
 
-        // Baselines chimiques (7 molecules)
+        // Chemical baselines (7 molecules)
         apply_f64!(self.baselines.dopamine, overrides.baseline_dopamine, "baseline_dopamine");
         apply_f64!(self.baselines.cortisol, overrides.baseline_cortisol, "baseline_cortisol");
         apply_f64!(self.baselines.serotonin, overrides.baseline_serotonin, "baseline_serotonin");
@@ -307,10 +306,10 @@ impl SaphireAgent {
         apply_f64!(self.baselines.endorphin, overrides.baseline_endorphin, "baseline_endorphin");
         apply_f64!(self.baselines.noradrenaline, overrides.baseline_noradrenaline, "baseline_noradrenaline");
 
-        // Feedback : homeostasis
+        // Feedback: homeostasis
         apply_f64!(self.tuner.current_params.homeostasis_rate, overrides.homeostasis_rate, "homeostasis_rate");
 
-        // Consensus : seuils
+        // Consensus: thresholds
         apply_f64!(self.tuner.current_params.threshold_yes, overrides.threshold_yes, "threshold_yes");
         apply_f64!(self.tuner.current_params.threshold_no, overrides.threshold_no, "threshold_no");
 
@@ -319,28 +318,28 @@ impl SaphireAgent {
         apply_f64!(self.attention_orch.fatigue_per_cycle, overrides.fatigue_per_cycle, "attention_fatigue_per_cycle");
         apply_f64!(self.attention_orch.recovery_per_cycle, overrides.recovery_per_cycle, "attention_recovery_per_cycle");
 
-        // Desirs
+        // Desires
         apply_usize!(self.desire_orch.max_active, overrides.desires_max_active, "desires_max_active");
         apply_f64!(self.desire_orch.min_dopamine_for_birth, overrides.desires_min_dopamine, "desires_min_dopamine");
         apply_f64!(self.desire_orch.max_cortisol_for_birth, overrides.desires_max_cortisol, "desires_max_cortisol");
 
-        // Apprentissage
+        // Learning
         apply_u64!(self.learning_orch.cycle_interval, overrides.learning_cycle_interval, "learning_cycle_interval");
         apply_f64!(self.learning_orch.initial_confidence, overrides.learning_initial_confidence, "learning_initial_confidence");
         apply_f64!(self.learning_orch.confirmation_boost, overrides.learning_confirmation_boost, "learning_confirmation_boost");
         apply_f64!(self.learning_orch.contradiction_penalty, overrides.learning_contradiction_penalty, "learning_contradiction_penalty");
 
-        // Guerison
+        // Healing
         apply_u64!(self.healing_orch.melancholy_threshold_cycles, overrides.healing_melancholy_threshold, "healing_melancholy_threshold");
         apply_f64!(self.healing_orch.loneliness_threshold_hours, overrides.healing_loneliness_hours, "healing_loneliness_hours");
         apply_f64!(self.healing_orch.overload_noradrenaline, overrides.healing_overload_noradrenaline, "healing_overload_noradrenaline");
 
-        // Sommeil
+        // Sleep
         apply_f64!(self.config.sleep.sleep_threshold, overrides.sleep_threshold, "sleep_threshold");
         apply_u64!(self.config.sleep.time_factor_divisor, overrides.sleep_time_factor_divisor, "sleep_time_factor_divisor");
         apply_f64!(self.config.sleep.adrenaline_resistance, overrides.sleep_adrenaline_resistance, "sleep_adrenaline_resistance");
 
-        // Poids des pensees (thought_weights)
+        // Thought weights
         if let Some(ref weights) = overrides.thought_weights {
             for (key, &val) in weights {
                 match key.as_str() {
@@ -364,8 +363,8 @@ impl SaphireAgent {
         changes
     }
 
-    /// Applique les surcharges d'un preset de personnalite sur les baselines et parametres.
-    /// Retourne la liste des changements effectues pour le log.
+    /// Applies the overrides from a personality preset onto baselines and parameters.
+    /// Returns the list of changes made, for logging.
     pub fn apply_personality_preset(
         &mut self,
         overrides: &crate::orchestrators::personality_preset::PersonalityOverrides,
@@ -408,7 +407,7 @@ impl SaphireAgent {
             };
         }
 
-        // Baselines chimiques (7 molecules)
+        // Chemical baselines (7 molecules)
         apply_f64!(self.baselines.dopamine, overrides.baseline_dopamine, "baseline_dopamine");
         apply_f64!(self.baselines.cortisol, overrides.baseline_cortisol, "baseline_cortisol");
         apply_f64!(self.baselines.serotonin, overrides.baseline_serotonin, "baseline_serotonin");
@@ -417,10 +416,10 @@ impl SaphireAgent {
         apply_f64!(self.baselines.endorphin, overrides.baseline_endorphin, "baseline_endorphin");
         apply_f64!(self.baselines.noradrenaline, overrides.baseline_noradrenaline, "baseline_noradrenaline");
 
-        // Feedback : homeostasis
+        // Feedback: homeostasis
         apply_f64!(self.tuner.current_params.homeostasis_rate, overrides.homeostasis_rate, "homeostasis_rate");
 
-        // Consensus : seuils
+        // Consensus: thresholds
         apply_f64!(self.tuner.current_params.threshold_yes, overrides.threshold_yes, "threshold_yes");
         apply_f64!(self.tuner.current_params.threshold_no, overrides.threshold_no, "threshold_no");
 
@@ -429,28 +428,28 @@ impl SaphireAgent {
         apply_f64!(self.attention_orch.fatigue_per_cycle, overrides.fatigue_per_cycle, "attention_fatigue_per_cycle");
         apply_f64!(self.attention_orch.recovery_per_cycle, overrides.recovery_per_cycle, "attention_recovery_per_cycle");
 
-        // Desirs
+        // Desires
         apply_usize!(self.desire_orch.max_active, overrides.desires_max_active, "desires_max_active");
         apply_f64!(self.desire_orch.min_dopamine_for_birth, overrides.desires_min_dopamine, "desires_min_dopamine");
         apply_f64!(self.desire_orch.max_cortisol_for_birth, overrides.desires_max_cortisol, "desires_max_cortisol");
 
-        // Apprentissage
+        // Learning
         apply_u64!(self.learning_orch.cycle_interval, overrides.learning_cycle_interval, "learning_cycle_interval");
         apply_f64!(self.learning_orch.initial_confidence, overrides.learning_initial_confidence, "learning_initial_confidence");
         apply_f64!(self.learning_orch.confirmation_boost, overrides.learning_confirmation_boost, "learning_confirmation_boost");
         apply_f64!(self.learning_orch.contradiction_penalty, overrides.learning_contradiction_penalty, "learning_contradiction_penalty");
 
-        // Guerison
+        // Healing
         apply_u64!(self.healing_orch.melancholy_threshold_cycles, overrides.healing_melancholy_threshold, "healing_melancholy_threshold");
         apply_f64!(self.healing_orch.loneliness_threshold_hours, overrides.healing_loneliness_hours, "healing_loneliness_hours");
         apply_f64!(self.healing_orch.overload_noradrenaline, overrides.healing_overload_noradrenaline, "healing_overload_noradrenaline");
 
-        // Sommeil
+        // Sleep
         apply_f64!(self.config.sleep.sleep_threshold, overrides.sleep_threshold, "sleep_threshold");
         apply_u64!(self.config.sleep.time_factor_divisor, overrides.sleep_time_factor_divisor, "sleep_time_factor_divisor");
         apply_f64!(self.config.sleep.adrenaline_resistance, overrides.sleep_adrenaline_resistance, "sleep_adrenaline_resistance");
 
-        // Poids des pensees (thought_weights)
+        // Thought weights
         if let Some(ref weights) = overrides.thought_weights {
             for (key, &val) in weights {
                 match key.as_str() {
@@ -470,7 +469,7 @@ impl SaphireAgent {
             }
         }
 
-        // Interets (specifique personnalite) : remplacer initial_topics si present
+        // Interests (personality-specific): replace initial_topics if present
         if let Some(ref topics) = overrides.interests {
             let old_count = self.config.saphire.interests.initial_topics.len();
             self.config.saphire.interests.initial_topics = topics.clone();
@@ -486,8 +485,8 @@ impl SaphireAgent {
         changes
     }
 
-    /// Charge un preset de personnalite par son ID, applique les surcharges et
-    /// demarre une transition douce. Retourne le resultat JSON pour l'API.
+    /// Loads a personality preset by its ID, applies the overrides and
+    /// starts a smooth transition. Returns the result JSON for the API.
     pub fn load_and_apply_personality(&mut self, id: &str) -> serde_json::Value {
         let preset = match self.personality_preset_orch.load_preset(id) {
             Ok(p) => p,
@@ -514,8 +513,8 @@ impl SaphireAgent {
         })
     }
 
-    /// Charge un profil cognitif par son ID, applique les surcharges et
-    /// demarre une transition douce. Retourne le resultat JSON pour l'API.
+    /// Loads a cognitive profile by its ID, applies the overrides and
+    /// starts a smooth transition. Returns the result JSON for the API.
     pub fn load_and_apply_profile(&mut self, id: &str) -> serde_json::Value {
         let profile = match self.cognitive_profile_orch.load_profile(id) {
             Ok(p) => p,

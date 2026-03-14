@@ -1,10 +1,10 @@
 // =============================================================================
 // api/personality.rs — Portrait de personnalite temporel (3 niveaux)
 //
-// Endpoints pour visualiser l'evolution de la personnalite au fil du temps :
-//   Niveau 1 : Snapshots periodiques (toutes les 50 cycles)
-//   Niveau 2 : Archives par domaine (emotions, conscience, psychologie, relations)
-//   Niveau 3 : Journal introspectif (toutes les 200 cycles, genere par LLM)
+// Endpoints for visualiser l'evolution de la personnalite au fil du temps :
+//  Niveau 1 : Snapshots periodic (toutes les 50 cycles)
+//  Niveau 2 : Archives par domaine (emotions, conscience, psychologie, relations)
+//  Niveau 3 : Journal introspectif (toutes les 200 cycles, generated par LLM)
 // =============================================================================
 
 use std::collections::HashMap;
@@ -81,7 +81,7 @@ pub async fn api_personality_psychology(
     }
 }
 
-/// GET /api/personality/relationships?limit=200 — Evolution des liens affectifs.
+/// GET /api/personality/relationships?limit=200 — Evolution des affective bonds.
 pub async fn api_personality_relationships(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,

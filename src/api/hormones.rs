@@ -1,7 +1,7 @@
 // =============================================================================
-// api/hormones.rs — Endpoints API pour le systeme hormonal
+// api/hormones.rs — Endpoints API for the systeme hormonal
 //
-// Role : Expose l'etat hormonal, les recepteurs et la phase circadienne
+// Role: Expose l'etat hormonal, les recepteurs et the phase circadienne
 // via des endpoints HTTP GET proteges par auth + rate limit.
 // =============================================================================
 
@@ -37,7 +37,7 @@ pub async fn api_hormones_status(
     }))
 }
 
-/// GET /api/hormones/receptors — Detail des neurorecepteurs.
+/// GET /api/hormones/receptors — Detail des neuroreceptors.
 pub async fn api_hormones_receptors(
     State(state): State<AppState>,
 ) -> Json<Value> {

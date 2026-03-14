@@ -1,32 +1,32 @@
 // =============================================================================
-// conditions/medical.rs — Maladies generales
+// conditions/medical.rs — General medical conditions
 // =============================================================================
 //
-// Role : Modelise cancer, VIH/SIDA, maladies auto-immunes, maladies
-//        immunitaires. Chaque maladie a des phases, affecte l'energie,
-//        l'immunite, l'inflammation, la douleur.
+// Purpose: Models cancer, HIV/AIDS, autoimmune diseases, and immune
+//          deficiencies. Each disease has phases, affects energy,
+//          immunity, inflammation, and pain.
 //
-// Integration :
-//   Impacte la physiologie (immunite, inflammation) et la chimie.
+// Integration:
+//   Impacts physiology (immunity, inflammation) and chemistry.
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 use crate::world::ChemistryAdjustment;
 
-/// Type de maladie generale.
+/// Type of general medical condition.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum MedicalConditionType {
-    /// Cancer (stades I-IV, traitement, remission, rechute)
+    /// Cancer (stages I-IV, treatment, remission, relapse)
     Cancer,
-    /// VIH/SIDA (destruction immunitaire progressive)
+    /// HIV/AIDS (progressive immune destruction)
     Hiv,
-    /// Maladie auto-immune (poussees et remissions)
+    /// Autoimmune disease (flares and remissions)
     Autoimmune,
-    /// Deficience immunitaire
+    /// Immune deficiency
     ImmuneDeficiency,
 }
 
-/// Phase d'un cancer.
+/// Cancer stage.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum CancerStage {
     StageI,
@@ -36,38 +36,38 @@ pub enum CancerStage {
     Remission,
 }
 
-/// Phase d'une maladie auto-immune.
+/// Autoimmune disease phase.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum AutoimmunePhase {
-    /// Poussee inflammatoire
+    /// Inflammatory flare
     Flare,
     /// Remission
     Remission,
 }
 
-/// Une maladie generale.
+/// A general medical condition.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MedicalCondition {
     pub condition_type: MedicalConditionType,
-    /// Severite generale (0.0 = leger, 1.0 = critique)
+    /// Overall severity (0.0 = mild, 1.0 = critical)
     pub severity: f64,
-    /// Drain d'energie par cycle (0.0 = aucun, 0.1 = fatiguant)
+    /// Energy drain per cycle (0.0 = none, 0.1 = tiring)
     pub energy_drain: f64,
-    /// Niveau de douleur (0.0 = aucune, 1.0 = intense)
+    /// Pain level (0.0 = none, 1.0 = intense)
     pub pain_level: f64,
-    /// Impact sur l'immunite (0.0 = pas d'impact, 1.0 = immunite detruite)
+    /// Impact on immunity (0.0 = no impact, 1.0 = immunity destroyed)
     pub immune_impact: f64,
-    /// Inflammation chronique (0.0 = aucune, 1.0 = severe)
+    /// Chronic inflammation (0.0 = none, 1.0 = severe)
     pub inflammation: f64,
-    /// Sous traitement
+    /// Under treatment
     pub under_treatment: bool,
-    /// Phase cancer (si applicable)
+    /// Cancer stage (if applicable)
     pub cancer_stage: Option<CancerStage>,
-    /// Phase auto-immune (si applicable)
+    /// Autoimmune phase (if applicable)
     pub autoimmune_phase: Option<AutoimmunePhase>,
-    /// Cycles depuis le debut
+    /// Cycles since onset
     pub cycles_since_onset: u64,
-    /// Compteur CD4 normalise (VIH, 1.0 = normal, 0.0 = SIDA)
+    /// Normalized CD4 count (HIV, 1.0 = normal, 0.0 = AIDS)
     pub cd4_level: f64,
 }
 
@@ -127,26 +127,26 @@ impl MedicalCondition {
         }
     }
 
-    /// Met a jour l'etat.
+    /// Updates the state.
     pub fn tick(&mut self) {
         self.cycles_since_onset += 1;
 
         match self.condition_type {
             MedicalConditionType::Hiv => {
-                // CD4 decroit lentement sans traitement
+                // CD4 declines slowly without treatment
                 let rate = if self.under_treatment { 0.0001 } else { 0.001 };
                 self.cd4_level = (self.cd4_level - rate).max(0.0);
                 self.immune_impact = 1.0 - self.cd4_level;
                 self.severity = self.immune_impact;
 
-                // Stade SIDA si CD4 < 0.2
+                // AIDS stage if CD4 < 0.2
                 if self.cd4_level < 0.2 {
                     self.energy_drain = 0.05;
                     self.pain_level = 0.3;
                 }
             }
             MedicalConditionType::Autoimmune => {
-                // Alterner poussees et remissions (pseudo-aleatoire)
+                // Alternate between flares and remissions (pseudo-random)
                 let cycle_mod = self.cycles_since_onset % 100;
                 if cycle_mod < 30 {
                     self.autoimmune_phase = Some(AutoimmunePhase::Flare);
@@ -161,9 +161,9 @@ impl MedicalCondition {
                 }
             }
             MedicalConditionType::Cancer => {
-                // Traitement reduit la douleur et l'energie drain
+                // Treatment reduces pain and energy drain
                 if self.under_treatment {
-                    self.energy_drain = self.severity * 0.08; // Chimio = fatigue extreme
+                    self.energy_drain = self.severity * 0.08; // Chemo = extreme fatigue
                     self.pain_level = (self.pain_level - 0.001).max(0.05);
                 }
             }
@@ -173,20 +173,20 @@ impl MedicalCondition {
         }
     }
 
-    /// Impact chimique.
+    /// Chemistry impact.
     pub fn chemistry_influence(&self) -> ChemistryAdjustment {
         let mut adj = ChemistryAdjustment::default();
 
-        // Douleur → cortisol + endorphines
+        // Pain -> cortisol + endorphins
         if self.pain_level > 0.1 {
             adj.cortisol += self.pain_level * 0.02;
             adj.endorphin += self.pain_level * 0.01;
         }
 
-        // Fatigue → serotonine basse
+        // Fatigue -> low serotonin
         adj.serotonin -= self.energy_drain * 0.5;
 
-        // Inflammation → cortisol
+        // Inflammation -> cortisol
         adj.cortisol += self.inflammation * 0.01;
 
         adj
@@ -208,7 +208,7 @@ impl MedicalCondition {
     }
 }
 
-/// Gestionnaire de maladies generales.
+/// General medical condition manager.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MedicalManager {
     pub conditions: Vec<MedicalCondition>,
@@ -229,7 +229,7 @@ impl MedicalManager {
         }
     }
 
-    /// Impact chimique cumule.
+    /// Cumulative chemistry impact.
     pub fn chemistry_influence(&self) -> ChemistryAdjustment {
         let mut adj = ChemistryAdjustment::default();
         for c in &self.conditions {
@@ -242,12 +242,12 @@ impl MedicalManager {
         adj
     }
 
-    /// Drain d'energie total.
+    /// Total energy drain.
     pub fn total_energy_drain(&self) -> f64 {
         self.conditions.iter().map(|c| c.energy_drain).sum::<f64>().min(0.2)
     }
 
-    /// Impact total sur l'immunite.
+    /// Total immunity impact.
     pub fn immune_impact(&self) -> f64 {
         self.conditions.iter().map(|c| c.immune_impact).sum::<f64>().min(1.0)
     }

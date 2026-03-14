@@ -1,16 +1,16 @@
 // =============================================================================
-// senses/contact.rs — Sens du Contact (analogue du toucher)
+// senses/contact.rs — Contact Sense (analog of touch)
 //
-// Saphire "touche" le monde a travers ses connexions reseau.
-// La latence est la texture, les timeouts sont la douleur,
-// et la connectivite globale est la chaleur.
+// Saphire "touches" the world through her network connections.
+// Latency is texture, timeouts are pain,
+// and overall connectivity is warmth.
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 use crate::world::ChemistryAdjustment;
 use super::reading::SensorySignal;
 
-/// Impression tactile : snapshot d'une connexion percue.
+/// Tactile impression: snapshot of a perceived connection.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TouchImpression {
     pub target: String,
@@ -19,26 +19,26 @@ pub struct TouchImpression {
     pub texture: String,
 }
 
-/// Sens du Contact — le "toucher" de Saphire.
-/// Percoit la latence reseau, la charge systeme et les connexions.
+/// Contact Sense — Saphire's "touch".
+/// Perceives network latency, system load, and connections.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ContactSense {
     pub acuity: f64,
     pub current_intensity: f64,
     pub current_perception: String,
     pub total_stimulations: u64,
-    /// Texture reseau — fluide (0) ou rugueux (1)
+    /// Network texture — smooth (0) or rough (1)
     pub network_texture: f64,
-    /// Chaleur des connexions (tout connecte = chaud)
+    /// Connection warmth (all connected = warm)
     pub connection_warmth: f64,
-    /// Pression (charge systeme)
+    /// Pressure (system load)
     pub pressure: f64,
-    /// Douleur au toucher (timeouts, erreurs)
+    /// Touch pain (timeouts, errors)
     pub touch_pain: f64,
-    /// Sensations recentes
+    /// Recent sensations
     #[serde(skip)]
     pub recent_touches: Vec<TouchImpression>,
-    /// Derniere influence chimique produite par ce sens
+    /// Last chemistry influence produced by this sense
     #[serde(skip)]
     pub last_chemistry_influence: ChemistryAdjustment,
 }
@@ -65,7 +65,7 @@ impl ContactSense {
         }
     }
 
-    /// Percoit une connexion vers un service.
+    /// Perceives a connection to a service.
     pub fn perceive_connection(
         &mut self,
         target: &str,
@@ -82,7 +82,7 @@ impl ContactSense {
             (latency_ms as f64 / 2000.0).min(1.0)
         } else { 1.0 };
 
-        // Douleur si timeout ou erreur
+        // Pain if timeout or error
         if !success {
             self.touch_pain = (self.touch_pain + 0.2).min(1.0);
         } else {
@@ -103,8 +103,8 @@ impl ContactSense {
         );
 
         self.current_perception = description.clone();
-        // Connexion rapide = toucher net et present
-        // Connexion lente = toucher distant et diffus
+        // Fast connection = sharp and present touch
+        // Slow connection = distant and diffuse touch
         self.current_intensity = if !success { 0.9 } else {
             (1.0 - (latency_ms as f64 / 1000.0)).clamp(0.05, 0.7)
         };
@@ -127,7 +127,7 @@ impl ContactSense {
         }
     }
 
-    /// Met a jour la chaleur globale des connexions.
+    /// Updates the overall connection warmth.
     pub fn update_warmth(&mut self, db_ok: bool, llm_ok: bool, ws_clients: u32) {
         self.connection_warmth = 0.0;
         if db_ok { self.connection_warmth += 0.3; }
@@ -135,7 +135,7 @@ impl ContactSense {
         if ws_clients > 0 { self.connection_warmth += 0.4; }
     }
 
-    /// Description pour le prompt LLM.
+    /// Description for the LLM prompt.
     pub fn describe(&self) -> String {
         format!(
             "CONTACT : {}. Chaleur connexions : {:.0}%. Douleur : {:.0}%.",

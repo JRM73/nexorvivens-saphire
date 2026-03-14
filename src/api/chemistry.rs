@@ -1,7 +1,7 @@
 // =============================================================================
 // api/chemistry.rs — Handler neurochimie
 //
-// Role : Endpoint GET pour l'etat neurochimique actuel de l'agent.
+// Role: Endpoint GET for the etat neurochemical current de l'agent.
 // =============================================================================
 
 use axum::extract::State;

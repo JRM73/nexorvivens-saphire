@@ -1,14 +1,13 @@
 // =============================================================================
-// spine/motor.rs — Relais moteur de la colonne vertebrale
+// spine/motor.rs — Spinal cord motor relay
 //
-// Role : Traduit les reflexes en commandes motrices pour les effecteurs
-// (corps virtuel, Sensoria). Le relais moteur ne modifie pas directement
-// le corps — il genere des commandes que l'appelant appliquera.
+// Role: Translates reflexes into motor commands for effectors
+// (virtual body, Sensoria). The motor relay does not modify the body
+// directly — it generates commands that the caller will apply.
 //
-// Analogie biologique :
-//   Les motoneurones de la moelle epiniere transmettent les commandes aux
-//   muscles. Ici, MotorRelay transmet les effets corporels des reflexes
-//   au VirtualBody.
+// Biological analogy:
+//   Spinal cord motor neurons transmit commands to muscles. Here,
+//   MotorRelay transmits the body effects of reflexes to the VirtualBody.
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
@@ -16,38 +15,38 @@ use serde::{Deserialize, Serialize};
 use crate::body::VirtualBody;
 use super::reflex::{ReflexResult, BodyEffect};
 
-/// Commande motrice a appliquer sur le corps ou un effecteur.
+/// Motor command to apply to the body or an effector.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MotorCommand {
-    /// Cible de la commande
+    /// Command target
     pub target: MotorTarget,
-    /// Intensite de la commande [0.0, 1.0]
+    /// Command intensity [0.0, 1.0]
     pub intensity: f64,
 }
 
-/// Cible d'une commande motrice.
+/// Motor command target.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MotorTarget {
-    /// Augmenter le rythme cardiaque
+    /// Increase heart rate
     HeartRateUp,
-    /// Diminuer le rythme cardiaque
+    /// Decrease heart rate
     HeartRateDown,
-    /// Augmenter la tension musculaire
+    /// Increase muscle tension
     TensionUp,
-    /// Diminuer la tension musculaire
+    /// Decrease muscle tension
     TensionDown,
-    /// Augmenter la chaleur corporelle (flush, rougissement)
+    /// Increase body warmth (flush, blushing)
     WarmthUp,
-    /// Augmenter l'energie disponible
+    /// Increase available energy
     EnergyUp,
-    /// Diminuer l'energie (fatigue, epuisement)
+    /// Decrease energy (fatigue, exhaustion)
     EnergyDown,
 }
 
-/// Relais moteur.
+/// Motor relay.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MotorRelay {
-    /// Nombre de commandes emises depuis le demarrage
+    /// Number of commands issued since startup
     pub total_commands: u64,
 }
 
@@ -58,10 +57,10 @@ impl MotorRelay {
         }
     }
 
-    /// Genere les commandes motrices a partir des reflexes declenches.
+    /// Generates motor commands from the triggered reflexes.
     ///
-    /// Chaque `BodyEffect` dans un reflexe est traduit en un `MotorCommand`
-    /// avec une intensite proportionnelle a celle du reflexe.
+    /// Each `BodyEffect` in a reflex is translated into a `MotorCommand`
+    /// with an intensity proportional to the reflex intensity.
     pub fn generate_commands(
         &mut self,
         reflexes: &[ReflexResult],
@@ -127,21 +126,21 @@ impl MotorRelay {
         commands
     }
 
-    /// Applique les commandes motrices sur le corps virtuel.
+    /// Applies motor commands to the virtual body.
     ///
-    /// Les effets sont appliques sur `body.soma` (signaux somatiques).
-    /// Le rythme cardiaque n'est pas modifie directement ici car il est
-    /// deja module par la chimie via `Heart::update()`. L'effet HeartRate
-    /// se traduit par un delta de tension (le stress cardiaque percu).
+    /// Effects are applied to `body.soma` (somatic signals).
+    /// Heart rate is not modified directly here because it is already
+    /// modulated by chemistry via `Heart::update()`. The HeartRate effect
+    /// translates into a tension delta (perceived cardiac stress).
     ///
-    /// Cette methode est separee de `generate_commands` pour permettre
-    /// a l'appelant de filtrer ou modifier les commandes avant application.
+    /// This method is separated from `generate_commands` to allow the
+    /// caller to filter or modify commands before application.
     pub fn apply_commands(commands: &[MotorCommand], body: &mut VirtualBody) {
         for cmd in commands {
             match cmd.target {
                 MotorTarget::HeartRateUp => {
-                    // Le coeur s'accelere deja via la chimie (adrenaline/cortisol).
-                    // L'effet supplementaire se traduit par une tension percue.
+                    // Heart rate already accelerates via chemistry (adrenaline/cortisol).
+                    // The additional effect translates into perceived tension.
                     body.soma.tension = (body.soma.tension + cmd.intensity * 0.5).min(1.0);
                 }
                 MotorTarget::HeartRateDown => {

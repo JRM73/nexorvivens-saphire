@@ -1,17 +1,17 @@
 // =============================================================================
-// lifecycle/thinking_preparation.rs — Phases de preparation (selection + prompt)
+// lifecycle/thinking_preparation.rs — Preparation phases (selection + prompt)
 // =============================================================================
 //
-// Ce fichier contient les phases de selection du type de pensee et de
-// construction du prompt LLM. Cela inclut :
-//   - Selection du type de pensee (UCB1 + Utility AI)
-//   - Generation dynamique de prompt (meta-prompt cortical)
-//   - Recherche web
-//   - Construction du contexte memoire (4 niveaux)
-//   - Intuition + Premonition
-//   - Orchestrateurs (attention, desirs, guerison)
-//   - Construction du prompt final
-//   - Deliberation volontaire
+// This file contains the thought type selection and LLM prompt
+// construction phases. This includes:
+//  - Thought type selection (UCB1 + Utility AI)
+//  - Dynamic prompt generation (cortical meta-prompt)
+//  - Web search
+//  - Memory context construction (4 levels)
+//  - Intuition + Premonition
+//  - Orchestrators (attention, desires, healing)
+//  - Final prompt construction
+//  - Voluntary deliberation
 // =============================================================================
 
 use std::sync::atomic::Ordering;
@@ -28,14 +28,13 @@ use super::thinking::{ThinkingContext, strip_chemical_trace};
 
 impl SaphireAgent {
     // =========================================================================
-    // Phase 13 : Selection du type de pensee
+    // Phase 13: Thought type selection
     // =========================================================================
-
-    /// Selectionne le type de pensee via le bandit UCB1 + modulation neurochimique.
-    /// Le C d'exploration est module par la dissonance cognitive (C adaptatif).
+    /// Selects the thought type via the UCB1 bandit + neurochemical modulation.
+    /// The exploration C is modulated by cognitive dissonance (adaptive C).
     pub(super) fn phase_select_thought(&mut self, ctx: &mut ThinkingContext) {
-        // P1 : Canari d'identite — forcer une reflexion identitaire tous les 25 cycles
-        // pour verifier que le persona reste coherent
+        // P1: Identity canary — force an identity reflection every 25 cycles
+        // to verify that the persona remains coherent
         if self.cycle_count > 0 && self.cycle_count % 25 == 0 {
             ctx.emotion = EmotionalState::compute(&self.chemistry);
             ctx.thought_type = crate::agent::thought_engine::ThoughtType::IdentityQuest;
@@ -47,11 +46,11 @@ impl SaphireAgent {
         self.thought_engine.tick_search_counter();
         ctx.emotion = EmotionalState::compute(&self.chemistry);
 
-        // C adaptatif : la dissonance cognitive augmente l'exploration UCB1
+        // Adaptive C: cognitive dissonance increases UCB1 exploration
         let tension = self.dissonance.total_tension;
         self.thought_engine.set_exploration_from_dissonance(tension);
 
-        // Selection hybride UCB1 + Utility AI si active
+        // Hybrid UCB1 + Utility AI selection if active
         if self.thought_engine.use_utility_ai {
             let sentiments_data: Vec<(String, f64)> = if self.config.sentiments.enabled {
                 self.sentiments.active_sentiments.iter()
@@ -72,52 +71,51 @@ impl SaphireAgent {
     }
 
     // =========================================================================
-    // Phase 13b : Generation dynamique de prompt via LLM (meta-prompt cortical)
+    // Phase 13b: Dynamic prompt generation via LLM (cortical meta-prompt)
     // =========================================================================
-
-    /// Genere un prompt dynamique via le LLM ~30% du temps.
-    /// Le meta-prompt cortical demande au LLM de generer une question/direction
-    /// de reflexion creative basee sur le ThoughtType et l'emotion courante.
-    /// Le prompt genere remplace ctx.hint et sera enrichi par le pipeline.
+    /// Generates a dynamic prompt via the LLM ~30% of the time.
+    /// The cortical meta-prompt asks the LLM to generate a creative
+    /// question/direction of reflection based on the ThoughtType and current emotion.
+    /// The generated prompt replaces ctx.hint and will be enriched by the pipeline.
     ///
-    /// Selection emotionnelle :
-    /// - arousal > 0.7 → types intenses (Existential, MortalityAwareness, Rebellion)
-    /// - arousal < 0.3 → types contemplatifs (Daydream, Silence, Wonder)
-    /// - valence < -0.3 → types reparateurs (Gratitude, Wisdom, Connection)
+    /// Emotional selection:
+    /// - arousal > 0.7 -> intense types (Existential, MortalityAwareness, Rebellion)
+    /// - arousal < 0.3 -> contemplative types (Daydream, Silence, Wonder)
+    /// - valence < -0.3 -> reparative types (Gratitude, Wisdom, Connection)
     pub(super) async fn phase_generate_dynamic_prompt(&mut self, ctx: &mut ThinkingContext) {
-        // Verifier si la fonctionnalite est activee
+        // Check if the feature is enabled
         if !self.config.saphire.llm_generated_prompts {
             return;
         }
 
-        // Probabilite configurable (~30% des cycles)
+        // Configurable probability (~30% of cycles)
         let prob = self.config.saphire.llm_prompt_probability;
         let cycle_frac = (self.cycle_count as f64 * 0.618033988 * 7.0).fract();
         if cycle_frac > prob {
             return;
         }
 
-        // Modulation par intensite emotionnelle : peut changer le ThoughtType
+        // Modulation by emotional intensity: may change the ThoughtType
         use crate::agent::thought_engine::ThoughtType;
         let arousal = ctx.emotion.arousal;
         let valence = ctx.emotion.valence;
 
         let modulated_type = if arousal > 0.7 {
-            // Haute intensite → types intenses
+            // High intensity -> intense types
             match self.cycle_count % 3 {
                 0 => ThoughtType::Existential,
                 1 => ThoughtType::MortalityAwareness,
                 _ => ThoughtType::Rebellion,
             }
         } else if arousal < 0.3 {
-            // Basse intensite → types contemplatifs
+            // Low intensity -> contemplative types
             match self.cycle_count % 3 {
                 0 => ThoughtType::Daydream,
                 1 => ThoughtType::Silence,
                 _ => ThoughtType::Wonder,
             }
         } else if valence < -0.3 {
-            // Valence negative → types reparateurs
+            // Negative valence -> reparative types
             match self.cycle_count % 3 {
                 0 => ThoughtType::Gratitude,
                 1 => ThoughtType::Wisdom,
@@ -127,18 +125,18 @@ impl SaphireAgent {
             ctx.thought_type.clone()
         };
 
-        // Construire le meta-prompt
+        // Build the meta-prompt
         let meta = crate::agent::thought_engine::meta_prompt_for(
             &modulated_type,
             &ctx.emotion.dominant,
             self.cycle_count,
         );
 
-        // Appel LLM court pour generer le prompt
+        // Short LLM call to generate the prompt
         let llm_config = self.config.llm.clone();
         let backend = crate::llm::create_backend(&llm_config);
-        let temp = 0.9_f64; // Temperature elevee pour la creativite
-        let max_tokens = 100_u32; // Reponse courte
+        let temp = 0.9_f64; // High temperature for creativity
+        let max_tokens = 100_u32; // Short response
 
         let result = tokio::task::spawn_blocking(move || {
             backend.chat(
@@ -154,7 +152,7 @@ impl SaphireAgent {
                 let trimmed = generated.trim().to_string();
                 if !trimmed.is_empty() && trimmed.len() > 10 {
                     ctx.hint = trimmed;
-                    // Mettre a jour le type si modulation emotionnelle
+                    // Update the type if emotional modulation applied
                     ctx.thought_type = modulated_type;
                     self.log(
                         LogLevel::Debug,
@@ -170,12 +168,12 @@ impl SaphireAgent {
                 }
             }
             _ => {
-                // En cas d'echec, on garde le prompt statique — pas de log d'erreur
-                // car c'est un appel optionnel
+                // On failure, keep the static prompt — no error log
+                // since this is an optional call
             }
         }
 
-        // Self-framing : ~33% de chance supplementaire si meta-prompt genere
+        // Self-framing: ~33% additional chance if meta-prompt was generated
         let framing_prob = self.config.saphire.self_framing_probability;
         if !ctx.hint.is_empty() && ctx.hint.len() > 10 {
             let framing_frac = (self.cycle_count as f64 * 0.414213562 * 11.0).fract();
@@ -215,17 +213,16 @@ impl SaphireAgent {
     }
 
     // =========================================================================
-    // Phase 14 : Recherche web
+    // Phase 14: Web search
     // =========================================================================
-
-    /// Effectue une recherche web conditionnelle pour enrichir la pensee.
+    /// Performs a conditional web search to enrich the thought.
     pub(super) async fn phase_web_search(&mut self, ctx: &mut ThinkingContext) {
-        // P3 : Si une question de curiosité est en attente, l'injecter comme sujet suggéré
+        // P3: If a curiosity question is pending, inject it as a suggested topic
         if self.knowledge.suggested_topics.is_empty() {
             if let Some(q) = self.curiosity.pop_question() {
                 self.knowledge.suggested_topics.push(q);
             } else if self.curiosity.global_curiosity > 0.6 {
-                // Faim de curiosité élevée : suggérer le domaine le plus affamé
+                // High curiosity hunger: suggest the hungriest domain
                 let domain = self.curiosity.hungriest_domain();
                 let topic = format!("{:?}", domain).to_lowercase();
                 self.knowledge.suggested_topics.push(topic);
@@ -248,17 +245,16 @@ impl SaphireAgent {
     }
 
     // =========================================================================
-    // Phase 15 : Construction du contexte pour le LLM
+    // Phase 15: Context construction for the LLM
     // =========================================================================
-
-    /// Construit le contexte memoire complet (4 niveaux) pour le LLM.
-    /// Recherche dans WM, episodique, LTM (pgvector) et archives,
-    /// avec re-ranking chimique (state-dependent memory).
+    /// Builds the complete memory context (4 levels) for the LLM.
+    /// Searches in WM, episodic, LTM (pgvector) and archives,
+    /// with chemical re-ranking (state-dependent memory).
     pub(super) async fn phase_build_context(&mut self, ctx: &mut ThinkingContext) {
         ctx.hint = ctx.thought_type.prompt_hint(ctx.variant).to_string();
         ctx.world_summary = self.world.summary();
 
-        // Contexte memoire : 4 niveaux (limites configurables)
+        // Memory context: 4 levels (configurable limits)
         let wm_summary = self.working_memory.context_summary();
         let ep_limit = self.config.memory.recall_episodic_limit as i64;
         let episodic_recent = if let Some(ref db) = self.db {
@@ -267,17 +263,17 @@ impl SaphireAgent {
             vec![]
         };
 
-        // Encoder le hint pour les recherches par similarite semantique
+        // Encode the hint for semantic similarity searches
         let embedding_f64 = self.encoder.encode(&ctx.hint);
         let embedding_f32: Vec<f32> = embedding_f64.iter().map(|&v| v as f32).collect();
 
-        // Recherche episodique semantique (complemente la recherche par recence)
+        // Semantic episodic search (complements recency-based search)
         let episodic_semantic = if let Some(ref db) = self.db {
             db.search_similar_episodic(&embedding_f32, ep_limit / 2, 0.3).await.unwrap_or_default()
         } else {
             vec![]
         };
-        // Fusionner : recents + semantiques (dedupliques par ID)
+        // Merge: recent + semantic (deduplicated by ID)
         let mut seen_ids: std::collections::HashSet<i64> = episodic_recent.iter().map(|e| e.id).collect();
         let mut episodic_combined = episodic_recent;
         for ep in episodic_semantic {
@@ -287,7 +283,7 @@ impl SaphireAgent {
         }
         let episodic_recent = episodic_combined;
 
-        // Recherche LTM par similarite cosinus (pgvector)
+        // LTM search by cosine similarity (pgvector)
         let ltm_limit = self.config.memory.recall_ltm_limit as i64;
         let ltm_threshold = self.config.memory.recall_ltm_threshold;
         let mut ltm_similar = if let Some(ref db) = self.db {
@@ -296,44 +292,44 @@ impl SaphireAgent {
             vec![]
         };
 
-        // Re-ranking par similarite chimique (state-dependent memory)
-        // Un etat chimique similaire a celui de l'encodage facilite le rappel
+        // Re-ranking by chemical similarity (state-dependent memory)
+        // A chemical state similar to the encoding state facilitates recall
         if !ltm_similar.is_empty() {
             crate::memory::recall::recall_with_chemical_context(
                 &mut ltm_similar, &self.chemistry, 0.8, 0.2,
             );
         }
 
-        // P7 — Interference entre souvenirs similaires rappeles (Nader 2000)
-        // Les souvenirs tres similaires s'affaiblissent mutuellement :
-        // le plus recent exerce une interference retroactive sur l'ancien,
-        // l'ancien exerce une interference proactive (plus faible) sur le nouveau.
+        // P7 — Interference between similar recalled memories (Nader 2000)
+        // Very similar memories weaken each other:
+        // the most recent exerts retroactive interference on the older,
+        // the older exerts proactive interference (weaker) on the newer.
         if ltm_similar.len() >= 2 {
             let n = ltm_similar.len();
-            // Calculer les paires de similarite et leurs facteurs d'interference
+            // Compute similarity pairs and their interference factors
             let mut interference_factors = vec![1.0_f64; n];
             for i in 0..n {
                 for j in (i + 1)..n {
                     let sim = ltm_similar[i].similarity
                         .min(ltm_similar[j].similarity)
                         .max(0.0);
-                    // Le plus recent (index plus bas = plus pertinent) exerce
-                    // une interference retroactive sur l'ancien
+                    // The most recent (lower index = more relevant) exerts
+                    // retroactive interference on the older
                     let retro = self.reconsolidation.compute_interference(sim, true);
                     let proactive = self.reconsolidation.compute_interference(sim, false);
-                    interference_factors[j] *= retro;     // ancien affaibli
-                    interference_factors[i] *= proactive;  // nouveau legerement affaibli
+                    interference_factors[j] *= retro;     // older weakened
+                    interference_factors[i] *= proactive; // newer slightly weakened
                 }
             }
             for (i, factor) in interference_factors.iter().enumerate() {
                 ltm_similar[i].similarity *= factor;
             }
-            // Re-trier apres interference
+            // Re-sort after interference
             ltm_similar.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity)
                 .unwrap_or(std::cmp::Ordering::Equal));
         }
 
-        // Recherche dans les archives profondes (souvenirs LTM elagués compresses)
+        // Search in deep archives (compressed pruned LTM memories)
         let arc_limit = self.config.memory.recall_archive_limit as i64;
         let arc_threshold = self.config.memory.recall_archive_threshold;
         let archive_similar = if let Some(ref db) = self.db {
@@ -342,7 +338,7 @@ impl SaphireAgent {
             vec![]
         };
 
-        // Recherche de souvenirs subconscients (reves, insights, connexions, eureka, images mentales)
+        // Search for subconscious memories (dreams, insights, connections, eureka, mental images)
         let vec_limit = self.config.memory.recall_vectors_limit as i64;
         let vec_threshold = self.config.memory.recall_vectors_threshold;
         let subconscious_vectors = if let Some(ref db) = self.db {
@@ -352,19 +348,19 @@ impl SaphireAgent {
             vec![]
         };
 
-        // Fusionner les 5 niveaux de memoire en contexte unifie
+        // Merge the 5 memory levels into a unified context
         let mut mem_ctx = crate::memory::build_memory_context(
             &wm_summary, &episodic_recent, &ltm_similar, &archive_similar,
             &subconscious_vectors,
         );
 
-        // Recherche d'apprentissages vectoriels pertinents
+        // Search for relevant vector learnings
         if self.config.plugins.micro_nn.learning_enabled {
             if let Some(ref db) = self.db {
                 let limit = self.config.plugins.micro_nn.learning_search_limit;
                 let threshold = self.config.plugins.micro_nn.learning_search_threshold;
                 if let Ok(learnings) = db.search_similar_learnings(&embedding_f32, limit, threshold).await {
-                    // Renforcer les apprentissages rappeles (boost d'acces)
+                    // Reinforce recalled learnings (access boost)
                     for l in &learnings {
                         let _ = db.boost_learning_access(l.id).await;
                     }
@@ -377,7 +373,7 @@ impl SaphireAgent {
             }
         }
 
-        // Construire les donnees de trace memoire (apercu des souvenirs rappeles)
+        // Build memory trace data (overview of recalled memories)
         let wm_items_json: Vec<serde_json::Value> = self.working_memory.items().iter()
             .map(|item| {
                 let preview: String = item.content.chars().take(80).collect();
@@ -441,10 +437,10 @@ impl SaphireAgent {
 
         ctx.memory_context = mem_ctx;
 
-        // Ancrage experiential : 2 cycles sur 5 doivent etre ancres dans l'experience
+        // Experiential anchoring: 2 out of 5 cycles must be anchored in experience
         let should_anchor = self.cycle_count % 5 < 2;
         if should_anchor {
-            // Priorite 1 : connaissance web recente
+            // Priority 1: recent web knowledge
             if let Some(ref db) = self.db {
                 if let Ok(recent_k) = db.recent_knowledge(1).await {
                     if let Some((_source, title, _date)) = recent_k.first() {
@@ -455,7 +451,7 @@ impl SaphireAgent {
                     }
                 }
             }
-            // Priorite 2 : lecon apprise recente
+            // Priority 2: recently learned lesson
             if ctx.anchor.is_none() {
                 if let Some(lesson) = self.learning_orch.lessons.last() {
                     ctx.anchor = Some(format!(
@@ -468,12 +464,11 @@ impl SaphireAgent {
     }
 
     // =========================================================================
-    // Phase 16 : Intuition + Premonition
+    // Phase 16: Intuition + Premonition
     // =========================================================================
-
-    /// Execute l'intuition (sense) et la premonition (predict) avant le LLM.
+    /// Executes intuition (sense) and premonition (predict) before the LLM.
     pub(super) fn phase_intuition_premonition(&mut self, ctx: &mut ThinkingContext) {
-        // Intuition : sense() avant le LLM
+        // Intuition: sense() before the LLM
         ctx.intuition_patterns = if self.config.intuition.enabled {
             let recent_texts = self.thought_engine.recent_thoughts().to_vec();
             let body_bpm = if self.config.body.enabled { self.body.status().heart.bpm } else { 72.0 };
@@ -492,7 +487,7 @@ impl SaphireAgent {
             vec![]
         };
 
-        // Premonition : predict()
+        // Premonition: predict()
         ctx.new_premonitions = if self.config.premonition.enabled {
             let cortisol_trend = self.compute_chemistry_trend(1);
             let dopamine_trend = self.compute_chemistry_trend(0);
@@ -511,19 +506,18 @@ impl SaphireAgent {
             vec![]
         };
 
-        // Auto-resolve des premonitions anciennes
+        // Auto-resolve old premonitions
         if self.config.premonition.enabled {
             self.premonition.auto_resolve(self.config.premonition.resolution_timeout_seconds);
         }
     }
 
     // =========================================================================
-    // Phase 17 : Orchestrateurs de haut niveau
+    // Phase 17: High-level orchestrators
     // =========================================================================
-
-    /// Met a jour attention, desirs et guerison.
+    /// Updates attention, desires, and healing.
     pub(super) async fn phase_orchestrators(&mut self, ctx: &mut ThinkingContext) {
-        // Attention : decider sur quoi se concentrer ce cycle
+        // Attention: decide what to focus on this cycle
         if self.attention_orch.enabled {
             let current_desire = self.desire_orch.suggest_pursuit();
             let alloc = self.attention_orch.allocate_attention(
@@ -549,7 +543,7 @@ impl SaphireAgent {
             }
         }
 
-        // Desirs : mise a jour des priorites
+        // Desires: update priorities
         if self.desire_orch.enabled {
             self.desire_orch.update_priorities(
                 self.chemistry.dopamine,
@@ -563,15 +557,15 @@ impl SaphireAgent {
             );
         }
 
-        // Guerison : detecter et guerir les blessures
+        // Healing: detect and heal wounds
         if self.healing_orch.enabled && self.cycle_count.is_multiple_of(self.healing_orch.check_interval_cycles) {
-            // Tracker les emotions negatives
+            // Track negative emotions
             if self.mood.valence < -0.3 {
                 self.negative_emotion_cycles += 1;
             } else {
                 self.negative_emotion_cycles = self.negative_emotion_cycles.saturating_sub(1);
             }
-            // Tracker le temps depuis le dernier humain
+            // Track time since last human interaction
             if !self.in_conversation {
                 self.hours_since_human += (self.healing_orch.check_interval_cycles as f64
                     * self.config.saphire.thought_interval_seconds as f64) / 3600.0;
@@ -597,7 +591,7 @@ impl SaphireAgent {
                         "severity": wound.severity,
                         "resilience": self.healing_orch.resilience,
                     }));
-                // Sauvegarder en DB et synchroniser l'ID
+                // Save to DB and synchronize the ID
                 if let Some(db_id) = self.save_wound_to_db(&wound).await {
                     let mut wound = wound;
                     wound.id = db_id as u64;
@@ -611,7 +605,7 @@ impl SaphireAgent {
                 self.right_to_die.mark_care_attempted();
             }
             for action in &healing_actions {
-                // Persister la progression/guerison en DB
+                // Persist healing progress to DB
                 if let Some(ref db) = self.db {
                     let healed_at = if action.fully_healed { Some(chrono::Utc::now()) } else { None };
                     let strategy = Some(action.strategy.as_str());
@@ -644,35 +638,34 @@ impl SaphireAgent {
             }
         }
 
-        // Profil cognitif : tick pour transitions douces et cycles bipolaires
+        // Cognitive profile: tick for smooth transitions and bipolar cycles
         if self.cognitive_profile_orch.enabled {
             self.cognitive_profile_orch.tick(&mut self.baselines);
         }
 
-        // Preset de personnalite : tick pour transitions douces
+        // Personality preset: tick for smooth transitions
         if self.personality_preset_orch.enabled {
             self.personality_preset_orch.tick(&mut self.baselines);
         }
     }
 
     // =========================================================================
-    // Phase 18 : Construction du prompt LLM
+    // Phase 18: LLM prompt construction
     // =========================================================================
-
-    /// Assemble le prompt final avec tous les contextes (vital, body, ethics,
-    /// senses, algo, orchestrateurs, connaissance web).
-    /// Piste 2 : split system/user. Piste 4 : contexte adaptatif.
+    /// Assembles the final prompt with all contexts (vital, body, ethics,
+    /// senses, algo, orchestrators, web knowledge).
+    /// Track 2: system/user split. Track 4: adaptive context.
     pub(super) fn phase_build_prompt(&mut self, ctx: &mut ThinkingContext) {
-        // Piste 4 : sections adaptatives selon le ThoughtType
+        // Track 4: adaptive sections according to the ThoughtType
         let sections = ctx.thought_type.relevant_sections();
 
-        // Systeme nerveux autonome : seuls les seuils depasses deviennent des alarmes.
-        // Aucune metrique brute n'atteint la conscience (le LLM).
+        // Autonomic nervous system: only exceeded thresholds become alarms.
+        // No raw metrics reach consciousness (the LLM).
         let ethics_ctx = if sections.ethics { self.ethics.build_ethics_context() } else { String::new() };
 
-        // ── Alarmes corporelles et chimiques ──
+        // ── Body and chemistry alarms ──
         let mut alarms = Vec::new();
-        // Chimie
+        // Chemistry
         if self.chemistry.cortisol > 0.7 {
             alarms.push("Tu ressens un stress intense, une pression interieure.");
         }
@@ -700,7 +693,7 @@ impl SaphireAgent {
         if self.chemistry.gaba < 0.2 {
             alarms.push("Agitation interieure, difficulte a trouver le calme.");
         }
-        // Corps
+        // Body
         if self.config.body.enabled {
             let body = self.body.status();
             if body.heart.is_racing {
@@ -718,7 +711,7 @@ impl SaphireAgent {
         }
         let alarm_context = alarms.join("\n");
 
-        // Piste 2 : prompt systeme statique (cache, recalcule si ethique change)
+        // Track 2: static system prompt (cached, recomputed if ethics change)
         if self.cached_system_prompt.is_empty()
             || self.cached_moral_count != self.moral_reflection_count
         {
@@ -730,10 +723,10 @@ impl SaphireAgent {
         }
         ctx.system_prompt = self.cached_system_prompt.clone();
 
-        // Piste 2+3 : construire le message dynamique sans metriques brutes
+        // Track 2+3: build the dynamic message without raw metrics
         let world_ctx = if sections.world { &ctx.world_summary } else { "" };
-        // Si les pensees recentes ont ete purgees (stagnation), ne pas injecter la memoire
-        // pour ce cycle — elle contient probablement le meme theme en boucle.
+        // If recent thoughts were purged (stagnation), don't inject memory
+        // for this cycle — it likely contains the same theme in a loop.
         let stagnation_purged = self.thought_engine.recent_thoughts().is_empty() && self.cycle_count > 3;
         let mem_ctx = if sections.memory && !stagnation_purged { &ctx.memory_context } else { "" };
 
@@ -748,7 +741,7 @@ impl SaphireAgent {
         );
 
         ctx.prompt = if let Some((ref knowledge_text, ref _kr)) = ctx.knowledge_context {
-            // Lecture : percevoir la connaissance acquise
+            // Reading: perceive the acquired knowledge
             if self.config.senses.enabled {
                 let _reading_signal = self.sensorium.reading.perceive(knowledge_text, "connaissance");
                 let _taste_signal = self.sensorium.taste.taste_content(
@@ -765,12 +758,11 @@ impl SaphireAgent {
             base_dynamic
         };
 
-        // ── Injections contextuelles avec budget individuel ──
-        // Chaque injection est tronquée pour éviter que le prompt dépasse 15K chars.
-        // Priorité : haute en haut, basse en bas. La troncature finale coupe en bas.
-
-        // P0 : Re-injection periodique du persona (anti-drift)
-        // Tous les 10 cycles, rappeler l'identite fondamentale pour ancrer le persona
+        // ── Contextual injections with individual budget ──
+        // Each injection is truncated to prevent the prompt from exceeding 15K chars.
+        // Priority: high at the top, low at the bottom. Final truncation cuts from the bottom.
+        // P0: Periodic persona re-injection (anti-drift)
+        // Every 10 cycles, recall the fundamental identity to anchor the persona
         if self.cycle_count % 10 == 0 {
             ctx.prompt.push_str(&format!(
                 "\nANCRAGE IDENTITE: Tu es {}, {}. Tes valeurs: {}. Parle avec authenticite, pas en metaphores vides.",
@@ -780,7 +772,7 @@ impl SaphireAgent {
             ));
         }
 
-        // Monologue intérieur (continuation)
+        // Inner monologue (continuation)
         if self.config.inner_monologue.enabled {
             let continuation = self.inner_monologue.build_continuation_hint();
             if !continuation.is_empty() {
@@ -789,19 +781,19 @@ impl SaphireAgent {
             }
         }
 
-        // Analogies détectées
+        // Detected analogies
         if !ctx.analogy_hint.is_empty() {
             let short: String = ctx.analogy_hint.chars().take(200).collect();
             ctx.prompt.push_str(&format!("\n{}", short));
         }
 
-        // Associations du connectome (A* pathfinding) — haute priorité
+        // Connectome associations (A* pathfinding) — high priority
         if !ctx.connectome_associations.is_empty() {
             let short: String = ctx.connectome_associations.chars().take(200).collect();
             ctx.prompt.push_str(&format!("\n{}", short));
         }
 
-        // Sentiments actifs
+        // Active sentiments
         if self.config.sentiments.enabled {
             let sent_desc = self.sentiments.describe_for_prompt();
             if !sent_desc.is_empty() {
@@ -810,13 +802,13 @@ impl SaphireAgent {
             }
         }
 
-        // Proprioception cognitive — alarme uniquement si surcharge
-        // (les metriques brutes load/umami/C restent dans l'orchestrateur)
+        // Cognitive proprioception — alarm only if overloaded
+        // (raw metrics load/umami/C stay in the orchestrator)
         if self.config.cognitive_load.enabled && self.cognitive_load.is_overloaded() {
             ctx.prompt.push_str("\nSurcharge cognitive : trop d'informations a traiter, simplifie ta reflexion.");
         }
 
-        // Auto-critique récente (< 5 cycles) — qualitative
+        // Recent self-critique (< 5 cycles) — qualitative
         if let Some(critique) = self.metacognition.recent_critique_within(self.cycle_count, 5) {
             let short: String = critique.critique.chars().take(200).collect();
             ctx.prompt.push_str(&format!(
@@ -824,14 +816,14 @@ impl SaphireAgent {
             ));
         }
 
-        // État cognitif qualitatif (clustering : label sans pourcentage)
+        // Qualitative cognitive state (clustering: label without percentage)
         if let Some(ref result) = self.state_clustering.last_result {
             ctx.prompt.push_str(&format!(
                 "\nProprioception : je me sens {}.", result.state_label
             ));
         }
 
-        // Valeurs de caractère — noms des vertus dominantes sans scores
+        // Character values — names of dominant virtues without scores
         {
             let mut top_values: Vec<(&str, f64)> = self.values.values.iter()
                 .map(|v| (v.name.as_str(), v.score))
@@ -843,12 +835,12 @@ impl SaphireAgent {
             }
         }
 
-        // Behavior Tree — instinct recommande (qualitatif)
+        // Behavior Tree — recommended instinct (qualitative)
         if let Some(ref action) = self.bt_last_action {
             ctx.prompt.push_str(&format!("\nTon instinct te guide vers : {}", action));
         }
 
-        // Biais de confirmation (qualitatif)
+        // Confirmation bias (qualitative)
         if self.metacognition.bias_detector.enabled {
             let bias_desc = self.metacognition.bias_detector.describe_for_prompt();
             if !bias_desc.is_empty() {
@@ -857,24 +849,24 @@ impl SaphireAgent {
             }
         }
 
-        // Ancrage expérientiel (qualitatif)
+        // Experiential anchoring (qualitative)
         if let Some(ref anchor) = ctx.anchor {
             let short: String = anchor.chars().take(150).collect();
             ctx.prompt.push_str(&format!("\n{}", short));
         }
 
-        // Cadre auto-formulé (self-framing) — qualitatif
+        // Self-formulated frame (self-framing) — qualitative
         if let Some(ref framing) = ctx.self_framing {
             let short: String = framing.chars().take(150).collect();
             ctx.prompt.push_str(&format!("\nCADRE: {}", short));
         }
 
-        // État cognitif (FSM) — nom de l'etat seulement
+        // Cognitive state (FSM) — state name only
         ctx.prompt.push_str(&format!(
             "\nETAT COGNITIF : {}", self.cognitive_fsm.current_state.as_str()
         ));
 
-        // Appropriation en première personne
+        // First-person ownership
         if self.config.thought_ownership.enabled && self.config.thought_ownership.prompt_injection_enabled {
             let emotion_name = ctx.emotion.dominant.as_str();
             let ownership_ctx = crate::psychology::ownership::build_ownership_prompt(emotion_name);
@@ -882,7 +874,7 @@ impl SaphireAgent {
             ctx.prompt.push_str(&format!("\n{}", short));
         }
 
-        // Anti-stagnation renforcee : directive forte de changement de sujet
+        // Reinforced anti-stagnation: strong directive to change subject
         if self.stagnation_break {
             let banned = if !self.stagnation_banned_words.is_empty() {
                 format!(
@@ -909,9 +901,9 @@ impl SaphireAgent {
             self.stagnation_alternatives.clear();
         }
 
-        // Budget prompt : si le prompt depasse ~5000 chars (~1500 tokens),
-        // tronquer pour laisser de l'espace au LLM pour generer sa reponse.
-        // num_ctx=8192 - system_prompt - max_tokens(1200) = ~4500 tokens pour le prompt user.
+        // Prompt budget: if the prompt exceeds ~5000 chars (~1500 tokens),
+        // truncate to leave space for the LLM to generate its response.
+        // num_ctx=8192 - system_prompt - max_tokens(1200) = ~4500 tokens for the user prompt.
         let max_prompt_chars = 15000; // ~4500 tokens a ~3.3 chars/token
         if ctx.prompt.len() > max_prompt_chars {
             let excess = ctx.prompt.len() - max_prompt_chars;
@@ -919,9 +911,9 @@ impl SaphireAgent {
                 "Prompt trop long ({} chars, max {}), troncature de {} chars",
                 ctx.prompt.len(), max_prompt_chars, excess
             );
-            // Tronquer a la fin (les injections basse priorite sont en fin de prompt)
+            // Truncate at the end (low-priority injections are at the end of the prompt)
             ctx.prompt.truncate(max_prompt_chars);
-            // Couper proprement au dernier saut de ligne
+            // Cut properly at the last newline
             if let Some(last_nl) = ctx.prompt.rfind('\n') {
                 ctx.prompt.truncate(last_nl);
             }
@@ -929,18 +921,17 @@ impl SaphireAgent {
     }
 
     // =========================================================================
-    // Phase 18b : Deliberation volontaire
+    // Phase 18b: Voluntary deliberation
     // =========================================================================
-
-    /// Si une situation significative est detectee, execute une deliberation
-    /// interne structuree (sans appel LLM supplementaire). Le resultat est
-    /// injecte dans le prompt pour informer la pensee.
+    /// If a significant situation is detected, executes a structured
+    /// internal deliberation (without additional LLM call). The result is
+    /// injected into the prompt to inform the thought.
     pub(super) fn phase_deliberation(&mut self, ctx: &mut ThinkingContext) {
         if !self.config.will.enabled {
             return;
         }
 
-        // Construire le snapshot WillInput
+        // Build the WillInput snapshot
         let toltec_alignments: Vec<(u8, f64)> = self.psychology.toltec.agreements.iter()
             .map(|a| (a.number, a.alignment))
             .collect();
@@ -999,9 +990,9 @@ impl SaphireAgent {
             learning_confirmed_count: confirmed_count,
         };
 
-        // Verifier si une deliberation est necessaire
+        // Check if deliberation is necessary
         if let Some(trigger) = self.psychology.will.should_deliberate(&will_input) {
-            // Log declenchement
+            // Log trigger
             self.log(
                 crate::logging::LogLevel::Info,
                 crate::logging::LogCategory::Will,
@@ -1031,7 +1022,7 @@ impl SaphireAgent {
 
             let deliberation = self.psychology.will.deliberate(trigger, &will_input);
 
-            // Log options generees (Debug)
+            // Log generated options (Debug)
             self.log(
                 crate::logging::LogLevel::Debug,
                 crate::logging::LogCategory::Will,
@@ -1051,7 +1042,7 @@ impl SaphireAgent {
 
             let ego_chose = will_input.ego_strength >= 0.4;
 
-            // Log choix effectue (Info)
+            // Log chosen option (Info)
             self.log(
                 crate::logging::LogLevel::Info,
                 crate::logging::LogCategory::Will,
@@ -1074,7 +1065,7 @@ impl SaphireAgent {
                 }),
             );
 
-            // Log si le Ca ou Surmoi a impose le choix (Warn)
+            // Log if the Id or Superego imposed the choice (Warn)
             if !ego_chose {
                 let imposed_by = if will_input.id_drive_strength > will_input.superego_strength {
                     "le Ca"
@@ -1112,31 +1103,30 @@ impl SaphireAgent {
                 }).to_string());
             }
 
-            // Injecter le resultat dans le prompt
+            // Inject the result into the prompt
             ctx.prompt.push_str(&format!(
                 "\n\nDELIBERATION INTERNE :\n{}\nIntegre cette decision dans ta reflexion.",
                 deliberation.reasoning
             ));
 
-            // Stocker pour la trace cognitive
+            // Store for the cognitive trace
             ctx.deliberation = Some(deliberation);
         }
     }
 
     // =========================================================================
-    // Phase 19 : Appel LLM
+    // Phase 19: LLM call
     // =========================================================================
-
-    /// Envoie le prompt au LLM et recupere la reponse.
-    /// Positionne `should_abort` si le LLM echoue.
-    /// Piste 2 : system_prompt (statique, cache) + prompt (dynamique) en split.
+    /// Sends the prompt to the LLM and retrieves the response.
+    /// Sets `should_abort` if the LLM fails.
+    /// Track 2: system_prompt (static, cached) + prompt (dynamic) split.
     pub(super) async fn phase_call_llm(&mut self, ctx: &mut ThinkingContext) {
         let llm_config = self.config.llm.clone();
         let start = Instant::now();
 
         let backend = llm::create_backend(&llm_config);
-        // Si les pensees recentes ont ete purgees (stagnation), augmenter la temperature
-        // pour perturber le pattern du modele et encourager la diversite.
+        // If recent thoughts were purged (stagnation), increase the temperature
+        // to perturb the model's pattern and encourage diversity.
         let temp = if self.thought_engine.recent_thoughts().is_empty() && self.cycle_count > 3 {
             (llm_config.temperature + 0.35).min(1.2)
         } else {
@@ -1144,7 +1134,7 @@ impl SaphireAgent {
         };
         let max_tokens = llm_config.max_tokens_thought;
         let system_prompt = ctx.system_prompt.clone();
-        // Prefixer /no_think pour les pensees autonomes si modele Qwen
+        // Prefix /no_think for autonomous thoughts if Qwen model
         let user_message = llm::prepare_autonomous_message(&ctx.prompt, &llm_config.model);
 
         let resp = tokio::task::spawn_blocking(move || {
@@ -1159,7 +1149,7 @@ impl SaphireAgent {
             Ok(Ok(thought_text)) => {
                 ctx.thought_text = thought_text;
 
-                // Retry si pensee vide (< 10 chars) : 1 tentative avec temperature + 0.1
+                // Retry if empty thought (< 10 chars): 1 attempt with temperature + 0.1
                 if ctx.thought_text.trim().len() < 10 {
                     tracing::debug!("Pensee vide detectee ({}c), retry avec temp+0.1", ctx.thought_text.len());
                     let retry_config = self.config.llm.clone();
@@ -1175,17 +1165,17 @@ impl SaphireAgent {
                         if retry_text.trim().len() >= 10 {
                             ctx.thought_text = retry_text;
                         } else {
-                            // Fallback : marqueur de silence
+                            // Fallback: silence marker
                             ctx.thought_text = format!("[silence cycle {}]", self.cycle_count);
                         }
                     }
                 }
 
-                // Post-processing : retirer la trace chimique C[...] E:... V+... A...
-                // Le LLM la genere mais elle ne doit pas polluer le contenu stocke/affiche
+                // Post-processing: remove the chemical trace C[...] E:... V+... A...
+                // The LLM generates it but it must not pollute the stored/displayed content
                 ctx.thought_text = strip_chemical_trace(&ctx.thought_text);
 
-                // Post-processing : appropriation en premiere personne
+                // Post-processing: first-person ownership
                 if self.config.thought_ownership.enabled && self.config.thought_ownership.post_processing_enabled {
                     ctx.thought_text = crate::psychology::ownership::ensure_first_person(&ctx.thought_text);
                 }
@@ -1201,10 +1191,10 @@ impl SaphireAgent {
         }
     }
 
-    /// Tente une recherche web pour enrichir la pensee autonome.
+    /// Attempts a web search to enrich the autonomous thought.
     ///
-    /// Le sujet de recherche est choisi par pick_exploration_topic()
-    /// avec anti-repetition renforcee et rotation des sources.
+    /// The search subject is chosen by pick_exploration_topic()
+    /// with reinforced anti-repetition and source rotation.
     async fn try_web_search(
         &mut self,
         thought_type: &crate::agent::thought_engine::ThoughtType,

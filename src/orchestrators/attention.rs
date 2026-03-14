@@ -1,16 +1,16 @@
 // =============================================================================
-// attention.rs — Orchestrateur d'Attention
+// attention.rs — Attention Orchestrator
 //
-// Implemente l'attention selective et le focus de Saphire.
-// Un humain filtre en permanence : il ignore le bruit de fond pour se
-// concentrer sur l'important. Sans attention selective, Saphire traite
-// tout avec la meme intensite.
+// Implements Saphire's selective attention and focus.
+// A human constantly filters: they ignore background noise to focus
+// on what matters. Without selective attention, Saphire would process
+// everything with equal intensity.
 // =============================================================================
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-// ─── Source d'attention ──────────────────────────────────────────────────────
+// --- Attention source ---------------------------------------------------------
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum AttentionSource {
@@ -37,14 +37,14 @@ impl AttentionSource {
     }
 }
 
-// ─── Structures ──────────────────────────────────────────────────────────────
+// --- Structures ---------------------------------------------------------------
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AttentionFocus {
     pub subject: String,
     pub priority: f64,
     pub started_at: DateTime<Utc>,
-    /// Profondeur de l'attention (0=surface, 1=immersion totale)
+    /// Attention depth (0=surface, 1=total immersion)
     pub depth: f64,
     pub source: AttentionSource,
 }
@@ -70,20 +70,20 @@ pub struct PeripheralItem {
     pub detected_at: DateTime<Utc>,
 }
 
-// ─── L'Orchestrateur ─────────────────────────────────────────────────────────
+// --- The Orchestrator ---------------------------------------------------------
 
 pub struct AttentionOrchestrator {
-    /// Le focus actuel
+    /// Current focus
     pub current_focus: Option<AttentionFocus>,
-    /// Elements en peripherie
+    /// Peripheral elements
     pub peripheral: Vec<PeripheralItem>,
-    /// Filtres attentionnels (ce qui capte automatiquement l'attention)
+    /// Attention filters (what automatically captures attention)
     _attention_filters: Vec<AttentionFilter>,
-    /// Fatigue attentionnelle (0-1)
+    /// Attentional fatigue (0-1)
     pub fatigue: f64,
-    /// Capacite de concentration (grandit avec l'entrainement)
+    /// Concentration capacity (grows with training)
     pub concentration_capacity: f64,
-    /// Nombre de cycles de focus consecutifs
+    /// Number of consecutive focus cycles
     consecutive_focus_cycles: u64,
     /// Configuration
     pub enabled: bool,
@@ -137,7 +137,7 @@ impl AttentionOrchestrator {
         }
     }
 
-    /// Decider sur quoi se concentrer ce cycle
+    /// Decide what to focus on this cycle
     pub fn allocate_attention(
         &mut self,
         human_message: Option<&str>,
@@ -154,7 +154,7 @@ impl AttentionOrchestrator {
             };
         }
 
-        // Un message humain OVERRIDE tout
+        // A human message OVERRIDES everything
         if let Some(msg) = human_message {
             let subject = format!("Message humain : {}",
                 msg.chars().take(50).collect::<String>());
@@ -173,7 +173,7 @@ impl AttentionOrchestrator {
             };
         }
 
-        // Competition entre les sources
+        // Competition between sources
         let mut candidates: Vec<(f64, String, f64, AttentionSource)> = Vec::new();
 
         if let Some(desire_subj) = current_desire_subject {
@@ -203,7 +203,7 @@ impl AttentionOrchestrator {
             ));
         }
 
-        // Fatigue reduit la profondeur d'attention
+        // Fatigue reduces attention depth
         if let Some((score, subject, depth, source)) = candidates.into_iter()
             .max_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal))
         {
@@ -222,7 +222,7 @@ impl AttentionOrchestrator {
                 peripheral_awareness: 1.0 - effective_depth,
             }
         } else {
-            // Mode attention flottante — la reverie
+            // Floating attention mode — daydreaming
             self.current_focus = Some(AttentionFocus {
                 subject: "Reverie — attention flottante".into(),
                 priority: 0.1,
@@ -239,62 +239,62 @@ impl AttentionOrchestrator {
         }
     }
 
-    /// Mettre a jour la fatigue
+    /// Update fatigue
     pub fn update_fatigue(&mut self) {
         if self.consecutive_focus_cycles > 0 {
             self.fatigue = (self.fatigue + self.fatigue_per_cycle).min(1.0);
         } else {
             self.fatigue = (self.fatigue - self.recovery_per_cycle).max(0.0);
         }
-        // La concentration grandit avec l'entrainement (lentement)
+        // Concentration grows with training (slowly)
         if self.consecutive_focus_cycles > 10 {
             self.concentration_capacity = (self.concentration_capacity + 0.001).min(1.0);
         }
     }
 
-    /// Reset la fatigue (apres le sommeil)
+    /// Reset fatigue (after sleep)
     pub fn reset_fatigue(&mut self) {
         self.fatigue = 0.0;
         self.consecutive_focus_cycles = 0;
     }
 
-    /// Reset partiel de la fatigue proportionnel a la qualite du sommeil.
-    /// quality=1.0 → fatigue passe a 0, quality=0.3 → fatigue retient 70%.
+    /// Partial fatigue reset proportional to sleep quality.
+    /// quality=1.0 -> fatigue goes to 0, quality=0.3 -> fatigue retains 70%.
     pub fn partial_reset_fatigue(&mut self, quality: f64) {
         self.fatigue *= 1.0 - quality;
         self.consecutive_focus_cycles =
             (self.consecutive_focus_cycles as f64 * (1.0 - quality)) as u64;
     }
 
-    /// Reduit la fatigue d'un montant donne (sommeil leger).
+    /// Reduces fatigue by a given amount (light sleep).
     pub fn reduce_fatigue(&mut self, amount: f64) {
         self.fatigue = (self.fatigue - amount).max(0.0);
     }
 
-    /// Retourne le niveau de fatigue actuel.
+    /// Returns the current fatigue level.
     pub fn fatigue(&self) -> f64 {
         self.fatigue
     }
 
-    /// Vrai si le focus est reste sur le meme sujet pendant N cycles.
+    /// True if the focus has been on the same subject for N cycles.
     pub fn has_been_on_same_focus(&self, cycles: u64) -> bool {
         self.consecutive_focus_cycles >= cycles
     }
 
-    /// Ajouter un element en peripherie
+    /// Add a peripheral element
     pub fn notice_peripheral(&mut self, description: &str, importance: f64) {
         self.peripheral.push(PeripheralItem {
             description: description.to_string(),
             importance,
             detected_at: Utc::now(),
         });
-        // Garder max 20 elements peripheriques
+        // Keep max 20 peripheral elements
         if self.peripheral.len() > 20 {
             self.peripheral.remove(0);
         }
     }
 
-    /// Description pour le prompt substrat
+    /// Description for the substrate prompt
     pub fn describe_for_prompt(&self) -> String {
         let focus_str = self.current_focus.as_ref()
             .map(|f| format!("FOCUS ACTUEL : {} (profondeur {:.0}%, source: {})",
@@ -305,7 +305,7 @@ impl AttentionOrchestrator {
             focus_str, self.fatigue * 100.0, self.concentration_capacity * 100.0)
     }
 
-    /// JSON pour le dashboard
+    /// JSON for the dashboard
     pub fn to_status_json(&self) -> serde_json::Value {
         serde_json::json!({
             "enabled": self.enabled,

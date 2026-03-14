@@ -1,13 +1,13 @@
 // =============================================================================
-// orchestrators/mod.rs — Les 7 orchestrateurs cognitifs de Saphire
+// orchestrators/mod.rs — Saphire's 7 cognitive orchestrators
 //
-// 1. DreamOrchestrator               — reves pendant le sommeil
-// 2. DesireOrchestrator              — desirs et projets personnels
-// 3. LearningOrchestrator            — boucle d'apprentissage
-// 4. AttentionOrchestrator           — attention selective et focus
-// 5. HealingOrchestrator             — auto-guerison progressive
-// 6. CognitiveProfileOrchestrator    — profils cognitifs neurodivergents
-// 7. PersonalityPresetOrchestrator   — presets de personnalite (archetypes)
+// 1. DreamOrchestrator               — dreams during sleep
+// 2. DesireOrchestrator              — desires and personal goals
+// 3. LearningOrchestrator            — learning loop
+// 4. AttentionOrchestrator           — selective attention and focus
+// 5. HealingOrchestrator             — progressive self-healing
+// 6. CognitiveProfileOrchestrator    — neurodivergent cognitive profiles
+// 7. PersonalityPresetOrchestrator   — personality presets (archetypes)
 // =============================================================================
 
 pub mod dreams;

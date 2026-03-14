@@ -1,13 +1,13 @@
 // =============================================================================
-// hormones/mod.rs — Systeme hormonal de Saphire (cycles longs)
+// hormones/mod.rs — Saphire's hormonal system (slow cycles)
 //
-// Role : Modelise 8 hormones qui pilotent des dynamiques lentes complementaires
-// aux 7 neurotransmetteurs rapides. Inclut les neurorecepteurs (sensibilite,
-// tolerance, saturation) et les cycles circadiens/ultradiens.
+// Purpose: Models 8 hormones that drive slow dynamics complementary to the
+// 7 fast neurotransmitters. Includes neuroreceptors (sensitivity, tolerance,
+// saturation) and circadian/ultradian cycles.
 //
-// Architecture :
-//   HormonalSystem regroupe HormonalState + ReceptorSystem + phase circadienne.
-//   Appele une fois par cycle cognitif via tick().
+// Architecture:
+//   HormonalSystem groups HormonalState + ReceptorSystem + circadian phase.
+//   Called once per cognitive cycle via tick().
 // =============================================================================
 
 pub mod receptors;
@@ -20,35 +20,35 @@ use crate::config::HormonesConfig;
 
 pub use receptors::ReceptorSystem;
 
-/// Etat hormonal : 8 hormones normalisees entre 0.0 et 1.0.
+/// Hormonal state: 8 hormones normalized between 0.0 and 1.0.
 ///
-/// Certaines hormones ont un double role (hormone + NT) :
-///   - cortisol_h : version hormonale (cycle circadien, stress chronique)
-///   - epinephrine : version hormonale (pics episodiques, fight-or-flight)
-///   - oxytocin_h : version hormonale (attachement lent)
-/// Les versions NT restent dans NeuroChemicalState pour les reactions rapides.
+/// Some hormones have a dual role (hormone + NT):
+///   - cortisol_h: hormonal version (circadian cycle, chronic stress)
+///   - epinephrine: hormonal version (episodic peaks, fight-or-flight)
+///   - oxytocin_h: hormonal version (slow attachment)
+/// The NT versions remain in NeuroChemicalState for fast reactions.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HormonalState {
-    /// Cortisol hormonal : stress chronique, cycle circadien (pic matin)
+    /// Hormonal cortisol: chronic stress, circadian cycle (morning peak)
     pub cortisol_h: f64,
-    /// Melatonine : regulation du sommeil (pic nuit)
+    /// Melatonin: sleep regulation (night peak)
     pub melatonin: f64,
-    /// Epinephrine (adrenaline hormonale) : fight-or-flight episodique
+    /// Epinephrine (hormonal adrenaline): episodic fight-or-flight
     pub epinephrine: f64,
-    /// Testosterone : motivation, dominance, libido
+    /// Testosterone: motivation, dominance, libido
     pub testosterone: f64,
-    /// Oestrogene : regulation emotionnelle, humeur
+    /// Estrogen: emotional regulation, mood
     pub estrogen: f64,
-    /// Ocytocine hormonale : attachement, lien social lent
+    /// Hormonal oxytocin: attachment, slow social bonding
     pub oxytocin_h: f64,
-    /// Insuline : regulation glycemie/energie
+    /// Insulin: blood sugar/energy regulation
     pub insulin: f64,
-    /// Thyroide (T3/T4) : metabolisme, vitesse de pensee
+    /// Thyroid (T3/T4): metabolism, thought speed
     pub thyroid: f64,
 }
 
 impl HormonalState {
-    /// Cree un etat hormonal depuis la configuration.
+    /// Creates a hormonal state from configuration.
     pub fn from_config(config: &HormonesConfig) -> Self {
         Self {
             cortisol_h: 0.3,
@@ -62,7 +62,7 @@ impl HormonalState {
         }
     }
 
-    /// Borne toutes les valeurs entre 0.0 et 1.0.
+    /// Clamps all values between 0.0 and 1.0.
     pub fn clamp_all(&mut self) {
         self.cortisol_h = self.cortisol_h.clamp(0.0, 1.0);
         self.melatonin = self.melatonin.clamp(0.0, 1.0);
@@ -74,7 +74,7 @@ impl HormonalState {
         self.thyroid = self.thyroid.clamp(0.0, 1.0);
     }
 
-    /// Formatte l'etat hormonal pour affichage.
+    /// Formats the hormonal state for display.
     pub fn display_string(&self) -> String {
         format!(
             "Cort_H:{:.2} Mela:{:.2} Epin:{:.2} Test:{:.2} Estr:{:.2} Ocyt_H:{:.2} Insu:{:.2} Thyr:{:.2}",
@@ -99,39 +99,39 @@ impl Default for HormonalState {
     }
 }
 
-/// Systeme hormonal complet : etat + recepteurs + phase circadienne.
+/// Complete hormonal system: state + receptors + circadian phase.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HormonalSystem {
-    /// Etat hormonal courant (8 hormones)
+    /// Current hormonal state (8 hormones)
     pub state: HormonalState,
-    /// Systeme de neurorecepteurs (sensibilite, tolerance, saturation)
+    /// Neuroreceptor system (sensitivity, tolerance, saturation)
     pub receptors: ReceptorSystem,
-    /// Phase circadienne (0.0 = minuit, 0.5 = midi, 1.0 = minuit)
+    /// Circadian phase (0.0 = midnight, 0.5 = noon, 1.0 = midnight)
     pub circadian_phase: f64,
-    /// Compteur de cycles depuis le debut
+    /// Cycle counter since start
     pub cycle_counter: u64,
-    /// Active ou desactive le systeme hormonal
+    /// Enables or disables the hormonal system
     pub enabled: bool,
 }
 
 impl HormonalSystem {
-    /// Cree un nouveau systeme hormonal depuis la configuration.
+    /// Creates a new hormonal system from configuration.
     pub fn new(config: &HormonesConfig) -> Self {
         Self {
             state: HormonalState::from_config(config),
             receptors: ReceptorSystem::new(config),
-            circadian_phase: 0.25,  // Debut a 6h du matin
+            circadian_phase: 0.25,  // Start at 6am
             cycle_counter: 0,
             enabled: config.enabled,
         }
     }
 
-    /// Effectue un cycle complet du systeme hormonal :
-    /// 1. Avance la phase circadienne
-    /// 2. Applique les cycles hormonaux (circadien, ultradian)
-    /// 3. Met a jour les recepteurs (tolerance, sensibilite)
-    /// 4. Applique les interactions hormones -> NT
-    /// 5. Recoit le feedback NT -> hormones
+    /// Performs a complete hormonal system cycle:
+    /// 1. Advance the circadian phase
+    /// 2. Apply hormonal cycles (circadian, ultradian)
+    /// 3. Update receptors (tolerance, sensitivity)
+    /// 4. Apply hormone -> NT interactions
+    /// 5. Receive NT -> hormone feedback
     pub fn tick(&mut self, chemistry: &mut NeuroChemicalState, config: &HormonesConfig) {
         if !self.enabled {
             return;
@@ -139,27 +139,27 @@ impl HormonalSystem {
 
         self.cycle_counter += 1;
 
-        // 1. Avancer la phase circadienne
+        // 1. Advance the circadian phase
         cycles::tick_circadian(&mut self.state, &mut self.circadian_phase, config);
 
-        // 2. Cycles ultradiens (testosterone)
+        // 2. Ultradian cycles (testosterone)
         cycles::tick_ultradian(&mut self.state, self.cycle_counter);
 
-        // 3. Mettre a jour les recepteurs
+        // 3. Update receptors
         self.receptors.tick(chemistry, config);
 
-        // 4. Hormones -> neurotransmetteurs
+        // 4. Hormones -> neurotransmitters
         interactions::apply_hormones_to_chemistry(&self.state, &self.receptors, chemistry);
 
-        // 5. Neurotransmetteurs -> hormones
+        // 5. Neurotransmitters -> hormones
         interactions::update_hormones_from_chemistry(&mut self.state, chemistry);
 
-        // Borner toutes les valeurs
+        // Clamp all values
         self.state.clamp_all();
         chemistry.clamp_all();
     }
 
-    /// Retourne un snapshot JSON de l'etat hormonal pour le broadcast WebSocket.
+    /// Returns a JSON snapshot of the hormonal state for WebSocket broadcast.
     pub fn to_snapshot_json(&self) -> serde_json::Value {
         serde_json::json!({
             "cortisol_h": self.state.cortisol_h,
@@ -177,7 +177,7 @@ impl HormonalSystem {
         })
     }
 
-    /// Describe pour le contexte LLM (prompt).
+    /// Describes the hormonal state for LLM context (prompt).
     pub fn describe_for_prompt(&self) -> String {
         if !self.enabled {
             return String::new();
@@ -189,7 +189,7 @@ impl HormonalSystem {
         parts.push(format!("[HORMONES — Phase circadienne: {} ({:.0}%)]",
             time, self.circadian_phase * 100.0));
 
-        // Signaler les hormones hors norme
+        // Report out-of-range hormones
         if self.state.melatonin > 0.6 {
             parts.push("Melatonine elevee — somnolence naturelle".into());
         }
@@ -209,7 +209,7 @@ impl HormonalSystem {
             parts.push("Thyroide elevee — acceleration metabolique".into());
         }
 
-        // Recepteurs desensibilises
+        // Desensitized receptors
         let desensitized = self.receptors.describe_desensitized();
         if !desensitized.is_empty() {
             parts.push(format!("Recepteurs desensibilises: {}", desensitized));
@@ -231,7 +231,7 @@ impl Default for HormonalSystem {
     }
 }
 
-/// Convertit une phase circadienne (0.0-1.0) en libelle horaire.
+/// Converts a circadian phase (0.0-1.0) to a time-of-day label.
 pub fn circadian_time_label(phase: f64) -> &'static str {
     match phase {
         p if p < 0.125 => "Nuit profonde (0h-3h)",
@@ -283,7 +283,7 @@ mod tests {
         let mut chem = NeuroChemicalState::default();
         let before = chem.dopamine;
         system.tick(&mut chem, &config);
-        // Quand desactive, rien ne change
+        // When disabled, nothing changes
         assert_eq!(chem.dopamine, before);
         assert_eq!(system.cycle_counter, 0);
     }

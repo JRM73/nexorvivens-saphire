@@ -1,22 +1,22 @@
 // =============================================================================
-// prospective_memory.rs — Memoire prospective (intentions differees)
+// prospective_memory.rs — Prospective memory (deferred intentions)
 // =============================================================================
 //
-// Ce module permet a Saphire de se souvenir de faire quelque chose dans le futur.
-// Contrairement a la memoire episodique (souvenir du passe), la memoire prospective
-// stocke des intentions d'action associees a des conditions de declenchement :
-//   - Temporelles (apres N cycles)
-//   - Emotionnelles (quand une emotion specifique apparait)
-//   - Chimiques (quand un neurotransmetteur depasse un seuil)
-//   - Conversationnelles (au debut d'une conversation)
-//   - Cognitives (quand un type de pensee specifique est genere)
+// This module allows Saphire to remember to do something in the future.
+// Unlike episodic memory (memory of the past), prospective memory stores
+// action intentions associated with trigger conditions:
+//  - Temporal (after N cycles)
+//  - Emotional (when a specific emotion appears)
+//  - Chemical (when a neurotransmitter exceeds a threshold)
+//  - Conversational (at the start of a conversation)
+//  - Cognitive (when a specific thought type is generated)
 //
-// Les intentions sont prioritisees, expirent apres un delai configurable,
-// et peuvent etre detectees automatiquement dans le flux de pensee.
+// Intentions are prioritized, expire after a configurable delay,
+// and can be automatically detected in the thought stream.
 //
-// Place dans l'architecture :
-//   Module de premier niveau, utilise par le pipeline cognitif. Les intentions
-//   declenchees sont injectees dans le prompt LLM sous forme de rappels.
+// Place in architecture:
+//  Top-level module, used by the cognitive pipeline. Triggered intentions
+//  are injected into the LLM prompt as reminders.
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
@@ -24,15 +24,14 @@ use serde::{Deserialize, Serialize};
 // =============================================================================
 // Configuration
 // =============================================================================
-
-/// Configuration de la memoire prospective.
+/// Configuration for prospective memory.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProspectiveMemoryConfig {
-    /// Module actif ou non
+    /// Module enabled or not
     pub enabled: bool,
-    /// Nombre maximum d'intentions stockees simultanement
+    /// Maximum number of simultaneously stored intentions
     pub max_intentions: usize,
-    /// Age maximum d'une intention avant expiration automatique (en cycles)
+    /// Maximum age of an intention before automatic expiration (in cycles)
     pub max_age_cycles: u64,
 }
 
@@ -47,99 +46,94 @@ impl Default for ProspectiveMemoryConfig {
 }
 
 // =============================================================================
-// Types de declenchement
+// Trigger types
 // =============================================================================
-
-/// Type de condition de declenchement pour une intention differee.
+/// Type of trigger condition for a deferred intention.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ProspectiveTriggerType {
-    /// Declenchement apres un nombre de cycles ecoules depuis la creation
+    /// Triggers after a number of elapsed cycles since creation
     TimeBasedCycles(u64),
-    /// Declenchement quand une emotion specifique est dominante
+    /// Triggers when a specific emotion is dominant
     EmotionBased(String),
-    /// Declenchement quand une molecule depasse un seuil
+    /// Triggers when a molecule exceeds a threshold
     ChemistryBased { molecule: String, threshold: f64 },
-    /// Declenchement au debut d'une nouvelle conversation
+    /// Triggers at the start of a new conversation
     ConversationStart,
-    /// Declenchement quand un type de pensee specifique est genere
+    /// Triggers when a specific thought type is generated
     ThoughtTypeMatch(String),
 }
 
 // =============================================================================
-// Etat d'une intention
+// Intention state
 // =============================================================================
-
-/// Etat du cycle de vie d'une intention differee.
+/// Lifecycle state of a deferred intention.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum IntentionState {
-    /// En attente de declenchement
+    /// Waiting for trigger
     Pending,
-    /// Condition remplie, action rappelée
+    /// Condition met, action reminded
     Triggered,
-    /// Action accomplie
+    /// Action accomplished
     Completed,
-    /// Intention expiree (trop ancienne)
+    /// Intention expired (too old)
     Expired,
 }
 
 // =============================================================================
-// Intention differee
+// Deferred intention
 // =============================================================================
-
-/// Une intention differee : une action a effectuer quand une condition est remplie.
+/// A deferred intention: an action to perform when a condition is met.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeferredIntention {
-    /// Identifiant unique
+    /// Unique identifier
     pub id: u64,
-    /// Description de l'action a effectuer
+    /// Description of the action to perform
     pub action: String,
-    /// Description textuelle de la condition de declenchement
+    /// Textual description of the trigger condition
     pub trigger_condition: String,
-    /// Type de declenchement (determine la logique de verification)
+    /// Trigger type (determines the verification logic)
     pub trigger_type: ProspectiveTriggerType,
-    /// Priorite (0.0 = basse, 1.0 = haute)
+    /// Priority (0.0 = low, 1.0 = high)
     pub priority: f64,
-    /// Cycle de creation
+    /// Creation cycle
     pub created_at_cycle: u64,
-    /// Cycle d'expiration optionnel (None = utilise max_age_cycles)
+    /// Optional expiration cycle (None = uses max_age_cycles)
     pub expires_at_cycle: Option<u64>,
-    /// Etat courant de l'intention
+    /// Current state of the intention
     pub state: IntentionState,
-    /// Contexte d'origine (quelle pensee a genere cette intention)
+    /// Source context (which thought generated this intention)
     pub source_context: String,
 }
 
 // =============================================================================
-// Memoire prospective
+// Prospective memory
 // =============================================================================
-
-/// Memoire prospective — stocke et gere les intentions differees de Saphire.
+/// Prospective memory — stores and manages Saphire's deferred intentions.
 ///
-/// Permet de se souvenir de faire quelque chose plus tard, quand les bonnes
-/// conditions sont reunies. Les intentions declenchees sont presentees sous
-/// forme de rappels dans le prompt LLM.
+/// Allows remembering to do something later, when the right conditions
+/// are met. Triggered intentions are presented as reminders in the LLM prompt.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProspectiveMemory {
-    /// Module actif ou non
+    /// Module enabled or not
     pub enabled: bool,
-    /// Liste de toutes les intentions (toutes etats confondus)
+    /// List of all intentions (all states)
     pub intentions: Vec<DeferredIntention>,
-    /// Actions declenchees durant le cycle courant (pour injection dans le prompt)
+    /// Actions triggered during the current cycle (for prompt injection)
     pub triggered_this_cycle: Vec<String>,
-    /// Nombre maximum d'intentions simultanees
+    /// Maximum number of simultaneous intentions
     pub max_intentions: usize,
-    /// Compteur total d'intentions completees depuis le demarrage
+    /// Total number of completed intentions since startup
     pub total_completed: u64,
-    /// Compteur total d'intentions expirees depuis le demarrage
+    /// Total number of expired intentions since startup
     pub total_expired: u64,
-    /// Age maximum d'une intention avant expiration (en cycles)
+    /// Maximum age of an intention before expiration (in cycles)
     max_age_cycles: u64,
-    /// Prochain identifiant a attribuer
+    /// Next identifier to assign
     next_id: u64,
 }
 
 impl ProspectiveMemory {
-    /// Cree une nouvelle memoire prospective a partir de la configuration.
+    /// Creates a new prospective memory from configuration.
     pub fn new(config: &ProspectiveMemoryConfig) -> Self {
         Self {
             enabled: config.enabled,
@@ -153,12 +147,12 @@ impl ProspectiveMemory {
         }
     }
 
-    /// Enregistre une nouvelle intention differee.
+    /// Records a new deferred intention.
     ///
-    /// Si la memoire est pleine (max_intentions atteint), l'intention en attente
-    /// avec la priorite la plus basse est supprimee pour faire de la place.
+    /// If memory is full (max_intentions reached), the pending intention
+    /// with the lowest priority is removed to make room.
     ///
-    /// Retourne l'identifiant unique de l'intention creee.
+    /// Returns the unique identifier of the created intention.
     pub fn register(
         &mut self,
         action: &str,
@@ -171,28 +165,28 @@ impl ProspectiveMemory {
             return 0;
         }
 
-        // Si la memoire est pleine, ejecter l'intention pending la moins prioritaire
+        // If memory is full, evict the least-priority pending intention
         let pending_count = self.intentions.iter()
             .filter(|i| i.state == IntentionState::Pending)
             .count();
 
         if pending_count >= self.max_intentions {
-            // Trouver l'indice de l'intention pending avec la priorite la plus basse
+            // Find the index of the pending intention with the lowest priority
             if let Some((idx, _)) = self.intentions.iter().enumerate()
                 .filter(|(_, i)| i.state == IntentionState::Pending)
                 .min_by(|(_, a), (_, b)| a.priority.partial_cmp(&b.priority).unwrap_or(std::cmp::Ordering::Equal))
             {
-                // Ne remplacer que si la nouvelle intention est plus prioritaire
+                // Only replace if the new intention has higher priority
                 if priority > self.intentions[idx].priority {
                     self.intentions.remove(idx);
                 } else {
-                    // Pas de place et pas assez prioritaire
+                    // No room and not high enough priority
                     return 0;
                 }
             }
         }
 
-        // Generer la description de la condition
+        // Generate the condition description
         let trigger_condition = match &trigger_type {
             ProspectiveTriggerType::TimeBasedCycles(n) =>
                 format!("apres {} cycles", n),
@@ -225,16 +219,16 @@ impl ProspectiveMemory {
         id
     }
 
-    /// Verifie les conditions de declenchement de toutes les intentions en attente.
+    /// Checks the trigger conditions of all pending intentions.
     ///
-    /// Pour chaque intention pending, evalue sa condition selon son type :
-    /// - TimeBasedCycles : le nombre de cycles ecoules depasse le seuil
-    /// - EmotionBased : l'emotion courante correspond
-    /// - ChemistryBased : le niveau chimique depasse le seuil
-    /// - ConversationStart : une conversation est en cours
-    /// - ThoughtTypeMatch : le type de pensee correspond
+    /// For each pending intention, evaluates its condition according to its type:
+    /// - TimeBasedCycles: the number of elapsed cycles exceeds the threshold
+    /// - EmotionBased: the current emotion matches
+    /// - ChemistryBased: the chemical level exceeds the threshold
+    /// - ConversationStart: a conversation is in progress
+    /// - ThoughtTypeMatch: the thought type matches
     ///
-    /// Retourne la liste des actions a effectuer (intentions declenchees ce cycle).
+    /// Returns the list of actions to perform (intentions triggered this cycle).
     pub fn check_triggers(
         &mut self,
         cycle: u64,
@@ -289,17 +283,17 @@ impl ProspectiveMemory {
         triggered_actions
     }
 
-    /// Detecte des intentions implicites dans le texte de pensee.
+    /// Detects implicit intentions in the thought text.
     ///
-    /// Recherche des motifs comme :
+    /// Searches for patterns like:
     /// - "je dois me souvenir de ..."
     /// - "la prochaine fois que ..."
     /// - "quand je serai ..."
     /// - "ne pas oublier de ..."
     /// - "il faudra ..."
     ///
-    /// Cree automatiquement des intentions avec une priorite moderee.
-    /// Retourne le nombre d'intentions creees.
+    /// Automatically creates intentions with moderate priority.
+    /// Returns the number of created intentions.
     pub fn parse_from_thought(&mut self, thought_text: &str, cycle: u64) -> usize {
         if !self.enabled {
             return 0;
@@ -308,7 +302,7 @@ impl ProspectiveMemory {
         let text_lower = thought_text.to_lowercase();
         let mut created = 0;
 
-        // --- Motif : "je dois me souvenir de X" / "me rappeler de X" ---
+        // --- Pattern: "je dois me souvenir de X" / "me rappeler de X" ---
         let remember_patterns = [
             "je dois me souvenir de ",
             "me rappeler de ",
@@ -335,12 +329,12 @@ impl ProspectiveMemory {
             }
         }
 
-        // --- Motif : "la prochaine fois que X" ---
+        // --- Pattern: "la prochaine fois que X" ---
         if let Some(pos) = text_lower.find("la prochaine fois que ") {
             let start = pos + "la prochaine fois que ".len();
             let action = extract_action_from_text(thought_text, start);
             if !action.is_empty() && action.len() > 3 {
-                // La prochaine conversation
+                // Next conversation
                 self.register(
                     &action,
                     ProspectiveTriggerType::ConversationStart,
@@ -352,12 +346,12 @@ impl ProspectiveMemory {
             }
         }
 
-        // --- Motif : "quand je serai X" ---
+        // --- Pattern: "quand je serai X" ---
         if let Some(pos) = text_lower.find("quand je serai ") {
             let start = pos + "quand je serai ".len();
             let rest = extract_action_from_text(thought_text, start);
             if !rest.is_empty() && rest.len() > 3 {
-                // Condition emotionnelle — essayer d'extraire l'emotion cible
+                // Emotional condition — try to extract the target emotion
                 let emotion_keywords = [
                     "triste", "joyeux", "joyeuse", "calme", "stresse", "stressée",
                     "serein", "sereine", "en colere", "curieux", "curieuse",
@@ -377,7 +371,7 @@ impl ProspectiveMemory {
                         break;
                     }
                 }
-                // Fallback : intention temporelle
+                // Fallback: temporal intention
                 if !found_emotion {
                     self.register(
                         &rest,
@@ -394,10 +388,10 @@ impl ProspectiveMemory {
         created
     }
 
-    /// Expire les intentions trop anciennes.
+    /// Expires intentions that are too old.
     ///
-    /// Toute intention en attente dont l'age depasse max_age_cycles
-    /// ou dont expires_at_cycle est depasse passe a l'etat Expired.
+    /// Any pending intention whose age exceeds max_age_cycles
+    /// or whose expires_at_cycle is exceeded transitions to the Expired state.
     pub fn expire_old(&mut self, cycle: u64) {
         for intention in &mut self.intentions {
             if intention.state != IntentionState::Pending {
@@ -414,7 +408,7 @@ impl ProspectiveMemory {
             }
         }
 
-        // Nettoyer les intentions terminees ou expirees anciennes (garder les 50 dernieres)
+        // Clean up old completed or expired intentions (keep the last 50)
         let completed_or_expired: Vec<usize> = self.intentions.iter().enumerate()
             .filter(|(_, i)| i.state == IntentionState::Completed || i.state == IntentionState::Expired)
             .map(|(idx, _)| idx)
@@ -437,7 +431,7 @@ impl ProspectiveMemory {
         }
     }
 
-    /// Marque une intention declenchee comme completee.
+    /// Marks a triggered intention as completed.
     pub fn mark_completed(&mut self, id: u64) {
         if let Some(intention) = self.intentions.iter_mut().find(|i| i.id == id) {
             if intention.state == IntentionState::Triggered {
@@ -447,10 +441,10 @@ impl ProspectiveMemory {
         }
     }
 
-    /// Genere une description des intentions declenchees ce cycle pour le prompt LLM.
+    /// Generates a description of triggered intentions this cycle for the LLM prompt.
     ///
-    /// Format : "RAPPEL : [action]" pour chaque intention declenchee.
-    /// Retourne une chaine vide si aucune intention n'a ete declenchee.
+    /// Format: "RAPPEL : [action]" for each triggered intention.
+    /// Returns an empty string if no intention was triggered.
     pub fn describe_triggered_for_prompt(&self) -> String {
         if self.triggered_this_cycle.is_empty() {
             return String::new();
@@ -463,7 +457,7 @@ impl ProspectiveMemory {
         lines.join("\n")
     }
 
-    /// Serialise l'etat complet de la memoire prospective en JSON.
+    /// Serializes the complete state of prospective memory to JSON.
     pub fn to_json(&self) -> serde_json::Value {
         let pending: Vec<_> = self.intentions.iter()
             .filter(|i| i.state == IntentionState::Pending)
@@ -499,12 +493,11 @@ impl ProspectiveMemory {
 }
 
 // =============================================================================
-// Fonctions utilitaires
+// Utility functions
 // =============================================================================
-
-/// Extrait une action du texte a partir d'une position donnee.
-/// S'arrete au premier point, point-virgule, saut de ligne, ou fin de chaine.
-/// Limite a 200 caracteres.
+/// Extracts an action from the text starting at a given position.
+/// Stops at the first period, semicolon, newline, or end of string.
+/// Limited to 200 characters.
 fn extract_action_from_text(text: &str, start: usize) -> String {
     let rest = if start < text.len() { &text[start..] } else { "" };
 
@@ -515,7 +508,7 @@ fn extract_action_from_text(text: &str, start: usize) -> String {
     rest[..end].trim().to_string()
 }
 
-/// Tronque une chaine a une longueur maximale.
+/// Truncates a string to a maximum length.
 fn truncate_str(s: &str, max_len: usize) -> String {
     if s.len() <= max_len {
         s.to_string()
@@ -549,11 +542,11 @@ mod tests {
         assert!(id > 0);
         assert_eq!(mem.intentions.len(), 1);
 
-        // Pas encore le moment
+        // Not time yet
         let triggered = mem.check_triggers(105, "neutre", 0.3, 0.4, false, "reflexion");
         assert!(triggered.is_empty());
 
-        // Maintenant oui (10 cycles ecoules)
+        // Now yes (10 cycles elapsed)
         let triggered = mem.check_triggers(110, "neutre", 0.3, 0.4, false, "reflexion");
         assert_eq!(triggered.len(), 1);
         assert_eq!(triggered[0], "verifier les logs");
@@ -570,11 +563,11 @@ mod tests {
             "reflexion sur les liens",
         );
 
-        // Pas la bonne emotion
+        // Wrong emotion
         let triggered = mem.check_triggers(51, "tristesse", 0.3, 0.4, false, "reflexion");
         assert!(triggered.is_empty());
 
-        // Bonne emotion
+        // Right emotion
         let triggered = mem.check_triggers(52, "Joie profonde", 0.3, 0.4, false, "reflexion");
         assert_eq!(triggered.len(), 1);
     }
@@ -593,11 +586,11 @@ mod tests {
             "stress eleve detecte",
         );
 
-        // Cortisol pas assez haut
+        // Cortisol not high enough
         let triggered = mem.check_triggers(11, "neutre", 0.5, 0.4, false, "reflexion");
         assert!(triggered.is_empty());
 
-        // Cortisol au-dessus du seuil
+        // Cortisol above threshold
         let triggered = mem.check_triggers(12, "neutre", 0.8, 0.4, false, "reflexion");
         assert_eq!(triggered.len(), 1);
         assert_eq!(triggered[0], "prendre du recul");
@@ -614,11 +607,11 @@ mod tests {
             "intention de politesse",
         );
 
-        // Pas en conversation
+        // Not in conversation
         let triggered = mem.check_triggers(1, "neutre", 0.3, 0.4, false, "reflexion");
         assert!(triggered.is_empty());
 
-        // En conversation
+        // In conversation
         let triggered = mem.check_triggers(2, "neutre", 0.3, 0.4, true, "reflexion");
         assert_eq!(triggered.len(), 1);
     }
@@ -632,16 +625,16 @@ mod tests {
         };
         let mut mem = ProspectiveMemory::new(&config);
 
-        // Remplir 3 intentions
+        // Fill 3 intentions
         mem.register("a", ProspectiveTriggerType::TimeBasedCycles(100), 0.3, 0, "ctx");
         mem.register("b", ProspectiveTriggerType::TimeBasedCycles(100), 0.5, 0, "ctx");
         mem.register("c", ProspectiveTriggerType::TimeBasedCycles(100), 0.7, 0, "ctx");
         assert_eq!(mem.intentions.len(), 3);
 
-        // Ajouter une 4eme avec priorite plus haute que la plus basse
+        // Add a 4th with higher priority than the lowest
         mem.register("d", ProspectiveTriggerType::TimeBasedCycles(100), 0.9, 0, "ctx");
         assert_eq!(mem.intentions.len(), 3);
-        // L'intention "a" (priorite 0.3) doit avoir ete ejectee
+        // Intention "a" (priority 0.3) should have been evicted
         assert!(!mem.intentions.iter().any(|i| i.action == "a"));
         assert!(mem.intentions.iter().any(|i| i.action == "d"));
     }
@@ -687,7 +680,7 @@ mod tests {
             20,
         );
         assert_eq!(count, 1);
-        // Devrait etre ConversationStart
+        // Should be ConversationStart
         assert!(matches!(
             mem.intentions[0].trigger_type,
             ProspectiveTriggerType::ConversationStart

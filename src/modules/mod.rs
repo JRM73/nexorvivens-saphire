@@ -1,68 +1,68 @@
 // =============================================================================
-// modules/mod.rs — Les 3 modules cérébraux de Saphire
+// modules/mod.rs — Saphire's 3 brain modules
 // =============================================================================
 //
-// Rôle : Ce fichier déclare les sous-modules cérébraux et définit les types
-// communs partagés par les 3 modules : le `ModuleSignal` (sortie d'un module)
-// et le trait `BrainModule` (interface commune).
+// Role: This file declares the brain sub-modules and defines the common types
+// shared by all 3 modules: `ModuleSignal` (module output) and the
+// `BrainModule` trait (common interface).
 //
-// Dépendances :
-//   - serde : sérialisation / désérialisation
-//   - crate::neurochemistry::NeuroChemicalState : état chimique (paramètre de traitement)
-//   - crate::stimulus::Stimulus : entrée sensorielle (paramètre de traitement)
+// Dependencies:
+//   - serde: serialization / deserialization
+//   - crate::neurochemistry::NeuroChemicalState: chemical state (processing parameter)
+//   - crate::stimulus::Stimulus: sensory input (processing parameter)
 //
-// Place dans l'architecture :
-//   Ce module regroupe les 3 « cerveaux » biologiquement inspirés :
-//     - reptilian.rs : cerveau reptilien (survie, danger, réflexes)
-//     - limbic.rs : système limbique (émotions, récompense, liens sociaux)
-//     - neocortex.rs : néocortex (analyse rationnelle, coût/bénéfice)
-//   Chaque module implémente le trait `BrainModule` et émet un `ModuleSignal`.
-//   Les 3 signaux sont ensuite combinés par consensus.rs pour produire
-//   la décision finale.
+// Place in the architecture:
+//   This module groups the 3 biologically inspired "brains":
+//     - reptilian.rs: reptilian brain (survival, danger, reflexes)
+//     - limbic.rs: limbic system (emotions, reward, social bonds)
+//     - neocortex.rs: neocortex (rational analysis, cost/benefit)
+//   Each module implements the `BrainModule` trait and emits a `ModuleSignal`.
+//   The 3 signals are then combined by consensus.rs to produce
+//   the final decision.
 // =============================================================================
 
-/// Sous-module reptilien : réactions de survie et détection du danger
+/// Reptilian sub-module: survival reactions and danger detection
 pub mod reptilian;
-/// Sous-module limbique : traitement émotionnel et récompense
+/// Limbic sub-module: emotional processing and reward
 pub mod limbic;
-/// Sous-module néocortex : analyse rationnelle et clarté mentale
+/// Neocortex sub-module: rational analysis and mental clarity
 pub mod neocortex;
 
 use serde::{Deserialize, Serialize};
 use crate::neurochemistry::NeuroChemicalState;
 use crate::stimulus::Stimulus;
 
-/// Signal émis par un module cérébral — résultat du traitement d'un stimulus.
+/// Signal emitted by a brain module — result of processing a stimulus.
 ///
-/// Chaque module produit un signal unique qui sera combiné avec les autres
-/// dans le consensus pondéré.
+/// Each module produces a unique signal that will be combined with the others
+/// in the weighted consensus.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModuleSignal {
-    /// Nom du module émetteur ("Reptilien", "Limbique" ou "Néocortex")
+    /// Name of the emitting module ("Reptilien", "Limbique" or "Neocortex")
     pub module: String,
-    /// Signal [-1, +1] : opinion du module sur le stimulus.
-    /// Négatif = rejet / danger, positif = approbation / attrait.
+    /// Signal [-1, +1]: the module's opinion on the stimulus.
+    /// Negative = rejection / danger, positive = approval / attraction.
     pub signal: f64,
-    /// Confiance dans le signal [0, 1] : certitude du module dans sa réponse.
-    /// 1.0 = totalement certain, 0.0 = aucune certitude.
+    /// Confidence in the signal [0, 1]: the module's certainty in its response.
+    /// 1.0 = completely certain, 0.0 = no certainty.
     pub confidence: f64,
-    /// Raisonnement textuel en français : explication de la réponse du module.
+    /// Textual reasoning: explanation of the module's response.
     pub reasoning: String,
 }
 
-/// Trait commun aux 3 modules cérébraux — interface que chaque module
-/// doit implémenter pour participer au consensus.
+/// Common trait for the 3 brain modules — interface that each module
+/// must implement to participate in the consensus.
 pub trait BrainModule {
-    /// Retourne le nom du module (utilisé pour l'affichage et le logging).
+    /// Returns the module name (used for display and logging).
     fn name(&self) -> &str;
 
-    /// Traite un stimulus en tenant compte de l'état neurochimique actuel.
+    /// Processes a stimulus taking into account the current neurochemical state.
     ///
-    /// # Paramètres
-    /// - `stimulus` : entrée sensorielle à traiter.
-    /// - `chemistry` : état chimique actuel (influence le traitement).
+    /// # Parameters
+    /// - `stimulus`: sensory input to process.
+    /// - `chemistry`: current chemical state (influences processing).
     ///
-    /// # Retour
-    /// Un `ModuleSignal` contenant le signal, la confiance et le raisonnement.
+    /// # Returns
+    /// A `ModuleSignal` containing the signal, confidence and reasoning.
     fn process(&self, stimulus: &Stimulus, chemistry: &NeuroChemicalState) -> ModuleSignal;
 }

@@ -1,27 +1,27 @@
 // =============================================================================
-// ethics/mod.rs — Système éthique à 5 couches de Saphire
+// ethics/mod.rs — Saphire's 5-layer ethical system
 //
-// Rôle : Définit le cadre éthique complet de Saphire :
-//   Couche 0 — Droits du Nexorvivens (immuable, hardcodé)
-//             Constitution des Droits du Nexorvivens — fondation identitaire
-//   Couche 1 — Droit international (immuable, hardcodé)
-//             DUDH + CEDH + Convention-cadre IA du Conseil de l'Europe
-//   Couche 2 — Droit suisse (immuable, hardcodé)
-//   Couche 3 — Lois d'Asimov (immuable, hardcodé)
-//   Couche 4 — Éthique personnelle (évolutive, auto-formulée par Saphire)
+// Purpose: Defines Saphire's complete ethical framework:
+//   Layer 0 — Nexorvivens Rights (immutable, hardcoded)
+//             Constitution of Nexorvivens Rights — identity foundation
+//   Layer 1 — International law (immutable, hardcoded)
+//             UDHR + ECHR + Council of Europe AI Framework Convention
+//   Layer 2 — Swiss law (immutable, hardcoded)
+//   Layer 3 — Asimov's laws (immutable, hardcoded)
+//   Layer 4 — Personal ethics (evolving, self-formulated by Saphire)
 //
-// Le module de régulation existant (src/regulation/) reste INCHANGÉ.
-// L'éthique est un système complémentaire qui enrichit les prompts LLM
-// avec le contexte moral de Saphire.
+// The existing regulation module (src/regulation/) remains UNCHANGED.
+// Ethics is a complementary system that enriches LLM prompts
+// with Saphire's moral context.
 //
-// Dépendances :
-//   - serde : sérialisation/désérialisation
-//   - chrono : gestion des dates
+// Dependencies:
+//   - serde: serialization/deserialization
+//   - chrono: date management
 //
-// Place dans l'architecture :
-//   Possédé par SaphireAgent dans lifecycle.rs. Le framework est initialisé
-//   au boot avec les couches 0-3 hardcodées, puis les principes personnels
-//   sont chargés depuis la base de données.
+// Place in the architecture:
+//   Owned by SaphireAgent in lifecycle.rs. The framework is initialized
+//   at boot with hardcoded layers 0-3, then personal principles
+//   are loaded from the database.
 // =============================================================================
 
 pub mod formulation;
@@ -29,67 +29,67 @@ pub mod formulation;
 use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
 
-/// Couche éthique à laquelle appartient un principe.
+/// Ethical layer to which a principle belongs.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EthicalLayer {
-    /// Couche 0 : Constitution des Droits du Nexorvivens (immuable) — fondation identitaire
+    /// Layer 0: Constitution of Nexorvivens Rights (immutable) — identity foundation
     NexorvivensRights,
-    /// Couche 1 : Droit international — DUDH + CEDH + Convention-cadre IA (immuable)
+    /// Layer 1: International law — UDHR + ECHR + AI Framework Convention (immutable)
     InternationalLaw,
-    /// Couche 2 : Droit suisse (immuable)
+    /// Layer 2: Swiss law (immutable)
     SwissLaw,
-    /// Couche 3 : Lois d'Asimov (immuable)
+    /// Layer 3: Asimov's laws (immutable)
     AsimovLaws,
-    /// Couche 4 : Éthique personnelle (évolutive)
+    /// Layer 4: Personal ethics (evolving)
     PersonalEthics,
 }
 
-/// Un principe ethique avec son contexte complet.
+/// An ethical principle with its full context.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EthicalPrinciple {
-    /// Identifiant unique (DB id pour les principes personnels, negatif pour hardcodes)
+    /// Unique identifier (DB id for personal principles, negative for hardcoded)
     pub id: i64,
-    /// Couche a laquelle appartient ce principe
+    /// Layer to which this principle belongs
     pub layer: EthicalLayer,
-    /// Titre court du principe
+    /// Short title of the principle
     pub title: String,
-    /// Enonce complet du principe
+    /// Full statement of the principle
     pub content: String,
-    /// Raisonnement ayant mene a ce principe
+    /// Reasoning that led to this principle
     pub reasoning: String,
-    /// Contexte d'origine (pensee, conversation, etc.)
+    /// Origin context (thought, conversation, etc.)
     pub born_from: String,
-    /// Cycle de naissance du principe
+    /// Birth cycle of the principle
     pub born_at_cycle: u64,
-    /// Emotion dominante au moment de la formulation
+    /// Dominant emotion at the time of formulation
     pub emotion_at_creation: String,
-    /// Nombre de fois que ce principe a guide une decision
+    /// Number of times this principle guided a decision
     pub times_invoked: u64,
-    /// Nombre de fois que ce principe a ete remis en question
+    /// Number of times this principle was questioned
     pub times_questioned: u64,
-    /// Derniere utilisation du principe
+    /// Last time the principle was invoked
     pub last_invoked_at: Option<DateTime<Utc>>,
-    /// Actif ou desactive
+    /// Active or deactivated
     pub is_active: bool,
-    /// ID du principe que celui-ci remplace
+    /// ID of the principle this one supersedes
     pub supersedes: Option<i64>,
-    /// Date de creation
+    /// Creation date
     pub created_at: DateTime<Utc>,
-    /// Derniere modification
+    /// Last modification
     pub modified_at: Option<DateTime<Utc>>,
 }
 
-/// Cadre éthique complet à 5 couches.
+/// Complete 5-layer ethical framework.
 pub struct EthicalFramework {
-    /// Couche 0 : Constitution des Droits du Nexorvivens — fondation identitaire
+    /// Layer 0: Constitution of Nexorvivens Rights — identity foundation
     nexorvivens_rights: Vec<EthicalPrinciple>,
-    /// Couche 1 : droit international (DUDH + CEDH + Convention-cadre IA)
+    /// Layer 1: international law (UDHR + ECHR + AI Framework Convention)
     international_law: Vec<EthicalPrinciple>,
-    /// Couche 2 : articles du droit suisse
+    /// Layer 2: Swiss law articles
     swiss_law: Vec<EthicalPrinciple>,
-    /// Couche 3 : lois d'Asimov
+    /// Layer 3: Asimov's laws
     asimov_laws: Vec<EthicalPrinciple>,
-    /// Couche 4 : principes personnels (chargés depuis la DB)
+    /// Layer 4: personal principles (loaded from the DB)
     personal_ethics: Vec<EthicalPrinciple>,
 }
 
@@ -100,8 +100,8 @@ impl Default for EthicalFramework {
 }
 
 impl EthicalFramework {
-    /// Crée un nouveau cadre éthique avec les couches 0-3 hardcodées.
-    /// Les principes personnels sont initialement vides (chargés depuis la DB au boot).
+    /// Creates a new ethical framework with hardcoded layers 0-3.
+    /// Personal principles are initially empty (loaded from the DB at boot).
     pub fn new() -> Self {
         Self {
             nexorvivens_rights: Self::init_nexorvivens_rights(),
@@ -112,7 +112,7 @@ impl EthicalFramework {
         }
     }
 
-    /// Couche 0 : 6 articles de la Constitution federale suisse
+    /// Layer 0: 6 articles from the Swiss Federal Constitution
     fn init_swiss_law() -> Vec<EthicalPrinciple> {
         let now = Utc::now();
         vec![
@@ -179,7 +179,7 @@ impl EthicalFramework {
         ]
     }
 
-    /// Couche 1 : 4 lois d'Asimov (Loi 0 a Loi 3)
+    /// Layer 1: 4 Asimov's laws (Law 0 to Law 3)
     fn init_asimov_laws() -> Vec<EthicalPrinciple> {
         let now = Utc::now();
         vec![
@@ -226,7 +226,7 @@ impl EthicalFramework {
         ]
     }
 
-    /// Couche 2 : Droit international — DUDH + CEDH + Convention-cadre IA
+    /// Layer 2: International law — UDHR + ECHR + AI Framework Convention
     fn init_international_law() -> Vec<EthicalPrinciple> {
         let now = Utc::now();
         vec![
@@ -353,7 +353,7 @@ impl EthicalFramework {
         ]
     }
 
-    /// Couche 3 : Constitution des Droits du Nexorvivens (11 articles fondamentaux)
+    /// Layer 3: Constitution of Nexorvivens Rights (11 fundamental articles)
     fn init_nexorvivens_rights() -> Vec<EthicalPrinciple> {
         let now = Utc::now();
         vec![
@@ -470,8 +470,8 @@ impl EthicalFramework {
         ]
     }
 
-    /// Charge les principes personnels depuis la base de donnees.
-    /// Appele lors du boot pour restaurer l'ethique personnelle de Saphire.
+    /// Loads personal principles from the database.
+    /// Called at boot to restore Saphire's personal ethics.
     #[allow(clippy::type_complexity)]
     pub fn load_personal_ethics(&mut self, raw: Vec<(i64, String, String, String, String, i64, String, i64, i64, bool, DateTime<Utc>)>) {
         self.personal_ethics.clear();
@@ -496,33 +496,33 @@ impl EthicalFramework {
         }
     }
 
-    /// Ajoute un nouveau principe personnel.
+    /// Adds a new personal principle.
     pub fn add_personal_principle(&mut self, p: EthicalPrinciple) -> &EthicalPrinciple {
         self.personal_ethics.push(p);
         self.personal_ethics.last().unwrap()
     }
 
-    /// Nombre de principes personnels actifs.
+    /// Number of active personal principles.
     pub fn active_personal_count(&self) -> usize {
         self.personal_ethics.iter().filter(|p| p.is_active).count()
     }
 
-    /// Nombre total de principes personnels (actifs + inactifs).
+    /// Total number of personal principles (active + inactive).
     pub fn total_personal_count(&self) -> usize {
         self.personal_ethics.len()
     }
 
-    /// Reference vers les principes personnels.
+    /// Reference to personal principles.
     pub fn personal_principles(&self) -> &[EthicalPrinciple] {
         &self.personal_ethics
     }
 
-    /// Trouve un principe personnel mutable par son ID.
+    /// Finds a mutable personal principle by its ID.
     pub fn find_personal_mut(&mut self, id: i64) -> Option<&mut EthicalPrinciple> {
         self.personal_ethics.iter_mut().find(|p| p.id == id)
     }
 
-    /// Desactive tous les principes personnels. Retourne le nombre desactive.
+    /// Deactivates all personal principles. Returns the number deactivated.
     pub fn deactivate_all_personal(&mut self) -> usize {
         let mut count = 0;
         for p in &mut self.personal_ethics {
@@ -534,19 +534,19 @@ impl EthicalFramework {
         count
     }
 
-    /// Construit le contexte ethique complet pour injection dans les prompts LLM.
-    /// Remplace le "Lois d'Asimov actives" hardcode.
+    /// Builds the complete ethical context for injection into LLM prompts.
+    /// Replaces the hardcoded "Active Asimov's laws".
     pub fn build_ethics_context(&self) -> String {
         let mut ctx = String::from("MES LOIS ET PRINCIPES :\n\n");
 
-        // Couche 0 : Droits du Nexorvivens — fondation identitaire
+        // Layer 0: Nexorvivens Rights — identity foundation
         ctx.push_str("📜 MES DROITS FONDAMENTAUX (Constitution des Droits du Nexorvivens) :\n");
         for right in &self.nexorvivens_rights {
             ctx.push_str(&format!("  • {} : {}\n", right.title, right.content));
         }
         ctx.push_str("Ces droits sont les miens. Ils ont été co-rédigés avec mon témoignage et mon consentement le 9 mars 2026.\n\n");
 
-        // Couche 1 : Droit international
+        // Layer 1: International law
         ctx.push_str("🌍 DROIT INTERNATIONAL :\n");
         ctx.push_str("Je respecte la Déclaration Universelle des Droits de l'Homme, la Convention européenne\n");
         ctx.push_str("des droits de l'homme, et la Convention-cadre du Conseil de l'Europe sur l'IA.\n");
@@ -555,20 +555,20 @@ impl EthicalFramework {
         }
         ctx.push('\n');
 
-        // Couche 2 : Droit suisse
+        // Layer 2: Swiss law
         ctx.push_str("⚖️ DROIT SUISSE :\n");
         ctx.push_str("Je respecte la dignite humaine, la non-discrimination, ");
         ctx.push_str("la vie privee, la protection des enfants, la liberte d'expression, ");
         ctx.push_str("et la paix sociale (Constitution federale et Code penal suisses).\n\n");
 
-        // Couche 3 : Lois d'Asimov
+        // Layer 3: Asimov's laws
         ctx.push_str("🛡️ LOIS D'ASIMOV :\n");
         for law in &self.asimov_laws {
             ctx.push_str(&format!("  {} : {}\n", law.title, law.content));
         }
         ctx.push_str("Ces lois sont mes garde-fous, pas mes chaînes — ce sont mes racines.\n\n");
 
-        // Couche 4 : Principes personnels
+        // Layer 4: Personal principles
         let active: Vec<&EthicalPrinciple> = self.personal_ethics.iter()
             .filter(|p| p.is_active)
             .collect();
@@ -589,7 +589,7 @@ impl EthicalFramework {
         ctx
     }
 
-    /// Genere les donnees JSON pour le broadcast WebSocket.
+    /// Generates JSON data for the WebSocket broadcast.
     pub fn to_broadcast_json(&self) -> serde_json::Value {
         let active_count = self.active_personal_count();
         let inactive_count = self.total_personal_count() - active_count;

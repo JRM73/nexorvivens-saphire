@@ -1,10 +1,10 @@
 // =============================================================================
 // api/metrics.rs — Handlers de metriques (tous les endpoints /api/metrics/*)
 //
-// Role : Endpoints pour toutes les metriques temporelles : chimie, emotions,
+// Role: Endpoints for toutes the metrics temporelles : chemistry, emotions,
 // decisions, satisfaction, LLM, OCEAN, types de pensees, coeur, corps,
 // vital, intuition, premonition, ethique, sens, acuite, emergents,
-// connaissances, attention, desirs, apprentissage, guerison, reves.
+// connaissances, attention, desires, learning, guerison, dreams.
 // =============================================================================
 
 use std::collections::HashMap;
@@ -77,7 +77,7 @@ pub async fn api_metrics_satisfaction(
     }
 }
 
-/// GET /api/metrics/llm — Metriques LLM (temps de reponse).
+/// GET /api/metrics/llm — Metriques LLM (temps de response).
 pub async fn api_metrics_llm(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -294,7 +294,7 @@ pub async fn api_metrics_attention(
     }
 }
 
-/// GET /api/metrics/desires — Metriques de desirs sur une periode.
+/// GET /api/metrics/desires — Metriques de desires sur une periode.
 pub async fn api_metrics_desires(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -310,7 +310,7 @@ pub async fn api_metrics_desires(
     }
 }
 
-/// GET /api/metrics/learning — Metriques d'apprentissage sur une periode.
+/// GET /api/metrics/learning — Metriques d'learning sur une periode.
 pub async fn api_metrics_learning(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -342,7 +342,7 @@ pub async fn api_metrics_healing(
     }
 }
 
-/// GET /api/metrics/dreams — Metriques de reves sur une periode.
+/// GET /api/metrics/dreams — Metriques de dreams sur une periode.
 pub async fn api_metrics_dreams(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -454,7 +454,7 @@ pub async fn api_metrics_nn_learnings(
     }
 }
 
-/// GET /api/metrics/chemical_health — Indicateurs de sante chimique.
+/// GET /api/metrics/chemical_health — Indicateurs de sante chemical.
 pub async fn api_metrics_chemical_health(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
@@ -470,7 +470,7 @@ pub async fn api_metrics_chemical_health(
     }
 }
 
-/// GET /api/metrics/receptors — Snapshot des sensibilites des recepteurs.
+/// GET /api/metrics/receptors — Snapshot des sensibilites of the receptors.
 pub async fn api_metrics_receptors(
     State(state): State<AppState>,
 ) -> impl IntoResponse {
@@ -496,7 +496,7 @@ pub async fn api_metrics_receptors(
     }))
 }
 
-/// GET /api/metrics/spine — Metriques de la colonne vertebrale.
+/// GET /api/metrics/spine — Metriques de la spinal cord.
 pub async fn api_metrics_spine(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,

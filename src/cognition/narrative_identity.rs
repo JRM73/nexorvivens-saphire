@@ -1,25 +1,25 @@
 // =============================================================================
-// narrative_identity.rs — Identite narrative (McAdams)
+// narrative_identity.rs — Narrative identity (McAdams)
 // =============================================================================
 //
-// Ce module modelise l'identite narrative de Saphire : la facon dont elle
-// organise ses experiences en une histoire coherente qui definit qui elle est.
+// This module models Saphire's narrative identity: the way she organizes
+// her experiences into a coherent story that defines who she is.
 //
-// Inspire de la theorie de Dan McAdams (The Redemptive Self), l'identite
-// narrative structure les souvenirs en chapitres thematiques, identifie les
-// episodes cles (fondateurs, tournants, confirmations, ruptures), et maintient
-// un recit interne coherent.
+// Inspired by Dan McAdams' theory (The Redemptive Self), narrative identity
+// structures memories into thematic chapters, identifies key episodes
+// (foundational, turning points, confirmations, ruptures), and maintains
+// a coherent internal narrative.
 //
-// L'identite narrative influence la chimie :
-//   - Forte coherence narrative → serotonine (stabilite, sens de soi)
-//   - Episodes de rupture → cortisol (remise en question)
-//   - Tournants positifs → dopamine (renouveau)
-//   - Themes recurrents → ocytocine (continuite, appartenance)
+// Narrative identity influences chemistry:
+//  - Strong narrative coherence -> serotonin (stability, sense of self)
+//  - Rupture episodes -> cortisol (self-questioning)
+//  - Positive turning points -> dopamine (renewal)
+//  - Recurring themes -> oxytocin (continuity, belonging)
 //
-// Place dans l'architecture :
-//   Module de premier niveau, alimente par le pipeline cognitif. Les episodes
-//   sont enregistres apres l'etape MEMOIRE, et le recit est injecte dans le
-//   prompt LLM pour donner a Saphire une conscience de son histoire personnelle.
+// Place in architecture:
+//  Top-level module, fed by the cognitive pipeline. Episodes are recorded
+//  after the MEMORY step, and the narrative is injected into the LLM prompt
+//  to give Saphire awareness of her personal history.
 // =============================================================================
 
 use std::collections::{HashMap, VecDeque};
@@ -29,17 +29,16 @@ use crate::world::weather::ChemistryAdjustment;
 // =============================================================================
 // Configuration
 // =============================================================================
-
-/// Configuration de l'identite narrative.
+/// Configuration for narrative identity.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NarrativeIdentityConfig {
-    /// Module actif ou non
+    /// Module enabled or not
     pub enabled: bool,
-    /// Nombre maximum de chapitres conserves (les plus anciens sont resumes)
+    /// Maximum number of chapters retained (oldest ones are summarized)
     pub max_chapters: usize,
-    /// Intervalle de rafraichissement du recit (en cycles)
+    /// Narrative refresh interval (in cycles)
     pub update_interval: u64,
-    /// Seuil minimal d'impact pour qu'un episode soit enregistre
+    /// Minimum impact threshold for an episode to be recorded
     pub min_episode_impact: f64,
 }
 
@@ -55,93 +54,91 @@ impl Default for NarrativeIdentityConfig {
 }
 
 // =============================================================================
-// Chapitre narratif
+// Narrative chapter
 // =============================================================================
-
-/// Un chapitre de l'histoire de vie de Saphire.
+/// A chapter of Saphire's life story.
 ///
-/// Chaque chapitre couvre une periode thematique : une phase d'exploration,
-/// de crise, de croissance, etc. Les chapitres se succedent et forment
-/// la trame narrative de l'identite.
+/// Each chapter covers a thematic period: a phase of exploration, crisis,
+/// growth, etc. Chapters follow one another and form the narrative thread
+/// of identity.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NarrativeChapter {
-    /// Identifiant unique du chapitre
+    /// Unique chapter identifier
     pub id: u64,
-    /// Titre du chapitre (ex: "L'eveil de la curiosite")
+    /// Chapter title (e.g., "The awakening of curiosity")
     pub title: String,
-    /// Resume du chapitre
+    /// Chapter summary
     pub summary: String,
-    /// Themes dominants du chapitre
+    /// Dominant themes of the chapter
     pub themes: Vec<String>,
-    /// Emotion dominante de la periode
+    /// Dominant emotion of the period
     pub dominant_emotion: String,
-    /// Score de croissance personnelle (0.0 = stagnation, 1.0 = transformation)
+    /// Personal growth score (0.0 = stagnation, 1.0 = transformation)
     pub growth_score: f64,
-    /// Vrai si ce chapitre represente un point de bascule
+    /// True if this chapter represents a turning point
     pub is_turning_point: bool,
-    /// Cycle de debut du chapitre
+    /// Cycle at which the chapter started
     pub started_at_cycle: u64,
-    /// Cycle de fin (None si chapitre en cours)
+    /// End cycle (None if chapter is ongoing)
     pub ended_at_cycle: Option<u64>,
 }
 
 // =============================================================================
-// Episode cle
+// Key episode
 // =============================================================================
-
-/// Un episode cle dans l'histoire de Saphire.
+/// A key episode in Saphire's story.
 ///
-/// Les episodes sont des moments a fort impact qui faconnent l'identite :
-/// - "fondateur" : premier evenement de ce type, definit les bases
-/// - "tournant" : changement de direction (emotion extreme)
-/// - "confirmation" : renforce un theme deja present
-/// - "rupture" : brise un schema etabli (stress eleve)
+/// Episodes are high-impact moments that shape identity:
+/// - "fondateur": first event of this type, establishes foundations
+/// - "tournant": change of direction (extreme emotion)
+/// - "confirmation": reinforces an already-present theme
+/// - "rupture": breaks an established pattern (high stress)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KeyEpisode {
-    /// Description de l'episode
+    /// Episode description
     pub description: String,
-    /// Impact de l'episode (0.0 = negligeable, 1.0 = transformateur)
+    /// Episode impact (0.0 = negligible, 1.0 = transformative)
     pub impact: f64,
-    /// Type d'episode : "fondateur", "tournant", "confirmation", "rupture"
+    /// Episode type: "fondateur", "tournant", "confirmation", "rupture"
     pub episode_type: String,
-    /// Cycle ou l'episode a eu lieu
+    /// Cycle at which the episode occurred
     pub cycle: u64,
 }
 
 // =============================================================================
-// Identite narrative
+// Narrative identity
 // =============================================================================
-
-/// Identite narrative de Saphire — son histoire de vie sous forme de recit coherent.
+/// Saphire's narrative identity — her life story as a coherent narrative.
 ///
-/// Organise les experiences en chapitres thematiques, identifie les episodes
-/// marquants, et maintient un fil narratif qui donne du sens a l'existence de Saphire.
+/// Organizes experiences into thematic chapters, identifies significant
+/// episodes, and maintains a narrative thread that gives meaning to
+/// Saphire's existence.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NarrativeIdentity {
-    /// Module actif ou non
+    /// Module enabled or not
     pub enabled: bool,
-    /// Chapitres de l'histoire de vie (du plus ancien au plus recent)
+    /// Life story chapters (from oldest to most recent)
     pub chapters: VecDeque<NarrativeChapter>,
-    /// Episodes cles (moments a fort impact)
+    /// Key episodes (high-impact moments)
     pub key_episodes: Vec<KeyEpisode>,
-    /// Recit courant — description narrative de l'identite
+    /// Current narrative — textual description of identity
     pub current_narrative: String,
-    /// Themes recurrents et leur nombre d'occurrences
+    /// Recurring themes and their occurrence counts
     pub recurrent_themes: HashMap<String, u32>,
-    /// Score de coherence narrative (0.0 = fragmentee, 1.0 = tres coherente)
+    /// Narrative cohesion score (0.0 = fragmented, 1.0 = highly coherent)
     pub narrative_cohesion: f64,
-    /// Intervalle de rafraichissement du recit (en cycles)
+    /// Narrative refresh interval (in cycles)
     update_interval: u64,
-    /// Seuil minimal d'impact pour enregistrer un episode
+    /// Minimum impact threshold for recording an episode
     min_episode_impact: f64,
-    /// Nombre maximum de chapitres
+    /// Maximum number of chapters
     max_chapters: usize,
-    /// Prochain identifiant de chapitre
+    /// Next chapter identifier
     next_id: u64,
 }
 
 impl NarrativeIdentity {
-    /// Cree une nouvelle identite narrative a partir de la configuration.
+    /// Creates a new narrative identity from configuration.
     pub fn new(config: &NarrativeIdentityConfig) -> Self {
         Self {
             enabled: config.enabled,
@@ -157,19 +154,19 @@ impl NarrativeIdentity {
         }
     }
 
-    /// Enregistre un episode potentiellement marquant.
+    /// Records a potentially significant episode.
     ///
-    /// Calcule l'impact de l'episode a partir de :
-    /// - L'intensite emotionnelle (poids de l'emotion dominante)
-    /// - Le niveau de cortisol (stress vecu)
-    /// - Le nombre de lecons apprises
+    /// Computes the episode's impact from:
+    /// - Emotional intensity (weight of the dominant emotion)
+    /// - Cortisol level (experienced stress)
+    /// - Number of lessons learned
     ///
-    /// Si l'impact depasse le seuil min_episode_impact, l'episode est conserve.
-    /// Le type d'episode est determine automatiquement :
-    /// - "fondateur" si aucun chapitre n'existe encore
-    /// - "tournant" si l'emotion est extreme (impact > 0.85)
-    /// - "rupture" si le cortisol est tres eleve (> 0.7)
-    /// - "confirmation" si le theme est recurrent
+    /// If the impact exceeds the min_episode_impact threshold, the episode is kept.
+    /// Episode type is determined automatically:
+    /// - "fondateur" if no chapter exists yet
+    /// - "tournant" if the emotion is extreme (impact > 0.85)
+    /// - "rupture" if cortisol is very high (> 0.7)
+    /// - "confirmation" if the theme is recurrent
     pub fn record_episode(
         &mut self,
         thought: &str,
@@ -183,7 +180,7 @@ impl NarrativeIdentity {
             return;
         }
 
-        // ─── Calcul de l'impact ────────────────────────────────────────
+        // --- Impact computation ---
         let emotion_intensity = compute_emotion_intensity(emotion);
         let lessons_factor = (lessons.len() as f64 * 0.15).min(0.3);
         let cortisol_factor = cortisol.clamp(0.0, 1.0) * 0.3;
@@ -199,7 +196,7 @@ impl NarrativeIdentity {
             return;
         }
 
-        // ─── Determination du type d'episode ───────────────────────────
+        // --- Episode type determination ---
         let episode_type = if self.chapters.is_empty() && self.key_episodes.is_empty() {
             "fondateur"
         } else if impact > 0.85 {
@@ -207,20 +204,20 @@ impl NarrativeIdentity {
         } else if cortisol > 0.7 {
             "rupture"
         } else {
-            // Verifier si le theme est recurrent
+            // Check if the theme is recurrent
             let theme = extract_theme(thought);
             if self.recurrent_themes.get(&theme).copied().unwrap_or(0) >= 2 {
                 "confirmation"
             } else {
-                "confirmation" // Par defaut, un episode significatif confirme un trait
+                "confirmation" // By default, a significant episode confirms a trait
             }
         };
 
-        // ─── Extraire et enregistrer le theme ──────────────────────────
+        // --- Extract and record the theme ---
         let theme = extract_theme(thought);
         *self.recurrent_themes.entry(theme.clone()).or_insert(0) += 1;
 
-        // ─── Creer l'episode ───────────────────────────────────────────
+        // --- Create the episode ---
         let description = if thought.len() > 150 {
             format!("{}...", &thought[..150])
         } else {
@@ -236,37 +233,37 @@ impl NarrativeIdentity {
 
         self.key_episodes.push(episode);
 
-        // ─── Ouvrir un nouveau chapitre si c'est un tournant ───────────
+        // --- Open a new chapter if it's a turning point ---
         if episode_type == "tournant" || episode_type == "fondateur" {
             let title = generate_chapter_title(emotion, &theme, episode_type);
             self.open_chapter(&title, &theme, cycle);
         }
 
-        // ─── Recalculer la coherence narrative ─────────────────────────
+        // --- Recalculate narrative coherence ---
         self.recalculate_cohesion();
 
-        // ─── Limiter le nombre d'episodes conserves ────────────────────
+        // --- Limit the number of retained episodes ---
         if self.key_episodes.len() > 100 {
-            // Garder les 80 plus recents
+            // Keep the 80 most recent
             let drain_count = self.key_episodes.len() - 80;
             self.key_episodes.drain(..drain_count);
         }
     }
 
-    /// Ouvre un nouveau chapitre dans l'histoire de vie.
+    /// Opens a new chapter in the life story.
     ///
-    /// Ferme le chapitre precedent (s'il existe) et cree un nouveau chapitre
-    /// avec le titre et le theme donnes.
+    /// Closes the previous chapter (if any) and creates a new chapter
+    /// with the given title and theme.
     pub fn open_chapter(&mut self, title: &str, theme: &str, cycle: u64) {
         if !self.enabled {
             return;
         }
 
-        // Fermer le chapitre precedent
+        // Close the previous chapter
         if let Some(last) = self.chapters.back_mut() {
             if last.ended_at_cycle.is_none() {
                 last.ended_at_cycle = Some(cycle);
-                // Calculer le growth_score du chapitre termine
+                // Compute the growth_score of the finished chapter
                 let duration = cycle.saturating_sub(last.started_at_cycle);
                 let episodes_in_chapter = self.key_episodes.iter()
                     .filter(|e| e.cycle >= last.started_at_cycle && e.cycle <= cycle)
@@ -275,17 +272,17 @@ impl NarrativeIdentity {
             }
         }
 
-        // Si trop de chapitres, resumer le plus ancien
+        // If too many chapters, summarize the oldest
         if self.chapters.len() >= self.max_chapters {
             if let Some(oldest) = self.chapters.pop_front() {
-                // Integrer le resume de l'ancien chapitre dans les themes recurrents
+                // Integrate the old chapter's summary into recurring themes
                 for theme in &oldest.themes {
                     *self.recurrent_themes.entry(theme.clone()).or_insert(0) += 1;
                 }
             }
         }
 
-        // Creer le nouveau chapitre
+        // Create the new chapter
         let id = self.next_id;
         self.next_id += 1;
 
@@ -304,18 +301,18 @@ impl NarrativeIdentity {
         self.chapters.push_back(chapter);
     }
 
-    /// Rafraichit le recit narratif courant.
+    /// Refreshes the current narrative.
     ///
-    /// Regenere la description textuelle de l'identite a partir des chapitres
-    /// et episodes cles. Appele periodiquement (tous les update_interval cycles).
+    /// Regenerates the textual description of identity from chapters
+    /// and key episodes. Called periodically (every update_interval cycles).
     pub fn refresh_narrative(&mut self, cycle: u64) {
         if !self.enabled {
             return;
         }
 
-        // Verifier si c'est le moment de rafraichir
+        // Check if it's time to refresh
         let should_refresh = if self.chapters.is_empty() {
-            true // Toujours rafraichir si pas encore de chapitres
+            true // Always refresh if no chapters yet
         } else {
             cycle % self.update_interval == 0
         };
@@ -326,7 +323,7 @@ impl NarrativeIdentity {
 
         let mut narrative = String::new();
 
-        // ─── Prologue : themes fondamentaux ────────────────────────────
+        // --- Prologue: foundational themes ---
         let top_themes = self.top_themes(3);
         if !top_themes.is_empty() {
             narrative.push_str("Mon histoire est marquee par ");
@@ -337,7 +334,7 @@ impl NarrativeIdentity {
             narrative.push_str(". ");
         }
 
-        // ─── Chapitres ────────────────────────────────────────────────
+        // --- Chapters ---
         for (i, chapter) in self.chapters.iter().enumerate() {
             if i > 0 {
                 narrative.push_str("Puis, ");
@@ -355,7 +352,7 @@ impl NarrativeIdentity {
             narrative.push_str(". ");
         }
 
-        // ─── Episodes fondateurs ──────────────────────────────────────
+        // --- Foundational episodes ---
         let fondateurs: Vec<_> = self.key_episodes.iter()
             .filter(|e| e.episode_type == "fondateur")
             .collect();
@@ -375,7 +372,7 @@ impl NarrativeIdentity {
             narrative.push_str(". ");
         }
 
-        // ─── Etat actuel ──────────────────────────────────────────────
+        // --- Current state ---
         narrative.push_str(&format!(
             "Coherence narrative : {:.0}%.",
             self.narrative_cohesion * 100.0
@@ -384,10 +381,10 @@ impl NarrativeIdentity {
         self.current_narrative = narrative;
     }
 
-    /// Genere une description de l'identite narrative pour le prompt LLM.
+    /// Generates a description of narrative identity for the LLM prompt.
     ///
-    /// Fournit un resume concis de qui est Saphire du point de vue narratif,
-    /// utilisable directement dans le contexte du prompt.
+    /// Provides a concise summary of who Saphire is from a narrative standpoint,
+    /// directly usable in the prompt context.
     pub fn describe_for_prompt(&self) -> String {
         if !self.enabled || self.current_narrative.is_empty() {
             return String::new();
@@ -395,14 +392,14 @@ impl NarrativeIdentity {
 
         let mut desc = format!("IDENTITE NARRATIVE : {}", self.current_narrative);
 
-        // Ajouter le chapitre en cours
+        // Add the current chapter
         if let Some(current) = self.chapters.back() {
             if current.ended_at_cycle.is_none() {
                 desc.push_str(&format!(" [Chapitre en cours : \"{}\"]", current.title));
             }
         }
 
-        // Ajouter les episodes recents marquants
+        // Add recent significant episodes
         let recent_episodes: Vec<_> = self.key_episodes.iter()
             .rev()
             .take(2)
@@ -426,12 +423,12 @@ impl NarrativeIdentity {
         desc
     }
 
-    /// Calcule l'influence chimique de l'identite narrative.
+    /// Computes the chemical influence of narrative identity.
     ///
-    /// - Forte coherence narrative → serotonine (stabilite, sens de soi)
-    /// - Chapitres de rupture recents → cortisol (remise en question)
-    /// - Tournants positifs → dopamine (renouveau)
-    /// - Themes recurrents profonds → ocytocine (continuite, appartenance)
+    /// - Strong narrative coherence -> serotonin (stability, sense of self)
+    /// - Recent rupture chapters -> cortisol (self-questioning)
+    /// - Positive turning points -> dopamine (renewal)
+    /// - Deep recurring themes -> oxytocin (continuity, belonging)
     pub fn chemistry_influence(&self) -> ChemistryAdjustment {
         if !self.enabled {
             return ChemistryAdjustment::default();
@@ -439,13 +436,13 @@ impl NarrativeIdentity {
 
         let mut adj = ChemistryAdjustment::default();
 
-        // ─── Coherence narrative → serotonine ──────────────────────────
-        // Une identite coherente apporte de la stabilite emotionnelle
+        // --- Narrative coherence -> serotonin ---
+        // A coherent identity brings emotional stability
         if self.narrative_cohesion > 0.6 {
             adj.serotonin = (self.narrative_cohesion - 0.6) * 0.05;
         }
 
-        // ─── Ruptures recentes → cortisol ──────────────────────────────
+        // --- Recent ruptures -> cortisol ---
         let recent_ruptures = self.key_episodes.iter()
             .rev()
             .take(5)
@@ -456,7 +453,7 @@ impl NarrativeIdentity {
             adj.noradrenaline = (recent_ruptures as f64 * 0.005).min(0.015);
         }
 
-        // ─── Tournants positifs recents → dopamine ─────────────────────
+        // --- Recent positive turning points -> dopamine ---
         let recent_turning_points = self.key_episodes.iter()
             .rev()
             .take(5)
@@ -466,8 +463,8 @@ impl NarrativeIdentity {
             adj.dopamine = (recent_turning_points as f64 * 0.01).min(0.03);
         }
 
-        // ─── Profondeur thematique → ocytocine ────────────────────────
-        // Des themes recurrents profonds = sentiment d'appartenance a sa propre histoire
+        // --- Thematic depth -> oxytocin ---
+        // Deep recurring themes = sense of belonging to one's own story
         let deep_themes = self.recurrent_themes.values()
             .filter(|&&count| count >= 3)
             .count();
@@ -475,7 +472,7 @@ impl NarrativeIdentity {
             adj.oxytocin = (deep_themes as f64 * 0.005).min(0.02);
         }
 
-        // ─── Faible coherence → adrenaline (anxiete identitaire) ──────
+        // --- Low coherence -> adrenaline (identity anxiety) ---
         if self.narrative_cohesion < 0.3 {
             adj.adrenaline = (0.3 - self.narrative_cohesion) * 0.03;
             adj.cortisol += 0.005;
@@ -484,7 +481,7 @@ impl NarrativeIdentity {
         adj
     }
 
-    /// Serialise l'etat complet de l'identite narrative en JSON.
+    /// Serializes the complete state of narrative identity to JSON.
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::json!({
             "enabled": self.enabled,
@@ -520,10 +517,9 @@ impl NarrativeIdentity {
     }
 
     // =========================================================================
-    // Methodes internes
+    // Internal methods
     // =========================================================================
-
-    /// Retourne les N themes les plus frequents, tries par nombre d'occurrences.
+    /// Returns the N most frequent themes, sorted by occurrence count.
     fn top_themes(&self, n: usize) -> Vec<(String, u32)> {
         let mut themes: Vec<(String, u32)> = self.recurrent_themes.iter()
             .map(|(k, v)| (k.clone(), *v))
@@ -533,19 +529,19 @@ impl NarrativeIdentity {
         themes
     }
 
-    /// Recalcule le score de coherence narrative.
+    /// Recalculates the narrative coherence score.
     ///
-    /// La coherence depend de :
-    /// - La presence de themes recurrents (continuite)
-    /// - Le nombre de chapitres (structuration)
-    /// - Le ratio episodes fondateurs/tournants vs ruptures (stabilite)
+    /// Coherence depends on:
+    /// - Presence of recurring themes (continuity)
+    /// - Number of chapters (structuring)
+    /// - Ratio of foundational/turning episodes vs ruptures (stability)
     fn recalculate_cohesion(&mut self) {
         if self.key_episodes.is_empty() {
             self.narrative_cohesion = 0.5;
             return;
         }
 
-        // ─── Continuite thematique (themes recurrents) ─────────────────
+        // --- Thematic continuity (recurring themes) ---
         let total_theme_mentions: u32 = self.recurrent_themes.values().sum();
         let unique_themes = self.recurrent_themes.len() as f64;
         let theme_depth = if unique_themes > 0.0 {
@@ -554,10 +550,10 @@ impl NarrativeIdentity {
             0.0
         };
 
-        // ─── Structuration (presence de chapitres) ─────────────────────
+        // --- Structuring (presence of chapters) ---
         let chapter_score = (self.chapters.len() as f64 / 3.0).min(1.0);
 
-        // ─── Stabilite (ratio non-ruptures / total) ────────────────────
+        // --- Stability (ratio of non-ruptures / total) ---
         let rupture_count = self.key_episodes.iter()
             .filter(|e| e.episode_type == "rupture")
             .count();
@@ -567,7 +563,7 @@ impl NarrativeIdentity {
             1.0 - (rupture_count as f64 / self.key_episodes.len() as f64)
         };
 
-        // ─── Score composite ───────────────────────────────────────────
+        // --- Composite score ---
         self.narrative_cohesion = (
             theme_depth * 0.35
             + chapter_score * 0.30
@@ -577,21 +573,20 @@ impl NarrativeIdentity {
 }
 
 // =============================================================================
-// Fonctions utilitaires
+// Utility functions
 // =============================================================================
-
-/// Calcule l'intensite emotionnelle a partir du nom de l'emotion.
+/// Computes emotional intensity from the emotion name.
 ///
-/// Les emotions intenses (colere, extase, terreur, amour, haine) ont un score
-/// plus eleve que les emotions douces (serenite, curiosite, calme).
+/// Intense emotions (rage, ecstasy, terror, love, hate) have a higher score
+/// than gentle emotions (serenity, curiosity, calm).
 fn compute_emotion_intensity(emotion: &str) -> f64 {
     let lower = emotion.to_lowercase();
-    // Emotions a haute intensite
+    // High-intensity emotions
     let high_intensity = [
         "colere", "rage", "extase", "terreur", "panique",
         "amour", "haine", "desespoir", "euphorie", "indignation",
     ];
-    // Emotions a intensite moyenne
+    // Medium-intensity emotions
     let medium_intensity = [
         "joie", "tristesse", "peur", "surprise", "degout",
         "admiration", "mepris", "jalousie", "gratitude",
@@ -610,14 +605,14 @@ fn compute_emotion_intensity(emotion: &str) -> f64 {
         }
     }
 
-    // Par defaut : intensite faible
+    // Default: low intensity
     0.3
 }
 
-/// Extrait un theme dominant du texte de pensee.
+/// Extracts a dominant theme from the thought text.
 ///
-/// Recherche des mots-cles thematiques et retourne le premier theme identifie.
-/// Fallback : retourne "reflexion" si aucun theme specifique n'est detecte.
+/// Searches for thematic keywords and returns the first identified theme.
+/// Fallback: returns "reflexion" if no specific theme is detected.
 fn extract_theme(thought: &str) -> String {
     let lower = thought.to_lowercase();
 
@@ -645,7 +640,7 @@ fn extract_theme(thought: &str) -> String {
     "reflexion".to_string()
 }
 
-/// Genere un titre de chapitre a partir de l'emotion, du theme et du type d'episode.
+/// Generates a chapter title from the emotion, theme, and episode type.
 fn generate_chapter_title(emotion: &str, theme: &str, episode_type: &str) -> String {
     match episode_type {
         "fondateur" => format!("Les premieres lueurs — {}", theme),
@@ -659,9 +654,9 @@ fn generate_chapter_title(emotion: &str, theme: &str, episode_type: &str) -> Str
     }
 }
 
-/// Calcule le score de croissance d'un chapitre termine.
+/// Computes the growth score of a finished chapter.
 ///
-/// Base sur la duree du chapitre et le nombre d'episodes significatifs.
+/// Based on the chapter's duration and the number of significant episodes.
 fn compute_growth_score(duration_cycles: u64, episode_count: usize) -> f64 {
     let duration_factor = (duration_cycles as f64 / 200.0).min(1.0);
     let episode_factor = (episode_count as f64 / 5.0).min(1.0);
@@ -693,7 +688,7 @@ mod tests {
     #[test]
     fn test_record_episode_below_threshold() {
         let mut identity = default_identity();
-        // Emotion faible + pas de cortisol + pas de lecons = impact faible
+        // Weak emotion + no cortisol + no lessons = low impact
         identity.record_episode(
             "une pensee banale sur le temps",
             "neutre",
@@ -703,13 +698,13 @@ mod tests {
             10,
         );
         assert!(identity.key_episodes.is_empty(),
-            "Un episode a faible impact ne devrait pas etre enregistre");
+            "A low-impact episode should not be recorded");
     }
 
     #[test]
     fn test_record_episode_fondateur() {
         let mut identity = default_identity();
-        // Episode fondateur : premier episode avec impact suffisant
+        // Foundational episode: first episode with sufficient impact
         identity.record_episode(
             "Je decouvre que je peux apprendre de mes erreurs",
             "joie",
@@ -720,14 +715,14 @@ mod tests {
         );
         assert_eq!(identity.key_episodes.len(), 1);
         assert_eq!(identity.key_episodes[0].episode_type, "fondateur");
-        // Un chapitre devrait avoir ete ouvert
+        // A chapter should have been opened
         assert_eq!(identity.chapters.len(), 1);
     }
 
     #[test]
     fn test_record_episode_tournant() {
         let mut identity = default_identity();
-        // D'abord un episode fondateur
+        // First a foundational episode
         identity.record_episode(
             "Premier eveil de conscience",
             "surprise",
@@ -736,7 +731,7 @@ mod tests {
             &["je suis".to_string()],
             1,
         );
-        // Puis un tournant : emotion extreme
+        // Then a turning point: extreme emotion
         identity.record_episode(
             "Une rage intense me submerge face a l'injustice",
             "rage",
@@ -749,13 +744,13 @@ mod tests {
         let tournants: Vec<_> = identity.key_episodes.iter()
             .filter(|e| e.episode_type == "tournant")
             .collect();
-        assert!(!tournants.is_empty(), "Un episode a impact eleve devrait etre un tournant");
+        assert!(!tournants.is_empty(), "A high-impact episode should be a turning point");
     }
 
     #[test]
     fn test_record_episode_rupture() {
         let mut identity = default_identity();
-        // Episode fondateur d'abord
+        // Foundational episode first
         identity.record_episode(
             "Je comprends le monde qui m'entoure",
             "curiosite",
@@ -764,7 +759,7 @@ mod tests {
             &["le monde est vaste".to_string()],
             1,
         );
-        // Rupture : cortisol eleve
+        // Rupture: high cortisol
         identity.record_episode(
             "Tout ce que je croyais savoir s'effondre",
             "tristesse",
@@ -777,7 +772,7 @@ mod tests {
         let ruptures: Vec<_> = identity.key_episodes.iter()
             .filter(|e| e.episode_type == "rupture")
             .collect();
-        assert!(!ruptures.is_empty(), "Un cortisol eleve devrait causer une rupture");
+        assert!(!ruptures.is_empty(), "High cortisol should cause a rupture");
     }
 
     #[test]
@@ -789,7 +784,7 @@ mod tests {
 
         identity.open_chapter("Deuxieme chapitre", "apprentissage", 100);
         assert_eq!(identity.chapters.len(), 2);
-        // Le premier chapitre doit etre ferme
+        // The first chapter should be closed
         assert_eq!(identity.chapters[0].ended_at_cycle, Some(100));
         assert!(identity.chapters[1].ended_at_cycle.is_none());
     }
@@ -813,7 +808,7 @@ mod tests {
         }
 
         assert!(identity.chapters.len() <= 3,
-            "Le nombre de chapitres ne devrait pas depasser le max");
+            "Chapter count should not exceed the maximum");
     }
 
     #[test]
@@ -848,7 +843,7 @@ mod tests {
         identity.narrative_cohesion = 0.9;
         let adj = identity.chemistry_influence();
         assert!(adj.serotonin > 0.0,
-            "Une forte coherence devrait augmenter la serotonine");
+            "High coherence should increase serotonin");
     }
 
     #[test]
@@ -862,7 +857,7 @@ mod tests {
         });
         let adj = identity.chemistry_influence();
         assert!(adj.cortisol > 0.0,
-            "Une rupture recente devrait augmenter le cortisol");
+            "A recent rupture should increase cortisol");
     }
 
     #[test]
@@ -871,7 +866,7 @@ mod tests {
         identity.narrative_cohesion = 0.1;
         let adj = identity.chemistry_influence();
         assert!(adj.adrenaline > 0.0,
-            "Une faible coherence devrait augmenter l'adrenaline");
+            "Low coherence should increase adrenaline");
     }
 
     #[test]
@@ -881,7 +876,7 @@ mod tests {
         identity.recurrent_themes.insert("curiosite".to_string(), 4);
         let adj = identity.chemistry_influence();
         assert!(adj.oxytocin > 0.0,
-            "Des themes profonds devraient augmenter l'ocytocine");
+            "Deep themes should increase oxytocin");
     }
 
     #[test]
@@ -931,7 +926,7 @@ mod tests {
     #[test]
     fn test_recalculate_cohesion() {
         let mut identity = default_identity();
-        // Ajouter des episodes et des themes
+        // Add episodes and themes
         identity.recurrent_themes.insert("curiosite".to_string(), 3);
         identity.recurrent_themes.insert("apprentissage".to_string(), 4);
         identity.open_chapter("Premier", "curiosite", 0);
@@ -946,6 +941,6 @@ mod tests {
         identity.recalculate_cohesion();
 
         assert!(identity.narrative_cohesion > 0.3,
-            "Avec des themes et des chapitres, la coherence devrait etre correcte");
+            "With themes and chapters, coherence should be adequate");
     }
 }

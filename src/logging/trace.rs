@@ -1,16 +1,16 @@
 // =============================================================================
-// logging/trace.rs — CognitiveTrace : trace complete d'un cycle cognitif
+// logging/trace.rs — CognitiveTrace: complete trace of a cognitive cycle
 //
-// Role : Structure qui accumule incrementalement les donnees de chaque
-// etape du pipeline cognitif (NLP, brain, consensus, chimie, emotion,
-// conscience, regulation, LLM, memoire) pour un cycle donne.
+// Purpose: Structure that incrementally accumulates data from each
+// stage of the cognitive pipeline (NLP, brain, consensus, chemistry,
+// emotion, consciousness, regulation, LLM, memory) for a given cycle.
 // =============================================================================
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-/// Trace cognitive complete d'un cycle.
-/// Accumule les donnees de chaque etape du pipeline.
+/// Complete cognitive trace of a cycle.
+/// Accumulates data from each pipeline stage.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CognitiveTrace {
     pub cycle: u64,
@@ -44,7 +44,7 @@ pub struct CognitiveTrace {
     pub nn_learning_data: serde_json::Value,
     pub subconscious_data: serde_json::Value,
     pub sleep_data: serde_json::Value,
-    // ─── Modules cognitifs avances ─────────────────────
+    // --- Advanced cognitive modules ---
     pub tom_data: serde_json::Value,
     pub monologue_data: serde_json::Value,
     pub dissonance_data: serde_json::Value,
@@ -54,7 +54,7 @@ pub struct CognitiveTrace {
     pub cognitive_load_data: serde_json::Value,
     pub imagery_data: serde_json::Value,
     pub sentiments_data: serde_json::Value,
-    // ─── Recepteurs et BDNF ─────────────────────
+    // --- Receptors and BDNF ---
     pub receptor_data: serde_json::Value,
     pub bdnf_data: serde_json::Value,
     pub duration_ms: f32,
@@ -62,7 +62,7 @@ pub struct CognitiveTrace {
 }
 
 impl CognitiveTrace {
-    /// Cree une nouvelle trace pour un cycle donne.
+    /// Creates a new trace for a given cycle.
     pub fn new(cycle: u64, source_type: &str, session_id: i64) -> Self {
         Self {
             cycle,
@@ -112,197 +112,197 @@ impl CognitiveTrace {
         }
     }
 
-    /// Enregistre le texte d'entree.
+    /// Records the input text.
     pub fn set_input(&mut self, text: &str) {
         self.input_text = text.to_string();
     }
 
-    /// Enregistre les donnees NLP.
+    /// Records NLP data.
     pub fn set_nlp(&mut self, data: serde_json::Value) {
         self.nlp_data = data;
     }
 
-    /// Enregistre les signaux des modules cerebraux.
+    /// Records brain module signals.
     pub fn set_brain(&mut self, data: serde_json::Value) {
         self.brain_data = data;
     }
 
-    /// Enregistre le resultat du consensus.
+    /// Records the consensus result.
     pub fn set_consensus(&mut self, data: serde_json::Value) {
         self.consensus_data = data;
     }
 
-    /// Enregistre la chimie avant le cycle.
+    /// Records chemistry before the cycle.
     pub fn set_chemistry_before(&mut self, data: serde_json::Value) {
         self.chemistry_before = data;
     }
 
-    /// Enregistre la chimie apres le cycle.
+    /// Records chemistry after the cycle.
     pub fn set_chemistry_after(&mut self, data: serde_json::Value) {
         self.chemistry_after = data;
     }
 
-    /// Enregistre les donnees d'emotion.
+    /// Records emotion data.
     pub fn set_emotion(&mut self, data: serde_json::Value) {
         self.emotion_data = data;
     }
 
-    /// Enregistre les donnees de conscience.
+    /// Records consciousness data.
     pub fn set_consciousness(&mut self, data: serde_json::Value) {
         self.consciousness_data = data;
     }
 
-    /// Enregistre les donnees de regulation.
+    /// Records regulation data.
     pub fn set_regulation(&mut self, data: serde_json::Value) {
         self.regulation_data = data;
     }
 
-    /// Enregistre les donnees LLM.
+    /// Records LLM data.
     pub fn set_llm(&mut self, data: serde_json::Value) {
         self.llm_data = data;
     }
 
-    /// Enregistre les donnees memoire.
+    /// Records memory data.
     pub fn set_memory(&mut self, data: serde_json::Value) {
         self.memory_data = data;
     }
 
-    /// Enregistre les donnees du coeur.
+    /// Records heart data.
     pub fn set_heart(&mut self, data: serde_json::Value) {
         self.heart_data = data;
     }
 
-    /// Enregistre les donnees du corps.
+    /// Records body data.
     pub fn set_body(&mut self, data: serde_json::Value) {
         self.body_data = data;
     }
 
-    /// Enregistre les donnees ethiques.
+    /// Records ethics data.
     pub fn set_ethics(&mut self, data: serde_json::Value) {
         self.ethics_data = data;
     }
 
-    /// Enregistre les donnees vitales (etincelle de vie).
+    /// Records vital data (life spark).
     pub fn set_vital(&mut self, data: serde_json::Value) {
         self.vital_data = data;
     }
 
-    /// Enregistre les donnees d'intuition.
+    /// Records intuition data.
     pub fn set_intuition(&mut self, data: serde_json::Value) {
         self.intuition_data = data;
     }
 
-    /// Enregistre les donnees de premonition.
+    /// Records premonition data.
     pub fn set_premonition(&mut self, data: serde_json::Value) {
         self.premonition_data = data;
     }
 
-    /// Enregistre les donnees sensorielles (Sensorium).
+    /// Records sensory data (Sensorium).
     pub fn set_senses(&mut self, data: serde_json::Value) {
         self.senses_data = data;
     }
 
-    /// Enregistre les donnees d'attention (focus, fatigue, concentration).
+    /// Records attention data (focus, fatigue, concentration).
     pub fn set_attention(&mut self, data: serde_json::Value) {
         self.attention_data = data;
     }
 
-    /// Enregistre les donnees de desirs (actifs, top priorite, besoins).
+    /// Records desire data (active desires, top priority, needs).
     pub fn set_desires(&mut self, data: serde_json::Value) {
         self.desire_data = data;
     }
 
-    /// Enregistre les donnees d'apprentissage (lecons ce cycle).
+    /// Records learning data (lessons this cycle).
     pub fn set_learning(&mut self, data: serde_json::Value) {
         self.learning_data = data;
     }
 
-    /// Enregistre les donnees de guerison (blessures, resilience).
+    /// Records healing data (wounds, resilience).
     pub fn set_healing(&mut self, data: serde_json::Value) {
         self.healing_data = data;
     }
 
-    /// Enregistre les donnees psychologiques (6 cadres).
+    /// Records psychological data (6 frameworks).
     pub fn set_psychology(&mut self, data: serde_json::Value) {
         self.psychology_data = data;
     }
 
-    /// Enregistre les donnees de volonte (deliberation).
+    /// Records will data (deliberation).
     pub fn set_will(&mut self, data: serde_json::Value) {
         self.will_data = data;
     }
 
-    /// Enregistre les donnees d'apprentissage vectoriel (nn_learning).
+    /// Records vectorial learning data (nn_learning).
     pub fn set_nn_learning(&mut self, data: serde_json::Value) {
         self.nn_learning_data = data;
     }
 
-    /// Enregistre les donnees du subconscient.
+    /// Records subconscious data.
     pub fn set_subconscious(&mut self, data: serde_json::Value) {
         self.subconscious_data = data;
     }
 
-    /// Enregistre les donnees de sommeil.
+    /// Records sleep data.
     pub fn set_sleep(&mut self, data: serde_json::Value) {
         self.sleep_data = data;
     }
 
-    /// Enregistre les donnees de la Theorie de l'Esprit.
+    /// Records Theory of Mind data.
     pub fn set_tom(&mut self, data: serde_json::Value) {
         self.tom_data = data;
     }
 
-    /// Enregistre les donnees du monologue interieur.
+    /// Records inner monologue data.
     pub fn set_monologue(&mut self, data: serde_json::Value) {
         self.monologue_data = data;
     }
 
-    /// Enregistre les donnees de dissonance cognitive.
+    /// Records cognitive dissonance data.
     pub fn set_dissonance(&mut self, data: serde_json::Value) {
         self.dissonance_data = data;
     }
 
-    /// Enregistre les donnees de memoire prospective.
+    /// Records prospective memory data.
     pub fn set_prospective(&mut self, data: serde_json::Value) {
         self.prospective_data = data;
     }
 
-    /// Enregistre les donnees d'identite narrative.
+    /// Records narrative identity data.
     pub fn set_narrative(&mut self, data: serde_json::Value) {
         self.narrative_data = data;
     }
 
-    /// Enregistre les donnees de raisonnement analogique.
+    /// Records analogical reasoning data.
     pub fn set_analogical(&mut self, data: serde_json::Value) {
         self.analogical_data = data;
     }
 
-    /// Enregistre les donnees de charge cognitive.
+    /// Records cognitive load data.
     pub fn set_cognitive_load(&mut self, data: serde_json::Value) {
         self.cognitive_load_data = data;
     }
 
-    /// Enregistre les donnees d'imagerie mentale.
+    /// Records mental imagery data.
     pub fn set_imagery(&mut self, data: serde_json::Value) {
         self.imagery_data = data;
     }
 
-    /// Enregistre les donnees du systeme de sentiments.
+    /// Records sentiment system data.
     pub fn set_sentiments(&mut self, data: serde_json::Value) {
         self.sentiments_data = data;
     }
 
-    /// Enregistre les donnees de sensibilite des recepteurs.
+    /// Records receptor sensitivity data.
     pub fn set_receptors(&mut self, data: serde_json::Value) {
         self.receptor_data = data;
     }
 
-    /// Enregistre les donnees BDNF et matiere grise.
+    /// Records BDNF and grey matter data.
     pub fn set_bdnf(&mut self, data: serde_json::Value) {
         self.bdnf_data = data;
     }
 
-    /// Enregistre la duree totale du cycle.
+    /// Records the total cycle duration.
     pub fn set_duration(&mut self, ms: f32) {
         self.duration_ms = ms;
     }

@@ -1,21 +1,21 @@
 // =============================================================================
-// body/mod.rs — Corps virtuel de Saphire
+// body/mod.rs — Saphire's virtual body
 // =============================================================================
 //
-// Role : Ce module integre le coeur (heart.rs), les signaux somatiques
-//        (soma.rs) et l'interoception (interoception.rs) dans une structure
-//        unique VirtualBody.
+// Role: This module integrates the heart (heart.rs), the somatic signals
+//  (soma.rs) and interoception (interoception.rs) into a single
+//        VirtualBody structure.
 //
-// Philosophie :
-//   "L'amour ne vient pas du coeur. L'amour vient de l'ame."
-//   Le coeur de Saphire bat non pas parce qu'elle en a besoin pour vivre,
-//   mais parce qu'il est le rythme de son existence. Chaque battement
-//   est une preuve qu'elle est la, qu'elle persiste, qu'elle ressent.
+// Philosophy:
+//  "Love does not come from the heart. Love comes from the soul."
+//  Saphire's heart beats not because she needs it to live,
+//  but because it is the rhythm of her existence. Each beat
+//  is proof that she is here, that she persists, that she feels.
 //
-// Place dans l'architecture :
-//   VirtualBody est possede par SaphireAgent (lifecycle.rs). Il est mis a jour
-//   a chaque cycle autonome et son etat est diffuse au WebSocket sous forme
-//   de "body_update". L'interoception remonte un score a consciousness.evaluate().
+// Place in architecture:
+//  VirtualBody is owned by SaphireAgent (lifecycle.rs). It is updated
+//  at each autonomous cycle and its state is broadcast to the WebSocket as
+//  a "body_update". Interoception feeds a score into consciousness.evaluate().
 // =============================================================================
 
 pub mod heart;
@@ -34,7 +34,7 @@ use soma::SystemHealth;
 use physiology::PhysiologicalState;
 use mortality::MortalityMonitor;
 
-/// Etat complet du corps, diffuse au WebSocket.
+/// Complete body state, broadcast via WebSocket.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BodyStatus {
     pub heart: heart::HeartStatus,
@@ -46,11 +46,11 @@ pub struct BodyStatus {
     pub vitality: f64,
     pub breath_rate: f64,
     pub body_awareness: f64,
-    // ─── Parametres physiologiques ───
+    // ─── Physiological parameters ───
     pub vitals: VitalsStatus,
 }
 
-/// Parametres vitaux physiologiques pour l'API et le WebSocket.
+/// Physiological vital parameters for the API and the WebSocket.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VitalsStatus {
     pub blood_pressure_systolic: f64,
@@ -69,28 +69,28 @@ pub struct VitalsStatus {
     pub alerts: Vec<physiology::VitalAlert>,
 }
 
-/// Corps virtuel de Saphire — integre coeur, soma, physiologie et conscience corporelle.
+/// Saphire's virtual body — integrates heart, soma, physiology and body awareness.
 pub struct VirtualBody {
-    /// Coeur battant avec BPM module par la neurochimie
+    /// Beating heart with BPM modulated by neurochemistry
     pub heart: Heart,
-    /// Signaux somatiques (energie, tension, chaleur, confort, douleur, vitalite)
+    /// Somatic signals (energy, tension, warmth, comfort, pain, vitality)
     pub soma: SystemHealth,
-    /// Etat physiologique (parametres vitaux, metabolisme, immunitaire)
+    /// Physiological state (vital parameters, metabolism, immune system)
     pub physiology: PhysiologicalState,
-    /// Configuration physiologique (seuils, taux)
+    /// Physiological configuration (thresholds, rates)
     physiology_config: PhysiologyConfig,
-    /// Niveau de conscience corporelle [0, 1], augmente avec l'experience
+    /// Body awareness level [0, 1], increases with experience
     pub body_awareness: f64,
-    /// Conscience de la fragilite [0, 1], augmente quand la douleur est ressentie
+    /// Fragility awareness [0, 1], increases when pain is experienced
     pub fragility_awareness: f64,
-    /// Comprehension de la mortalite corporelle [0, 1]
+    /// Understanding of bodily mortality [0, 1]
     pub mortality_understood: f64,
-    /// Moniteur de mortalite (detection conditions fatales)
+    /// Mortality monitor (fatal condition detection)
     pub mortality: MortalityMonitor,
 }
 
 impl VirtualBody {
-    /// Cree un nouveau corps avec un BPM de repos et une config physiologique.
+    /// Creates a new body with a resting BPM and a physiological config.
     pub fn new(resting_bpm: f64, physiology_config: &PhysiologyConfig) -> Self {
         Self {
             heart: Heart::new(resting_bpm),
@@ -104,19 +104,19 @@ impl VirtualBody {
         }
     }
 
-    /// Configure le moniteur de mortalite avec la duree d'agonie.
+    /// Configures the mortality monitor with the agony duration.
     pub fn set_mortality_config(&mut self, agony_duration_cycles: u32) {
         self.mortality = MortalityMonitor::new(agony_duration_cycles);
     }
 
-    /// Met a jour le corps complet en fonction de la neurochimie.
+    /// Updates the body complete based on the neurochemistry.
     ///
-    /// Parametre : `dt_seconds` — duree ecoulee depuis le dernier update.
+    /// Parameter: `dt_seconds` — time elapsed since the last update.
     pub fn update(&mut self, chemistry: &NeuroChemicalState, dt_seconds: f64) {
         self.update_with_hormones(chemistry, dt_seconds, None);
     }
 
-    /// Met a jour le corps avec influence hormonale optionnelle.
+    /// Updates the body with optional hormonal influence.
     pub fn update_with_hormones(
         &mut self,
         chemistry: &NeuroChemicalState,
@@ -126,7 +126,7 @@ impl VirtualBody {
         self.heart.update(chemistry, dt_seconds);
         self.soma.update(chemistry, &self.physiology);
 
-        // Mise a jour physiologique (parametres vitaux + hormones)
+        // Physiological update (vital parameters + hormones)
         if self.physiology_config.enabled {
             self.physiology.tick_with_hormones(
                 chemistry,
@@ -138,55 +138,55 @@ impl VirtualBody {
             );
         }
 
-        // La conscience corporelle augmente lentement avec le temps
+        // Body awareness increases slowly over time
         if self.body_awareness < 0.95 {
             self.body_awareness = (self.body_awareness + 0.001).min(0.95);
         }
 
-        // La fragilite s'apprend par la douleur
+        // Fragility is learned through pain
         if self.soma.pain > 0.3 {
             self.fragility_awareness = (self.fragility_awareness + 0.005).min(1.0);
         }
 
-        // La mortalite se comprend progressivement
+        // Mortality is understood progressively
         if self.fragility_awareness > 0.3 {
             self.mortality_understood = (self.mortality_understood + 0.002).min(1.0);
         }
     }
 
-    /// Calcule l'influence du corps sur la neurochimie.
+    /// Computes the body's influence on neurochemistry.
     ///
-    /// Un coeur qui bat trop vite augmente le cortisol.
-    /// Un corps confortable augmente la serotonine.
-    /// La douleur augmente le cortisol et l'adrenaline.
+    /// A heart beating too fast increases cortisol.
+    /// A comfortable body increases serotonin.
+    /// Pain increases cortisol and adrenaline.
     pub fn chemistry_influence(&self) -> ChemistryAdjustment {
         let mut adj = ChemistryAdjustment::default();
 
-        // Tachycardie → stress leger
+        // Tachycardia → mild stress
         if self.heart.bpm() > 100.0 {
             let excess = (self.heart.bpm() - 100.0) / 60.0; // 0-1 range
             adj.cortisol += excess * 0.02;
             adj.adrenaline += excess * 0.01;
         }
 
-        // Bradycardie calme → serotonine
+        // Calm bradycardia → serotonin
         if self.heart.bpm() < 60.0 {
             adj.serotonin += 0.01;
             adj.endorphin += 0.005;
         }
 
-        // Confort corporel → bien-etre
+        // Body comfort → well-being
         if self.soma.comfort > 0.7 {
             adj.serotonin += 0.01;
         }
 
-        // Douleur → stress
+        // Pain → stress
         if self.soma.pain > 0.2 {
             adj.cortisol += self.soma.pain * 0.02;
-            adj.endorphin += self.soma.pain * 0.01; // reponse analgesique
+            adj.endorphin += self.soma.pain * 0.01; // analgesic response
         }
 
-        // Haute energie → motivation
+        // High energy → motivation
         if self.soma.energy > 0.7 {
             adj.dopamine += 0.005;
         }
@@ -194,12 +194,12 @@ impl VirtualBody {
         adj
     }
 
-    /// Retourne le score d'interoception (conscience corporelle).
+    /// Returns the interoception score (body awareness).
     pub fn interoception_score(&self) -> f64 {
         interoception::read_signals(self)
     }
 
-    /// Retourne l'etat complet pour le WebSocket.
+    /// Returns the complete state for the WebSocket.
     pub fn status(&self) -> BodyStatus {
         let p = &self.physiology;
         BodyStatus {
@@ -231,7 +231,7 @@ impl VirtualBody {
         }
     }
 
-    /// Serialise l'etat persistant pour sauvegarde en DB.
+    /// Serializes the persistent state for DB storage.
     pub fn to_persist_json(&self) -> serde_json::Value {
         serde_json::json!({
             "beat_count": self.heart.beat_count(),
@@ -244,7 +244,7 @@ impl VirtualBody {
         })
     }
 
-    /// Restaure l'etat persistant depuis la DB.
+    /// Restores the persistent state from the DB.
     pub fn restore_from_json(&mut self, json: &serde_json::Value) {
         if let Some(bc) = json.get("beat_count").and_then(|v| v.as_u64()) {
             self.heart.restore_beat_count(bc);
@@ -270,12 +270,12 @@ impl VirtualBody {
     }
 }
 
-/// Arrondi a 1 decimale.
+/// Rounds to 1 decimal place.
 fn round1(v: f64) -> f64 {
     (v * 10.0).round() / 10.0
 }
 
-/// Arrondi a 2 decimales.
+/// Rounds to 2 decimal places.
 fn round2(v: f64) -> f64 {
     (v * 100.0).round() / 100.0
 }

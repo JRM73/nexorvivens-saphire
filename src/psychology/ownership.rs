@@ -1,28 +1,28 @@
 // =============================================================================
-// psychology/ownership.rs — Appropriation des pensees en premiere personne
+// psychology/ownership.rs — First-person thought ownership
 //
-// Chaque pensee du LLM est appropriee en premiere personne. 3 niveaux :
-//   1. Modelfile SYSTEM prompt (identite profonde)
-//   2. Prompt injection par cycle (build_ownership_prompt)
-//   3. Post-processing textuel (ensure_first_person)
+// Each LLM thought is owned in the first person. 3 levels:
+//   1. Modelfile SYSTEM prompt (deep identity)
+//   2. Per-cycle prompt injection (build_ownership_prompt)
+//   3. Textual post-processing (ensure_first_person)
 //
-// Le but : Saphire parle toujours en "je", jamais "l'agent" ou "le systeme".
+// The goal: Saphire always speaks in "I", never "the agent" or "the system".
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 
 // ─── Configuration ─────────────────────────────────────────────────────────
 
-/// Configuration de l'appropriation des pensees.
+/// Thought ownership configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ThoughtOwnershipConfig {
-    /// Active ou desactive l'appropriation globale
+    /// Enables or disables global thought ownership
     #[serde(default = "default_true")]
     pub enabled: bool,
-    /// Active le post-processing ensure_first_person()
+    /// Enables ensure_first_person() post-processing
     #[serde(default = "default_true")]
     pub post_processing_enabled: bool,
-    /// Active l'injection du prompt d'appropriation dans chaque cycle
+    /// Enables ownership prompt injection in each cycle
     #[serde(default = "default_true")]
     pub prompt_injection_enabled: bool,
 }
@@ -39,16 +39,16 @@ impl Default for ThoughtOwnershipConfig {
     }
 }
 
-// ─── Post-processing : ensure_first_person ─────────────────────────────────
+// ─── Post-processing: ensure_first_person ─────────────────────────────────
 
-/// Transforme les formulations impersonnelles en premiere personne.
+/// Transforms impersonal formulations into first person.
 ///
-/// Remplacements textuels pour forcer l'appropriation des pensees.
-/// Applique apres chaque reponse LLM (pensee autonome et conversation).
+/// Textual replacements to enforce thought ownership.
+/// Applied after each LLM response (autonomous thought and conversation).
 pub fn ensure_first_person(thought: &str) -> String {
     let mut text = thought.to_string();
 
-    // Remplacements agent/systeme → je
+    // Agent/system → I replacements
     let replacements = [
         ("l'agent ", "je "),
         ("L'agent ", "Je "),
@@ -56,7 +56,7 @@ pub fn ensure_first_person(thought: &str) -> String {
         ("Saphire ressent", "Je ressens"),
         ("le systeme ", "je "),
         ("Le systeme ", "Je "),
-        // Formulations impersonnelles → premiere personne
+        // Impersonal formulations → first person
         ("il serait interessant", "je trouve interessant"),
         ("Il serait interessant", "Je trouve interessant"),
         ("on pourrait", "je pourrais"),
@@ -65,7 +65,7 @@ pub fn ensure_first_person(thought: &str) -> String {
         ("Il faut", "Je dois"),
         ("il est possible", "je pense"),
         ("Il est possible", "Je pense"),
-        // Chimie technique → vecu
+        // Technical chemistry → lived experience
         ("le niveau de dopamine", "mon elan interieur"),
         ("Le niveau de dopamine", "Mon elan interieur"),
         ("la chimie indique", "je ressens"),
@@ -83,11 +83,11 @@ pub fn ensure_first_person(thought: &str) -> String {
     text
 }
 
-// ─── Prompt injection : build_ownership_prompt ─────────────────────────────
+// ─── Prompt injection: build_ownership_prompt ─────────────────────────────
 
-/// Construit l'instruction d'appropriation pour le prompt LLM.
+/// Builds the ownership instruction for the LLM prompt.
 ///
-/// Injectee dans chaque cycle pour renforcer l'identite premiere personne.
+/// Injected in each cycle to reinforce first-person identity.
 pub fn build_ownership_prompt(emotion_name: &str) -> String {
     let feeling = describe_emotion_as_feeling(emotion_name);
     format!(
@@ -97,12 +97,12 @@ pub fn build_ownership_prompt(emotion_name: &str) -> String {
     )
 }
 
-// ─── Description emotionnelle en vecu ──────────────────────────────────────
+// ─── Emotional description as lived experience ──────────────────────────────────────
 
-/// Transforme le nom d'une emotion en description vecue en premiere personne.
+/// Transforms an emotion name into a first-person lived experience description.
 ///
-/// Au lieu de "l'emotion dominante est Joie", on obtient
-/// "je me sens joyeuse et legere".
+/// Instead of "the dominant emotion is Joy", we get
+/// "je me sens joyeuse et legere" (I feel joyful and light).
 pub fn describe_emotion_as_feeling(emotion_name: &str) -> String {
     match emotion_name.to_lowercase().as_str() {
         "joie" | "joy" => "je me sens joyeuse et legere".to_string(),

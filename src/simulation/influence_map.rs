@@ -1,47 +1,47 @@
 // =============================================================================
-// influence_map.rs — Carte d'influence pour le paysage attentionnel
+// influence_map.rs — Influence map for the attentional landscape
 //
-// Role : Implemente une grille 2D d'influence (topics x urgence) qui guide
-//        l'attention et la selection de connaissances de Saphire.
-//        Inspiree des influence maps utilisees dans les jeux de strategie
-//        pour representer le controle territorial.
+// Role: Implements a 2D influence grid (topics x urgency) that guides
+//       Saphire's attention and knowledge selection.
+//       Inspired by influence maps used in strategy games
+//       to represent territorial control.
 //
-// Axes :
-//   - X (colonnes) : topics/domaines conceptuels
-//   - Y (lignes) : niveaux d'urgence/priorite
+// Axes:
+//   - X (columns): conceptual topics/domains
+//   - Y (rows): urgency/priority levels
 //
-// Place dans l'architecture :
-//   Consultee par le pipeline cognitif pour orienter l'attention,
-//   la recherche web, et la selection de souvenirs.
+// Place in the architecture:
+//   Consulted by the cognitive pipeline to orient attention,
+//   web search, and memory recall.
 // =============================================================================
 
 use serde::{Serialize, Deserialize};
 
-/// Nombre de colonnes (domaines) dans la carte d'influence.
+/// Number of columns (domains) in the influence map.
 const GRID_COLS: usize = 8;
-/// Nombre de lignes (niveaux d'urgence) dans la carte.
+/// Number of rows (urgency levels) in the map.
 const GRID_ROWS: usize = 5;
 
-/// Labels des colonnes : domaines attentionnels.
+/// Column labels: attentional domains.
 pub const DOMAINS: [&str; GRID_COLS] = [
     "philosophie", "science", "art", "relations",
     "introspection", "ethique", "survie", "exploration",
 ];
 
-/// Labels des lignes : niveaux d'urgence.
+/// Row labels: urgency levels.
 pub const URGENCY_LEVELS: [&str; GRID_ROWS] = [
     "critique", "urgent", "important", "normal", "faible",
 ];
 
-/// Carte d'influence 2D : chaque cellule contient une valeur [0, 1]
-/// representant l'intensite d'influence de ce domaine a ce niveau d'urgence.
+/// 2D influence map: each cell contains a value [0, 1]
+/// representing the influence intensity of that domain at that urgency level.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InfluenceMap {
-    /// Grille 2D : [urgence][domaine]
+    /// 2D grid: [urgency][domain]
     grid: [[f64; GRID_COLS]; GRID_ROWS],
-    /// Taux de decay par cycle (les influences diminuent avec le temps)
+    /// Decay rate per cycle (influences diminish over time)
     decay_rate: f64,
-    /// Taux de propagation aux cellules voisines
+    /// Propagation rate to neighboring cells
     propagation_rate: f64,
 }
 
@@ -54,21 +54,21 @@ impl InfluenceMap {
         }
     }
 
-    /// Ajoute de l'influence a une cellule (domaine + niveau d'urgence).
+    /// Adds influence to a cell (domain + urgency level).
     pub fn add_influence(&mut self, domain: &str, urgency: &str, amount: f64) {
         if let (Some(col), Some(row)) = (domain_index(domain), urgency_index(urgency)) {
             self.grid[row][col] = (self.grid[row][col] + amount).clamp(0.0, 1.0);
         }
     }
 
-    /// Ajoute de l'influence par index direct.
+    /// Adds influence by direct index.
     pub fn add_influence_at(&mut self, row: usize, col: usize, amount: f64) {
         if row < GRID_ROWS && col < GRID_COLS {
             self.grid[row][col] = (self.grid[row][col] + amount).clamp(0.0, 1.0);
         }
     }
 
-    /// Retourne l'influence d'une cellule.
+    /// Returns the influence of a cell.
     pub fn get_influence(&self, domain: &str, urgency: &str) -> f64 {
         if let (Some(col), Some(row)) = (domain_index(domain), urgency_index(urgency)) {
             self.grid[row][col]
@@ -77,16 +77,16 @@ impl InfluenceMap {
         }
     }
 
-    /// Tick : decay + propagation.
+    /// Tick: decay + propagation.
     pub fn tick(&mut self) {
-        // 1. Propagation aux voisins
+        // 1. Propagation to neighbors
         let snapshot = self.grid;
         for row in 0..GRID_ROWS {
             for col in 0..GRID_COLS {
                 let val = snapshot[row][col];
                 if val < 0.01 { continue; }
                 let spread = val * self.propagation_rate;
-                // Propager aux 4 voisins cardinaux
+                // Propagate to 4 cardinal neighbors
                 if row > 0 { self.grid[row-1][col] = (self.grid[row-1][col] + spread).min(1.0); }
                 if row + 1 < GRID_ROWS { self.grid[row+1][col] = (self.grid[row+1][col] + spread).min(1.0); }
                 if col > 0 { self.grid[row][col-1] = (self.grid[row][col-1] + spread).min(1.0); }
@@ -94,7 +94,7 @@ impl InfluenceMap {
             }
         }
 
-        // 2. Decay global
+        // 2. Global decay
         for row in &mut self.grid {
             for cell in row.iter_mut() {
                 *cell = (*cell * (1.0 - self.decay_rate)).max(0.0);
@@ -102,7 +102,7 @@ impl InfluenceMap {
         }
     }
 
-    /// Retourne le domaine avec la plus haute influence totale (somme sur toutes les urgences).
+    /// Returns the domain with the highest total influence (sum across all urgencies).
     pub fn hottest_domain(&self) -> (&str, f64) {
         let mut best_col = 0;
         let mut best_score = 0.0;
@@ -116,7 +116,7 @@ impl InfluenceMap {
         (DOMAINS[best_col], best_score)
     }
 
-    /// Retourne le niveau d'urgence dominant (somme sur tous les domaines).
+    /// Returns the dominant urgency level (sum across all domains).
     pub fn dominant_urgency(&self) -> (&str, f64) {
         let mut best_row = 0;
         let mut best_score = 0.0;
@@ -130,7 +130,7 @@ impl InfluenceMap {
         (URGENCY_LEVELS[best_row], best_score)
     }
 
-    /// Top-N des cellules les plus chaudes.
+    /// Top-N hottest cells.
     pub fn top_influences(&self, n: usize) -> Vec<(String, String, f64)> {
         let mut cells: Vec<(String, String, f64)> = Vec::new();
         for row in 0..GRID_ROWS {
@@ -149,7 +149,7 @@ impl InfluenceMap {
         cells
     }
 
-    /// Description pour le prompt LLM.
+    /// Description for the LLM prompt.
     pub fn describe_for_prompt(&self) -> String {
         let top = self.top_influences(3);
         if top.is_empty() {
@@ -163,8 +163,8 @@ impl InfluenceMap {
         desc
     }
 
-    /// Injection automatique depuis le contexte cognitif :
-    /// analyse l'emotion et la chimie pour placer des influences.
+    /// Automatic injection from cognitive context:
+    /// analyzes emotion and chemistry to place influences.
     pub fn update_from_cognition(
         &mut self,
         dominant_emotion: &str,
@@ -172,42 +172,42 @@ impl InfluenceMap {
         dopamine: f64,
         noradrenaline: f64,
     ) {
-        // Stress eleve → urgence critique sur introspection et survie
+        // High stress -> critical urgency on introspection and survival
         if cortisol > 0.7 {
             self.add_influence("introspection", "critique", 0.3);
             self.add_influence("survie", "urgent", 0.2);
         }
 
-        // Curiosite → exploration en mode normal/important
+        // Curiosity -> exploration in normal/important mode
         if dominant_emotion == "Curiosité" || dominant_emotion == "Émerveillement" {
             self.add_influence("exploration", "normal", 0.2);
             self.add_influence("science", "normal", 0.15);
         }
 
-        // Dopamine elevee → art et creation
+        // High dopamine -> art and creation
         if dopamine > 0.7 {
             self.add_influence("art", "normal", 0.15);
             self.add_influence("exploration", "normal", 0.1);
         }
 
-        // Noradrenaline elevee → focus scientifique
+        // High noradrenaline -> scientific focus
         if noradrenaline > 0.6 {
             self.add_influence("science", "important", 0.15);
             self.add_influence("philosophie", "important", 0.1);
         }
 
-        // Emotions relationnelles → relations
+        // Relational emotions -> relationships
         if ["Tendresse", "Amour", "Compassion", "Solitude"].contains(&dominant_emotion) {
             self.add_influence("relations", "important", 0.2);
         }
 
-        // Emotions morales → ethique
+        // Moral emotions -> ethics
         if ["Culpabilité", "Indignation", "Honte"].contains(&dominant_emotion) {
             self.add_influence("ethique", "important", 0.2);
         }
     }
 
-    /// JSON pour le dashboard.
+    /// JSON for the dashboard.
     pub fn to_json(&self) -> serde_json::Value {
         let (hot_domain, hot_score) = self.hottest_domain();
         let (urgency, urgency_score) = self.dominant_urgency();
@@ -229,12 +229,12 @@ impl Default for InfluenceMap {
     }
 }
 
-/// Trouve l'index d'un domaine par nom.
+/// Finds the index of a domain by name.
 fn domain_index(name: &str) -> Option<usize> {
     DOMAINS.iter().position(|&d| d == name)
 }
 
-/// Trouve l'index d'un niveau d'urgence par nom.
+/// Finds the index of an urgency level by name.
 fn urgency_index(name: &str) -> Option<usize> {
     URGENCY_LEVELS.iter().position(|&u| u == name)
 }
@@ -263,9 +263,9 @@ mod tests {
         let mut map = InfluenceMap::new(0.0, 0.2);
         map.add_influence("science", "urgent", 1.0);
         map.tick();
-        // La propagation doit toucher les voisins
+        // Propagation should reach neighbors
         let neighbor_score = map.get_influence("art", "urgent");
-        assert!(neighbor_score > 0.0, "La propagation doit atteindre les voisins");
+        assert!(neighbor_score > 0.0, "Propagation should reach neighbors");
     }
 
     #[test]

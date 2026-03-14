@@ -1,5 +1,5 @@
 // =============================================================================
-// api/nutrition.rs — Handlers du systeme nutritionnel
+// api/nutrition.rs — Nutritional system handlers
 // =============================================================================
 
 use axum::extract::State;
@@ -7,13 +7,13 @@ use axum::response::IntoResponse;
 
 use super::state::AppState;
 
-/// GET /api/nutrition/status — Etat complet du systeme nutritionnel.
+/// GET /api/nutrition/status — Full nutritional system status.
 pub async fn api_nutrition_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     axum::Json(agent.nutrition.to_json())
 }
 
-/// GET /api/nutrition/deficiencies — Liste des carences detectees.
+/// GET /api/nutrition/deficiencies — List of detected deficiencies.
 pub async fn api_nutrition_deficiencies(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let config = agent.config().nutrition.clone();

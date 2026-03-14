@@ -1,14 +1,14 @@
 // =============================================================================
-// nutrition.rs — Biochimie nutritionnelle de Saphire
+// nutrition.rs — Saphire's nutritional biochemistry
 //
-// Role : Simule le substrat nutritionnel de l'etre : vitamines, acides amines,
-// proteines, metabolisme energetique (ATP, glycogene, calories). Les carences
-// influencent directement la neurochimie (tryptophane → serotonine, etc.).
+// Role: Simulates the nutritional substrate of the being: vitamins, amino acids,
+// proteins, energy metabolism (ATP, glycogen, calories). Deficiencies
+// directly influence neurochemistry (tryptophan → serotonin, etc.).
 //
-// Place dans l'architecture :
-//   Pipeline cognitif etape 3o : tick + chemistry_influence apres culture.
-//   Interactions croisees : UV solaire → vitamine D, repas → restore nutrients,
-//   tryptophane → BDNF (grey_matter).
+// Place in architecture:
+//   Cognitive pipeline step 3o: tick + chemistry_influence after culture.
+//   Cross-interactions: solar UV → vitamin D, meals → restore nutrients,
+//   tryptophan → BDNF (grey_matter).
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
@@ -16,22 +16,21 @@ use serde::{Deserialize, Serialize};
 use crate::config::NutritionConfig;
 use crate::world::ChemistryAdjustment;
 
-// ─── Niveaux de vitamines ───────────────────────────────────────────────────
-
-/// Niveaux des vitamines essentielles (0.0 = carence totale, 1.0 = optimal).
+// ─── Vitamin levels ───────────────────────────────────────────────────
+/// Essential vitamin levels (0.0 = total deficiency, 1.0 = optimal).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VitaminLevels {
-    /// Complexe B (B1, B6, B9, B12) — synthese des neurotransmetteurs
+    /// B complex (B1, B6, B9, B12) — neurotransmitter synthesis
     pub b_complex: f64,
-    /// Vitamine C — antioxydant, synthese noradrenaline
+    /// Vitamin C — antioxidant, noradrenaline synthesis
     pub c: f64,
-    /// Vitamine D — synthese serotonine, immuno-modulation (synthetisee par UV)
+    /// Vitamin D — serotonin synthesis, immunomodulation (synthesized by UV)
     pub d: f64,
-    /// Vitamine E — protection membranaire, antioxydant lipophile
+    /// Vitamin E — membrane protection, lipophilic antioxidant
     pub e: f64,
-    /// Vitamine A — vision, transcription genique
+    /// Vitamin A — vision, gene transcription
     pub a: f64,
-    /// Vitamine K — coagulation, sante osseuse
+    /// Vitamin K — coagulation, bone health
     pub k: f64,
 }
 
@@ -48,20 +47,19 @@ impl Default for VitaminLevels {
     }
 }
 
-// ─── Niveaux d'acides amines ────────────────────────────────────────────────
-
-/// Acides amines essentiels pour la neurochimie.
+// ─── Amino acid levels ────────────────────────────────────────────────
+/// Essential amino acids for neurochemistry.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AminoAcidLevels {
-    /// Tryptophane — precurseur de la serotonine et melatonine
+    /// Tryptophan — precursor of serotonin and melatonin
     pub tryptophan: f64,
-    /// Tyrosine — precurseur de la dopamine et noradrenaline
+    /// Tyrosine — precursor of dopamine and noradrenaline
     pub tyrosine: f64,
-    /// Glutamine — precurseur du GABA et glutamate
+    /// Glutamine — precursor of GABA and glutamate
     pub glutamine: f64,
-    /// Histidine — precurseur de l'histamine (eveil, attention)
+    /// Histidine — precursor of histamine (arousal, attention)
     pub histidine: f64,
-    /// Glycine — co-agoniste NMDA, sommeil, inhibition
+    /// Glycine — co-agoniste NMDA, sleep, inhibition
     pub glycine: f64,
 }
 
@@ -77,18 +75,17 @@ impl Default for AminoAcidLevels {
     }
 }
 
-// ─── Metabolisme energetique ────────────────────────────────────────────────
-
-/// Metabolisme energetique cellulaire.
+// ─── Energy metabolism ────────────────────────────────────────────────
+/// Cellular energy metabolism.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EnergyMetabolism {
-    /// Metabolisme basal (taux de consommation au repos)
+    /// Basal metabolic rate (consumption rate at rest)
     pub bmr: f64,
-    /// Reserves d'ATP (0.0 = epuise, 1.0 = plein)
+    /// ATP reserves (0.0 = depleted, 1.0 = full)
     pub atp_reserves: f64,
-    /// Reserves de glycogene (hepatique + musculaire)
+    /// Glycogen reserves (hepatic + muscular)
     pub glycogen_reserves: f64,
-    /// Balance calorique (>0 = surplus, <0 = deficit)
+    /// Caloric balance (>0 = surplus, <0 = deficit)
     pub caloric_balance: f64,
 }
 
@@ -103,21 +100,20 @@ impl Default for EnergyMetabolism {
     }
 }
 
-// ─── Systeme nutritionnel complet ───────────────────────────────────────────
-
-/// Systeme nutritionnel complet : vitamines + acides amines + proteines + energie.
+// ─── Complete nutritional system ───────────────────────────────────────────
+/// Complete nutritional system: vitamins + amino acids + proteins + energy.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NutritionSystem {
     pub enabled: bool,
     pub vitamins: VitaminLevels,
     pub amino_acids: AminoAcidLevels,
-    /// Niveau de proteines disponibles (synthese, reparation)
+    /// Available protein level (synthesis, repair)
     pub protein_level: f64,
     pub energy: EnergyMetabolism,
 }
 
 impl NutritionSystem {
-    /// Cree un nouveau systeme nutritionnel depuis la config.
+    /// Creates a new nutritional system from the config.
     pub fn new(config: &NutritionConfig) -> Self {
         Self {
             enabled: config.enabled,
@@ -128,28 +124,26 @@ impl NutritionSystem {
         }
     }
 
-    /// Tick metabolique : degradation naturelle, consommation energetique,
-    /// conversion glycogene → ATP quand reserves basses.
-    /// `uv_index` provient du module fields (champs EM solaires).
+    /// Metabolic tick: natural degradation, energy consumption,
+    /// glycogen → ATP conversion when reserves are low.
+    /// `uv_index` comes from the fields module (solar EM fields).
     pub fn tick(&mut self, config: &NutritionConfig, is_eating: bool, uv_index: f64) {
         if !self.enabled { return; }
 
-        // Degradation naturelle des vitamines (metabolisme)
+        // Natural vitamin degradation (metabolism)
         let vd = config.vitamin_decay_rate;
         self.vitamins.b_complex = (self.vitamins.b_complex - vd).max(0.0);
-        self.vitamins.c = (self.vitamins.c - vd * 1.2).max(0.0); // C se degrade plus vite
-        self.vitamins.d = (self.vitamins.d - vd * 0.8).max(0.0); // D plus stable
-        self.vitamins.e = (self.vitamins.e - vd * 0.6).max(0.0);
+        self.vitamins.c = (self.vitamins.c - vd * 1.2).max(0.0); // C degrades faster        self.vitamins.d = (self.vitamins.d - vd * 0.8).max(0.0); // D more stable        self.vitamins.e = (self.vitamins.e - vd * 0.6).max(0.0);
         self.vitamins.a = (self.vitamins.a - vd * 0.5).max(0.0);
         self.vitamins.k = (self.vitamins.k - vd * 0.4).max(0.0);
 
-        // Synthese de vitamine D par exposition UV (interaction champs solaires)
+        // Vitamin D synthesis through UV exposure (solar field interaction)
         if uv_index > 0.2 {
             let synth = (uv_index - 0.2) * config.uv_vitamin_d_factor;
             self.vitamins.d = (self.vitamins.d + synth).min(1.0);
         }
 
-        // Degradation des acides amines (utilisation metabolique)
+        // Amino acid degradation (metabolic use)
         let ad = config.amino_decay_rate;
         self.amino_acids.tryptophan = (self.amino_acids.tryptophan - ad).max(0.0);
         self.amino_acids.tyrosine = (self.amino_acids.tyrosine - ad).max(0.0);
@@ -157,54 +151,54 @@ impl NutritionSystem {
         self.amino_acids.histidine = (self.amino_acids.histidine - ad * 0.7).max(0.0);
         self.amino_acids.glycine = (self.amino_acids.glycine - ad * 0.6).max(0.0);
 
-        // Degradation des proteines
+        // Protein degradation
         self.protein_level = (self.protein_level - config.protein_decay_rate).max(0.0);
 
-        // Consommation energetique (ATP)
+        // Energy consumption (ATP)
         self.energy.atp_reserves = (self.energy.atp_reserves - config.atp_consumption_rate).max(0.0);
 
-        // Conversion glycogene → ATP quand reserves basses
+        // Glycogen → ATP conversion when reserves are low
         if self.energy.atp_reserves < 0.3 && self.energy.glycogen_reserves > 0.1 {
             let conversion = config.glycogen_to_atp_rate.min(self.energy.glycogen_reserves);
             self.energy.glycogen_reserves -= conversion;
             self.energy.atp_reserves = (self.energy.atp_reserves + conversion * 0.8).min(1.0);
         }
 
-        // Balance calorique : deficit si ATP bas, surplus si haut
+        // Caloric balance: deficit if ATP low, surplus if high
         self.energy.caloric_balance = self.energy.atp_reserves - 0.5;
 
-        // Si on mange, restaurer les nutrients
+        // If eating, restore nutrients
         if is_eating {
             self.restore_from_meal(config.meal_nutrient_boost);
         }
     }
 
-    /// Calcule l'influence de la nutrition sur la neurochimie.
-    /// Les carences en precurseurs impactent directement les neurotransmetteurs.
+    /// Computes the influence of nutrition on neurochemistry.
+    /// Precursor deficiencies directly impact neurotransmitters.
     pub fn chemistry_influence(&self, config: &NutritionConfig) -> ChemistryAdjustment {
         let mut adj = ChemistryAdjustment::default();
         if !self.enabled { return adj; }
 
-        // Tryptophane bas → serotonine diminuee
+        // Low tryptophan → decreased serotonin
         if self.amino_acids.tryptophan < config.amino_deficiency_threshold {
             let deficit = config.amino_deficiency_threshold - self.amino_acids.tryptophan;
             adj.serotonin -= deficit * 0.04;
         }
 
-        // Tyrosine bas → dopamine et noradrenaline diminuees
+        // Low tyrosine → decreased dopamine and noradrenaline
         if self.amino_acids.tyrosine < config.amino_deficiency_threshold {
             let deficit = config.amino_deficiency_threshold - self.amino_acids.tyrosine;
             adj.dopamine -= deficit * 0.03;
             adj.noradrenaline -= deficit * 0.02;
         }
 
-        // Vitamine D basse → serotonine diminuee
+        // Low vitamin D → decreased serotonin
         if self.vitamins.d < config.vitamin_deficiency_threshold {
             let deficit = config.vitamin_deficiency_threshold - self.vitamins.d;
             adj.serotonin -= deficit * 0.03;
         }
 
-        // Complexe B bas → neurotransmetteurs globaux diminues
+        // Low B complex → decreased overall neurotransmitters
         if self.vitamins.b_complex < config.vitamin_deficiency_threshold {
             let deficit = config.vitamin_deficiency_threshold - self.vitamins.b_complex;
             adj.serotonin -= deficit * 0.02;
@@ -212,7 +206,7 @@ impl NutritionSystem {
             adj.noradrenaline -= deficit * 0.01;
         }
 
-        // ATP bas → cortisol augmente (stress metabolique)
+        // Low ATP → increased cortisol (metabolic stress)
         if self.energy.atp_reserves < 0.3 {
             let deficit = 0.3 - self.energy.atp_reserves;
             adj.cortisol += deficit * 0.05;
@@ -221,14 +215,14 @@ impl NutritionSystem {
         adj
     }
 
-    /// Restaure les niveaux nutritionnels suite a un repas.
+    /// Restores nutritional levels after a meal.
     pub fn restore_from_meal(&mut self, boost: f64) {
         self.vitamins.b_complex = (self.vitamins.b_complex + boost).min(1.0);
         self.vitamins.c = (self.vitamins.c + boost).min(1.0);
         self.vitamins.e = (self.vitamins.e + boost * 0.8).min(1.0);
         self.vitamins.a = (self.vitamins.a + boost * 0.7).min(1.0);
         self.vitamins.k = (self.vitamins.k + boost * 0.6).min(1.0);
-        // Pas de boost vitD via repas (surtout UV)
+        // No vitD boost via meals (mainly UV)
         self.vitamins.d = (self.vitamins.d + boost * 0.3).min(1.0);
 
         self.amino_acids.tryptophan = (self.amino_acids.tryptophan + boost).min(1.0);
@@ -242,7 +236,7 @@ impl NutritionSystem {
         self.energy.glycogen_reserves = (self.energy.glycogen_reserves + boost).min(1.0);
     }
 
-    /// Retourne la liste des carences sous les seuils.
+    /// Returns the list of deficiencies below the thresholds.
     pub fn deficiencies(&self, config: &NutritionConfig) -> Vec<(String, f64)> {
         let mut defs = Vec::new();
         let vt = config.vitamin_deficiency_threshold;
@@ -267,7 +261,7 @@ impl NutritionSystem {
         defs
     }
 
-    /// Serialise l'etat en JSON pour persistance.
+    /// Serializes the state to JSON for persistence.
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::json!({
             "enabled": self.enabled,
@@ -296,7 +290,7 @@ impl NutritionSystem {
         })
     }
 
-    /// Restaure l'etat depuis le JSON persiste.
+    /// Restores state from persisted JSON.
     pub fn restore_from_json(&mut self, v: &serde_json::Value) {
         if let Some(vit) = v.get("vitamins") {
             self.vitamins.b_complex = vit["b_complex"].as_f64().unwrap_or(self.vitamins.b_complex);

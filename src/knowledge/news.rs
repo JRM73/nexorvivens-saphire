@@ -1,36 +1,36 @@
 // =============================================================================
-// knowledge/news.rs — Actualites en temps reel (medias suisses + internationaux)
+// knowledge/news.rs — Real-time news (Swiss + international media)
 // =============================================================================
 //
-// Role : Permet a Saphire de consulter l'actualite du monde pour avoir une
-//        notion temporelle et une conscience de son environnement.
-//        Priorite aux medias suisses, mix de categories pour equilibrer
-//        l'impact sur l'humeur (general, tech, economie, science).
+// Purpose: Allows Saphire to check world news for a sense of time
+//          and awareness of its environment.
+//          Priority given to Swiss media, category mix to balance
+//          mood impact (general, tech, economy, science).
 //
-// Flux RSS integres (~10 feeds) :
+// Built-in RSS feeds (~10 feeds):
 //   - Swissinfo FR, RTS Info, Le Temps (general CH)
 //   - Ars Technica, The Verge (tech)
-//   - Les Echos (economie)
+//   - Les Echos (economy)
 //   - Futura Sciences, Heidi.news (science)
 //   - L'Agefi (finance CH)
 //   - France24 (international)
 //
-// Score de pertinence : 0.75
+// Relevance score: 0.75
 // =============================================================================
 
 use chrono::Utc;
 use super::{WebKnowledge, KnowledgeResult, KnowledgeError};
 
-/// Flux RSS d'actualite pre-configures
+/// Pre-configured news RSS feeds
 const NEWS_FEEDS: &[(&str, &str)] = &[
-    // General CH (priorite suisse)
+    // General CH (Swiss priority)
     ("Swissinfo", "https://www.swissinfo.ch/fre/rss"),
     ("RTS Info", "https://www.rts.ch/info/rss"),
     ("Le Temps", "https://www.letemps.ch/rss"),
     // Tech
     ("Ars Technica", "https://feeds.arstechnica.com/arstechnica/index"),
     ("The Verge", "https://www.theverge.com/rss/index.xml"),
-    // Economie
+    // Economy
     ("Les Echos", "https://syndication.lesechos.fr/rss/rss_une.xml"),
     // Science
     ("Futura Sciences", "https://www.futura-sciences.com/rss/actualites.xml"),
@@ -42,15 +42,15 @@ const NEWS_FEEDS: &[(&str, &str)] = &[
 ];
 
 impl WebKnowledge {
-    /// Recuperer les actualites recentes depuis les flux RSS pre-configures.
+    /// Retrieve recent news from pre-configured RSS feeds.
     ///
-    /// Selectionne 2 flux au hasard parmi les 10 disponibles et extrait
-    /// les 2-3 articles les plus recents de chacun.
+    /// Selects 2 feeds at random from the 10 available and extracts
+    /// the 2-3 most recent articles from each.
     pub fn search_news(&self) -> Result<Vec<KnowledgeResult>, KnowledgeError> {
         let max_chars = self.config.max_content_chars;
         let mut results = Vec::new();
 
-        // Selectionner 2 flux au hasard via rotation pseudo-aleatoire
+        // Select 2 feeds at random via pseudo-random rotation
         let now_nanos = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
@@ -58,7 +58,7 @@ impl WebKnowledge {
 
         let feed_count = NEWS_FEEDS.len();
         let idx1 = now_nanos % feed_count;
-        let idx2 = (now_nanos / 7 + 3) % feed_count; // decalage pour eviter doublon
+        let idx2 = (now_nanos / 7 + 3) % feed_count; // offset to avoid duplicates
 
         let selected = if idx1 == idx2 {
             vec![idx1, (idx1 + 1) % feed_count]
@@ -89,17 +89,17 @@ impl WebKnowledge {
                 }
             };
 
-            // Detecter le format (Atom vs RSS 2.0)
+            // Detect the format (Atom vs RSS 2.0)
             let is_atom = response.contains("<feed") && response.contains("<entry>");
 
             if is_atom {
-                // Format Atom
+                // Atom format
                 for entry in response.split("<entry>").skip(1).take(3) {
                     let title = Self::extract_tag(entry, "title")
                         .map(|t| Self::strip_cdata(&t))
                         .unwrap_or_default();
 
-                    // Lien Atom : <link href="..." />
+                    // Atom link: <link href="..." />
                     let link = if let Some(href_start) = entry.find("href=\"") {
                         let rest = &entry[href_start + 6..];
                         if let Some(href_end) = rest.find('"') {
@@ -135,7 +135,7 @@ impl WebKnowledge {
                     }
                 }
             } else {
-                // Format RSS 2.0
+                // RSS 2.0 format
                 for item in response.split("<item>").skip(1).take(3) {
                     let title = Self::extract_tag(item, "title")
                         .map(|t| Self::strip_cdata(&t))

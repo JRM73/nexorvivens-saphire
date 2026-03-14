@@ -1,16 +1,16 @@
 // =============================================================================
-// db/connections.rs — Requetes DB pour les connexions neuronales
+// db/connections.rs — DB queries for neural connections
 //
-// Role : CRUD sur la table neural_connections (liens decouverts entre souvenirs).
-// Les connexions sont creees pendant le sommeil profond (cosine similarity) ou
-// par les algorithmes subconscients (DBSCAN). Chaque connexion relie 2 souvenirs
-// LTM avec un type de lien et une force de connexion.
+// Role: CRUD on the neural_connections table (links discovered between memories).
+// Connections are created during deep sleep (cosine similarity) or by
+// subconscious algorithms (DBSCAN). Each connection links 2 LTM memories
+// with a link type and connection strength.
 // =============================================================================
 
 use super::{SaphireDb, DbError};
 
 impl SaphireDb {
-    /// Recupere les connexions neuronales paginées.
+    /// Retrieves paginated neural connections.
     pub async fn get_neural_connections(
         &self,
         limit: i64,
@@ -44,7 +44,7 @@ impl SaphireDb {
         Ok(results)
     }
 
-    /// Stats des connexions neuronales.
+    /// Neural connections statistics.
     pub async fn get_neural_connections_stats(&self) -> Result<serde_json::Value, DbError> {
         let client = self.pool.get().await?;
         let row = client.query_one(
@@ -61,7 +61,7 @@ impl SaphireDb {
         let link_types: i64 = row.get(2);
         let avg_strength: f32 = row.try_get::<_, f32>(3).unwrap_or(0.0);
 
-        // Types de liens repartition
+        // Link types distribution
         let type_rows = client.query(
             "SELECT link_type, count(*) as cnt
              FROM neural_connections
@@ -87,7 +87,7 @@ impl SaphireDb {
         }))
     }
 
-    /// Compte le nombre total de connexions neuronales.
+    /// Counts the total number of neural connections.
     pub async fn get_neural_connections_count(&self) -> Result<i64, DbError> {
         let client = self.pool.get().await?;
         let row = client.query_one(
@@ -96,7 +96,7 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Insere une connexion neuronale.
+    /// Inserts a neural connection.
     pub async fn insert_neural_connection(
         &self,
         memory_a_id: i64,

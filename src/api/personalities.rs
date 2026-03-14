@@ -1,8 +1,8 @@
 // =============================================================================
-// api/personalities.rs — Handlers des presets de personnalite
+// api/personalities.rs — Personality preset handlers
 //
-// Role : Endpoints pour lister, charger, comparer et reinitialiser les presets
-// de personnalite (philosophe, artiste, scientifique, empathique, etc.).
+// Role: Endpoints to list, load, compare and reset personality presets
+// (philosopher, artist, scientist, empathetic, etc.).
 // =============================================================================
 
 use axum::extract::{Query, State};
@@ -12,7 +12,7 @@ use serde::Deserialize;
 
 use super::state::AppState;
 
-/// GET /api/personalities — Liste des presets disponibles.
+/// GET /api/personalities — List available presets.
 pub async fn api_list_personalities(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let presets = agent.personality_preset_orch.list_presets();
@@ -22,19 +22,19 @@ pub async fn api_list_personalities(State(state): State<AppState>) -> impl IntoR
     }))
 }
 
-/// GET /api/personalities/current — Preset actif + etat transition.
+/// GET /api/personalities/current — Active preset + transition state.
 pub async fn api_current_personality(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     Json(agent.personality_preset_orch.to_status_json())
 }
 
-/// Corps de la requete POST /api/personalities/load
+/// Request body for POST /api/personalities/load
 #[derive(Deserialize)]
 pub struct LoadPersonalityRequest {
     pub name: String,
 }
 
-/// POST /api/personalities/load — Charge et applique un preset.
+/// POST /api/personalities/load — Load and apply a preset.
 pub async fn api_load_personality(
     State(state): State<AppState>,
     Json(body): Json<LoadPersonalityRequest>,
@@ -43,20 +43,20 @@ pub async fn api_load_personality(
     Json(agent.load_and_apply_personality(&body.name))
 }
 
-/// POST /api/personalities/reset — Revenir au preset saphire.
+/// POST /api/personalities/reset — Revert to saphire preset.
 pub async fn api_reset_personality(State(state): State<AppState>) -> impl IntoResponse {
     let mut agent = state.agent.lock().await;
     Json(agent.load_and_apply_personality("saphire"))
 }
 
-/// Parametres de la requete GET /api/personalities/compare
+/// Query parameters for GET /api/personalities/compare
 #[derive(Deserialize)]
 pub struct ComparePersonalityQuery {
     pub a: String,
     pub b: String,
 }
 
-/// GET /api/personalities/compare?a=saphire&b=artiste — Compare deux presets.
+/// GET /api/personalities/compare?a=saphire&b=artiste — Compare two presets.
 pub async fn api_compare_personalities(
     State(state): State<AppState>,
     Query(query): Query<ComparePersonalityQuery>,

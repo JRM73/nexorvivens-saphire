@@ -1,8 +1,8 @@
 // =============================================================================
 // api/factory.rs — Handlers valeurs d'usine (factory defaults)
 //
-// Role : Endpoints pour consulter les valeurs d'usine, comparer les
-// differences avec les valeurs actuelles, et appliquer un reset.
+// Role: Endpoints for consulter les factory defaults, comparer les
+// differences with the valeurs currents, et appliquer un reset.
 // =============================================================================
 
 use axum::extract::State;
@@ -10,7 +10,7 @@ use axum::response::IntoResponse;
 
 use super::state::AppState;
 
-/// GET /api/factory/defaults — Retourne toutes les valeurs d'usine en JSON.
+/// GET /api/factory/defaults — Returns toutes les factory defaults in JSON.
 pub async fn api_factory_defaults() -> axum::Json<serde_json::Value> {
     match crate::factory::FactoryDefaults::load() {
         Ok(factory) => axum::Json(factory.as_json()),
@@ -18,7 +18,7 @@ pub async fn api_factory_defaults() -> axum::Json<serde_json::Value> {
     }
 }
 
-/// GET /api/factory/diff — Differences entre valeurs actuelles et usine.
+/// GET /api/factory/diff — Differences between valeurs currents et usine.
 pub async fn api_factory_diff(
     State(state): State<AppState>,
 ) -> impl IntoResponse {
@@ -26,7 +26,7 @@ pub async fn api_factory_diff(
     axum::Json(agent.factory_diff())
 }
 
-/// POST /api/factory/reset — Applique un reset aux valeurs d'usine.
+/// POST /api/factory/reset — Applies un reset aux factory defaults.
 /// Body: { "level": "ChemistryOnly" | "ParametersOnly" | "SensesOnly" |
 ///         "IntuitionOnly" | "PersonalEthicsOnly" | "PsychologyOnly" |
 ///         "SleepOnly" | "BiologyReset" | "FullReset" }

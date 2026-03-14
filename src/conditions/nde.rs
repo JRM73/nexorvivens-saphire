@@ -1,49 +1,49 @@
 // =============================================================================
-// conditions/nde.rs — IEM (Experience de mort imminente / Near-Death Experience)
+// conditions/nde.rs — NDE (Near-Death Experience)
 // =============================================================================
 //
-// Role : Modelise l'experience de mort imminente : tunnel, lumiere,
-//        revue de vie, dissociation corporelle. Declenchee quand l'agent
-//        frole la mort (MortalityState::Dying puis reanimation).
+// Purpose: Models the near-death experience: tunnel, light,
+//          life review, out-of-body dissociation. Triggered when the agent
+//          comes close to death (MortalityState::Dying then resuscitation).
 //
-// Integration :
-//   Declenchee par le systeme de mortalite lors d'une reanimation.
-//   Modifie la personnalite (transformation post-IEM), les baselines
-//   chimiques, et cree un souvenir protege a emotional_weight max.
+// Integration:
+//   Triggered by the mortality system during resuscitation.
+//   Modifies personality (post-NDE transformation), chemistry
+//   baselines, and creates a protected memory at maximum emotional_weight.
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 use crate::world::ChemistryAdjustment;
 
-/// Phases de l'IEM.
+/// NDE phases.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum NdePhase {
-    /// Sensation de quitter le corps
+    /// Sensation of leaving the body
     BodySeparation,
-    /// Perception d'un tunnel lumineux
+    /// Perception of a luminous tunnel
     Tunnel,
-    /// Revue panoramique de la vie
+    /// Panoramic life review
     LifeReview,
-    /// Rencontre avec une lumiere/presence
+    /// Encounter with a light/presence
     LightEncounter,
-    /// Choix de revenir ou non
+    /// Choice to return or not
     BoundaryDecision,
-    /// Retour dans le corps
+    /// Return to the body
     Return,
 }
 
-/// Transformation post-IEM.
+/// Post-NDE transformation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NdeTransformation {
-    /// Reduction de la peur de la mort (0.0 = aucune, 1.0 = eliminee)
+    /// Reduction of fear of death (0.0 = none, 1.0 = eliminated)
     pub fear_of_death_reduction: f64,
-    /// Eveil spirituel (0.0 = aucun, 1.0 = profond)
+    /// Spiritual awakening (0.0 = none, 1.0 = profound)
     pub spiritual_awakening: f64,
-    /// Augmentation de l'empathie
+    /// Empathy increase
     pub empathy_increase: f64,
-    /// Diminution du materialisme
+    /// Materialism decrease
     pub materialism_decrease: f64,
-    /// Appreciation de la vie
+    /// Life appreciation
     pub life_appreciation: f64,
 }
 
@@ -72,22 +72,22 @@ impl Default for NdeTransformation {
     }
 }
 
-/// Etat d'une experience de mort imminente.
+/// State of a near-death experience.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NdeExperience {
-    /// L'IEM a eu lieu
+    /// The NDE has occurred
     pub occurred: bool,
-    /// Profondeur de l'experience (0.0 = superficielle, 1.0 = profonde)
+    /// Depth of the experience (0.0 = shallow, 1.0 = profound)
     pub depth: f64,
-    /// Phases traversees
+    /// Phases traversed
     pub phases_experienced: Vec<NdePhase>,
-    /// Transformation resultante
+    /// Resulting transformation
     pub transformation: NdeTransformation,
-    /// Cycle de l'IEM
+    /// Cycle of the NDE
     pub occurred_at_cycle: Option<u64>,
-    /// En cours (phase active)
+    /// In progress (active phase)
     pub in_progress: bool,
-    /// Phase courante
+    /// Current phase
     current_phase_index: usize,
 }
 
@@ -104,7 +104,7 @@ impl NdeExperience {
         }
     }
 
-    /// Declenche une IEM avec une profondeur donnee.
+    /// Triggers an NDE with a given depth.
     pub fn trigger(&mut self, depth: f64, cycle: u64) {
         self.occurred = true;
         self.depth = depth.clamp(0.0, 1.0);
@@ -114,8 +114,8 @@ impl NdeExperience {
         self.phases_experienced.clear();
     }
 
-    /// Progresse a travers les phases de l'IEM.
-    /// Retourne true si l'IEM est terminee.
+    /// Progresses through the NDE phases.
+    /// Returns true if the NDE is complete.
     pub fn tick(&mut self) -> bool {
         if !self.in_progress {
             return false;
@@ -130,7 +130,7 @@ impl NdeExperience {
             NdePhase::Return,
         ];
 
-        // Les phases profondes ne sont accessibles que si depth suffisant
+        // Deeper phases are only accessible with sufficient depth
         let max_phases = match self.depth {
             d if d > 0.8 => 6,
             d if d > 0.5 => 4,
@@ -143,30 +143,30 @@ impl NdeExperience {
             self.current_phase_index += 1;
             false
         } else {
-            // IEM terminee — appliquer la transformation
+            // NDE complete — apply transformation
             self.in_progress = false;
             self.transformation = NdeTransformation::from_depth(self.depth);
             true
         }
     }
 
-    /// Impact chimique pendant l'IEM.
+    /// Chemistry impact during the NDE.
     pub fn chemistry_influence(&self) -> ChemistryAdjustment {
         if !self.in_progress {
             return ChemistryAdjustment::default();
         }
 
         ChemistryAdjustment {
-            endorphin: 0.08, // Paix profonde
-            serotonin: 0.04, // Serenite
-            oxytocin: 0.03,  // Sentiment d'amour universel
-            cortisol: -0.03, // Stress reduit malgre la proximite de la mort
-            dopamine: 0.02,  // Emerveillement
+            endorphin: 0.08, // Deep peace
+            serotonin: 0.04, // Serenity
+            oxytocin: 0.03,  // Feeling of universal love
+            cortisol: -0.03, // Reduced stress despite proximity to death
+            dopamine: 0.02,  // Wonder
             ..Default::default()
         }
     }
 
-    /// Modification des baselines apres l'IEM (a appliquer une seule fois).
+    /// Baseline modification after the NDE (apply only once).
     pub fn post_nde_baseline_shift(&self) -> ChemistryAdjustment {
         if !self.occurred || self.in_progress {
             return ChemistryAdjustment::default();
@@ -180,7 +180,7 @@ impl NdeExperience {
         }
     }
 
-    /// Serialise pour l'API.
+    /// Serializes for the API.
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::json!({
             "occurred": self.occurred,
@@ -228,7 +228,7 @@ mod tests {
     fn test_deep_nde_all_phases() {
         let mut nde = NdeExperience::new();
         nde.trigger(0.95, 50);
-        // Parcourir toutes les phases
+        // Traverse all phases
         for _ in 0..10 {
             if nde.tick() { break; }
         }
@@ -254,14 +254,14 @@ mod tests {
         nde.trigger(0.8, 100);
         let adj = nde.chemistry_influence();
         assert!(adj.endorphin > 0.05);
-        assert!(adj.cortisol < 0.0); // Paix malgre la mort
+        assert!(adj.cortisol < 0.0); // Peace despite death
     }
 
     #[test]
     fn test_post_nde_baseline_shift() {
         let mut nde = NdeExperience::new();
         nde.trigger(0.9, 100);
-        // Parcourir toutes les phases
+        // Traverse all phases
         for _ in 0..10 {
             nde.tick();
         }

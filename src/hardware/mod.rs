@@ -1,23 +1,23 @@
 // =============================================================================
-// hardware/mod.rs — Detection materielle automatique
+// hardware/mod.rs — Automatic hardware detection
 //
-// Role : Au demarrage, detecte GPU, CPU, RAM, disque et Ollama pour ajuster
-// les parametres (modele LLM, max_tokens, etc.). Fonctionne sans
-// dependance supplementaire (Linux /proc, nvidia-smi, HTTP check).
+// Role: At boot, detects GPU, CPU, RAM, disk and Ollama to adjust
+//       parameters (LLM model, max_tokens, etc.). Works without
+//       extra dependencies (Linux /proc, nvidia-smi, HTTP check).
 //
-// Place dans l'architecture :
-//   Appele dans main.rs apres le chargement de la config, avant le boot de
-//   l'agent. Le profil est stocke dans SaphireAgent et expose via API.
+// Place in the architecture:
+//   Called in main.rs after loading the config, before booting the
+//   agent. The profile is stored in SaphireAgent and exposed via API.
 // =============================================================================
 
 use std::process::Command;
 use serde::{Deserialize, Serialize};
 
 // =============================================================================
-// Structures de detection
+// Detection structures
 // =============================================================================
 
-/// Profil materiel complet detecte au demarrage.
+/// Complete hardware profile detected at boot.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HardwareProfile {
     pub gpu: Option<GpuInfo>,
@@ -28,7 +28,7 @@ pub struct HardwareProfile {
     pub detected_at: String,
 }
 
-/// Informations GPU (NVIDIA via nvidia-smi).
+/// GPU information (NVIDIA via nvidia-smi).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GpuInfo {
     pub name: String,
@@ -36,7 +36,7 @@ pub struct GpuInfo {
     pub driver_version: String,
 }
 
-/// Informations CPU.
+/// CPU information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CpuInfo {
     pub model: String,
@@ -44,14 +44,14 @@ pub struct CpuInfo {
     pub threads: usize,
 }
 
-/// Informations memoire.
+/// Memory information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MemoryInfo {
     pub total_mb: u64,
     pub available_mb: u64,
 }
 
-/// Informations disque.
+/// Disk information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiskInfo {
     pub path: String,
@@ -59,14 +59,14 @@ pub struct DiskInfo {
     pub available_gb: u64,
 }
 
-/// Informations Ollama.
+/// Ollama information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OllamaInfo {
     pub version: String,
     pub models: Vec<String>,
 }
 
-/// Recommandations basees sur le profil materiel.
+/// Recommendations based on the hardware profile.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HardwareRecommendations {
     pub llm_model: String,
@@ -80,8 +80,8 @@ pub struct HardwareRecommendations {
 // =============================================================================
 
 impl HardwareProfile {
-    /// Detecte le profil materiel complet.
-    /// Appele une seule fois au demarrage — les commandes systeme sont synchrones.
+    /// Detects the complete hardware profile.
+    /// Called once at boot — system commands are synchronous.
     pub fn detect(ollama_url: &str) -> Self {
         Self {
             gpu: detect_gpu(),
@@ -93,16 +93,16 @@ impl HardwareProfile {
         }
     }
 
-    /// Genere des recommandations basees sur le profil.
+    /// Generates recommendations based on the profile.
     pub fn recommend(&self, current_model: &str) -> HardwareRecommendations {
         let vram = self.gpu.as_ref().map(|g| g.vram_mb).unwrap_or(0);
         let ram = self.memory.total_mb;
         let mut warnings = Vec::new();
 
-        // Recommandation modele LLM basee sur la VRAM
+        // LLM model recommendation based on VRAM
         let (recommended_model, max_tokens) = match vram {
             0 => {
-                // Pas de GPU — recommander un petit modele ou CPU inference
+                // No GPU — recommend a small model or CPU inference
                 if ram > 32_000 {
                     ("qwen3:7b".to_string(), 4096u32)
                 } else {
@@ -119,7 +119,7 @@ impl HardwareProfile {
             _ => ("qwen3:32b".to_string(), 8192),
         };
 
-        // Verifier si le modele actuel est disponible dans Ollama
+        // Check if the current model is available in Ollama
         if let Some(ref ollama) = self.ollama {
             if !ollama.models.iter().any(|m| m.starts_with(current_model.split(':').next().unwrap_or(""))) {
                 warnings.push(format!(
@@ -130,7 +130,7 @@ impl HardwareProfile {
             }
         }
 
-        // Avertissements RAM
+        // RAM warnings
         if ram < 8_000 {
             warnings.push(format!("RAM faible ({} MB) — risque d'OOM sous charge", ram));
         }
@@ -145,7 +145,7 @@ impl HardwareProfile {
         }
     }
 
-    /// Affiche le profil dans les logs du demarrage.
+    /// Prints the profile in the boot logs.
     pub fn log_summary(&self) {
         println!("  ─── Profil materiel ───");
         println!("  🖥️  CPU : {} ({} coeurs, {} threads)",
@@ -169,8 +169,8 @@ impl HardwareProfile {
         }
     }
 
-    /// Retourne un JSON serialisable pour l'API.
-    /// Champs aplatis pour le frontend (cpu_model, ram_total_gb, gpu_model, etc.)
+    /// Returns a serializable JSON for the API.
+    /// Flattened fields for the frontend (cpu_model, ram_total_gb, gpu_model, etc.)
     pub fn to_json(&self) -> serde_json::Value {
         let mut j = serde_json::json!({
             "cpu_model": self.cpu.model,
@@ -199,10 +199,10 @@ impl HardwareProfile {
 }
 
 // =============================================================================
-// Fonctions de detection
+// Detection functions
 // =============================================================================
 
-/// Detecte le GPU NVIDIA via nvidia-smi.
+/// Detects the NVIDIA GPU via nvidia-smi.
 fn detect_gpu() -> Option<GpuInfo> {
     let output = Command::new("nvidia-smi")
         .args(["--query-gpu=name,memory.total,driver_version", "--format=csv,noheader,nounits"])
@@ -227,7 +227,7 @@ fn detect_gpu() -> Option<GpuInfo> {
     })
 }
 
-/// Detecte le CPU via /proc/cpuinfo.
+/// Detects the CPU via /proc/cpuinfo.
 fn detect_cpu() -> CpuInfo {
     let content = std::fs::read_to_string("/proc/cpuinfo").unwrap_or_default();
 
@@ -237,13 +237,13 @@ fn detect_cpu() -> CpuInfo {
         .map(|s| s.trim().to_string())
         .unwrap_or_else(|| "unknown".into());
 
-    // Nombre de threads (lignes "processor")
+    // Number of threads ("processor" lines)
     let threads = content.lines()
         .filter(|l| l.starts_with("processor"))
         .count()
         .max(1);
 
-    // Nombre de coeurs physiques (cpu cores)
+    // Number of physical cores (cpu cores)
     let cores = content.lines()
         .find(|l| l.starts_with("cpu cores"))
         .and_then(|l| l.split(':').nth(1))
@@ -253,7 +253,7 @@ fn detect_cpu() -> CpuInfo {
     CpuInfo { model, cores, threads }
 }
 
-/// Detecte la memoire via /proc/meminfo.
+/// Detects memory via /proc/meminfo.
 fn detect_memory() -> MemoryInfo {
     let content = std::fs::read_to_string("/proc/meminfo").unwrap_or_default();
 
@@ -276,7 +276,7 @@ fn detect_memory() -> MemoryInfo {
     }
 }
 
-/// Detecte l'espace disque via la commande df.
+/// Detects disk space via the df command.
 fn detect_disk(path: &str) -> DiskInfo {
     let output = Command::new("df")
         .args(["--output=size,avail", "-BG", path])
@@ -305,13 +305,13 @@ fn detect_disk(path: &str) -> DiskInfo {
     }
 }
 
-/// Detecte Ollama via HTTP (version + modeles disponibles).
+/// Detects Ollama via HTTP (version + available models).
 fn detect_ollama(base_url: &str) -> Option<OllamaInfo> {
     let agent = ureq::AgentBuilder::new()
         .timeout(std::time::Duration::from_secs(5))
         .build();
 
-    // Detecter la version
+    // Detect the version
     let version_url = format!("{}/api/version", base_url);
     let version = agent.get(&version_url)
         .call()
@@ -320,7 +320,7 @@ fn detect_ollama(base_url: &str) -> Option<OllamaInfo> {
         .and_then(|body| serde_json::from_str::<serde_json::Value>(&body).ok())
         .and_then(|v| v.get("version").and_then(|s| s.as_str()).map(|s| s.to_string()))?;
 
-    // Lister les modeles
+    // List the models
     let tags_url = format!("{}/api/tags", base_url);
     let models = agent.get(&tags_url)
         .call()

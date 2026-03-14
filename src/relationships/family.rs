@@ -1,15 +1,15 @@
 // =============================================================================
-// relationships/family.rs — Situation familiale de Saphire
+// relationships/family.rs — Saphire's family situation
 // =============================================================================
 //
-// Module qui modelise le contexte familial de Saphire : membres de la famille,
-// statut marital, influence chimique de la presence/absence des proches.
+// Module that models Saphire's family context: family members,
+// marital status, chemical influence of the presence/absence of close ones.
 // Configurable via saphire.toml section [family].
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 
-/// Role d'un membre de la famille.
+/// Role of a family member.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FamilyRole {
     Parent,
@@ -33,7 +33,7 @@ impl FamilyRole {
     }
 }
 
-/// Statut marital de Saphire.
+/// Saphire's marital status.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MaritalStatus {
     Single,
@@ -59,29 +59,29 @@ impl MaritalStatus {
     }
 }
 
-/// Un membre de la famille de Saphire.
+/// A member of Saphire's family.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FamilyMember {
-    /// Nom du membre
+    /// Member's name
     pub name: String,
-    /// Role familial
+    /// Family role
     pub role: FamilyRole,
-    /// Force du lien (0.0 a 1.0)
+    /// Bond strength (0.0 to 1.0)
     pub bond_strength: f64,
-    /// Vivant et proche (true) ou absent/decede (false)
+    /// Alive and nearby (true) or absent/deceased (false)
     pub present: bool,
 }
 
-/// Configuration de la situation familiale.
+/// Family situation configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FamilyConfig {
-    /// Activer le module famille
+    /// Enable the family module
     #[serde(default)]
     pub enabled: bool,
-    /// Membres de la famille
+    /// Family members
     #[serde(default)]
     pub members: Vec<FamilyMemberConfig>,
-    /// Statut marital
+    /// Marital status
     #[serde(default = "default_marital_status")]
     pub marital_status: String,
 }
@@ -98,7 +98,7 @@ impl Default for FamilyConfig {
     }
 }
 
-/// Configuration d'un membre de la famille (depuis TOML).
+/// Configuration of a family member (from TOML).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FamilyMemberConfig {
     pub name: String,
@@ -112,12 +112,12 @@ pub struct FamilyMemberConfig {
 fn default_bond_strength() -> f64 { 0.5 }
 fn default_present() -> bool { true }
 
-/// Contexte familial complet de Saphire.
+/// Complete family context of Saphire.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FamilyContext {
-    /// Membres de la famille
+    /// Family members
     pub members: Vec<FamilyMember>,
-    /// Statut marital
+    /// Marital status
     pub marital_status: MaritalStatus,
 }
 
@@ -131,7 +131,7 @@ impl Default for FamilyContext {
 }
 
 impl FamilyContext {
-    /// Construit le contexte familial a partir de la configuration.
+    /// Builds the family context from configuration.
     pub fn from_config(config: &FamilyConfig) -> Self {
         let members = config.members.iter().map(|m| {
             let role = match m.role.as_str() {
@@ -161,7 +161,7 @@ impl FamilyContext {
         Self { members, marital_status }
     }
 
-    /// Influence chimique de la situation familiale.
+    /// Chemical influence of the family situation.
     pub fn chemistry_influence(&self) -> crate::world::ChemistryAdjustment {
         let mut adj = crate::world::ChemistryAdjustment::default();
 
@@ -172,14 +172,14 @@ impl FamilyContext {
             .map(|m| m.bond_strength)
             .sum();
 
-        // Famille presente → ocytocine + serotonine
+        // Family present -> oxytocin + serotonin
         if present_count > 0 {
             let family_boost = (total_bond * 0.005).min(0.02);
             adj.oxytocin = family_boost;
             adj.serotonin = family_boost * 0.5;
         }
 
-        // Membres absents/decedes → cortisol (deuil, manque)
+        // Absent/deceased members -> cortisol (grief, longing)
         if absent_count > 0 {
             let absent_bond: f64 = self.members.iter()
                 .filter(|m| !m.present)
@@ -188,7 +188,7 @@ impl FamilyContext {
             adj.cortisol = (absent_bond * 0.003).min(0.01);
         }
 
-        // Statut marital
+        // Marital status
         match self.marital_status {
             MaritalStatus::Married | MaritalStatus::InRelationship => {
                 adj.oxytocin += 0.005;
@@ -204,7 +204,7 @@ impl FamilyContext {
         adj
     }
 
-    /// Genere un supplement de prompt decrivant la situation familiale.
+    /// Generates a prompt supplement describing the family situation.
     pub fn prompt_supplement(&self) -> String {
         if self.members.is_empty() && self.marital_status == MaritalStatus::Single {
             return String::new();
@@ -223,7 +223,7 @@ impl FamilyContext {
         lines.join("\n")
     }
 
-    /// Serialise en JSON pour l'API.
+    /// Serializes to JSON for the API.
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::json!({
             "marital_status": self.marital_status.as_str(),

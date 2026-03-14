@@ -1,10 +1,10 @@
 // =============================================================================
 // api/cognition.rs — Handlers des 8 modules cognitifs avances
 //
-// Role : Endpoints pour la theorie de l'esprit (ToM), le monologue interieur,
+// Role: Endpoints for the theorie de l'esprit (ToM), le inner monologue,
 // la dissonance cognitive, la memoire prospective, l'identite narrative,
 // le raisonnement analogique, la charge cognitive, l'imagerie mentale,
-// et les extensions metacognitives (source monitoring, biais de confirmation).
+// et les extensions metacognitives (source monitoring, confirmation bias).
 // =============================================================================
 
 use axum::extract::State;
@@ -15,7 +15,6 @@ use super::state::AppState;
 // =============================================================================
 // 1. Theory of Mind (ToM)
 // =============================================================================
-
 /// GET /api/tom/status — Etat du moteur de theorie de l'esprit.
 pub async fn api_tom_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
@@ -25,8 +24,7 @@ pub async fn api_tom_status(State(state): State<AppState>) -> impl IntoResponse 
 // =============================================================================
 // 2. Monologue interieur
 // =============================================================================
-
-/// GET /api/monologue/chain — Chaine du monologue interieur.
+/// GET /api/monologue/chain — Chaine du inner monologue.
 pub async fn api_monologue_chain(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     axum::Json(agent.inner_monologue.to_json())
@@ -35,7 +33,6 @@ pub async fn api_monologue_chain(State(state): State<AppState>) -> impl IntoResp
 // =============================================================================
 // 3-4. Dissonance cognitive
 // =============================================================================
-
 /// GET /api/dissonance/status — Etat du moteur de dissonance cognitive.
 pub async fn api_dissonance_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
@@ -62,7 +59,6 @@ pub async fn api_dissonance_beliefs(State(state): State<AppState>) -> impl IntoR
 // =============================================================================
 // 5. Memoire prospective
 // =============================================================================
-
 /// GET /api/prospective/intentions — Intentions differees en attente.
 pub async fn api_prospective_intentions(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
@@ -72,7 +68,6 @@ pub async fn api_prospective_intentions(State(state): State<AppState>) -> impl I
 // =============================================================================
 // 6-7. Identite narrative
 // =============================================================================
-
 /// GET /api/narrative/identity — Resume de l'identite narrative.
 pub async fn api_narrative_identity(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
@@ -102,7 +97,6 @@ pub async fn api_narrative_chapters(State(state): State<AppState>) -> impl IntoR
 // =============================================================================
 // 8. Raisonnement analogique
 // =============================================================================
-
 /// GET /api/analogies/recent — Analogies recentes generees.
 pub async fn api_analogies_recent(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
@@ -112,7 +106,6 @@ pub async fn api_analogies_recent(State(state): State<AppState>) -> impl IntoRes
 // =============================================================================
 // 9. Charge cognitive
 // =============================================================================
-
 /// GET /api/cognitive-load/status — Etat de la charge cognitive.
 pub async fn api_cognitive_load_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
@@ -122,7 +115,6 @@ pub async fn api_cognitive_load_status(State(state): State<AppState>) -> impl In
 // =============================================================================
 // 10. Imagerie mentale
 // =============================================================================
-
 /// GET /api/imagery/active — Images mentales actives.
 pub async fn api_imagery_active(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
@@ -132,14 +124,13 @@ pub async fn api_imagery_active(State(state): State<AppState>) -> impl IntoRespo
 // =============================================================================
 // 11-12. Extensions metacognitives
 // =============================================================================
-
 /// GET /api/source-monitor/traced — Suivi de l'origine des connaissances.
 pub async fn api_source_monitor_traced(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     axum::Json(agent.metacognition.source_monitor.to_json())
 }
 
-/// GET /api/metacognition/biases — Detection des biais de confirmation.
+/// GET /api/metacognition/biases — Detection des confirmation bias.
 pub async fn api_metacognition_biases(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     axum::Json(agent.metacognition.bias_detector.to_json())
@@ -148,8 +139,7 @@ pub async fn api_metacognition_biases(State(state): State<AppState>) -> impl Int
 // =============================================================================
 // Sentiments (etats affectifs durables)
 // =============================================================================
-
-/// GET /api/sentiments/status — Etat courant des sentiments actifs.
+/// GET /api/sentiments/status — Etat current des sentiments active.
 pub async fn api_sentiments_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     axum::Json(agent.sentiments.to_json())
@@ -164,7 +154,6 @@ pub async fn api_sentiments_history(State(state): State<AppState>) -> impl IntoR
 // =============================================================================
 // Algorithmes Game AI (influence map, FSM cognitive, steering)
 // =============================================================================
-
 /// GET /api/influence-map/status — Etat de la carte d'influence attentionnelle.
 pub async fn api_influence_map_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
@@ -195,7 +184,6 @@ pub async fn api_steering_status(State(state): State<AppState>) -> impl IntoResp
 // =============================================================================
 // MAP Sync (Modulateur Adaptatif de Proprioception)
 // =============================================================================
-
 /// GET /api/map-sync/status — Etat du MAP (tension perception/reaction).
 pub async fn api_map_sync_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;

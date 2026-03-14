@@ -1,28 +1,28 @@
 // =============================================================================
-// spine/mod.rs — Colonne vertebrale de Saphire
+// spine/mod.rs — Saphire's Spinal Cord
 //
-// Role : Point d'entree central entre les signaux entrants et le pipeline
-// cognitif. La colonne vertebrale fournit :
-//   1. Des reflexes pre-cables (reactions chimiques instantanees sans LLM)
-//   2. Une classification des signaux par urgence
-//   3. Un routage vers le bon traitement (reflexe, pipeline rapide, complet)
-//   4. Un relais moteur vers les effecteurs (Sensoria, API)
+// Role: Central entry point between incoming signals and the cognitive
+// pipeline. The spinal cord provides:
+//   1. Pre-wired reflexes (instant chemical reactions without LLM)
+//   2. Signal classification by urgency
+//   3. Routing to the appropriate processing (reflex, fast pipeline, full)
+//   4. Motor relay to effectors (Sensoria, API)
 //
-// Analogie biologique :
-//   Le cerveau (pipeline 24 phases) est la conscience.
-//   Le systeme nerveux autonome (hormones, homeostasie) gere la chimie.
-//   La colonne vertebrale est le pont : elle intercepte les signaux AVANT
-//   qu'ils n'atteignent le cerveau, declenche les reflexes, et transmet
-//   le reste au pipeline avec la bonne priorite.
+// Biological analogy:
+//   The brain (24-phase pipeline) is consciousness.
+//   The autonomic nervous system (hormones, homeostasis) manages chemistry.
+//   The spinal cord is the bridge: it intercepts signals BEFORE they reach
+//   the brain, triggers reflexes, and forwards the rest to the pipeline
+//   with the appropriate priority.
 //
-// Dependances :
-//   - neurochemistry : NeuroChemicalState, Molecule (pour les deltas chimiques)
-//   - body : VirtualBody (pour les effets corporels)
-//   - hormones/receptors : ReceptorSystem (modulation de sensibilite)
+// Dependencies:
+//   - neurochemistry: NeuroChemicalState, Molecule (for chemistry deltas)
+//   - body: VirtualBody (for body effects)
+//   - hormones/receptors: ReceptorSystem (sensitivity modulation)
 //
-// Place dans l'architecture :
-//   Signal entrant → SpinalCord::process() → reflexes + classification
-//   → pipeline cognitif (si necessaire) → MotorRelay (effecteurs)
+// Place in the architecture:
+//   Incoming signal -> SpinalCord::process() -> reflexes + classification
+//   -> cognitive pipeline (if needed) -> MotorRelay (effectors)
 // =============================================================================
 
 pub mod reflex;
@@ -40,42 +40,42 @@ pub use classifier::{SignalClassifier, SignalPriority, ClassifiedSignal};
 pub use router::{SignalRouter, RouteDecision};
 pub use motor::{MotorRelay, MotorCommand};
 
-/// La colonne vertebrale de Saphire.
+/// Saphire's spinal cord.
 ///
-/// Orchestre les reflexes, la classification et le routage des signaux.
-/// Chaque signal entrant passe par `process()` qui retourne un `SpineOutput`
-/// contenant les reflexes declenches, la priorite, et la decision de routage.
+/// Orchestrates reflexes, classification, and signal routing.
+/// Each incoming signal passes through `process()` which returns a `SpineOutput`
+/// containing the triggered reflexes, priority, and routing decision.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpinalCord {
-    /// Arc reflexe : detecte les patterns et declenche les reflexes
+    /// Reflex arc: detects patterns and triggers reflexes
     pub reflex_arc: ReflexArc,
-    /// Classificateur de signaux par urgence
+    /// Signal classifier by urgency
     pub classifier: SignalClassifier,
-    /// Routeur : decide du traitement (reflexe seul, pipeline rapide, complet)
+    /// Router: decides the processing path (reflex only, fast pipeline, full)
     pub router: SignalRouter,
-    /// Relais moteur vers les effecteurs
+    /// Motor relay to effectors
     pub motor: MotorRelay,
-    /// Nombre total de reflexes declenches depuis le demarrage
+    /// Total reflexes triggered since startup
     pub total_reflexes_triggered: u64,
-    /// Nombre total de signaux traites
+    /// Total signals processed
     pub total_signals_processed: u64,
 }
 
-/// Resultat complet du traitement d'un signal par la colonne vertebrale.
+/// Complete result of signal processing by the spinal cord.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpineOutput {
-    /// Reflexes declenches par le signal
+    /// Reflexes triggered by the signal
     pub reflexes: Vec<ReflexResult>,
-    /// Priorite assignee au signal
+    /// Priority assigned to the signal
     pub priority: SignalPriority,
-    /// Decision de routage (quel pipeline utiliser)
+    /// Routing decision (which pipeline to use)
     pub route: RouteDecision,
-    /// Commandes motrices a executer (effets corporels, effecteurs)
+    /// Motor commands to execute (body effects, effectors)
     pub motor_commands: Vec<MotorCommand>,
 }
 
 impl SpinalCord {
-    /// Cree une nouvelle colonne vertebrale avec les parametres par defaut.
+    /// Creates a new spinal cord with default parameters.
     pub fn new() -> Self {
         Self {
             reflex_arc: ReflexArc::new(),
@@ -87,22 +87,22 @@ impl SpinalCord {
         }
     }
 
-    /// Traite un signal entrant a travers la colonne vertebrale.
+    /// Processes an incoming signal through the spinal cord.
     ///
-    /// 1. L'arc reflexe detecte les patterns et calcule les deltas chimiques
-    /// 2. Le classificateur assigne une priorite
-    /// 3. Le routeur decide du traitement
-    /// 4. Les commandes motrices sont generees
+    /// 1. The reflex arc detects patterns and computes chemistry deltas
+    /// 2. The classifier assigns a priority
+    /// 3. The router decides the processing path
+    /// 4. Motor commands are generated
     ///
-    /// Les deltas chimiques des reflexes sont appliques IMMEDIATEMENT a la chimie
-    /// via `boost()` (rendements decroissants). Les effets corporels sont retournes
-    /// dans les commandes motrices pour application par l'appelant.
+    /// The chemistry deltas from reflexes are applied IMMEDIATELY via
+    /// `boost()` (diminishing returns). Body effects are returned in the
+    /// motor commands for application by the caller.
     ///
-    /// # Parametres
-    /// - `text` : texte du signal (message humain, transcription Sensoria, etc.)
-    /// - `chemistry` : etat chimique actuel (mute pour appliquer les reflexes)
-    /// - `body` : corps virtuel (lu pour modulation, non modifie ici)
-    /// - `source` : origine du signal ("human", "sensoria", "autonomous", "system")
+    /// # Parameters
+    /// - `text`: signal text (human message, Sensoria transcription, etc.)
+    /// - `chemistry`: current chemical state (mutated to apply reflexes)
+    /// - `body`: virtual body (read for modulation, not modified here)
+    /// - `source`: signal origin ("human", "sensoria", "autonomous", "system")
     pub fn process(
         &mut self,
         text: &str,
@@ -112,22 +112,22 @@ impl SpinalCord {
     ) -> SpineOutput {
         self.total_signals_processed += 1;
 
-        // 1. Arc reflexe : detecter les patterns et calculer les deltas
+        // 1. Reflex arc: detect patterns and compute deltas
         let reflexes = self.reflex_arc.evaluate(text, chemistry, body);
         self.total_reflexes_triggered += reflexes.len() as u64;
 
-        // 2. Appliquer les deltas chimiques des reflexes immediatement
+        // 2. Apply reflex chemistry deltas immediately
         for reflex in &reflexes {
             reflex.apply_chemistry(chemistry);
         }
 
-        // 3. Classifier le signal (urgence)
+        // 3. Classify the signal (urgency)
         let priority = self.classifier.classify(text, &reflexes, source);
 
-        // 4. Router le signal
+        // 4. Route the signal
         let route = self.router.decide(&priority, &reflexes);
 
-        // 5. Generer les commandes motrices
+        // 5. Generate motor commands
         let motor_commands = self.motor.generate_commands(&reflexes, body);
 
         SpineOutput {
@@ -138,7 +138,7 @@ impl SpinalCord {
         }
     }
 
-    /// Retourne un snapshot JSON de l'etat de la colonne vertebrale.
+    /// Returns a JSON snapshot of the spinal cord state.
     pub fn to_snapshot_json(&self) -> serde_json::Value {
         serde_json::json!({
             "total_reflexes_triggered": self.total_reflexes_triggered,

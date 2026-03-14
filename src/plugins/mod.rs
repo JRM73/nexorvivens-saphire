@@ -1,154 +1,154 @@
 // =============================================================================
-// plugins/mod.rs — Systeme de plugins (trait Plugin + evenements)
+// plugins/mod.rs — Plugin system (Plugin trait + events)
 //
-// Role : Ce fichier definit le systeme de plugins extensible de Saphire.
-// Il contient le trait Plugin, les evenements du cerveau (BrainEvent),
-// les actions possibles des plugins (PluginAction) et le gestionnaire
-// de plugins (PluginManager) qui orchestre la diffusion des evenements.
+// Role: This file defines Saphire's extensible plugin system.
+// It contains the Plugin trait, brain events (BrainEvent),
+// possible plugin actions (PluginAction), and the plugin manager
+// (PluginManager) that orchestrates event broadcasting.
 //
-// Dependances :
-//   - serde : serialisation des evenements et actions pour le transport JSON
+// Dependencies:
+//   - serde: serialization of events and actions for JSON transport
 //
-// Place dans l'architecture :
-//   Le PluginManager est possede par l'agent (SaphireAgent). A chaque cycle
-//   du cerveau, les evenements sont diffuses a tous les plugins enregistres.
-//   Chaque plugin peut reagir en renvoyant des actions (ajuster la chimie,
-//   stocker un souvenir, diffuser un message WebSocket, etc.).
-//   Ce patron de conception decouple le coeur cognitif des extensions.
+// Place in architecture:
+//   The PluginManager is owned by the agent (SaphireAgent). At each brain
+//   cycle, events are broadcast to all registered plugins. Each plugin
+//   can react by returning actions (adjust chemistry, store a memory,
+//   broadcast a WebSocket message, etc.).
+//   This design pattern decouples the cognitive core from extensions.
 // =============================================================================
 
-// ─── Sous-modules des plugins disponibles ────────────────────────────────────
+// ─── Available plugin sub-modules ─────────────────────────────────────────────
 
-/// Plugin d'interface web (axum + WebSocket) : serialise les evenements du
-/// cerveau et les diffuse aux clients WebSocket connectes.
+/// Web interface plugin (axum + WebSocket): serializes brain events
+/// and broadcasts them to connected WebSocket clients.
 pub mod web_ui;
 
-/// Plugin micro-reseau de neurones : un petit MLP (Multi-Layer Perceptron,
-/// Perceptron Multi-Couches) qui apprend localement a predire la satisfaction.
+/// Micro neural network plugin: a small MLP (Multi-Layer Perceptron)
+/// that locally learns to predict satisfaction.
 pub mod micro_nn;
 
-/// Plugin de memoire vectorielle : stocke des embeddings en RAM et calcule
-/// la personnalite emergente a partir des emotions des souvenirs.
+/// Vector memory plugin: stores embeddings in RAM and computes
+/// the emergent personality from memory emotions.
 pub mod vector_memory;
 
 use serde::{Deserialize, Serialize};
 
-/// Evenements emis par le cerveau de Saphire a chaque etape importante.
-/// Les plugins s'abonnent a ces evenements pour reagir en consequence.
+/// Events emitted by Saphire's brain at each important step.
+/// Plugins subscribe to these events to react accordingly.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BrainEvent {
-    /// Un stimulus a ete analyse par le module NLP (Natural Language Processing).
+    /// A stimulus has been analyzed by the NLP (Natural Language Processing) module.
     StimulusAnalyzed {
-        /// Texte du stimulus analyse
+        /// Text of the analyzed stimulus
         text: String,
-        /// Niveau de danger detecte [0.0 - 1.0]
+        /// Detected danger level [0.0 - 1.0]
         danger: f64,
-        /// Niveau de recompense detecte [0.0 - 1.0]
+        /// Detected reward level [0.0 - 1.0]
         reward: f64,
-        /// Emotion dominante detectee
+        /// Detected dominant emotion
         emotion: String,
     },
-    /// Une decision a ete prise par le consensus des modules.
+    /// A decision has been made by the module consensus.
     DecisionMade {
-        /// Decision sous forme textuelle ("Oui", "Non", "Peut-etre")
+        /// Decision as text ("Oui", "Non", "Peut-etre")
         decision: String,
-        /// Score de decision [-1.0 a +1.0]
+        /// Decision score [-1.0 to +1.0]
         score: f64,
-        /// Niveau de satisfaction apres la decision [0.0 - 1.0]
+        /// Satisfaction level after the decision [0.0 - 1.0]
         satisfaction: f64,
     },
-    /// Un cycle complet du cerveau est termine.
+    /// A complete brain cycle has finished.
     CycleCompleted {
-        /// Numero du cycle
+        /// Cycle number
         cycle: u64,
-        /// Emotion dominante a la fin du cycle
+        /// Dominant emotion at the end of the cycle
         emotion: String,
-        /// Niveau de conscience a la fin du cycle [0.0 - 1.0]
+        /// Consciousness level at the end of the cycle [0.0 - 1.0]
         consciousness: f64,
     },
-    /// L'etat neurochimique a change de maniere significative.
+    /// The neurochemical state has changed significantly.
     ChemistryChanged {
-        /// Les 7 neurotransmetteurs dans l'ordre :
-        /// [dopamine, cortisol, serotonine, adrenaline, ocytocine, endorphine, noradrenaline]
+        /// The 7 neurotransmitters in order:
+        /// [dopamine, cortisol, serotonin, adrenaline, oxytocin, endorphin, noradrenaline]
         chemistry: [f64; 7],
     },
-    /// Une pensee autonome a ete generee par le LLM.
+    /// An autonomous thought has been generated by the LLM.
     ThoughtEmitted {
-        /// Type de pensee (ex: "introspection", "exploration", "reverie")
+        /// Thought type (e.g., "introspection", "exploration", "reverie")
         thought_type: String,
-        /// Contenu textuel de la pensee
+        /// Text content of the thought
         content: String,
     },
-    /// Le processus de demarrage (boot) de l'agent est termine.
+    /// The agent's boot process has completed.
     BootCompleted {
-        /// true si c'est le tout premier demarrage (genese), false sinon
+        /// true if this is the very first boot (genesis), false otherwise
         is_genesis: bool,
     },
-    /// L'arret de l'agent a commence (sauvegarde en cours).
+    /// The agent shutdown has begun (saving in progress).
     ShutdownStarted,
-    /// L'identite de l'agent a ete mise a jour (auto-description modifiee).
+    /// The agent's identity has been updated (self-description modified).
     IdentityUpdated {
-        /// Nouvelle description de l'identite
+        /// New identity description
         description: String,
     },
 }
 
-/// Actions qu'un plugin peut demander au cerveau en reponse a un evenement.
-/// Le PluginManager collecte toutes les actions et les transmet a l'agent.
+/// Actions that a plugin can request from the brain in response to an event.
+/// The PluginManager collects all actions and forwards them to the agent.
 #[derive(Debug, Clone)]
 pub enum PluginAction {
-    /// Ajuster un neurotransmetteur (ajouter un delta a la valeur actuelle).
+    /// Adjust a neurotransmitter (add a delta to the current value).
     AdjustChemistry {
-        /// Nom de la molecule (ex: "dopamine", "cortisol")
+        /// Molecule name (e.g., "dopamine", "cortisol")
         molecule: String,
-        /// Variation a appliquer (positif = augmenter, negatif = diminuer)
+        /// Variation to apply (positive = increase, negative = decrease)
         delta: f64,
     },
-    /// Stocker un souvenir dans la memoire.
+    /// Store a memory.
     StoreMemory {
-        /// Texte du souvenir
+        /// Memory text
         text: String,
-        /// Emotion associee
+        /// Associated emotion
         emotion: String,
-        /// Importance du souvenir [0.0 - 1.0] (influence le poids emotionnel)
+        /// Memory importance [0.0 - 1.0] (influences emotional weight)
         importance: f64,
     },
-    /// Diffuser un message via WebSocket a tous les clients connectes.
+    /// Broadcast a message via WebSocket to all connected clients.
     WebSocketBroadcast {
-        /// Donnees JSON a diffuser
+        /// JSON data to broadcast
         data: String,
     },
-    /// Ecrire un message dans les logs.
+    /// Write a message to the logs.
     Log {
-        /// Message a enregistrer
+        /// Message to record
         message: String,
     },
-    /// Aucune action a effectuer.
+    /// No action to perform.
     None,
 }
 
-/// Trait que tout plugin doit implementer.
-/// Un plugin a un nom et reagit aux evenements du cerveau en renvoyant
-/// une liste d'actions a effectuer.
+/// Trait that every plugin must implement.
+/// A plugin has a name and reacts to brain events by returning
+/// a list of actions to perform.
 pub trait Plugin: Send {
-    /// Retourne le nom du plugin (utilise pour les logs et l'identification).
+    /// Returns the plugin name (used for logs and identification).
     fn name(&self) -> &str;
 
-    /// Reagit a un evenement du cerveau.
-    /// Recoit un evenement et retourne une liste d'actions a effectuer.
+    /// Reacts to a brain event.
+    /// Receives an event and returns a list of actions to perform.
     ///
-    /// # Parametres
-    /// - `event` : l'evenement emis par le cerveau
+    /// # Parameters
+    /// - `event`: the event emitted by the brain
     ///
-    /// # Retour
-    /// Liste d'actions a effectuer (peut etre vide)
+    /// # Returns
+    /// List of actions to perform (can be empty)
     fn on_event(&mut self, event: &BrainEvent) -> Vec<PluginAction>;
 }
 
-/// Gestionnaire de plugins.
-/// Enregistre les plugins et diffuse les evenements du cerveau a chacun d'eux.
+/// Plugin manager.
+/// Registers plugins and broadcasts brain events to each of them.
 pub struct PluginManager {
-    /// Liste des plugins enregistres (trait objects alloues sur le tas)
+    /// List of registered plugins (heap-allocated trait objects)
     plugins: Vec<Box<dyn Plugin>>,
 }
 
@@ -159,29 +159,29 @@ impl Default for PluginManager {
 }
 
 impl PluginManager {
-    /// Cree un nouveau gestionnaire de plugins vide.
+    /// Creates a new empty plugin manager.
     pub fn new() -> Self {
         Self { plugins: Vec::new() }
     }
 
-    /// Enregistre un nouveau plugin dans le gestionnaire.
-    /// Le plugin est immediatement actif et recevra les prochains evenements.
+    /// Registers a new plugin in the manager.
+    /// The plugin is immediately active and will receive upcoming events.
     ///
-    /// # Parametres
-    /// - `plugin` : le plugin a enregistrer (boxe pour le polymorphisme dynamique)
+    /// # Parameters
+    /// - `plugin`: the plugin to register (boxed for dynamic polymorphism)
     pub fn register(&mut self, plugin: Box<dyn Plugin>) {
         println!("  [Plugin] Enregistré : {}", plugin.name());
         self.plugins.push(plugin);
     }
 
-    /// Diffuse un evenement a tous les plugins enregistres.
-    /// Collecte et retourne toutes les actions demandees par les plugins.
+    /// Broadcasts an event to all registered plugins.
+    /// Collects and returns all actions requested by the plugins.
     ///
-    /// # Parametres
-    /// - `event` : l'evenement du cerveau a diffuser
+    /// # Parameters
+    /// - `event`: the brain event to broadcast
     ///
-    /// # Retour
-    /// Liste concatenee de toutes les actions demandees par tous les plugins
+    /// # Returns
+    /// Concatenated list of all actions requested by all plugins
     pub fn broadcast(&mut self, event: &BrainEvent) -> Vec<PluginAction> {
         let mut all_actions = Vec::new();
         for plugin in &mut self.plugins {

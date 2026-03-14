@@ -1,31 +1,31 @@
 // =============================================================================
-// nlp/extractor.rs — Extracteur post-LLM
+// nlp/extractor.rs — Post-LLM extractor
 //
-// Role : Extrait des informations structurees de la reponse du LLM sans
-//        faire appel au LLM. Utilise des regex simples et des lexiques.
-//        Les entites et themes extraits nourrissent le connectome.
+// Role: Extracts structured information from the LLM response without
+//       calling the LLM. Uses simple regex and lexicons.
+//       The extracted entities and themes feed the connectome.
 //
-// Place dans l'architecture :
-//   Appele dans conversation.rs apres le post-processing (jargon strip).
-//   Les resultats sont injectes dans le connectome via add_node/add_edge.
+// Place in the architecture:
+//   Called in conversation.rs after post-processing (jargon strip).
+//   Results are injected into the connectome via add_node/add_edge.
 // =============================================================================
 
-/// Resultat de l'extraction post-LLM.
+/// Post-LLM extraction result.
 #[derive(Debug, Clone, Default)]
 pub struct ExtractionResult {
-    /// Entites detectees (noms propres, concepts cles)
+    /// Detected entities (proper nouns, key concepts)
     pub entities: Vec<String>,
-    /// Emotions exprimees dans le texte
+    /// Emotions expressed in the text
     pub expressed_emotions: Vec<String>,
-    /// Metaphores detectees ("comme un/une", "tel(le)")
+    /// Detected metaphors ("comme un/une", "tel(le)")
     pub metaphors: Vec<String>,
-    /// References temporelles ("hier", "demain", "jadis")
+    /// Temporal references ("hier", "demain", "jadis")
     pub temporal_refs: Vec<String>,
-    /// Themes saillants (3 mots les plus significatifs)
+    /// Salient themes (3 most significant words)
     pub themes: Vec<String>,
 }
 
-/// Extracteur de structures textuelles sans LLM.
+/// Textual structure extractor without LLM.
 pub struct ResponseExtractor {
     metaphor_markers: Vec<&'static str>,
     emotion_words: Vec<&'static str>,
@@ -40,7 +40,7 @@ impl Default for ResponseExtractor {
 }
 
 impl ResponseExtractor {
-    /// Cree un nouvel extracteur avec les dictionnaires par defaut.
+    /// Creates a new extractor with default dictionaries.
     pub fn new() -> Self {
         Self {
             metaphor_markers: vec![
@@ -76,12 +76,12 @@ impl ResponseExtractor {
         }
     }
 
-    /// Extrait les structures d'une reponse LLM.
+    /// Extracts structures from an LLM response.
     pub fn extract(&self, text: &str) -> ExtractionResult {
         let text_lower = text.to_lowercase();
         let mut result = ExtractionResult::default();
 
-        // --- Metaphores ---
+        // --- Metaphors ---
         for marker in &self.metaphor_markers {
             if let Some(pos) = text_lower.find(marker) {
                 let start = pos + marker.len();
@@ -104,18 +104,18 @@ impl ResponseExtractor {
             }
         }
 
-        // --- References temporelles ---
+        // --- Temporal references ---
         for word in &self.temporal_words {
             if text_lower.contains(word) && !result.temporal_refs.contains(&word.to_string()) {
                 result.temporal_refs.push(word.to_string());
             }
         }
 
-        // --- Entites (mots commencant par une majuscule, pas en debut de phrase) ---
+        // --- Entities (words starting with uppercase, not at sentence start) ---
         let words: Vec<&str> = text.split_whitespace().collect();
         for (i, word) in words.iter().enumerate() {
             if i == 0 { continue; }
-            // Apres un point = debut de phrase, ignorer
+            // After a period = sentence start, skip
             if let Some(prev) = words.get(i - 1) {
                 if prev.ends_with('.') || prev.ends_with('!') || prev.ends_with('?') {
                     continue;
@@ -134,7 +134,7 @@ impl ResponseExtractor {
             }
         }
 
-        // --- Themes (3 mots les plus longs, pas stop words, >= 5 chars) ---
+        // --- Themes (3 most frequent words, not stop words, >= 5 chars) ---
         let mut word_counts: Vec<(String, usize)> = Vec::new();
         for token in text_lower.split_whitespace() {
             let clean: String = token.chars().filter(|c| c.is_alphanumeric()).collect();

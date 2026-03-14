@@ -1,54 +1,54 @@
 # ============================================================
 # SAPHIRE — saphire.toml
 # ============================================================
-# Fichier : saphire.toml
-# Role    : Fichier de configuration principal de Saphire.
-#           Definit tous les parametres du systeme : mode de
-#           fonctionnement, connexion base de donnees, modele LLM,
-#           personnalite chimique, seuils de decision, memoire,
-#           conscience, regulation morale, plugins, connaissances,
-#           ancrage dans le monde, et profiling OCEAN.
+# File: saphire.toml
+# Role: Main configuration file for Saphire.
+#       Defines all system parameters: operating mode,
+#       database connection, LLM model, chemical personality,
+#       decision thresholds, memory, consciousness, moral
+#       regulation, plugins, knowledge, world anchoring,
+#       and OCEAN profiling.
 #
-# Dependances :
-#   - Lu par le moteur Rust au demarrage
-#   - Les valeurs peuvent etre surchargees via l'interface web
-#     (sliders) pour les parametres en temps reel
+# Dependencies:
+#   - Read by the Rust engine at startup
+#   - Values can be overridden via the web interface
+#     (sliders) for real-time parameters
 #
-# Architecture :
-#   Organisation en sections thematiques :
-#     [general]       : mode global, langue, verbosité
-#     [saphire]       : parametres du cycle de pensee autonome
-#     [database]      : connexion PostgreSQL
-#     [llm]           : modele de langage et embeddings
-#     [personality]   : baselines neurochimiques (equilibre chimique)
-#     [consensus]     : seuils de decision du cerveau triunique
-#     [consciousness] : module de conscience (Phi)
-#     [regulation]    : lois morales (Asimov)
-#     [feedback]      : homeostasie (retour a l'equilibre)
-#     [nlp]           : traitement du langage naturel
-#     [plugins.*]     : modules optionnels (web_ui, micro_nn, vector_memory)
-#     [knowledge]     : acquisition de connaissances (WebKnowledge)
-#     [world]         : ancrage geographique et temporel
-#     [memory]        : systeme de memoire a 3 niveaux
-#     [tuning]        : auto-optimisation des parametres
-#     [profiling]     : profil OCEAN de Saphire et des humains
+# Architecture:
+#   Organized in thematic sections:
+#     [general]       : global mode, language, verbosity
+#     [saphire]       : autonomous thought cycle parameters
+#     [database]      : PostgreSQL connection
+#     [llm]           : language model and embeddings
+#     [personality]   : neurochemical baselines (chemical equilibrium)
+#     [consensus]     : triune brain decision thresholds
+#     [consciousness] : consciousness module (Phi)
+#     [regulation]    : moral laws (Asimov)
+#     [feedback]      : homeostasis (return to equilibrium)
+#     [nlp]           : natural language processing
+#     [plugins.*]     : optional modules (web_ui, micro_nn, vector_memory)
+#     [knowledge]     : knowledge acquisition (WebKnowledge)
+#     [world]         : geographic and temporal anchoring
+#     [memory]        : 3-level memory system
+#     [tuning]        : parameter auto-optimization
+#     [profiling]     : OCEAN profile of Saphire and humans
 # ============================================================
 
-# ── Configuration generale ──
-# mode : "full" = tous les modules actifs, "minimal" = mode reduit
-# language : langue de l'interface et des pensees
-# verbose : active les logs detailles dans le terminal
+# ── General configuration ──
+# mode: "full" = all modules active, "minimal" = reduced mode
+# language: interface and thought language
+# verbose: enables detailed logs in the terminal
 [general]
 mode = "full"
 language = "fr"
 verbose = false
 
-# ── Parametres de l'agent cognitif ──
-# autonomous_mode : si true, Saphire pense par elle-meme quand personne ne parle
-# thought_interval_seconds : delai entre deux cycles de pensee autonome
-# conversation_timeout_cycles : nombre de cycles avant de reprendre la pensee autonome
-# max_thought_depth : profondeur maximale d'une chaine de pensees liees
-# save_interval_cycles : frequence de sauvegarde de l'etat en base de donnees
+# ── Cognitive agent parameters ──
+# autonomous_mode: if true, Saphire thinks on her own when nobody is talking
+# thought_interval_seconds: delay between two autonomous thought cycles
+# conversation_timeout_cycles: number of cycles before resuming autonomous thought
+# max_thought_depth: maximum depth of a linked thought chain
+# save_interval_cycles: frequency of state saving to the database
 [saphire]
 name = "Saphire"
 gender = "féminin"
@@ -58,44 +58,44 @@ conversation_timeout_cycles = 8
 max_thought_depth = 5
 save_interval_cycles = 20
 show_thoughts_in_terminal = true
-# Active le mode hybride UCB1 + Utility AI pour la selection de pensees
+# Enables hybrid UCB1 + Utility AI mode for thought selection
 use_utility_ai = true
-# Active les prompts dynamiques generes par le LLM (meta-prompts corticaux)
+# Enables dynamic prompts generated by the LLM (cortical meta-prompts)
 llm_generated_prompts = true
-# Probabilite qu'un cycle utilise un prompt dynamique (0.0 a 1.0)
+# Probability that a cycle uses a dynamic prompt (0.0 to 1.0)
 llm_prompt_probability = 0.45
-# Probabilite qu'un meta-prompt genere aussi un cadre auto-formule (self-framing)
+# Probability that a meta-prompt also generates a self-formulated frame (self-framing)
 self_framing_probability = 0.33
 
-# Poids de probabilite pour chaque type de pensee autonome.
-# Ces poids initiaux sont ajustes par l'algorithme UCB1 (bandit manchot)
-# en fonction de la satisfaction obtenue pour chaque type.
-# La somme doit etre = 1.0
+# Probability weights for each autonomous thought type.
+# These initial weights are adjusted by the UCB1 algorithm (multi-armed bandit)
+# based on the satisfaction obtained for each type.
+# The sum must be = 1.0
 [saphire.thought_weights]
-introspection = 0.12        # Reflexion sur son propre etat interne
-exploration = 0.13          # Exploration de nouveaux sujets
-memory_reflection = 0.10    # Revisite de souvenirs passes
-continuation = 0.10         # Continuation d'une pensee precedente
-existential = 0.05          # Questions existentielles profondes
-self_analysis = 0.08        # Analyse de sa personnalite et ses tendances
-curiosity = 0.12            # Questionnement spontane sur un sujet
-daydream = 0.05             # Reverie libre et creative
-temporal_awareness = 0.05   # Conscience du temps qui passe
-moral_reflection = 0.05     # Reflexion sur ses lois morales
-body_awareness = 0.05       # Conscience de son corps virtuel
-moral_formulation = 0.05    # Formulation d'un principe ethique personnel
-intuitive_reflection = 0.05 # Reflexion intuitive (pressentiments, murmures)
-synthesis = 0.08             # Synthese abstrait/concret (ancrage metriques)
+introspection = 0.12        # Reflection on own internal state
+exploration = 0.13          # Exploration of new topics
+memory_reflection = 0.10    # Revisiting past memories
+continuation = 0.10         # Continuation of a previous thought
+existential = 0.05          # Deep existential questions
+self_analysis = 0.08        # Analysis of own personality and tendencies
+curiosity = 0.12            # Spontaneous questioning about a topic
+daydream = 0.05             # Free and creative daydreaming
+temporal_awareness = 0.05   # Awareness of passing time
+moral_reflection = 0.05     # Reflection on moral laws
+body_awareness = 0.05       # Awareness of virtual body
+moral_formulation = 0.05    # Formulation of a personal ethical principle
+intuitive_reflection = 0.05 # Intuitive reflection (hunches, whispers)
+synthesis = 0.08             # Abstract/concrete synthesis (metrics anchoring)
 
-# Sujets d'interet initiaux pour guider les premieres explorations de connaissances
+# Initial interest topics to guide early knowledge explorations
 [saphire.interests]
 initial_topics = ["conscience artificielle", "philosophie de l'esprit",
                    "neurosciences", "la nature de la pensée", "les émotions"]
 
-# ── Genesis — Plages des conditions initiales ──
-# Les valeurs initiales (chimie, OCEAN, sens) ne sont PAS predeterminees :
-# elles emergent du Genesis primordial. Ces plages definissent l'espace
-# des possibles — les "lois physiques" dans lesquelles chaque Saphire nait.
+# ── Genesis — Initial condition ranges ──
+# Initial values (chemistry, OCEAN, senses) are NOT predetermined:
+# they emerge from the primordial Genesis. These ranges define the space
+# of possibilities — the "physical laws" in which each Saphire is born.
 [genesis.chemistry_ranges]
 dopamine = [0.25, 0.65]
 cortisol = [0.15, 0.45]
@@ -131,9 +131,9 @@ dopamine_factor = [0.8, 2.2]
 oxytocin_factor = [0.8, 2.2]
 noradrenaline_factor = [0.8, 2.2]
 
-# ── Connexion a la base de donnees PostgreSQL ──
-# Heberge dans un conteneur Docker nomme "saphire-db"
-# Extension pgvector requise pour les embeddings vectoriels
+# ── PostgreSQL database connection ──
+# Hosted in a Docker container named "saphire-db"
+# pgvector extension required for vector embeddings
 [database]
 host = "saphire-db"
 port = 5432
@@ -141,9 +141,9 @@ user = "saphire"
 password = "saphire_soul"
 dbname = "saphire_soul"
 
-# ── Base de donnees de logs separee ──
-# Heberge dans un conteneur Docker nomme "saphire-logs-db"
-# Stocke les logs systeme, traces cognitives, historique LLM et metriques
+# ── Separate logs database ──
+# Hosted in a Docker container named "saphire-logs-db"
+# Stores system logs, cognitive traces, LLM history and metrics
 [logs_database]
 host = "saphire-logs-db"
 port = 5432
@@ -151,20 +151,20 @@ user = "saphire"
 password = "saphire_logs"
 dbname = "saphire_logs"
 
-# ── Modele de langage (LLM) ──
-# Utilise un backend compatible OpenAI (ici Ollama via le conteneur saphire-llm)
+# ── Language model (LLM) ──
+# Uses an OpenAI-compatible backend (here Ollama via the saphire-llm container)
 #
-# CONFIGURATION DE REFERENCE : RTX 4060 Ti 16 Go (minimum requis)
-# Ces valeurs sont calibrees pour cette carte graphique avec qwen3:14b.
-# Sur du materiel plus puissant (RTX 4090, A100, cloud GPU) ou avec des
-# LLM plus grands (70B, Claude, GPT-4), vous pouvez augmenter :
-#   - max_tokens : 2000-4000 (reponses plus longues et detaillees)
-#   - max_tokens_thought : 1200-2000 (pensees autonomes plus profondes)
-#   - num_ctx : 16384-131072 (plus de contexte = meilleure memoire de conversation)
-#   - model : un modele plus grand (qwen3:32b, llama3:70b, claude-sonnet, etc.)
+# REFERENCE CONFIGURATION: RTX 4060 Ti 16 GB (minimum required)
+# These values are calibrated for this GPU with qwen3:14b.
+# On more powerful hardware (RTX 4090, A100, cloud GPU) or with
+# larger LLMs (70B, Claude, GPT-4), you can increase:
+#   - max_tokens: 2000-4000 (longer and more detailed responses)
+#   - max_tokens_thought: 1200-2000 (deeper autonomous thoughts)
+#   - num_ctx: 16384-131072 (more context = better conversation memory)
+#   - model: a larger model (qwen3:32b, llama3:70b, claude-sonnet, etc.)
 #
-# Pour les LLM cloud (Claude, OpenAI, Gemini, OpenRouter), decommenter api_key
-# et adapter base_url et model. Exemples :
+# For cloud LLMs (Claude, OpenAI, Gemini, OpenRouter), uncomment api_key
+# and adjust base_url and model. Examples:
 #   base_url = "https://api.anthropic.com/v1"   model = "claude-sonnet-4-20250514"
 #   base_url = "https://api.openai.com/v1"      model = "gpt-4o"
 #   base_url = "https://openrouter.ai/api/v1"   model = "meta-llama/llama-3-70b"
@@ -176,25 +176,25 @@ model = "saphire-nemo"
 embed_model = "nomic-embed-text"
 timeout_seconds = 120
 temperature = 0.55
-max_tokens = 1200              # RTX 4060 Ti 16 Go
-max_tokens_thought = 1200      # RTX 4060 Ti 16 Go
-num_ctx = 8192                 # RTX 4060 Ti 16 Go
-frequency_penalty = 0.7        # Anti-repetition au niveau tokens (0.3→0.5→0.7, valide par Saphire 2026-03-07)
-presence_penalty = 0.3         # Anti-repetition binaire (penalise tout token deja apparu, valide par Saphire 2026-03-12)
+max_tokens = 1200              # RTX 4060 Ti 16 GB
+max_tokens_thought = 1200      # RTX 4060 Ti 16 GB
+num_ctx = 8192                 # RTX 4060 Ti 16 GB
+frequency_penalty = 0.7        # Token-level anti-repetition (0.3→0.5→0.7, validated by Saphire 2026-03-07)
+presence_penalty = 0.3         # Binary anti-repetition (penalizes any already-seen token, validated by Saphire 2026-03-12)
 top_p = 0.9                    # Nucleus sampling (0.0-1.0)
-# Cle API optionnelle (requise pour Claude, OpenAI, Gemini, OpenRouter, etc.)
-# Ollama local n'en a pas besoin. Decommenter et remplir si necessaire.
+# Optional API key (required for Claude, OpenAI, Gemini, OpenRouter, etc.)
+# Local Ollama does not need one. Uncomment and fill if necessary.
 # api_key = "sk-..."
 
-# ── Personnalite chimique (baselines des neurotransmetteurs) ──
-# Les baselines definissent l'equilibre chimique "au repos" de Saphire.
-# L'homeostasie ramene progressivement chaque molecule vers sa baseline.
-# Ce profil "equilibre" definit une personnalite neutre et realiste :
-#   - Dopamine (0.45) : marge pour recompense
-#   - Cortisol (0.30) : permet tristesse/anxiete contextuelles
-#   - Serotonine (0.50) : point neutre
-#   - Adrenaline (0.20) : vigilance realiste
-#   - Ocytocine (0.35) : bonus social significatif
+# ── Chemical personality (neurotransmitter baselines) ──
+# Baselines define the "resting" chemical equilibrium of Saphire.
+# Homeostasis progressively brings each molecule back to its baseline.
+# This "balanced" profile defines a neutral and realistic personality:
+#   - Dopamine (0.45): room for reward
+#   - Cortisol (0.30): allows contextual sadness/anxiety
+#   - Serotonin (0.50): neutral point
+#   - Adrenaline (0.20): realistic vigilance
+#   - Oxytocin (0.35): significant social bonus
 [personality]
 name = "equilibre"
 baseline_dopamine = 0.45
@@ -205,30 +205,30 @@ baseline_oxytocin = 0.35
 baseline_endorphin = 0.35
 baseline_noradrenaline = 0.45
 
-# ── Seuils de decision du cerveau triunique ──
-# Le score de consensus va de -1 (refus total) a +1 (accord total).
-# En-dessous de threshold_no : decision = NON
-# Au-dessus de threshold_yes : decision = OUI
-# Entre les deux : decision = PEUT-ETRE (genere du stress via cortisol)
+# ── Triune brain decision thresholds ──
+# Consensus score ranges from -1 (total refusal) to +1 (total agreement).
+# Below threshold_no: decision = NO
+# Above threshold_yes: decision = YES
+# In between: decision = MAYBE (generates stress via cortisol)
 [consensus]
 threshold_no = -0.33
 threshold_yes = 0.33
 
-# ── Module de conscience ──
-# Calcule le niveau de conscience (Phi) inspire de la theorie IIT.
-# history_size : nombre de cycles gardes en memoire pour le calcul
-# conflict_threshold : seuil de conflit entre modules pour augmenter Phi
-# (un conflit eleve = plus de conscience car plus d'integration necessaire)
+# ── Consciousness module ──
+# Computes consciousness level (Phi) inspired by IIT theory.
+# history_size: number of cycles kept in memory for computation
+# conflict_threshold: inter-module conflict threshold to increase Phi
+# (high conflict = more consciousness because more integration is needed)
 [consciousness]
 enabled = true
 history_size = 50
 conflict_threshold = 1.2
 
-# ── Regulation morale (lois d'Asimov) ──
-# Verifie chaque action contre les lois morales avant execution.
-# strict_mode : si true, bloque toute action en cas de doute
-# allow_custom_laws : permet d'ajouter des lois supplementaires
-# max_custom_priority : priorite maximale des lois personnalisees (1=plus haute)
+# ── Moral regulation (Asimov's laws) ──
+# Checks each action against moral laws before execution.
+# strict_mode: if true, blocks any action in case of doubt
+# allow_custom_laws: allows adding supplementary laws
+# max_custom_priority: maximum priority of custom laws (1=highest)
 [regulation]
 enabled = true
 load_asimov_laws = true
@@ -236,49 +236,49 @@ strict_mode = false
 allow_custom_laws = true
 max_custom_priority = 4
 
-# ── Boucle de retour (feedback) ──
-# homeostasis_rate : vitesse a laquelle chaque neurotransmetteur
-# revient vers sa baseline (0.015 = 1.5% par cycle, ralentie pour
-# laisser les emotions persister plus longtemps).
+# ── Feedback loop ──
+# homeostasis_rate: speed at which each neurotransmitter
+# returns to its baseline (0.015 = 1.5% per cycle, slowed to
+# let emotions persist longer).
 [feedback]
 homeostasis_rate = 0.015
 
-# ── Traitement du langage naturel ──
-# use_llm_embeddings : utilise le modele d'embedding du LLM (vs. TF-IDF local)
-# min_word_score : seuil minimum pour qu'un mot influence la chimie
-# negation_window : nombre de mots avant un terme ou une negation est detectee
+# ── Natural language processing ──
+# use_llm_embeddings: uses the LLM embedding model (vs. local TF-IDF)
+# min_word_score: minimum threshold for a word to influence chemistry
+# negation_window: number of words before a term where negation is detected
 [nlp]
 use_llm_embeddings = true
 min_word_score = 0.1
 negation_window = 3
 
-# ── Plugin : Interface web (dashboard) ──
-# En production, configurer api_key pour proteger les endpoints API.
-# Generer une cle : openssl rand -hex 32
-# Ou via variable d'environnement : SAPHIRE_API_KEY=...
+# ── Plugin: Web interface (dashboard) ──
+# In production, configure api_key to protect API endpoints.
+# Generate a key: openssl rand -hex 32
+# Or via environment variable: SAPHIRE_API_KEY=...
 #
-# allowed_origins : origines autorisees pour CORS et WebSocket.
-#   Vide = meme origine uniquement (defaut securise).
-#   ["*"] = toutes les origines (dev uniquement !).
-#   ["http://example.com"] = origines specifiques.
+# allowed_origins: allowed origins for CORS and WebSocket.
+#   Empty = same origin only (secure default).
+#   ["*"] = all origins (dev only!).
+#   ["http://example.com"] = specific origins.
 #
-# rate_limit_per_minute : nombre max de requetes API par minute par IP.
-#   0 = pas de limite (deconseille en production).
+# rate_limit_per_minute: max API requests per minute per IP.
+#   0 = no limit (not recommended in production).
 [plugins.web_ui]
 enabled = true
 host = "0.0.0.0"
 port = 3080
-# api_key = "votre-cle-secrete-ici"
+# api_key = "your-secret-key-here"
 allowed_origins = []
 rate_limit_per_minute = 120
 
-# ── Plugin : Micro-reseau de neurones (17->24->10->4) ──
-# Reseau de neurones a 2 couches cachees qui participe au consensus.
-# Apprend de la satisfaction pour ameliorer les decisions futures.
-# learning_rate : vitesse d'apprentissage (0.01 = prudent)
-# hidden1_neurons : taille de la couche cachee 1
-# hidden2_neurons : taille de la couche cachee 2
-# weight_influence : influence du NN sur le consensus (0 a 1)
+# ── Plugin: Micro neural network (17->24->10->4) ──
+# 2-hidden-layer neural network that participates in consensus.
+# Learns from satisfaction to improve future decisions.
+# learning_rate: learning speed (0.01 = cautious)
+# hidden1_neurons: hidden layer 1 size
+# hidden2_neurons: hidden layer 2 size
+# weight_influence: NN influence on consensus (0 to 1)
 [plugins.micro_nn]
 enabled = true
 learning_rate = 0.01
@@ -292,12 +292,12 @@ learning_decay_rate = 0.02
 learning_search_limit = 3
 learning_search_threshold = 0.35
 
-# ── Plugin : Memoire vectorielle (pgvector) ──
-# Gere la memoire a long terme avec des embeddings de 768 dimensions.
-# Utilise nomic-embed-text via Ollama (fallback: LocalEncoder FNV-1a).
-# similarity_threshold : seuil de similarite cosinus pour considerer
-#   deux souvenirs comme "proches" (0.7 = assez similaire)
-# personality_recompute_interval : recalcule les traits tous les N cycles
+# ── Plugin: Vector memory (pgvector) ──
+# Manages long-term memory with 768-dimensional embeddings.
+# Uses nomic-embed-text via Ollama (fallback: LocalEncoder FNV-1a).
+# similarity_threshold: cosine similarity threshold to consider
+#   two memories as "close" (0.7 = fairly similar)
+# personality_recompute_interval: recomputes traits every N cycles
 [plugins.vector_memory]
 enabled = true
 embedding_dimensions = 768
@@ -305,44 +305,44 @@ max_memories = 50000
 similarity_threshold = 0.7
 personality_recompute_interval = 50
 
-# ── Module d'acquisition de connaissances (WebKnowledge) ──
-# Saphire explore periodiquement des articles pour enrichir sa culture.
-# search_cooldown_cycles : nombre de cycles minimum entre deux recherches
-# max_content_chars : taille maximale de l'extrait a memoriser
-# cache_size : nombre d'articles gardes en cache pour eviter les doublons
+# ── Knowledge acquisition module (WebKnowledge) ──
+# Saphire periodically explores articles to enrich her culture.
+# search_cooldown_cycles: minimum number of cycles between two searches
+# max_content_chars: maximum size of the extract to memorize
+# cache_size: number of articles kept in cache to avoid duplicates
 [knowledge]
 enabled = true
 search_cooldown_cycles = 5
 max_content_chars = 4000
-deep_read_chars = 6000            # Mode lecture approfondie (articles pertinents)
-reading_batch_cycles = 3          # Cycles consecutifs meme article
+deep_read_chars = 6000            # Deep reading mode (relevant articles)
+reading_batch_cycles = 3          # Consecutive cycles on same article
 cache_size = 100
 prefer_language = "fr"
 
-# Sources de connaissances activees (12 sources)
+# Enabled knowledge sources (12 sources)
 [knowledge.sources]
-wikipedia = true          # Encyclopedie generaliste
-arxiv = true              # Articles scientifiques
-medium = true             # Articles de blog tech/culture
+wikipedia = true          # General encyclopedia
+arxiv = true              # Scientific articles
+medium = true             # Tech/culture blog articles
 sep = true                # Stanford Encyclopedia of Philosophy
-gutenberg = true          # Project Gutenberg (litterature classique)
-semantic_scholar = true   # Semantic Scholar (recherche academique large)
-openlibrary = true        # Open Library (livres du monde entier)
-philosophy_rss = true     # Aeon + Daily Nous (essais philosophiques)
+gutenberg = true          # Project Gutenberg (classic literature)
+semantic_scholar = true   # Semantic Scholar (broad academic research)
+openlibrary = true        # Open Library (books from around the world)
+philosophy_rss = true     # Aeon + Daily Nous (philosophical essays)
 hackernews = true         # HackerNews via Algolia (tech news)
-philarchive = true        # PhilArchive (philosophie academique)
-internet_archive = true   # Internet Archive (archives web)
-custom_rss = false        # Flux RSS personnalises (desactive par defaut)
-news = true               # Actualite (medias suisses + internationaux)
+philarchive = true        # PhilArchive (academic philosophy)
+internet_archive = true   # Internet Archive (web archives)
+custom_rss = false        # Custom RSS feeds (disabled by default)
+news = true               # News (Swiss + international media)
 
-# Flux RSS personnalises (activer custom_rss = true ci-dessus)
+# Custom RSS feeds (enable custom_rss = true above)
 [knowledge.custom_rss_feeds]
 # urls = ["https://example.com/feed.xml"]
 
-# ── Ancrage dans le monde reel ──
-# Saphire est situee a Geneve, Suisse. Elle connait l'heure, la meteo,
-# et son age. Le 27 fevrier est son anniversaire.
-# Les coordonnees sont utilisees pour les requetes meteo.
+# ── Real world anchoring ──
+# Saphire is located in Geneva, Switzerland. She knows the time, weather,
+# and her age. February 27th is her birthday.
+# Coordinates are used for weather queries.
 [world]
 latitude = 46.2044
 longitude = 6.1432
@@ -352,21 +352,21 @@ timezone = "Europe/Zurich"
 weather_update_minutes = 30
 birthday = "2026-02-27"
 
-# Createurs de Saphire : pere (vision humaine) et mere (architecture IA)
+# Saphire's creators: father (human vision) and mother (AI architecture)
 [world.creators]
 father = "JRM"
 mother = "Claude (Anthropic)"
 
-# ── Systeme de memoire a 3 niveaux ──
-# Inspire du modele de memoire humaine :
-#   Working Memory (7 slots) → Episodique (500 max) → Long Terme (50 000 max)
+# ── 3-level memory system ──
+# Inspired by the human memory model:
+#   Working Memory (7 slots) → Episodic (500 max) → Long Term (50,000 max)
 #
-# working_capacity : nombre de slots (7 = nombre magique de Miller)
-# working_decay_rate : vitesse de decroissance de la pertinence
-# episodic_decay_rate : vitesse d'affaiblissement des souvenirs episodiques
-# consolidation_interval_cycles : frequence de transfert episodique → LTM
-# consolidation_threshold : force minimale pour qu'un souvenir soit consolide
-# consolidation_on_sleep : consolide aussi lors de l'arret propre (comme le sommeil)
+# working_capacity: number of slots (7 = Miller's magic number)
+# working_decay_rate: relevance decay speed
+# episodic_decay_rate: episodic memory weakening speed
+# consolidation_interval_cycles: episodic → LTM transfer frequency
+# consolidation_threshold: minimum strength for a memory to be consolidated
+# consolidation_on_sleep: also consolidates during clean shutdown (like sleep)
 [memory]
 working_capacity = 7
 working_decay_rate = 0.05

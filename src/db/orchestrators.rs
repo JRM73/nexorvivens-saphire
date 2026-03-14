@@ -1,14 +1,14 @@
 // =============================================================================
-// db/orchestrators.rs — Persistance des orchestrateurs (reves, desirs, lecons, blessures)
+// db/orchestrators.rs — Orchestrator persistence (dreams, desires, lessons, wounds)
 // =============================================================================
 
 use chrono::{DateTime, Utc};
 use super::{SaphireDb, DbError};
 
 impl SaphireDb {
-    // ─── Reves ──────────────────────────────────────────────────────────────────
+    // ─── Dreams ─────────────────────────────────────────────────────────────────
 
-    /// Sauvegarde un reve dans le journal.
+    /// Saves a dream to the journal.
     #[allow(clippy::too_many_arguments)]
     pub async fn save_dream(
         &self,
@@ -22,9 +22,9 @@ impl SaphireDb {
         _sleep_phase: Option<&str>,
     ) -> Result<i64, DbError> {
         let client = self.pool.get().await?;
-        // source_memory_ids converti en JSONB (la colonne est JSONB, pas BIGINT[])
+        // source_memory_ids converted to JSONB (the column is JSONB, not BIGINT[])
         let source_ids_json = serde_json::json!(source_memory_ids);
-        // dominant_emotion : colonne NOT NULL DEFAULT '' — envoyer "" si None
+        // dominant_emotion: column NOT NULL DEFAULT '' — send "" if None
         let emotion_str = dominant_emotion.unwrap_or("");
         let row = client.query_one(
             "INSERT INTO dream_journal (dream_type, narrative, dominant_emotion, insight, source_memory_ids, surreal_connections, remembered)
@@ -34,7 +34,7 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Charge les N derniers reves memorises.
+    /// Loads the N most recent remembered dreams.
     pub async fn load_recent_dreams(&self, limit: i64) -> Result<Vec<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -60,9 +60,9 @@ impl SaphireDb {
         Ok(results)
     }
 
-    // ─── Desirs ─────────────────────────────────────────────────────────────────
+    // ─── Desires ────────────────────────────────────────────────────────────────
 
-    /// Sauvegarde un nouveau desir.
+    /// Saves a new desire.
     #[allow(clippy::too_many_arguments)]
     pub async fn save_desire(
         &self,
@@ -84,7 +84,7 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Met a jour la progression et la priorite d'un desir.
+    /// Updates the progress and priority of a desire.
     pub async fn update_desire_progress(
         &self,
         id: i64,
@@ -101,7 +101,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Change le statut d'un desir (active, fulfilled, abandoned).
+    /// Changes the status of a desire (active, fulfilled, abandoned).
     pub async fn update_desire_status(&self, id: i64, status: &str) -> Result<(), DbError> {
         let client = self.pool.get().await?;
         let completed_at: Option<DateTime<Utc>> = if status == "fulfilled" || status == "abandoned" {
@@ -116,7 +116,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Charge tous les desirs actifs.
+    /// Loads all active desires.
     pub async fn load_active_desires(&self) -> Result<Vec<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -146,9 +146,9 @@ impl SaphireDb {
         Ok(results)
     }
 
-    // ─── Lecons ─────────────────────────────────────────────────────────────────
+    // ─── Lessons ────────────────────────────────────────────────────────────────
 
-    /// Sauvegarde une nouvelle lecon.
+    /// Saves a new lesson.
     pub async fn save_lesson(
         &self,
         title: &str,
@@ -166,7 +166,7 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Met a jour la confiance et les compteurs d'une lecon.
+    /// Updates the confidence and counters of a lesson.
     pub async fn update_lesson_confidence(
         &self,
         id: i64,
@@ -182,7 +182,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Charge toutes les lecons.
+    /// Loads all lessons.
     pub async fn load_all_lessons(&self) -> Result<Vec<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -208,9 +208,9 @@ impl SaphireDb {
         Ok(results)
     }
 
-    // ─── Blessures ──────────────────────────────────────────────────────────────
+    // ─── Wounds ─────────────────────────────────────────────────────────────────
 
-    /// Sauvegarde une nouvelle blessure.
+    /// Saves a new wound.
     pub async fn save_wound(
         &self,
         wound_type: &str,
@@ -226,7 +226,7 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Met a jour la progression de guerison d'une blessure.
+    /// Updates the healing progress of a wound.
     pub async fn update_wound_healing(
         &self,
         id: i64,
@@ -242,7 +242,7 @@ impl SaphireDb {
         Ok(())
     }
 
-    /// Charge les blessures actives (non gueries).
+    /// Loads active (unhealed) wounds.
     pub async fn load_active_wounds(&self) -> Result<Vec<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -266,7 +266,7 @@ impl SaphireDb {
         Ok(results)
     }
 
-    /// Compte les blessures gueries (pour calculer la resilience).
+    /// Counts healed wounds (for calculating resilience).
     pub async fn count_healed_wounds(&self) -> Result<i64, DbError> {
         let client = self.pool.get().await?;
         let row = client.query_one(
@@ -276,9 +276,9 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    // ─── Propositions d'auto-modification ─────────────────────────────────────
+    // ─── Self-modification proposals ────────────────────────────────────────────
 
-    /// Sauvegarde une proposition de modification.
+    /// Saves a modification proposal.
     #[allow(clippy::too_many_arguments)]
     pub async fn save_change_proposal(
         &self,
@@ -301,7 +301,7 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Compte les propositions actives (non resolues).
+    /// Counts active (unresolved) proposals.
     pub async fn count_active_proposals(&self) -> Result<i64, DbError> {
         let client = self.pool.get().await?;
         let row = client.query_one(
@@ -311,7 +311,7 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
-    /// Charge les propositions par statut.
+    /// Loads proposals by status.
     pub async fn load_proposals(&self, status: &str) -> Result<Vec<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
@@ -340,7 +340,7 @@ impl SaphireDb {
 
     // ─── Auto-tuning log ──────────────────────────────────────────────────────
 
-    /// Enregistre un ajustement autonome de parametre.
+    /// Records an autonomous parameter adjustment.
     pub async fn save_tuning_adjustment(
         &self,
         parameter_name: &str,

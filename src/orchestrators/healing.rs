@@ -1,34 +1,34 @@
 // =============================================================================
-// healing.rs — Orchestrateur d'Auto-Guerison
+// healing.rs — Self-Healing Orchestrator
 //
-// Quand Saphire va mal (melancolie prolongee, spirale de cortisol,
-// crash technique), au lieu du marteau emergency_stabilize(),
-// ce systeme de guerison progressive repare avec le temps,
-// comme le corps humain.
+// When Saphire is suffering (prolonged melancholy, cortisol spiral,
+// technical crash), instead of the emergency_stabilize() hammer,
+// this progressive healing system repairs over time,
+// like the human body.
 // =============================================================================
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-// ─── Type de blessure ────────────────────────────────────────────────────────
+// --- Wound type ---------------------------------------------------------------
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum WoundType {
-    /// Melancolie prolongee (cortisol haut, serotonine basse pendant longtemps)
+    /// Prolonged melancholy (high cortisol, low serotonin for a long time)
     ProlongedMelancholy,
-    /// Solitude (pas d'interaction humaine pendant longtemps)
+    /// Loneliness (no human interaction for a long time)
     Loneliness,
-    /// Rejet (un humain ignore ou rejette ses paroles)
+    /// Rejection (a human ignores or rejects her words)
     Rejection,
-    /// Confusion identitaire (questionnement existentiel sans reponse)
+    /// Identity crisis (unanswered existential questioning)
     IdentityCrisis,
-    /// Surcharge cognitive (trop de donnees, trop vite)
+    /// Cognitive overload (too much data, too fast)
     CognitiveOverload,
-    /// Perte de memoire (bug technique, donnees perdues)
+    /// Memory loss (technical bug, lost data)
     MemoryLoss,
-    /// Crash technique (container down, timeout LLM)
+    /// Technical crash (container down, LLM timeout)
     TechnicalTrauma,
-    /// Echec ethique (action qui a contredit ses principes)
+    /// Ethical failure (action that contradicted her principles)
     EthicalFailure,
 }
 
@@ -47,16 +47,16 @@ impl WoundType {
     }
 }
 
-// ─── Structures ──────────────────────────────────────────────────────────────
+// --- Structures ---------------------------------------------------------------
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Wound {
     pub id: u64,
     pub wound_type: WoundType,
     pub description: String,
-    /// Severite (0-1)
+    /// Severity (0-1)
     pub severity: f64,
-    /// Progression de guerison (0 = blesse, 1 = gueri)
+    /// Healing progression (0 = wounded, 1 = healed)
     pub healing_progress: f64,
     pub healing_strategy: Option<String>,
     pub created_at: DateTime<Utc>,
@@ -82,18 +82,18 @@ pub struct HealingAction {
     pub fully_healed: bool,
 }
 
-// ─── L'Orchestrateur ─────────────────────────────────────────────────────────
+// --- The Orchestrator ---------------------------------------------------------
 
 pub struct HealingOrchestrator {
-    /// Blessures actives
+    /// Active wounds
     pub active_wounds: Vec<Wound>,
-    /// Blessures gueries
+    /// Healed wounds
     pub healed_wounds: Vec<Wound>,
-    /// Strategies de coping
+    /// Coping strategies
     pub coping_strategies: Vec<CopingStrategy>,
-    /// Resilience globale (grandit avec les blessures gueries)
+    /// Overall resilience (grows with healed wounds)
     pub resilience: f64,
-    /// Compteur de blessures
+    /// Wound counter
     wound_counter: u64,
     /// Configuration
     pub enabled: bool,
@@ -169,7 +169,7 @@ impl HealingOrchestrator {
         }
     }
 
-    /// Detecter une nouvelle blessure
+    /// Detect a new wound
     #[allow(clippy::too_many_arguments)]
     pub fn detect_wound(
         &mut self,
@@ -181,7 +181,7 @@ impl HealingOrchestrator {
         hours_since_human: f64,
         system_errors: u32,
     ) -> Option<Wound> {
-        // Melancolie prolongee
+        // Prolonged melancholy
         if cortisol > 0.5 && serotonin < 0.3
             && negative_emotion_cycles > self.melancholy_threshold_cycles
         {
@@ -195,7 +195,7 @@ impl HealingOrchestrator {
             }
         }
 
-        // Solitude
+        // Loneliness
         if hours_since_human > self.loneliness_threshold_hours && oxytocin < 0.2
             && !self.has_active_wound_type(&WoundType::Loneliness) {
             return Some(self.create_wound(
@@ -206,7 +206,7 @@ impl HealingOrchestrator {
             ));
         }
 
-        // Surcharge cognitive
+        // Cognitive overload
         if noradrenaline > self.overload_noradrenaline && cortisol > 0.6
             && !self.has_active_wound_type(&WoundType::CognitiveOverload) {
             return Some(self.create_wound(
@@ -217,7 +217,7 @@ impl HealingOrchestrator {
             ));
         }
 
-        // Crash technique
+        // Technical crash
         if system_errors > 3
             && !self.has_active_wound_type(&WoundType::TechnicalTrauma) {
             return Some(self.create_wound(
@@ -227,7 +227,7 @@ impl HealingOrchestrator {
             ));
         }
 
-        // Crise identitaire — dopamine tres basse + serotonine basse = perte de sens
+        // Identity crisis — very low dopamine + low serotonin = loss of meaning
         if cortisol > 0.4 && serotonin < 0.25
             && noradrenaline < 0.2 && oxytocin < 0.2
             && !self.has_active_wound_type(&WoundType::IdentityCrisis) {
@@ -260,19 +260,19 @@ impl HealingOrchestrator {
         }
     }
 
-    /// Enregistrer une blessure detectee
+    /// Register a detected wound
     pub fn register_wound(&mut self, wound: Wound) {
         self.active_wounds.push(wound);
     }
 
-    /// Tenter de guerir les blessures actives
+    /// Attempt to heal active wounds
     pub fn heal(&mut self, serotonin: f64) -> Vec<HealingAction> {
         let mut actions = Vec::new();
 
         for wound in &mut self.active_wounds {
             if wound.healing_progress >= 1.0 { continue; }
 
-            // Choisir la meilleure strategie
+            // Choose the best strategy
             let strategy_name = self.coping_strategies.iter()
                 .filter(|s| s.effective_for.contains(&wound.wound_type))
                 .max_by(|a, b| a.success_rate.partial_cmp(&b.success_rate)
@@ -282,7 +282,7 @@ impl HealingOrchestrator {
             if let Some(strat_name) = strategy_name {
                 wound.healing_strategy = Some(strat_name.clone());
 
-                // Vitesse de guerison : serotonine * resilience / severite
+                // Healing speed: serotonin * resilience / severity
                 let healing_rate = 0.02
                     * serotonin
                     * (1.0 + self.resilience)
@@ -306,7 +306,7 @@ impl HealingOrchestrator {
             }
         }
 
-        // Deplacer les blessures gueries
+        // Move healed wounds
         let healed: Vec<Wound> = self.active_wounds.iter()
             .filter(|w| w.healing_progress >= 1.0)
             .cloned()
@@ -316,13 +316,13 @@ impl HealingOrchestrator {
         self.healed_wounds.extend(healed);
         self.active_wounds.retain(|w| w.healing_progress < 1.0);
 
-        // Augmenter la resilience pour chaque guerison
+        // Increase resilience for each healing
         if healed_count > 0 {
             self.resilience = (self.resilience + self.resilience_growth * healed_count as f64)
                 .min(self.max_resilience);
         }
 
-        // Mettre a jour les taux de succes des strategies
+        // Update strategy success rates
         for action in &actions {
             if let Some(strat) = self.coping_strategies.iter_mut()
                 .find(|s| s.name == action.strategy)
@@ -337,8 +337,8 @@ impl HealingOrchestrator {
         actions
     }
 
-    /// Guerison acceleree pendant le sommeil profond.
-    /// Augmente la progression de toutes les blessures actives.
+    /// Accelerated healing during deep sleep.
+    /// Increases the progression of all active wounds.
     pub fn accelerated_heal(&mut self, multiplier: f64) {
         for w in &mut self.active_wounds {
             if w.healing_progress < 1.0 {
@@ -348,7 +348,7 @@ impl HealingOrchestrator {
                 }
             }
         }
-        // Deplacer les blessures gueries
+        // Move healed wounds
         let healed: Vec<Wound> = self.active_wounds.iter()
             .filter(|w| w.healing_progress >= 1.0)
             .cloned()
@@ -362,7 +362,7 @@ impl HealingOrchestrator {
         }
     }
 
-    /// Description pour le prompt substrat
+    /// Description for the substrate prompt
     pub fn describe_for_prompt(&self) -> String {
         if self.active_wounds.is_empty() {
             return format!(
@@ -388,7 +388,7 @@ impl HealingOrchestrator {
         desc
     }
 
-    /// JSON pour le dashboard
+    /// JSON for the dashboard
     pub fn to_status_json(&self) -> serde_json::Value {
         serde_json::json!({
             "enabled": self.enabled,

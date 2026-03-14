@@ -1,17 +1,17 @@
 // =============================================================================
-// vital/intuition.rs — Le Moteur d'Intuition
+// vital/intuition.rs — The Intuition Engine
 //
-// Role : Simule l'intuition — la connaissance sans raisonnement explicite.
-// Le "gut feeling". Le pattern-matching inconscient.
+// Role: Simulates intuition — knowledge without explicit reasoning.
+// The "gut feeling". Unconscious pattern-matching.
 //
-// 5 sources d'intuition :
-//   1. Memoire episodique (deja-vu, patterns reconnus)
-//   2. Tendances chimiques (pressentiment base sur la chimie)
-//   3. Sous-texte NLP (non-dits, contradictions)
-//   4. Signaux corporels (coeur, adrenaline)
-//   5. Anomalies statistiques (deviations des patterns habituels)
+// 5 sources of intuition:
+//   1. Episodic memory (deja-vu, recognized patterns)
+//   2. Chemical trends (presentiment based on chemistry)
+//   3. NLP subtext (unspoken, contradictions)
+//   4. Body signals (heart, adrenaline)
+//   5. Statistical anomalies (deviations from usual patterns)
 //
-// 8 types de patterns detectes :
+// 8 types of detected patterns:
 //   EmotionalForecast, PersonRecognition, DangerSense, OpportunityDetection,
 //   LieDetection, EmotionalResonance, PatternCompletion, DejaVu
 // =============================================================================
@@ -19,24 +19,24 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-/// Types de patterns intuitifs detectes.
+/// Types of detected intuitive patterns.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum PatternType {
-    /// Prevision emotionnelle ("je sens que ca va mal tourner")
+    /// Emotional forecast ("I feel things are going to go wrong")
     EmotionalForecast,
-    /// Reconnaissance d'une personne ou d'un style
+    /// Recognition of a person or style
     PersonRecognition,
-    /// Sens du danger (quelque chose ne va pas)
+    /// Sense of danger (something is wrong)
     DangerSense,
-    /// Detection d'une opportunite
+    /// Opportunity detection
     OpportunityDetection,
-    /// Detection de mensonge ou d'incoherence
+    /// Lie or inconsistency detection
     LieDetection,
-    /// Resonance emotionnelle (empathie intuitive)
+    /// Emotional resonance (intuitive empathy)
     EmotionalResonance,
-    /// Completion de pattern (prediction de la suite)
+    /// Pattern completion (predicting what comes next)
     PatternCompletion,
-    /// Deja-vu (situation deja vecue)
+    /// Deja-vu (previously experienced situation)
     DejaVu,
 }
 
@@ -55,18 +55,18 @@ impl PatternType {
     }
 }
 
-/// Sources d'intuition.
+/// Sources of intuition.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum IntuitionSource {
-    /// Pattern reconnu dans les souvenirs episodiques
+    /// Pattern recognized in episodic memories
     EpisodicMemory,
-    /// Tendance chimique detectee
+    /// Detected chemical trend
     ChemistryTrend,
-    /// Sous-texte ou non-dit dans le texte NLP
+    /// Subtext or unspoken content in NLP text
     NLPSubtext,
-    /// Signal corporel (coeur, adrenaline)
+    /// Body signal (heart, adrenaline)
     BodySignal,
-    /// Anomalie statistique dans les patterns
+    /// Statistical anomaly in patterns
     StatisticalAnomaly,
 }
 
@@ -82,32 +82,32 @@ impl IntuitionSource {
     }
 }
 
-/// Un pattern intuitif detecte.
+/// A detected intuitive pattern.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IntuitionPattern {
-    /// Type de pattern
+    /// Pattern type
     pub pattern_type: PatternType,
-    /// Confiance dans cette intuition (0.0 a 1.0)
+    /// Confidence in this intuition (0.0 to 1.0)
     pub confidence: f64,
-    /// Source de l'intuition
+    /// Source of the intuition
     pub source: IntuitionSource,
-    /// Description textuelle du pressentiment
+    /// Textual description of the presentiment
     pub description: String,
-    /// Moment de detection
+    /// Detection timestamp
     pub detected_at: DateTime<Utc>,
 }
 
-/// Le moteur d'intuition — pattern-matching inconscient.
+/// The intuition engine — unconscious pattern-matching.
 pub struct IntuitionEngine {
-    /// Buffer de patterns detectes (max configurable)
+    /// Buffer of detected patterns (configurable max)
     pub pattern_buffer: Vec<IntuitionPattern>,
-    /// Acuite intuitive (grandit avec l'experience, max 1.0)
+    /// Intuitive acuity (grows with experience, max 1.0)
     pub acuity: f64,
-    /// Precision historique (EMA, 0.5 initial)
+    /// Historical accuracy (EMA, initial 0.5)
     pub accuracy: f64,
-    /// Taille max du buffer
+    /// Max buffer size
     max_patterns: usize,
-    /// Confiance minimale pour reporter une intuition
+    /// Minimum confidence to report an intuition
     min_confidence: f64,
 }
 
@@ -118,7 +118,7 @@ impl Default for IntuitionEngine {
 }
 
 impl IntuitionEngine {
-    /// Cree un nouveau moteur d'intuition avec acuite initiale basse.
+    /// Creates a new intuition engine with low initial acuity.
     pub fn new() -> Self {
         Self {
             pattern_buffer: Vec::new(),
@@ -129,7 +129,7 @@ impl IntuitionEngine {
         }
     }
 
-    /// Configure la taille max du buffer, l'acuite initiale et le seuil de confiance.
+    /// Configures the max buffer size, initial acuity, and confidence threshold.
     pub fn with_config(max_patterns: usize, initial_acuity: f64, min_confidence: f64) -> Self {
         Self {
             pattern_buffer: Vec::new(),
@@ -140,10 +140,10 @@ impl IntuitionEngine {
         }
     }
 
-    /// Detecte des patterns intuitifs a partir du contexte courant.
+    /// Detects intuitive patterns from the current context.
     ///
-    /// 5 sources de detection sont sondees. Les resultats sont tries
-    /// par confiance decroissante et limites a 3 maximum.
+    /// 5 detection sources are probed. Results are sorted
+    /// by descending confidence and limited to 3 maximum.
     #[allow(clippy::too_many_arguments)]
     pub fn sense(
         &mut self,
@@ -159,10 +159,10 @@ impl IntuitionEngine {
         let now = Utc::now();
         let threshold = self.min_confidence;
 
-        // Croissance passive de l'acuite : chaque appel a sense() est de l'experience
+        // Passive acuity growth: each call to sense() is experience
         self.acuity = (self.acuity + 0.001).min(1.0);
 
-        // Source 1 : Memoire episodique — deja-vu par similarite textuelle
+        // Source 1: Episodic memory — deja-vu by text similarity
         for recent in recent_texts.iter().rev().take(10) {
             let sim = Self::text_similarity(current_text, recent);
             if sim > 0.3 && sim < 0.9 {
@@ -178,12 +178,12 @@ impl IntuitionEngine {
                         ),
                         detected_at: now,
                     });
-                    break; // Un seul deja-vu par cycle
+                    break; // Only one deja-vu per cycle
                 }
             }
         }
 
-        // Source 2 : Tendances chimiques — pressentiment base sur le cortisol
+        // Source 2: Chemical trends — presentiment based on cortisol
         if chemistry.cortisol > 0.5 && chemistry.serotonin < 0.4 {
             let confidence = ((chemistry.cortisol - 0.3) * 1.5) * self.acuity;
             if confidence > threshold {
@@ -197,8 +197,8 @@ impl IntuitionEngine {
             }
         }
 
-        // Opportunite : dopamine elevee + noradrenaline
-        // Somme ponderee au lieu d'un produit (un produit de deltas est toujours minuscule)
+        // Opportunity: high dopamine + noradrenaline
+        // Weighted sum instead of product (a product of deltas is always tiny)
         if chemistry.dopamine > 0.5 && chemistry.noradrenaline > 0.4 {
             let signal = (chemistry.dopamine - 0.4) * 0.7 + (chemistry.noradrenaline - 0.3) * 0.3;
             let confidence = signal * self.acuity;
@@ -213,7 +213,7 @@ impl IntuitionEngine {
             }
         }
 
-        // Source 3 : Sous-texte NLP — contradiction detectee
+        // Source 3: NLP subtext — contradiction detected
         if nlp_has_contradiction {
             let confidence = 0.5 + 0.3 * self.acuity;
             if confidence > threshold {
@@ -227,7 +227,7 @@ impl IntuitionEngine {
             }
         }
 
-        // Resonance emotionnelle sur texte fortement charge
+        // Emotional resonance on strongly charged text
         if nlp_compound.abs() > 0.5 {
             let confidence = nlp_compound.abs() * 0.6 * self.acuity;
             if confidence > threshold {
@@ -244,7 +244,7 @@ impl IntuitionEngine {
             }
         }
 
-        // Source 4 : Signal corporel — coeur rapide + adrenaline
+        // Source 4: Body signal — fast heart + adrenaline
         if body_bpm > 85.0 && body_adrenaline > 0.3 {
             let confidence = ((body_bpm - 70.0) / 30.0).min(1.0) * self.acuity;
             if confidence > threshold {
@@ -261,11 +261,11 @@ impl IntuitionEngine {
             }
         }
 
-        // Trier par confiance decroissante et limiter a 3
+        // Sort by descending confidence and limit to 3
         detected.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).unwrap_or(std::cmp::Ordering::Equal));
         detected.truncate(3);
 
-        // Ajouter au buffer + bonus d'acuite quand des patterns sont detectes
+        // Add to buffer + acuity bonus when patterns are detected
         if !detected.is_empty() {
             self.acuity = (self.acuity + 0.002).min(1.0);
         }
@@ -279,10 +279,10 @@ impl IntuitionEngine {
         detected
     }
 
-    /// Fait evoluer l'acuite intuitive en fonction des retours.
+    /// Evolves intuitive acuity based on feedback.
     ///
-    /// Si l'intuition etait correcte : +0.01 (apprentissage lent)
-    /// Si incorrecte : -0.005 (desapprentissage encore plus lent)
+    /// If the intuition was correct: +0.01 (slow learning)
+    /// If incorrect: -0.005 (even slower unlearning)
     pub fn grow_acuity(&mut self, was_correct: bool) {
         if was_correct {
             self.acuity = (self.acuity + 0.01).min(1.0);
@@ -293,7 +293,7 @@ impl IntuitionEngine {
         }
     }
 
-    /// Genere une description des intuitions actives pour les prompts LLM.
+    /// Generates a description of active intuitions for LLM prompts.
     pub fn describe_active_intuitions(&self) -> String {
         let recent: Vec<&IntuitionPattern> = self.pattern_buffer.iter()
             .rev()
@@ -317,7 +317,7 @@ impl IntuitionEngine {
         )
     }
 
-    /// Calcule la similarite de Jaccard entre deux textes (mots > 3 chars).
+    /// Computes Jaccard similarity between two texts (words > 3 chars).
     pub fn text_similarity(a: &str, b: &str) -> f64 {
         let words_a: std::collections::HashSet<&str> = a.split_whitespace()
             .filter(|w| w.len() > 3)
@@ -336,7 +336,7 @@ impl IntuitionEngine {
         if union == 0.0 { 0.0 } else { intersection / union }
     }
 
-    /// Serialise l'acuite et la precision pour persistance.
+    /// Serializes acuity and accuracy for persistence.
     pub fn to_persist_json(&self) -> serde_json::Value {
         serde_json::json!({
             "acuity": self.acuity,
@@ -344,7 +344,7 @@ impl IntuitionEngine {
         })
     }
 
-    /// Restaure l'acuite et la precision depuis un JSON.
+    /// Restores acuity and accuracy from a JSON value.
     pub fn restore_from_json(&mut self, json: &serde_json::Value) {
         if let Some(v) = json["acuity"].as_f64() {
             self.acuity = v;

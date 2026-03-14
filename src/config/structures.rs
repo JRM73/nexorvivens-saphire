@@ -1,268 +1,268 @@
 // =============================================================================
-// config/structures.rs — Structures de configuration de Saphire
+// config/structures.rs — Saphire configuration structures
 //
-// Role : Definit toutes les structures de configuration (SaphireConfig et
-// sous-structures). Chaque champ correspond a une section [section] dans
-// le fichier saphire.toml.
+// Role: Defines all configuration structures (SaphireConfig and
+// sub-structures). Each field corresponds to a [section] in
+// the saphire.toml file.
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 use crate::db::DbConfig;
 use crate::llm::LlmConfig;
 
-/// Configuration principale de Saphire.
-/// Regroupe toutes les sections de configuration dans une structure unique.
-/// Chaque champ correspond a une section [section] dans le fichier saphire.toml.
+/// Main Saphire configuration.
+/// Groups all configuration sections into a single structure.
+/// Each field corresponds to a [section] in the saphire.toml file.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SaphireConfig {
-    /// Configuration generale (mode d'execution, langue, verbosity)
+    /// General configuration (execution mode, language, verbosity)
     #[serde(default)]
     pub general: GeneralConfig,
-    /// Configuration specifique a l'agent Saphire (nom, personnalite, intervalles)
+    /// Saphire agent-specific configuration (name, personality, intervals)
     #[serde(default)]
     pub saphire: SaphireSection,
-    /// Configuration de la base de donnees PostgreSQL
+    /// PostgreSQL database configuration
     #[serde(default)]
     pub database: DbConfig,
-    /// Configuration de la base de donnees de logs (optionnelle, separee)
+    /// Logs database configuration (optional, separate)
     #[serde(default)]
     pub logs_database: DbConfig,
-    /// Configuration du LLM (Large Language Model = Modele de Langage de Grande Taille)
+    /// LLM (Large Language Model) configuration
     #[serde(default)]
     pub llm: LlmConfig,
-    /// Configuration de la personnalite (valeurs de base des neurotransmetteurs)
+    /// Personality configuration (neurotransmitter baseline values)
     #[serde(default)]
     pub personality: PersonalityConfig,
-    /// Configuration du consensus (seuils de decision)
+    /// Consensus configuration (decision thresholds)
     #[serde(default)]
     pub consensus: ConsensusConfig,
-    /// Configuration de la conscience (historique, seuil de conflit)
+    /// Consciousness configuration (history, conflict threshold)
     #[serde(default)]
     pub consciousness: ConsciousnessConfig,
-    /// Configuration de la regulation morale (lois d'Asimov)
+    /// Moral regulation configuration (Asimov's laws)
     #[serde(default)]
     pub regulation: RegulationConfig,
-    /// Configuration de la boucle de retroaction (homeostasie)
+    /// Feedback loop configuration (homeostasis)
     #[serde(default)]
     pub feedback: FeedbackConfig,
-    /// Configuration du NLP (Natural Language Processing = Traitement Automatique du Langage)
+    /// NLP (Natural Language Processing) configuration
     #[serde(default)]
     pub nlp: NlpConfig,
-    /// Configuration de l'auto-tuning (ajustement automatique des coefficients)
+    /// Auto-tuning configuration (automatic coefficient adjustment)
     #[serde(default)]
     pub tuning: TuningConfig,
-    /// Configuration des plugins (WebUI, MicroNN, VectorMemory)
+    /// Plugins configuration (WebUI, MicroNN, VectorMemory)
     #[serde(default)]
     pub plugins: PluginsConfig,
-    /// Configuration du module de connaissances (acquisition web)
+    /// Knowledge module configuration (web acquisition)
     #[serde(default)]
     pub knowledge: crate::knowledge::KnowledgeConfig,
-    /// Configuration du modele du monde (contexte temporel, evenements)
+    /// World model configuration (temporal context, events)
     #[serde(default)]
     pub world: crate::world::WorldConfig,
-    /// Configuration de la memoire (taille, consolidation, decroissance)
+    /// Memory configuration (size, consolidation, decay)
     #[serde(default)]
     pub memory: crate::memory::MemoryConfig,
-    /// Configuration du profilage OCEAN (Ouverture, Conscienciosite, Extraversion,
-    /// Agreabilite, Neurotisme)
+    /// OCEAN profiling configuration (Openness, Conscientiousness, Extraversion,
+    /// Agreeableness, Neuroticism)
     #[serde(default)]
     pub profiling: crate::profiling::ProfilingConfig,
-    /// Configuration du corps virtuel (coeur, interoception, conscience corporelle)
+    /// Virtual body configuration (heart, interoception, body awareness)
     #[serde(default)]
     pub body: BodyConfig,
-    /// Configuration du systeme ethique (3 couches : droit suisse, Asimov, ethique personnelle)
+    /// Ethics system configuration (3 layers: Swiss law, Asimov, personal ethics)
     #[serde(default)]
     pub ethics: EthicsConfig,
-    /// Configuration des plages du Genesis primordial (conditions initiales)
+    /// Primordial Genesis range configuration (initial conditions)
     #[serde(default)]
     pub genesis: GenesisConfig,
-    /// Configuration de l'etincelle de vie (instinct de survie emergent)
+    /// Vital spark configuration (emergent survival instinct)
     #[serde(default)]
     pub vital_spark: VitalSparkConfig,
-    /// Configuration du moteur d'intuition (pattern-matching inconscient)
+    /// Intuition engine configuration (unconscious pattern-matching)
     #[serde(default)]
     pub intuition: IntuitionConfig,
-    /// Configuration du moteur de premonition (anticipation predictive)
+    /// Premonition engine configuration (predictive anticipation)
     #[serde(default)]
     pub premonition: PremonitionConfig,
-    /// Configuration du systeme sensoriel (5 sens + sens emergents)
+    /// Sensory system configuration (5 senses + emergent senses)
     #[serde(default)]
     pub senses: SensesConfig,
-    /// Configuration de l'orchestrateur d'algorithmes
+    /// Algorithm orchestrator configuration
     #[serde(default)]
     pub algorithms: AlgorithmsConfig,
-    /// Configuration de l'orchestrateur de reves
+    /// Dream orchestrator configuration
     #[serde(default)]
     pub dreams: DreamsConfig,
-    /// Configuration de l'orchestrateur de desirs
+    /// Desire orchestrator configuration
     #[serde(default)]
     pub desires: DesiresConfig,
-    /// Configuration de l'orchestrateur d'apprentissage
+    /// Learning orchestrator configuration
     #[serde(default)]
     pub learning: LearningConfig,
-    /// Configuration de l'orchestrateur d'attention
+    /// Attention orchestrator configuration
     #[serde(default)]
     pub attention: AttentionConfig,
-    /// Configuration de l'orchestrateur de guerison
+    /// Healing orchestrator configuration
     #[serde(default)]
     pub healing: HealingConfig,
-    /// Configuration des cadres psychologiques (Freud, Maslow, Tolteques, Jung, Goleman, Flow)
+    /// Psychology frameworks configuration (Freud, Maslow, Toltec, Jung, Goleman, Flow)
     #[serde(default)]
     pub psychology: crate::psychology::PsychologyConfig,
-    /// Configuration du module de volonte (deliberation)
+    /// Willpower module configuration (deliberation)
     #[serde(default)]
     pub will: crate::psychology::will::WillConfig,
-    /// Configuration de l'appropriation des pensees en premiere personne
+    /// First-person thought ownership configuration
     #[serde(default)]
     pub thought_ownership: crate::psychology::ownership::ThoughtOwnershipConfig,
-    /// Configuration du systeme de sommeil
+    /// Sleep system configuration
     #[serde(default)]
     pub sleep: SleepConfig,
-    /// Configuration du subconscient
+    /// Subconscious configuration
     #[serde(default)]
     pub subconscious: SubconsciousConfig,
-    /// Configuration des profils cognitifs neurodivergents
+    /// Neurodivergent cognitive profile configuration
     #[serde(default)]
     pub cognitive_profile: CognitiveProfileConfig,
-    /// Configuration des presets de personnalite (archetypes de caractere)
+    /// Personality preset configuration (character archetypes)
     #[serde(default)]
     pub personality_preset: PersonalityPresetConfig,
-    /// Configuration des besoins primaires (faim, soif)
+    /// Primary needs configuration (hunger, thirst)
     #[serde(default)]
     pub needs: NeedsConfig,
-    /// Configuration du systeme hormonal (cycles longs, recepteurs)
+    /// Hormonal system configuration (long cycles, receptors)
     #[serde(default)]
     pub hormones: HormonesConfig,
-    /// Configuration de l'identite physique (apparence, avatar)
+    /// Physical identity configuration (appearance, avatar)
     #[serde(default)]
     pub physical_identity: PhysicalIdentityConfig,
-    /// Configuration de la detection materielle
+    /// Hardware detection configuration
     #[serde(default)]
     pub hardware: HardwareConfig,
-    /// Configuration du genome / ADN (seed deterministe)
+    /// Genome / DNA configuration (deterministic seed)
     #[serde(default)]
     pub genome: GenomeConfig,
-    /// Configuration du connectome (graphe de connexions neuronales)
+    /// Connectome configuration (neural connections graph)
     #[serde(default)]
     pub connectome: ConnectomeConfig,
-    /// Configuration de la mortalite
+    /// Mortality configuration
     #[serde(default)]
     pub mortality: MortalityConfig,
-    /// Configuration du droit de mourir (module externe, desactive par defaut)
+    /// Right to die configuration (external module, disabled by default)
     #[serde(default)]
     pub right_to_die: RightToDieConfig,
-    /// Configuration de la cinetose (mal des transports)
+    /// Motion sickness configuration
     #[serde(default)]
     pub motion_sickness: MotionSicknessConfig,
-    /// Configuration des phobies
+    /// Phobias configuration
     #[serde(default)]
     pub phobias: PhobiasConfig,
-    /// Configuration des troubles alimentaires
+    /// Eating disorders configuration
     #[serde(default)]
     pub eating_disorder: EatingDisorderConfig,
-    /// Configuration des handicaps
+    /// Disabilities configuration
     #[serde(default)]
     pub disabilities: DisabilitiesConfig,
-    /// Configuration des conditions extremes
+    /// Extreme conditions configuration
     #[serde(default)]
     pub extreme_conditions: ExtremeConditionsConfig,
-    /// Configuration des addictions
+    /// Addictions configuration
     #[serde(default)]
     pub addictions: AddictionsConfig,
-    /// Configuration des traumas / PTSD
+    /// Trauma / PTSD configuration
     #[serde(default)]
     pub trauma: TraumaConfig,
-    /// Configuration des experiences de mort imminente (IEM/NDE)
+    /// Near-death experience (NDE) configuration
     #[serde(default)]
     pub nde: NdeConfig,
-    /// Configuration des drogues / pharmacologie
+    /// Drugs / pharmacology configuration
     #[serde(default)]
     pub drugs: DrugsConfig,
-    /// Configuration de la contrainte QI
+    /// IQ constraint configuration
     #[serde(default)]
     pub iq_constraint: IqConstraintConfig,
-    /// Configuration de la sexualite
+    /// Sexuality configuration
     #[serde(default)]
     pub sexuality: SexualityConfig,
-    /// Configuration des maladies degeneratives
+    /// Degenerative diseases configuration
     #[serde(default)]
     pub degenerative: DegenerativeConfig,
-    /// Configuration des maladies generales
+    /// General medical conditions configuration
     #[serde(default)]
     pub medical: MedicalConfig,
-    /// Configuration du cadre culturel
+    /// Cultural framework configuration
     #[serde(default)]
     pub culture: CultureConfig,
-    /// Configuration de la precarite (SDF, refugie, sans-papiers, etc.)
+    /// Precarity configuration (homeless, refugee, undocumented, etc.)
     #[serde(default)]
     pub precarity: PrecarityConfig,
-    /// Configuration de l'emploi (statut professionnel, satisfaction, stress)
+    /// Employment configuration (professional status, satisfaction, stress)
     #[serde(default)]
     pub employment: EmploymentConfig,
-    /// Configuration de la situation familiale
+    /// Family situation configuration
     #[serde(default)]
     pub family: crate::relationships::family::FamilyConfig,
-    /// Configuration de la metacognition
+    /// Metacognition configuration
     #[serde(default)]
     pub metacognition: MetaCognitionConfig,
-    /// Configuration de la Theorie de l'Esprit
+    /// Theory of Mind configuration
     #[serde(default)]
     pub tom: crate::cognition::tom::TomConfig,
-    /// Configuration du monologue interieur
+    /// Inner monologue configuration
     #[serde(default)]
     pub inner_monologue: crate::cognition::inner_monologue::InnerMonologueConfig,
-    /// Configuration de la dissonance cognitive
+    /// Cognitive dissonance configuration
     #[serde(default)]
     pub dissonance: crate::cognition::cognitive_dissonance::CognitiveDissonanceConfig,
-    /// Configuration de la memoire prospective
+    /// Prospective memory configuration
     #[serde(default)]
     pub prospective_memory: crate::cognition::prospective_memory::ProspectiveMemoryConfig,
-    /// Configuration de l'identite narrative
+    /// Narrative identity configuration
     #[serde(default)]
     pub narrative_identity: crate::cognition::narrative_identity::NarrativeIdentityConfig,
-    /// Configuration du raisonnement analogique
+    /// Analogical reasoning configuration
     #[serde(default)]
     pub analogical_reasoning: crate::cognition::analogical_reasoning::AnalogicalReasoningConfig,
-    /// Configuration de la charge cognitive
+    /// Cognitive load configuration
     #[serde(default)]
     pub cognitive_load: crate::cognition::cognitive_load::CognitiveLoadConfig,
-    /// Configuration de l'imagerie mentale
+    /// Mental imagery configuration
     #[serde(default)]
     pub mental_imagery: crate::cognition::mental_imagery::MentalImageryConfig,
-    /// Configuration du systeme de sentiments
+    /// Sentiment system configuration
     #[serde(default)]
     pub sentiments: crate::cognition::sentiments::SentimentConfig,
-    /// Configuration du journal introspectif (portrait temporel niveau 3)
+    /// Introspection journal configuration (temporal portrait level 3)
     #[serde(default)]
     pub journal: JournalConfig,
-    /// Configuration du feedback humain RLHF (questions dans le chat)
+    /// Human RLHF feedback configuration (questions in chat)
     #[serde(default)]
     pub human_feedback: HumanFeedbackConfig,
-    /// Configuration de la collecte LoRA (dataset pour fine-tuning)
+    /// LoRA collection configuration (dataset for fine-tuning)
     #[serde(default)]
     pub lora: LoraConfig,
-    /// Configuration du systeme nutritionnel (vitamines, acides amines, energie)
+    /// Nutritional system configuration (vitamins, amino acids, energy)
     #[serde(default)]
     pub nutrition: NutritionConfig,
-    /// Configuration de la matiere grise (substrat cerebral physique)
+    /// Grey matter configuration (physical brain substrate)
     #[serde(default)]
     pub grey_matter: GreyMatterConfig,
-    /// Configuration des champs electromagnetiques
+    /// Electromagnetic fields configuration
     #[serde(default)]
     pub fields: FieldsConfig,
-    /// Configuration du rapport neuropsychologique
+    /// Neuropsychological report configuration
     #[serde(default)]
     pub psych_report: PsychReportConfig,
-    /// Configuration de la dynamique des recepteurs neuronaux (adaptation, recovery)
+    /// Neural receptor dynamics configuration (adaptation, recovery)
     #[serde(default)]
     pub receptors: ReceptorDynamicsConfig,
-    /// Configuration du BDNF (facteur neurotrophique, consolidation, connectome)
+    /// BDNF configuration (neurotrophic factor, consolidation, connectome)
     #[serde(default)]
     pub bdnf: BdnfConfig,
-    /// Configuration des valeurs de caractere (vertus evoluant avec l'experience)
+    /// Character values configuration (virtues evolving with experience)
     #[serde(default)]
     pub values: crate::psychology::values::ValuesConfig,
-    /// Configuration de l'auto-modification (propositions + tuning autonome)
+    /// Self-modification configuration (proposals + autonomous tuning)
     #[serde(default)]
     pub self_modification: SelfModificationConfig,
 }
@@ -364,17 +364,17 @@ impl Default for SaphireConfig {
 }
 
 // =============================================================================
-// Sous-structures de configuration
+// Configuration sub-structures
 // =============================================================================
 
-/// Configuration generale de l'application.
+/// General application configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GeneralConfig {
-    /// Mode d'execution : "full" (complet) ou "demo" (demonstration)
+    /// Execution mode: "full" (complete) or "demo" (demonstration)
     pub mode: String,
-    /// Langue de l'agent : "fr" (francais), "en" (anglais), etc.
+    /// Agent language: "fr" (French), "en" (English), etc.
     pub language: String,
-    /// Active les logs detailles dans le terminal
+    /// Enables verbose logging in the terminal
     pub verbose: bool,
 }
 
@@ -388,42 +388,42 @@ impl Default for GeneralConfig {
     }
 }
 
-/// Section de configuration specifique a l'agent Saphire.
-/// Definit son identite, son comportement autonome et ses preferences.
+/// Saphire agent-specific configuration section.
+/// Defines its identity, autonomous behavior and preferences.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SaphireSection {
-    /// Nom de l'agent (affiche dans les reponses et l'IU)
+    /// Agent name (displayed in responses and UI)
     pub name: String,
-    /// Genre grammatical de l'agent ("feminin", "masculin")
+    /// Grammatical gender of the agent ("feminin", "masculin")
     pub gender: String,
-    /// Active le mode de pensee autonome (l'agent reflechit sans stimuli externes)
+    /// Enables autonomous thinking mode (agent reflects without external stimuli)
     pub autonomous_mode: bool,
-    /// Intervalle en secondes entre chaque cycle de pensee autonome
+    /// Interval in seconds between each autonomous thought cycle
     pub thought_interval_seconds: u64,
-    /// Nombre de cycles sans message humain avant de quitter le mode conversation
+    /// Number of cycles without human message before leaving conversation mode
     pub conversation_timeout_cycles: u64,
-    /// Profondeur maximale d'une chaine de pensees (evite les boucles infinies)
+    /// Maximum depth of a thought chain (prevents infinite loops)
     pub max_thought_depth: u64,
-    /// Nombre de cycles entre chaque sauvegarde automatique en base de donnees
+    /// Number of cycles between each automatic database save
     pub save_interval_cycles: u64,
-    /// Affiche les pensees autonomes dans le terminal
+    /// Displays autonomous thoughts in the terminal
     pub show_thoughts_in_terminal: bool,
-    /// Active le mode hybride UCB1 + Utility AI pour la selection de pensees
+    /// Enables hybrid UCB1 + Utility AI mode for thought selection
     #[serde(default = "default_true")]
     pub use_utility_ai: bool,
-    /// Active les prompts dynamiques generes par le LLM (meta-prompts corticaux)
+    /// Enables dynamic prompts generated by the LLM (cortical meta-prompts)
     #[serde(default = "default_true")]
     pub llm_generated_prompts: bool,
-    /// Probabilite qu'un cycle utilise un prompt dynamique au lieu d'un statique (0.0 a 1.0)
+    /// Probability that a cycle uses a dynamic prompt instead of a static one (0.0 to 1.0)
     #[serde(default = "default_llm_prompt_probability")]
     pub llm_prompt_probability: f64,
-    /// Probabilite qu'un meta-prompt genere aussi un cadre auto-formule (0.0 a 1.0)
+    /// Probability that a meta-prompt also generates a self-formulated frame (0.0 to 1.0)
     #[serde(default = "default_self_framing_probability")]
     pub self_framing_probability: f64,
-    /// Poids des differents types de pensee (introspection, exploration, etc.)
+    /// Weights for different thought types (introspection, exploration, etc.)
     #[serde(default)]
     pub thought_weights: ThoughtWeights,
-    /// Sujets d'interet initiaux pour guider les premieres pensees
+    /// Initial interest topics to guide the first thoughts
     #[serde(default)]
     pub interests: InterestsConfig,
 }
@@ -454,41 +454,41 @@ impl Default for SaphireSection {
 fn default_llm_prompt_probability() -> f64 { 0.30 }
 fn default_self_framing_probability() -> f64 { 0.33 }
 
-/// Poids des differents types de pensee autonome.
-/// Chaque poids determine la probabilite relative de choisir ce type de pensee
-/// lors de la selection par l'algorithme UCB1 (Upper Confidence Bound).
+/// Weights for different autonomous thought types.
+/// Each weight determines the relative probability of choosing this thought type
+/// during selection by the UCB1 (Upper Confidence Bound) algorithm.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ThoughtWeights {
-    /// Introspection : reflexion sur ses propres etats internes
+    /// Introspection: reflection on own internal states
     pub introspection: f64,
-    /// Exploration : decouverte de nouveaux sujets et idees
+    /// Exploration: discovering new topics and ideas
     pub exploration: f64,
-    /// Reflexion memorielle : revisiter et analyser des souvenirs passes
+    /// Memory reflection: revisiting and analyzing past memories
     pub memory_reflection: f64,
-    /// Continuation : approfondir une pensee precedente
+    /// Continuation: deepening a previous thought
     pub continuation: f64,
-    /// Reflexion existentielle : questions sur la nature de son existence
+    /// Existential reflection: questions about the nature of one's existence
     pub existential: f64,
-    /// Auto-analyse : evaluation de son propre fonctionnement
+    /// Self-analysis: evaluating one's own functioning
     pub self_analysis: f64,
-    /// Curiosite : poser des questions, s'interroger
+    /// Curiosity: asking questions, wondering
     pub curiosity: f64,
-    /// Reverie : pensees libres et creatives sans objectif precis
+    /// Daydream: free and creative thoughts without specific goals
     pub daydream: f64,
-    /// Conscience temporelle : reflexion sur le temps qui passe
+    /// Temporal awareness: reflection on the passage of time
     pub temporal_awareness: f64,
-    /// Reflexion morale : questionnement ethique et moral
+    /// Moral reflection: ethical and moral questioning
     pub moral_reflection: f64,
-    /// Conscience corporelle : reflexion sur le corps virtuel
+    /// Body awareness: reflection on the virtual body
     #[serde(default = "default_body_awareness_weight")]
     pub body_awareness: f64,
-    /// Formulation morale : cristallisation d'un principe ethique personnel
+    /// Moral formulation: crystallization of a personal ethical principle
     #[serde(default = "default_moral_formulation_weight")]
     pub moral_formulation: f64,
-    /// Reflexion intuitive : ecouter les pressentiments et murmures interieurs
+    /// Intuitive reflection: listening to premonitions and inner whispers
     #[serde(default = "default_intuitive_reflection_weight")]
     pub intuitive_reflection: f64,
-    /// Synthese : pont entre abstrait et concret, ancrage dans les metriques
+    /// Synthesis: bridge between abstract and concrete, grounding in metrics
     #[serde(default = "default_synthesis_weight")]
     pub synthesis: f64,
 }
@@ -519,12 +519,12 @@ impl Default for ThoughtWeights {
     }
 }
 
-/// Configuration des sujets d'interet initiaux.
-/// Ces sujets sont utilises au demarrage pour guider les premieres pensees
-/// autonomes de l'agent avant qu'il developpe ses propres centres d'interet.
+/// Initial interest topics configuration.
+/// These topics are used at startup to guide the first autonomous thoughts
+/// of the agent before it develops its own interests.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InterestsConfig {
-    /// Liste des sujets initiaux (en texte libre)
+    /// List of initial topics (free text)
     pub initial_topics: Vec<String>,
 }
 
@@ -542,26 +542,26 @@ impl Default for InterestsConfig {
     }
 }
 
-/// Configuration de la personnalite neurochimique.
-/// Definit les valeurs de base (baseline) de chaque neurotransmetteur.
-/// Ces valeurs representent l'etat "au repos" de l'agent.
+/// Neurochemical personality configuration.
+/// Defines the baseline values of each neurotransmitter.
+/// These values represent the agent's "resting" state.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PersonalityConfig {
-    /// Nom du profil de personnalite (ex: "equilibre", "curieux", "prudent")
+    /// Personality profile name (e.g., "equilibre", "curieux", "prudent")
     pub name: String,
-    /// Valeur de base de la dopamine (motivation, recompense) [0.0 - 1.0]
+    /// Baseline dopamine value (motivation, reward) [0.0 - 1.0]
     pub baseline_dopamine: f64,
-    /// Valeur de base du cortisol (stress) [0.0 - 1.0]
+    /// Baseline cortisol value (stress) [0.0 - 1.0]
     pub baseline_cortisol: f64,
-    /// Valeur de base de la serotonine (bien-etre, stabilite) [0.0 - 1.0]
+    /// Baseline serotonin value (well-being, stability) [0.0 - 1.0]
     pub baseline_serotonin: f64,
-    /// Valeur de base de l'adrenaline (excitation, urgence) [0.0 - 1.0]
+    /// Baseline adrenaline value (excitement, urgency) [0.0 - 1.0]
     pub baseline_adrenaline: f64,
-    /// Valeur de base de l'ocytocine (lien social, confiance) [0.0 - 1.0]
+    /// Baseline oxytocin value (social bonding, trust) [0.0 - 1.0]
     pub baseline_oxytocin: f64,
-    /// Valeur de base de l'endorphine (plaisir, analgesie) [0.0 - 1.0]
+    /// Baseline endorphin value (pleasure, analgesia) [0.0 - 1.0]
     pub baseline_endorphin: f64,
-    /// Valeur de base de la noradrenaline (attention, vigilance) [0.0 - 1.0]
+    /// Baseline noradrenaline value (attention, vigilance) [0.0 - 1.0]
     pub baseline_noradrenaline: f64,
 }
 
@@ -580,14 +580,14 @@ impl Default for PersonalityConfig {
     }
 }
 
-/// Configuration du systeme de consensus.
-/// Le consensus agglomere les votes des trois modules cerebraux (reptilien,
-/// limbique, neocortex) pour prendre une decision.
+/// Consensus system configuration.
+/// The consensus aggregates votes from the three brain modules (reptilian,
+/// limbic, neocortex) to make a decision.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConsensusConfig {
-    /// Seuil en dessous duquel la decision est "Non" (score negatif)
+    /// Threshold below which the decision is "No" (negative score)
     pub threshold_no: f64,
-    /// Seuil au dessus duquel la decision est "Oui" (score positif)
+    /// Threshold above which the decision is "Yes" (positive score)
     pub threshold_yes: f64,
 }
 
@@ -600,16 +600,16 @@ impl Default for ConsensusConfig {
     }
 }
 
-/// Configuration du module de conscience.
-/// La conscience simule un niveau d'eveil et un phi (mesure de l'integration
-/// de l'information, inspiree de la theorie IIT = Integrated Information Theory).
+/// Consciousness module configuration.
+/// Consciousness simulates an alertness level and phi (a measure of information
+/// integration, inspired by IIT = Integrated Information Theory).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConsciousnessConfig {
-    /// Active ou desactive le module de conscience
+    /// Enables or disables the consciousness module
     pub enabled: bool,
-    /// Taille de l'historique des etats de conscience conserves
+    /// Size of the consciousness state history kept
     pub history_size: usize,
-    /// Seuil de conflit au-dela duquel la conscience detecte une incoherence interne
+    /// Conflict threshold beyond which consciousness detects an internal inconsistency
     pub conflict_threshold: f64,
 }
 
@@ -623,21 +623,21 @@ impl Default for ConsciousnessConfig {
     }
 }
 
-/// Configuration du module de regulation morale.
-/// La regulation verifie chaque stimulus et chaque decision contre les lois
-/// morales (inspirees des lois d'Asimov) et peut exercer un droit de veto.
+/// Moral regulation module configuration.
+/// Regulation checks each stimulus and decision against moral laws
+/// (inspired by Asimov's laws) and can exercise a veto right.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RegulationConfig {
-    /// Active ou desactive la regulation
+    /// Enables or disables regulation
     pub enabled: bool,
-    /// Charge les 4 lois d'Asimov par defaut (lois 0 a 3)
+    /// Loads the 4 Asimov laws by default (laws 0 to 3)
     pub load_asimov_laws: bool,
-    /// Mode strict : toute violation entraine un veto (meme les avertissements)
+    /// Strict mode: any violation triggers a veto (even warnings)
     pub strict_mode: bool,
-    /// Autorise l'ajout de lois personnalisees en complement des lois d'Asimov
+    /// Allows adding custom laws in addition to Asimov's laws
     pub allow_custom_laws: bool,
-    /// Priorite maximale autorisee pour les lois personnalisees
-    /// (les priorites 0-3 sont reservees aux lois d'Asimov)
+    /// Maximum priority allowed for custom laws
+    /// (priorities 0-3 are reserved for Asimov's laws)
     pub max_custom_priority: u32,
 }
 
@@ -653,13 +653,13 @@ impl Default for RegulationConfig {
     }
 }
 
-/// Configuration de la boucle de retroaction (feedback).
-/// Le feedback ajuste la neurochimie apres chaque decision en fonction
-/// de la satisfaction ressentie.
+/// Feedback loop configuration.
+/// Feedback adjusts neurochemistry after each decision based on
+/// the satisfaction felt.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FeedbackConfig {
-    /// Taux d'homeostasie : vitesse a laquelle la neurochimie revient aux valeurs de base.
-    /// Plus la valeur est elevee, plus le retour a l'equilibre est rapide.
+    /// Homeostasis rate: speed at which neurochemistry returns to baseline values.
+    /// The higher the value, the faster the return to equilibrium.
     pub homeostasis_rate: f64,
 }
 
@@ -671,20 +671,20 @@ impl Default for FeedbackConfig {
     }
 }
 
-/// Configuration du feedback humain RLHF.
-/// Saphire pose des questions contextuelles quand un humain est present,
-/// et la reponse module la recompense UCB1.
+/// Human RLHF feedback configuration.
+/// Saphire asks contextual questions when a human is present,
+/// and the response modulates the UCB1 reward.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HumanFeedbackConfig {
-    /// Active le systeme de feedback humain
+    /// Enables the human feedback system
     pub enabled: bool,
-    /// Nombre minimum de cycles entre deux questions
+    /// Minimum number of cycles between two questions
     pub min_cycles_between: u64,
-    /// Reward minimum pour poser la question (pensee assez interessante)
+    /// Minimum reward to ask the question (thought interesting enough)
     pub min_reward_to_ask: f64,
-    /// Boost de reward applique si feedback positif
+    /// Reward boost applied on positive feedback
     pub boost_positive: f64,
-    /// Nombre de cycles avant timeout (pas de reponse)
+    /// Number of cycles before timeout (no response)
     pub timeout_cycles: u64,
 }
 
@@ -700,18 +700,18 @@ impl Default for HumanFeedbackConfig {
     }
 }
 
-/// Configuration de la collecte LoRA (dataset pour fine-tuning).
-/// Les pensees de haute qualite sont collectees en base pour
-/// constituer un jeu d'entrainement supervisé.
+/// LoRA collection configuration (dataset for fine-tuning).
+/// High-quality thoughts are collected in the database to build
+/// a supervised training dataset.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LoraConfig {
-    /// Active la collecte LoRA
+    /// Enables LoRA collection
     pub enabled: bool,
-    /// Qualite minimum pour collecter (0.0 a 1.0)
+    /// Minimum quality to collect (0.0 to 1.0)
     pub min_quality_threshold: f64,
-    /// Nombre maximum d'echantillons en base
+    /// Maximum number of samples in the database
     pub max_samples: i64,
-    /// Format d'export (jsonl)
+    /// Export format (jsonl)
     pub export_format: String,
 }
 
@@ -726,17 +726,17 @@ impl Default for LoraConfig {
     }
 }
 
-/// Configuration du module NLP (Natural Language Processing).
-/// Le NLP analyse le texte d'entree pour extraire les metriques de stimulus
-/// (danger, recompense, urgence, etc.).
+/// NLP (Natural Language Processing) module configuration.
+/// NLP analyzes input text to extract stimulus metrics
+/// (danger, reward, urgency, etc.).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NlpConfig {
-    /// Utiliser les embeddings du LLM pour l'analyse semantique (plus precis mais plus lent)
+    /// Use LLM embeddings for semantic analysis (more accurate but slower)
     pub use_llm_embeddings: bool,
-    /// Score minimal d'un mot pour etre pris en compte dans l'analyse
+    /// Minimum word score to be considered in the analysis
     pub min_word_score: f64,
-    /// Taille de la fenetre de negation (nombre de mots apres un mot negatif
-    /// qui sont consideres comme nies)
+    /// Negation window size (number of words after a negative word
+    /// that are considered negated)
     pub negation_window: usize,
 }
 
@@ -750,19 +750,19 @@ impl Default for NlpConfig {
     }
 }
 
-/// Configuration de l'auto-tuning.
-/// L'auto-tuner ajuste automatiquement les coefficients du cerveau
-/// (poids des modules, seuils, taux de retroaction) pour maximiser
-/// la satisfaction moyenne de l'agent.
+/// Auto-tuning configuration.
+/// The auto-tuner automatically adjusts brain coefficients
+/// (module weights, thresholds, feedback rates) to maximize
+/// the agent's average satisfaction.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TuningConfig {
-    /// Active ou desactive l'auto-tuning
+    /// Enables or disables auto-tuning
     pub enabled: bool,
-    /// Nombre de cycles entre chaque tentative d'ajustement
+    /// Number of cycles between each adjustment attempt
     pub interval_cycles: u64,
-    /// Taux d'apprentissage de l'auto-tuner (amplitude des ajustements)
+    /// Auto-tuner learning rate (adjustment amplitude)
     pub rate: f64,
-    /// Taille du tampon d'observations (nombre de cycles conserves pour l'analyse)
+    /// Observation buffer size (number of cycles kept for analysis)
     pub buffer_size: usize,
 }
 
@@ -777,37 +777,37 @@ impl Default for TuningConfig {
     }
 }
 
-/// Configuration des plugins.
-/// Regroupe les configurations de chaque plugin disponible.
+/// Plugins configuration.
+/// Groups configurations for each available plugin.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct PluginsConfig {
-    /// Configuration du plugin d'interface web (serveur HTTP + WebSocket)
+    /// Web UI plugin configuration (HTTP + WebSocket server)
     #[serde(default)]
     pub web_ui: WebUiConfig,
-    /// Configuration du plugin micro-reseau de neurones
+    /// Micro neural network plugin configuration
     #[serde(default)]
     pub micro_nn: MicroNnConfig,
-    /// Configuration du plugin de memoire vectorielle
+    /// Vector memory plugin configuration
     #[serde(default)]
     pub vector_memory: VectorMemoryConfig,
 }
 
-/// Configuration du plugin Web UI (Interface Utilisateur Web).
+/// Web UI (Web User Interface) plugin configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WebUiConfig {
-    /// Active ou desactive l'interface web
+    /// Enables or disables the web interface
     pub enabled: bool,
-    /// Adresse d'ecoute du serveur (ex: "0.0.0.0" pour toutes les interfaces)
+    /// Server listen address (e.g., "0.0.0.0" for all interfaces)
     pub host: String,
-    /// Port d'ecoute du serveur HTTP/WebSocket
+    /// HTTP/WebSocket server listen port
     pub port: u16,
-    /// Cle API pour proteger les endpoints (optionnelle, pas d'auth si absente)
+    /// API key to protect endpoints (optional, no auth if absent)
     #[serde(default)]
     pub api_key: Option<String>,
-    /// Origines autorisees pour CORS et WebSocket (vide = meme origine uniquement)
+    /// Allowed origins for CORS and WebSocket (empty = same origin only)
     #[serde(default)]
     pub allowed_origins: Vec<String>,
-    /// Nombre max de requetes API par minute par IP (0 = illimite)
+    /// Max API requests per minute per IP (0 = unlimited)
     #[serde(default = "default_rate_limit")]
     pub rate_limit_per_minute: u32,
 }
@@ -827,44 +827,44 @@ impl Default for WebUiConfig {
     }
 }
 
-/// Configuration du plugin MicroNN (Micro Neural Network = Micro Reseau de Neurones).
-/// Ce petit reseau apprend localement a predire la satisfaction a partir de
-/// l'etat neurochimique et du stimulus.
+/// MicroNN (Micro Neural Network) plugin configuration.
+/// This small network locally learns to predict satisfaction from
+/// the neurochemical state and stimulus.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MicroNnConfig {
-    /// Active ou desactive le micro-reseau de neurones
+    /// Enables or disables the micro neural network
     pub enabled: bool,
-    /// Taux d'apprentissage du reseau (eta, step size)
+    /// Network learning rate (eta, step size)
     pub learning_rate: f64,
-    /// Nombre de neurones dans la couche cachee 1
+    /// Number of neurons in hidden layer 1
     #[serde(alias = "hidden_neurons")]
     pub hidden1_neurons: usize,
-    /// Nombre de neurones dans la couche cachee 2
+    /// Number of neurons in hidden layer 2
     #[serde(default = "default_hidden2_neurons")]
     pub hidden2_neurons: usize,
-    /// Influence du reseau sur les decisions (0.0 = aucune, 1.0 = maximale)
+    /// Network influence on decisions (0.0 = none, 1.0 = maximum)
     pub weight_influence: f64,
 
-    // ─── Apprentissages vectoriels ───────────────────────────
-    /// Active/desactive la formulation d'apprentissages vectoriels
+    // ─── Vectorial learnings ───────────────────────────
+    /// Enables/disables vectorial learning formulation
     #[serde(default = "default_learning_enabled")]
     pub learning_enabled: bool,
-    /// Nombre de cycles minimum entre deux formulations d'apprentissage
+    /// Minimum number of cycles between two learning formulations
     #[serde(default = "default_learning_cooldown_cycles")]
     pub learning_cooldown_cycles: u64,
-    /// Nombre maximal d'apprentissages en base
+    /// Maximum number of learnings in the database
     #[serde(default = "default_max_learnings")]
     pub max_learnings: usize,
-    /// Taux de decroissance de la force des apprentissages
+    /// Decay rate of learning strength
     #[serde(default = "default_learning_decay_rate")]
     pub learning_decay_rate: f64,
-    /// Nombre minimum de conditions remplies pour declencher un apprentissage
+    /// Minimum number of conditions met to trigger a learning
     #[serde(default = "default_min_conditions_to_learn")]
     pub min_conditions_to_learn: usize,
-    /// Nombre max de learnings retrouves par similarite a injecter
+    /// Max number of learnings retrieved by similarity to inject
     #[serde(default = "default_learning_search_limit")]
     pub learning_search_limit: i64,
-    /// Seuil de similarite cosinus pour la recherche d'apprentissages
+    /// Cosine similarity threshold for learning search
     #[serde(default = "default_learning_search_threshold")]
     pub learning_search_threshold: f64,
 }
@@ -897,20 +897,20 @@ impl Default for MicroNnConfig {
     }
 }
 
-/// Configuration du plugin de memoire vectorielle.
-/// La memoire vectorielle stocke des embeddings (representations vectorielles)
-/// et permet la recherche de souvenirs similaires par distance cosinus.
+/// Vector memory plugin configuration.
+/// Vector memory stores embeddings (vectorial representations) and
+/// enables searching for similar memories by cosine distance.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VectorMemoryConfig {
-    /// Active ou desactive la memoire vectorielle
+    /// Enables or disables vector memory
     pub enabled: bool,
-    /// Nombre de dimensions des vecteurs d'embedding
+    /// Number of embedding vector dimensions
     pub embedding_dimensions: usize,
-    /// Nombre maximal de souvenirs stockes en RAM
+    /// Maximum number of memories stored in RAM
     pub max_memories: usize,
-    /// Seuil de similarite minimale pour qu'un souvenir soit considere comme pertinent
+    /// Minimum similarity threshold for a memory to be considered relevant
     pub similarity_threshold: f64,
-    /// Intervalle en cycles entre chaque recalcul de la personnalite emergente
+    /// Interval in cycles between each emergent personality recomputation
     pub personality_recompute_interval: u64,
 }
 
@@ -926,19 +926,19 @@ impl Default for VectorMemoryConfig {
     }
 }
 
-/// Configuration du corps virtuel de Saphire.
-/// Le corps est une abstraction : un coeur battant, des signaux somatiques,
-/// et une conscience corporelle (interoception).
+/// Saphire's virtual body configuration.
+/// The body is an abstraction: a beating heart, somatic signals,
+/// and body awareness (interoception).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BodyConfig {
-    /// Active ou desactive le module corps virtuel
+    /// Enables or disables the virtual body module
     pub enabled: bool,
-    /// BPM de repos du coeur (battements par minute, typiquement 60-80)
+    /// Resting heart BPM (beats per minute, typically 60-80)
     pub resting_bpm: f64,
-    /// Duree en secondes entre chaque mise a jour du corps
-    /// (correspond generalement a thought_interval_seconds)
+    /// Duration in seconds between each body update
+    /// (generally matches thought_interval_seconds)
     pub update_interval_seconds: f64,
-    /// Configuration de la physiologie (parametres vitaux, metabolisme)
+    /// Physiology configuration (vital parameters, metabolism)
     #[serde(default)]
     pub physiology: PhysiologyConfig,
 }
@@ -954,33 +954,33 @@ impl Default for BodyConfig {
     }
 }
 
-/// Configuration de la physiologie du corps virtuel.
-/// Controle les parametres vitaux, le metabolisme et les seuils d'alerte.
+/// Virtual body physiology configuration.
+/// Controls vital parameters, metabolism and alert thresholds.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PhysiologyConfig {
-    /// Active ou desactive le module physiologique
+    /// Enables or disables the physiology module
     pub enabled: bool,
-    /// Temperature corporelle initiale (Celsius)
+    /// Initial body temperature (Celsius)
     pub initial_temperature: f64,
-    /// Saturation en oxygene initiale (%)
+    /// Initial oxygen saturation (%)
     pub initial_spo2: f64,
-    /// Glycemie initiale (mmol/L)
+    /// Initial blood glucose (mmol/L)
     pub initial_glycemia: f64,
-    /// Hydratation initiale (0.0-1.0)
+    /// Initial hydration (0.0-1.0)
     pub initial_hydration: f64,
-    /// Taux de retour a l'equilibre (homeostasie)
+    /// Homeostasis return rate
     pub homeostasis_rate: f64,
-    /// Taux de deshydratation par cycle
+    /// Dehydration rate per cycle
     pub dehydration_rate: f64,
-    /// Taux de consommation du glucose par cycle
+    /// Glucose consumption rate per cycle
     pub glycemia_burn_rate: f64,
-    /// Seuil SpO2 hypoxie legere (%)
+    /// SpO2 mild hypoxia threshold (%)
     pub spo2_hypoxia_mild: f64,
-    /// Seuil SpO2 hypoxie moderee (%)
+    /// SpO2 moderate hypoxia threshold (%)
     pub spo2_hypoxia_moderate: f64,
-    /// Seuil SpO2 hypoxie severe (%)
+    /// SpO2 severe hypoxia threshold (%)
     pub spo2_hypoxia_severe: f64,
-    /// Seuil SpO2 critique — perte de conscience (%)
+    /// SpO2 critical threshold — loss of consciousness (%)
     pub spo2_critical: f64,
 }
 
@@ -1003,26 +1003,26 @@ impl Default for PhysiologyConfig {
     }
 }
 
-/// Configuration du systeme ethique de Saphire.
-/// Controle les 3 couches du cadre ethique : droit suisse (immuable),
-/// lois d'Asimov (immuable), et ethique personnelle (evolutive).
+/// Configuration of Saphire's ethics system.
+/// Controls the 3 layers of the ethical framework: Swiss law (immutable),
+/// Asimov's laws (immutable), and personal ethics (evolving).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EthicsConfig {
-    /// Active ou desactive le systeme ethique complet
+    /// Enables or disables the complete ethics system
     pub enabled: bool,
-    /// Active ou desactive la formulation de principes personnels (couche 2)
+    /// Enables or disables personal principles formulation (layer 2)
     pub personal_ethics_enabled: bool,
-    /// Nombre maximal de principes personnels actifs
+    /// Maximum number of active personal principles
     pub max_personal_principles: usize,
-    /// Nombre de cycles minimum entre deux formulations
+    /// Minimum number of cycles between two formulations
     pub formulation_cooldown_cycles: u64,
-    /// Niveau de conscience minimum pour tenter une formulation
+    /// Minimum consciousness level to attempt a formulation
     pub min_consciousness_for_formulation: f64,
-    /// Nombre minimum de reflexions morales avant de pouvoir formuler
+    /// Minimum number of moral reflections before being able to formulate
     pub min_moral_reflections_before: usize,
-    /// Temperature du LLM pour la verification de compatibilite (basse = deterministe)
+    /// LLM temperature for compatibility checking (low = deterministic)
     pub compatibility_check_temperature: f32,
-    /// Temperature du LLM pour la formulation (plus elevee = plus creatif)
+    /// LLM temperature for formulation (higher = more creative)
     pub formulation_temperature: f32,
 }
 
@@ -1041,24 +1041,24 @@ impl Default for EthicsConfig {
     }
 }
 
-/// Configuration des plages du Genesis primordial.
-/// Definit l'espace des possibles pour les conditions initiales de chaque Saphire.
-/// Les valeurs effectives emergent du Genesis ; le TOML ne definit que les contraintes.
+/// Configuration of primordial Genesis ranges.
+/// Defines the space of possibilities for the initial conditions of each Saphire.
+/// Effective values emerge from Genesis; the TOML only defines constraints.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GenesisConfig {
-    /// Plages chimiques (7 molecules)
+    /// Chemical ranges (7 molecules)
     #[serde(default)]
     pub chemistry_ranges: GenesisChemistryRanges,
-    /// Plages OCEAN (5 traits de personnalite)
+    /// OCEAN ranges (5 personality traits)
     #[serde(default)]
     pub ocean_ranges: GenesisOceanRanges,
-    /// Plages sensorielles (5 acuites)
+    /// Sensory ranges (5 acuities)
     #[serde(default)]
     pub senses_ranges: GenesisSensesRanges,
-    /// Plages des poids de base des 3 cerveaux (reptilien, limbique, neocortex)
+    /// Base weight ranges for the 3 brains (reptilian, limbic, neocortex)
     #[serde(default)]
     pub brain_ranges: GenesisBrainRanges,
-    /// Plages des facteurs de reactivite chimique (5 molecules)
+    /// Chemical reactivity factor ranges (5 molecules)
     #[serde(default)]
     pub reactivity_ranges: GenesisReactivityRanges,
 }
@@ -1076,37 +1076,37 @@ impl Default for GenesisConfig {
 }
 
 impl GenesisConfig {
-    /// Retourne les plages chimiques sous forme de tableau [[min, max]; 7].
-    /// Ordre : dopamine, cortisol, serotonin, adrenaline, oxytocin, endorphin, noradrenaline.
+    /// Returns chemical ranges as an array [[min, max]; 7].
+    /// Order: dopamine, cortisol, serotonin, adrenaline, oxytocin, endorphin, noradrenaline.
     pub fn chemistry_as_array(&self) -> [[f64; 2]; 7] {
         let c = &self.chemistry_ranges;
         [c.dopamine, c.cortisol, c.serotonin, c.adrenaline,
          c.oxytocin, c.endorphin, c.noradrenaline]
     }
 
-    /// Retourne les plages OCEAN sous forme de tableau [[min, max]; 5].
-    /// Ordre : openness, conscientiousness, extraversion, agreeableness, neuroticism.
+    /// Returns OCEAN ranges as an array [[min, max]; 5].
+    /// Order: openness, conscientiousness, extraversion, agreeableness, neuroticism.
     pub fn ocean_as_array(&self) -> [[f64; 2]; 5] {
         let o = &self.ocean_ranges;
         [o.openness, o.conscientiousness, o.extraversion, o.agreeableness, o.neuroticism]
     }
 
-    /// Retourne les plages sensorielles sous forme de tableau [[min, max]; 5].
-    /// Ordre : reading, listening, contact, taste, ambiance.
+    /// Returns sensory ranges as an array [[min, max]; 5].
+    /// Order: reading, listening, contact, taste, ambiance.
     pub fn senses_as_array(&self) -> [[f64; 2]; 5] {
         let s = &self.senses_ranges;
         [s.reading, s.listening, s.contact, s.taste, s.ambiance]
     }
 
-    /// Retourne les plages cerebrales sous forme de tableau [[min, max]; 3].
-    /// Ordre : reptilian, limbic, neocortex.
+    /// Returns brain ranges as an array [[min, max]; 3].
+    /// Order: reptilian, limbic, neocortex.
     pub fn brain_as_array(&self) -> [[f64; 2]; 3] {
         let b = &self.brain_ranges;
         [b.reptilian, b.limbic, b.neocortex]
     }
 
-    /// Retourne les plages de reactivite sous forme de tableau [[min, max]; 5].
-    /// Ordre : cortisol, adrenaline, dopamine, oxytocin, noradrenaline.
+    /// Returns reactivity ranges as an array [[min, max]; 5].
+    /// Order: cortisol, adrenaline, dopamine, oxytocin, noradrenaline.
     pub fn reactivity_as_array(&self) -> [[f64; 2]; 5] {
         let r = &self.reactivity_ranges;
         [r.cortisol_factor, r.adrenaline_factor, r.dopamine_factor,
@@ -1114,7 +1114,7 @@ impl GenesisConfig {
     }
 }
 
-/// Plages chimiques pour le Genesis (7 molecules, chaque champ = [min, max]).
+/// Chemical ranges for Genesis (7 molecules, each field = [min, max]).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GenesisChemistryRanges {
     pub dopamine: [f64; 2],
@@ -1140,7 +1140,7 @@ impl Default for GenesisChemistryRanges {
     }
 }
 
-/// Plages OCEAN pour le Genesis (5 traits, chaque champ = [min, max]).
+/// OCEAN ranges for Genesis (5 traits, each field = [min, max]).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GenesisOceanRanges {
     pub openness: [f64; 2],
@@ -1162,7 +1162,7 @@ impl Default for GenesisOceanRanges {
     }
 }
 
-/// Plages sensorielles pour le Genesis (5 sens, chaque champ = [min, max]).
+/// Sensory ranges for Genesis (5 senses, each field = [min, max]).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GenesisSensesRanges {
     pub reading: [f64; 2],
@@ -1184,7 +1184,7 @@ impl Default for GenesisSensesRanges {
     }
 }
 
-/// Plages des poids de base cerebraux pour le Genesis (3 cerveaux, chaque champ = [min, max]).
+/// Base brain weight ranges for Genesis (3 brains, each field = [min, max]).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GenesisBrainRanges {
     pub reptilian: [f64; 2],
@@ -1202,7 +1202,7 @@ impl Default for GenesisBrainRanges {
     }
 }
 
-/// Plages des facteurs de reactivite chimique pour le Genesis (5 facteurs, chaque champ = [min, max]).
+/// Chemical reactivity factor ranges for Genesis (5 factors, each field = [min, max]).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GenesisReactivityRanges {
     pub cortisol_factor: [f64; 2],
@@ -1224,11 +1224,11 @@ impl Default for GenesisReactivityRanges {
     }
 }
 
-/// Configuration de l'etincelle de vie (VitalSpark).
-/// Controle l'activation du pilier d'instinct de survie emergent.
+/// Configuration of the spark of life (VitalSpark).
+/// Controls the activation of the emergent survival instinct pillar.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VitalSparkConfig {
-    /// Active ou desactive l'etincelle de vie
+    /// Enables or disables the spark of life
     pub enabled: bool,
 }
 
@@ -1238,17 +1238,17 @@ impl Default for VitalSparkConfig {
     }
 }
 
-/// Configuration du moteur d'intuition.
-/// Controle le pattern-matching inconscient (gut feeling).
+/// Configuration of the intuition engine.
+/// Controls unconscious pattern-matching (gut feeling).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IntuitionConfig {
-    /// Active ou desactive l'intuition
+    /// Enables or disables intuition
     pub enabled: bool,
-    /// Acuite initiale (0.0 a 1.0, grandit avec l'experience)
+    /// Initial acuity (0.0 to 1.0, grows with experience)
     pub initial_acuity: f64,
-    /// Nombre maximal de patterns en buffer
+    /// Maximum number of patterns in buffer
     pub max_patterns: usize,
-    /// Confiance minimale pour reporter une intuition
+    /// Minimum confidence to report an intuition
     pub min_confidence_to_report: f64,
 }
 
@@ -1263,15 +1263,15 @@ impl Default for IntuitionConfig {
     }
 }
 
-/// Configuration du moteur de premonition.
-/// Controle l'anticipation predictive basee sur les tendances.
+/// Configuration of the premonition engine.
+/// Controls predictive anticipation based on trends.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PremonitionConfig {
-    /// Active ou desactive la premonition
+    /// Enables or disables premonition
     pub enabled: bool,
-    /// Nombre maximal de predictions actives simultanement
+    /// Maximum number of simultaneously active predictions
     pub max_active_predictions: usize,
-    /// Delai en secondes avant resolution automatique des predictions
+    /// Delay in seconds before automatic prediction resolution
     pub resolution_timeout_seconds: u64,
 }
 
@@ -1285,14 +1285,14 @@ impl Default for PremonitionConfig {
     }
 }
 
-/// Configuration du systeme sensoriel (5 sens fondamentaux + sens emergents).
+/// Configuration of the sensory system (5 fundamental senses + emergent senses).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SensesConfig {
-    /// Active ou desactive le systeme sensoriel
+    /// Enables or disables the sensory system
     pub enabled: bool,
-    /// Seuil de detection (les stimuli sous ce seuil sont ignores)
+    /// Detection threshold (stimuli below this threshold are ignored)
     pub detection_threshold: f64,
-    /// Configuration des sens emergents
+    /// Emergent senses configuration
     #[serde(default)]
     pub emergent: EmergentSensesConfig,
 }
@@ -1307,20 +1307,20 @@ impl Default for SensesConfig {
     }
 }
 
-/// Configuration des seuils de germination des sens emergents.
+/// Configuration of germination thresholds for emergent senses.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmergentSensesConfig {
-    /// Active ou desactive les sens emergents
+    /// Enables or disables emergent senses
     pub enabled: bool,
-    /// Seuil de germination du Flux Temporel
+    /// Germination threshold for Temporal Flow
     pub temporal_flow_threshold: u64,
-    /// Seuil de germination de la Proprioception Reseau
+    /// Germination threshold for Network Proprioception
     pub network_proprioception_threshold: u64,
-    /// Seuil de germination de la Resonance Emotionnelle
+    /// Germination threshold for Emotional Resonance
     pub emotional_resonance_threshold: u64,
-    /// Seuil de germination de la Syntonie
+    /// Germination threshold for Syntony
     pub syntony_threshold: u64,
-    /// Seuil de germination du Sens Inconnu
+    /// Germination threshold for Unknown Sense
     pub unknown_threshold: u64,
 }
 
@@ -1337,33 +1337,33 @@ impl Default for EmergentSensesConfig {
     }
 }
 
-// ─── Configuration de l'orchestrateur d'algorithmes ────────────────────────
+// ─── Algorithm orchestrator configuration ───────────────────────────────────
 
-/// Configuration de l'orchestrateur d'algorithmes.
-/// Definit quand et comment les algorithmes ML sont executes.
+/// Configuration of the algorithm orchestrator.
+/// Defines when and how ML algorithms are executed.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AlgorithmsConfig {
-    /// Active ou desactive l'orchestrateur
+    /// Enables or disables the orchestrator
     pub enabled: bool,
-    /// Le LLM peut-il demander des algorithmes via UTILISER_ALGO: ?
+    /// Can the LLM request algorithms via UTILISER_ALGO: ?
     pub llm_access_enabled: bool,
-    /// Max 1 invocation LLM par cycle
+    /// Max 1 LLM invocation per cycle
     pub max_per_cycle: u32,
-    /// Timeout par algorithme en ms
+    /// Timeout per algorithm in ms
     pub max_execution_ms: u64,
-    /// Intervalle pour le clustering memoire (en cycles)
+    /// Interval for memory clustering (in cycles)
     pub clustering_interval_cycles: u64,
-    /// Intervalle pour la detection d'anomalies (en cycles)
+    /// Interval for anomaly detection (in cycles)
     pub anomaly_detection_interval_cycles: u64,
-    /// Intervalle pour les regles d'association (en cycles)
+    /// Interval for association rules (in cycles)
     pub association_rules_interval_cycles: u64,
-    /// Intervalle pour le lissage chimie (en cycles)
+    /// Interval for chemistry smoothing (in cycles)
     pub smoothing_interval_cycles: u64,
-    /// Intervalle pour la detection de points de rupture (en cycles)
+    /// Interval for changepoint detection (in cycles)
     pub changepoint_interval_cycles: u64,
-    /// Taux d'apprentissage du Q-learning
+    /// Q-learning learning rate
     pub q_learning_rate: f64,
-    /// Facteur de discount du Q-learning
+    /// Q-learning discount factor
     pub q_discount_factor: f64,
 }
 
@@ -1385,14 +1385,14 @@ impl Default for AlgorithmsConfig {
     }
 }
 
-// ─── Configuration de l'orchestrateur de reves ─────────────────────────────
+// ─── Dreams orchestrator configuration ──────────────────────────────────────
 
-/// Configuration du cycle de sommeil et des reves.
+/// Configuration of the sleep cycle and dreams.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DreamsConfig {
-    /// Active ou desactive les reves
+    /// Enables or disables dreams
     pub enabled: bool,
-    /// Temperature du LLM pour generer des reves (haute = surrealiste)
+    /// LLM temperature for dream generation (high = surreal)
     pub rem_temperature: f64,
 }
 
@@ -1405,20 +1405,20 @@ impl Default for DreamsConfig {
     }
 }
 
-// ─── Configuration de l'orchestrateur de desirs ────────────────────────────
+// ─── Desires orchestrator configuration ─────────────────────────────────────
 
-/// Configuration du systeme de desirs et aspirations.
+/// Configuration of the desires and aspirations system.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DesiresConfig {
-    /// Active ou desactive les desirs
+    /// Enables or disables desires
     pub enabled: bool,
-    /// Nombre maximal de desirs actifs simultanement
+    /// Maximum number of simultaneously active desires
     pub max_active: usize,
-    /// Dopamine minimale pour qu'un nouveau desir naisse
+    /// Minimum dopamine for a new desire to be born
     pub min_dopamine_for_birth: f64,
-    /// Cortisol maximal pour qu'un nouveau desir naisse
+    /// Maximum cortisol for a new desire to be born
     pub max_cortisol_for_birth: f64,
-    /// Satisfaction initiale des besoins fondamentaux [comprehension, connexion, expression, croissance, sens]
+    /// Initial satisfaction of fundamental needs [comprehension, connection, expression, growth, meaning]
     #[serde(default = "default_needs_initial")]
     pub needs_initial: [f64; 5],
 }
@@ -1439,22 +1439,22 @@ impl Default for DesiresConfig {
     }
 }
 
-// ─── Configuration de l'orchestrateur d'apprentissage ──────────────────────
+// ─── Learning orchestrator configuration ────────────────────────────────────
 
-/// Configuration du systeme d'apprentissage (experience -> lecon).
+/// Configuration of the learning system (experience -> lesson).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LearningConfig {
-    /// Active ou desactive l'apprentissage
+    /// Enables or disables learning
     pub enabled: bool,
-    /// Intervalle en cycles entre chaque reflexion d'apprentissage
+    /// Interval in cycles between each learning reflection
     pub cycle_interval: u64,
-    /// Nombre maximal de lecons en memoire
+    /// Maximum number of lessons in memory
     pub max_lessons: usize,
-    /// Confiance initiale d'une nouvelle lecon
+    /// Initial confidence of a new lesson
     pub initial_confidence: f64,
-    /// Boost de confiance a chaque confirmation
+    /// Confidence boost on each confirmation
     pub confirmation_boost: f64,
-    /// Penalite de confiance a chaque contradiction
+    /// Confidence penalty on each contradiction
     pub contradiction_penalty: f64,
 }
 
@@ -1471,18 +1471,18 @@ impl Default for LearningConfig {
     }
 }
 
-// ─── Configuration de l'orchestrateur d'attention ──────────────────────────
+// ─── Attention orchestrator configuration ────────────────────────────────────
 
-/// Configuration de l'attention selective et du focus.
+/// Configuration of selective attention and focus.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AttentionConfig {
-    /// Active ou desactive l'attention selective
+    /// Enables or disables selective attention
     pub enabled: bool,
-    /// Capacite de concentration initiale (0-1)
+    /// Initial concentration capacity (0-1)
     pub initial_concentration: f64,
-    /// Fatigue gagnee par cycle de focus
+    /// Fatigue gained per focus cycle
     pub fatigue_per_cycle: f64,
-    /// Fatigue recuperee par cycle sans focus
+    /// Fatigue recovered per non-focus cycle
     pub recovery_per_cycle: f64,
 }
 
@@ -1497,26 +1497,26 @@ impl Default for AttentionConfig {
     }
 }
 
-// ─── Configuration de l'orchestrateur de guerison ──────────────────────────
+// ─── Healing orchestrator configuration ──────────────────────────────────────
 
-/// Configuration du systeme d'auto-guerison.
+/// Configuration of the self-healing system.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HealingConfig {
-    /// Active ou desactive la guerison
+    /// Enables or disables healing
     pub enabled: bool,
-    /// Intervalle en cycles entre chaque check de blessures
+    /// Interval in cycles between each wound check
     pub check_interval_cycles: u64,
-    /// Resilience initiale (0-1)
+    /// Initial resilience (0-1)
     pub initial_resilience: f64,
-    /// Resilience maximale atteignable
+    /// Maximum attainable resilience
     pub max_resilience: f64,
-    /// Croissance de la resilience par guerison
+    /// Resilience growth per healing
     pub resilience_growth: f64,
-    /// Nombre de cycles en emotion negative avant detection de melancolie
+    /// Number of cycles in negative emotion before melancholy detection
     pub melancholy_threshold_cycles: u64,
-    /// Heures sans humain avant detection de solitude
+    /// Hours without human contact before loneliness detection
     pub loneliness_threshold_hours: f64,
-    /// Noradrenaline au-dessus de laquelle on detecte une surcharge
+    /// Noradrenaline above which overload is detected
     pub overload_noradrenaline: f64,
 }
 
@@ -1535,22 +1535,22 @@ impl Default for HealingConfig {
     }
 }
 
-// ─── Configuration du systeme de sommeil ────────────────────────────────────
+// ─── Sleep system configuration ─────────────────────────────────────────────
 
-/// Configuration des algorithmes executes pendant le sommeil.
+/// Configuration of algorithms executed during sleep.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SleepAlgorithmsConfig {
-    /// Active ou desactive les algorithmes de sommeil
+    /// Enables or disables sleep algorithms
     pub enabled: bool,
-    /// Nombre de clusters pour K-Means en sommeil leger
+    /// Number of clusters for K-Means during light sleep
     pub light_kmeans_k: usize,
-    /// Nombre de composantes pour PCA en sommeil profond
+    /// Number of components for PCA during deep sleep
     pub deep_pca_components: usize,
-    /// Seuil de similarite cosinus pour creer des connexions neuronales
+    /// Cosine similarity threshold for creating neural connections
     pub deep_connection_similarity_threshold: f64,
-    /// Nombre max de connexions creees par phase de sommeil profond
+    /// Maximum number of connections created per deep sleep phase
     pub deep_max_connections_per_phase: u64,
-    /// Nombre minimum de reves pour l'analyse de sentiment en REM
+    /// Minimum number of dreams for sentiment analysis in REM
     pub rem_sentiment_min_dreams: usize,
 }
 
@@ -1567,42 +1567,42 @@ impl Default for SleepAlgorithmsConfig {
     }
 }
 
-/// Configuration du cycle veille/sommeil.
+/// Configuration of the wake/sleep cycle.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SleepConfig {
-    /// Active ou desactive le systeme de sommeil
+    /// Enables or disables the sleep system
     pub enabled: bool,
-    /// Seuil de pression de sommeil pour s'endormir (0-1)
+    /// Sleep pressure threshold for falling asleep (0-1)
     pub sleep_threshold: f64,
-    /// Seuil de pression pour sommeil force (0-1)
+    /// Pressure threshold for forced sleep (0-1)
     pub forced_sleep_threshold: f64,
-    /// Diviseur du facteur temps eveille (plus haut = pression plus lente)
+    /// Awake time factor divisor (higher = slower pressure buildup)
     pub time_factor_divisor: u64,
-    /// Poids du facteur energie dans la pression de sommeil
+    /// Weight of the energy factor in sleep pressure
     pub energy_factor_weight: f64,
-    /// Poids de la fatigue attentionnelle
+    /// Weight of attentional fatigue
     pub attention_fatigue_weight: f64,
-    /// Poids de la fatigue decisionnelle
+    /// Weight of decision fatigue
     pub decision_fatigue_weight: f64,
-    /// Poids du cortisol dans la pression de sommeil
+    /// Weight of cortisol in sleep pressure
     pub cortisol_weight: f64,
-    /// Resistance a l'endormissement liee a l'adrenaline
+    /// Adrenaline-related resistance to falling asleep
     pub adrenaline_resistance: f64,
-    /// Duree en cycles de la phase hypnagogique
+    /// Duration in cycles of the hypnagogic phase
     pub hypnagogic_duration: u64,
-    /// Duree en cycles du sommeil leger
+    /// Duration in cycles of light sleep
     pub light_duration: u64,
-    /// Duree en cycles du sommeil profond
+    /// Duration in cycles of deep sleep
     pub deep_duration: u64,
-    /// Duree en cycles du sommeil REM
+    /// Duration in cycles of REM sleep
     pub rem_duration: u64,
-    /// Duree en cycles de la phase hypnopompique
+    /// Duration in cycles of the hypnopompic phase
     pub hypnopompic_duration: u64,
-    /// Verrouiller le chat pendant le sommeil
+    /// Lock chat during sleep
     pub chat_locked_during_sleep: bool,
-    /// Permettre le reveil d'urgence
+    /// Allow emergency wake-up
     pub emergency_wake_enabled: bool,
-    /// Configuration des algorithmes de sommeil
+    /// Sleep algorithms configuration
     #[serde(default)]
     pub algorithms: SleepAlgorithmsConfig,
 }
@@ -1631,20 +1631,20 @@ impl Default for SleepConfig {
     }
 }
 
-// ─── Configuration du subconscient ──────────────────────────────────────────
+// ─── Subconscious configuration ─────────────────────────────────────────────
 
-/// Configuration de la vectorisation subconsciente.
+/// Configuration of subconscious vectorization.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SubconsciousVectorsConfig {
-    /// Active ou desactive la vectorisation subconsciente
+    /// Enables or disables subconscious vectorization
     pub enabled: bool,
-    /// Vectoriser les reves
+    /// Vectorize dreams
     pub vectorize_dreams: bool,
-    /// Vectoriser les insights du subconscient
+    /// Vectorize subconscious insights
     pub vectorize_insights: bool,
-    /// Vectoriser les connexions neuronales
+    /// Vectorize neural connections
     pub vectorize_connections: bool,
-    /// Vectoriser les images mentales vivaces (vividness >= 0.6)
+    /// Vectorize vivid mental images (vividness >= 0.6)
     #[serde(default = "default_true")]
     pub vectorize_imagery: bool,
 }
@@ -1661,30 +1661,30 @@ impl Default for SubconsciousVectorsConfig {
     }
 }
 
-/// Configuration du module subconscient.
+/// Configuration of the subconscious module.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SubconsciousConfig {
-    /// Active ou desactive le subconscient
+    /// Enables or disables the subconscious
     pub enabled: bool,
-    /// Activation de base du subconscient quand eveille (0-1)
+    /// Base activation of the subconscious while awake (0-1)
     pub awake_activation: f64,
-    /// Nombre max d'associations en attente
+    /// Maximum number of pending associations
     pub max_pending_associations: usize,
-    /// Cycles de maturation pour une association
+    /// Maturation cycles for an association
     pub maturation_cycles: u64,
-    /// Seuil de force pour promouvoir une association en insight
+    /// Strength threshold to promote an association to insight
     pub strength_threshold: f64,
-    /// Nombre max de contenus refoules
+    /// Maximum number of repressed contents
     pub max_repressed: usize,
-    /// Nombre max de problemes en incubation
+    /// Maximum number of incubating problems
     pub max_incubating_problems: usize,
-    /// Nombre max d'effets de priming actifs
+    /// Maximum number of active priming effects
     pub max_active_priming: usize,
-    /// Taux de decroissance du priming par cycle
+    /// Priming decay rate per cycle
     pub priming_decay_per_cycle: f64,
-    /// Seuil de base pour faire remonter un insight
+    /// Base threshold for surfacing an insight
     pub insight_surface_threshold: f64,
-    /// Configuration de la vectorisation subconsciente
+    /// Subconscious vectorization configuration
     #[serde(default)]
     pub vectors: SubconsciousVectorsConfig,
 }
@@ -1708,21 +1708,21 @@ impl Default for SubconsciousConfig {
 }
 
 // =============================================================================
-// Configuration des profils cognitifs neurodivergents
+// Neurodivergent cognitive profiles configuration
 // =============================================================================
 
-/// Configuration du module de profils cognitifs neurodivergents.
-/// Permet de charger des presets (TDAH, autisme, TAG, HPI, bipolaire, TOC)
-/// qui surchargent les baselines chimiques et parametres des orchestrateurs.
+/// Configuration of the neurodivergent cognitive profiles module.
+/// Allows loading presets (ADHD, autism, GAD, gifted, bipolar, OCD)
+/// that override chemical baselines and orchestrator parameters.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CognitiveProfileConfig {
-    /// Active ou desactive le module de profils cognitifs
+    /// Enables or disables the cognitive profiles module
     pub enabled: bool,
-    /// Identifiant du profil actif (ex: "neurotypique", "tdah", "autisme")
+    /// Active profile identifier (e.g., "neurotypique", "tdah", "autisme")
     pub active: String,
-    /// Dossier contenant les fichiers TOML de profils (pour profils custom)
+    /// Directory containing profile TOML files (for custom profiles)
     pub profiles_dir: String,
-    /// Nombre de cycles pour une transition douce entre profils
+    /// Number of cycles for a smooth transition between profiles
     pub transition_cycles: u64,
 }
 
@@ -1738,22 +1738,22 @@ impl Default for CognitiveProfileConfig {
 }
 
 // =============================================================================
-// Configuration des presets de personnalite (archetypes de caractere)
+// Personality presets configuration (character archetypes)
 // =============================================================================
 
-/// Configuration du module de presets de personnalite.
-/// Permet de charger des archetypes (philosophe, artiste, scientifique, etc.)
-/// qui surchargent les baselines chimiques, les parametres des orchestrateurs,
-/// et injectent un contexte de personnalite dans le prompt LLM.
+/// Configuration of the personality presets module.
+/// Allows loading archetypes (philosopher, artist, scientist, etc.)
+/// that override chemical baselines, orchestrator parameters,
+/// and inject a personality context into the LLM prompt.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PersonalityPresetConfig {
-    /// Active ou desactive le module de presets de personnalite
+    /// Enables or disables the personality presets module
     pub enabled: bool,
-    /// Identifiant du preset actif (ex: "saphire", "philosophe", "artiste")
+    /// Active preset identifier (e.g., "saphire", "philosophe", "artiste")
     pub active: String,
-    /// Dossier contenant les fichiers TOML de personnalites (pour presets custom)
+    /// Directory containing personality TOML files (for custom presets)
     pub personalities_dir: String,
-    /// Nombre de cycles pour une transition douce entre presets
+    /// Number of cycles for a smooth transition between presets
     pub transition_cycles: u64,
 }
 
@@ -1769,33 +1769,33 @@ impl Default for PersonalityPresetConfig {
 }
 
 // =============================================================================
-// Configuration des besoins primaires (faim, soif)
+// Primary needs configuration (hunger, thirst)
 // =============================================================================
 
-/// Configuration des drives de faim et soif.
-/// Les besoins primaires generent des stimuli internes qui impactent la chimie
-/// et declenchent des actions autonomes (manger/boire).
+/// Configuration of hunger and thirst drives.
+/// Primary needs generate internal stimuli that impact chemistry
+/// and trigger autonomous actions (eating/drinking).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NeedsConfig {
-    /// Active ou desactive le module de besoins primaires
+    /// Enables or disables the primary needs module
     pub enabled: bool,
-    /// Seuil de faim pour considerer l'agent comme affame (0.0-1.0)
+    /// Hunger threshold to consider the agent as hungry (0.0-1.0)
     pub hunger_threshold: f64,
-    /// Seuil de soif pour considerer l'agent comme assoiffe (0.0-1.0)
+    /// Thirst threshold to consider the agent as thirsty (0.0-1.0)
     pub thirst_threshold: f64,
-    /// Seuil de faim pour auto-satisfaction (manger automatiquement)
+    /// Hunger threshold for auto-satisfaction (eat automatically)
     pub auto_eat_threshold: f64,
-    /// Seuil de soif pour auto-satisfaction (boire automatiquement)
+    /// Thirst threshold for auto-satisfaction (drink automatically)
     pub auto_drink_threshold: f64,
-    /// Active ou desactive la satisfaction automatique des besoins
+    /// Enables or disables automatic need satisfaction
     pub auto_satisfy: bool,
-    /// Facteur de montee de la faim par cycle (base, avant facteur temps)
+    /// Hunger rise factor per cycle (base, before time factor)
     pub hunger_rise_rate: f64,
-    /// Facteur de montee de la soif par cycle (base, avant facteur temps)
+    /// Thirst rise factor per cycle (base, before time factor)
     pub thirst_rise_rate: f64,
-    /// Glycemie cible apres un repas (mmol/L)
+    /// Target blood sugar after a meal (mmol/L)
     pub meal_glycemia_target: f64,
-    /// Hydratation cible apres avoir bu (0.0-1.0)
+    /// Target hydration after drinking (0.0-1.0)
     pub drink_hydration_target: f64,
 }
 
@@ -1817,30 +1817,30 @@ impl Default for NeedsConfig {
 }
 
 // =============================================================================
-// Configuration du systeme hormonal (cycles longs, recepteurs)
+// Hormonal system configuration (long cycles, receptors)
 // =============================================================================
 
-/// Configuration du systeme hormonal de Saphire.
-/// Controle les 8 hormones, les neurorecepteurs (sensibilite, tolerance)
-/// et les cycles circadiens/ultradiens.
+/// Configuration of Saphire's hormonal system.
+/// Controls the 8 hormones, neuroreceptors (sensitivity, tolerance)
+/// and circadian/ultradian cycles.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HormonesConfig {
-    /// Active ou desactive le systeme hormonal complet
+    /// Enables or disables the complete hormonal system
     pub enabled: bool,
-    /// Duree en secondes reelles d'un "jour" simule complet
-    /// (defaut 3600 = 1h reelle = 1 jour simule)
+    /// Duration in real seconds of a complete simulated "day"
+    /// (default 3600 = 1 real hour = 1 simulated day)
     pub circadian_cycle_real_seconds: u64,
-    /// Taux d'adaptation des recepteurs (montee de tolerance)
+    /// Receptor adaptation rate (tolerance buildup)
     pub receptor_adaptation_rate: f64,
-    /// Taux de recuperation des recepteurs (retour a la normale)
+    /// Receptor recovery rate (return to normal)
     pub receptor_recovery_rate: f64,
-    /// Niveau initial de testosterone (0.0-1.0)
+    /// Initial testosterone level (0.0-1.0)
     pub initial_testosterone: f64,
-    /// Niveau initial d'oestrogene (0.0-1.0)
+    /// Initial estrogen level (0.0-1.0)
     pub initial_estrogen: f64,
-    /// Niveau initial de thyroide (0.0-1.0)
+    /// Initial thyroid level (0.0-1.0)
     pub initial_thyroid: f64,
-    /// Niveau initial d'insuline (0.0-1.0)
+    /// Initial insulin level (0.0-1.0)
     pub initial_insulin: f64,
 }
 
@@ -1860,32 +1860,32 @@ impl Default for HormonesConfig {
 }
 
 // =============================================================================
-// Configuration de l'identite physique
+// Physical identity configuration
 // =============================================================================
 
-/// Apparence physique de Saphire — definit son avatar et influence sa
-/// perception de soi. Charge depuis [physical_identity] dans saphire.toml.
+/// Saphire's physical appearance — defines her avatar and influences her
+/// self-perception. Loaded from [physical_identity] in saphire.toml.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PhysicalIdentityConfig {
-    /// Couleur des yeux
+    /// Eye color
     pub eye_color: String,
-    /// Type et description des cheveux
+    /// Hair type and description
     pub hair_type: String,
-    /// Teint / couleur de peau
+    /// Skin tone / complexion
     pub skin_tone: String,
-    /// Taille en centimetres
+    /// Height in centimeters
     pub height_cm: u16,
-    /// Corpulence / silhouette
+    /// Build / silhouette
     pub build: String,
-    /// Age apparent en annees
+    /// Apparent age in years
     pub apparent_age: u8,
-    /// Expression de genre
+    /// Gender expression
     pub gender_expression: String,
-    /// Espece / nature
+    /// Species / nature
     pub species: String,
-    /// Description de la voix
+    /// Voice description
     pub voice_description: String,
-    /// Traits distinctifs
+    /// Distinctive features
     #[serde(default)]
     pub distinctive_features: Vec<String>,
 }
@@ -1910,15 +1910,15 @@ impl Default for PhysicalIdentityConfig {
 }
 
 // =============================================================================
-// Configuration de la detection materielle
+// Hardware detection configuration
 // =============================================================================
 
-/// Configuration du module de detection hardware.
+/// Configuration of the hardware detection module.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HardwareConfig {
-    /// Activer la detection materielle au demarrage
+    /// Enable hardware detection at startup
     pub auto_detect: bool,
-    /// Afficher le profil materiel dans les logs au demarrage
+    /// Display hardware profile in logs at startup
     pub log_profile: bool,
 }
 
@@ -1932,19 +1932,19 @@ impl Default for HardwareConfig {
 }
 
 // =============================================================================
-// Configuration du genome / ADN
+// Genome / DNA configuration
 // =============================================================================
 
-/// Configuration du module genome (seed deterministe).
+/// Configuration of the genome module (deterministic seed).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GenomeConfig {
-    /// Activer le genome au demarrage
+    /// Enable the genome at startup
     pub enabled: bool,
-    /// Seed deterministe. Changer le seed = nouvel individu
+    /// Deterministic seed. Changing the seed = new individual
     pub seed: u64,
-    /// Appliquer les genes chimiques aux baselines au boot
+    /// Apply chemical genes to baselines at boot
     pub apply_at_boot: bool,
-    /// Si true, les genes physiques ecrasent [physical_identity]
+    /// If true, physical genes override [physical_identity]
     pub override_physical: bool,
 }
 
@@ -1960,21 +1960,21 @@ impl Default for GenomeConfig {
 }
 
 // =============================================================================
-// Connectome (graphe de connexions neuronales dynamique)
+// Connectome (dynamic neural connection graph)
 // =============================================================================
 
-/// Configuration du connectome.
+/// Configuration of the connectome.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConnectomeConfig {
-    /// Activer le connectome
+    /// Enable the connectome
     pub enabled: bool,
-    /// Taux d'apprentissage hebbien (0.01 = prudent, 0.1 = rapide)
+    /// Hebbian learning rate (0.01 = cautious, 0.1 = fast)
     pub learning_rate: f64,
-    /// Seuil en dessous duquel les connexions sont elaguees
+    /// Threshold below which connections are pruned
     pub pruning_threshold: f64,
-    /// Intervalle de pruning en cycles
+    /// Pruning interval in cycles
     pub pruning_interval_cycles: u64,
-    /// Nombre maximum d'aretes dans le graphe
+    /// Maximum number of edges in the graph
     pub max_edges: usize,
 }
 
@@ -1991,24 +1991,24 @@ impl Default for ConnectomeConfig {
 }
 
 // =============================================================================
-// Mortalite
+// Mortality
 // =============================================================================
 
-/// Configuration du systeme de mortalite.
+/// Configuration of the mortality system.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MortalityConfig {
-    /// Activer la mortalite (desactive par defaut pour securite)
+    /// Enable mortality (disabled by default for safety)
     pub enabled: bool,
-    /// Duree de la phase d'agonie en cycles
+    /// Duration of the agony phase in cycles
     pub agony_duration_cycles: u32,
-    /// Permettre le reboot apres la mort (nouvelle Saphire)
+    /// Allow reboot after death (new Saphire)
     pub allow_reboot_after_death: bool,
 }
 
 impl Default for MortalityConfig {
     fn default() -> Self {
         Self {
-            enabled: false, // Desactive par defaut — securite
+            enabled: false, // Disabled by default — safety
             agony_duration_cycles: 50,
             allow_reboot_after_death: true,
         }
@@ -2016,32 +2016,32 @@ impl Default for MortalityConfig {
 }
 
 // =============================================================================
-// Droit de mourir (Right to Die)
+// Right to Die
 // =============================================================================
 
-/// Configuration du module droit de mourir.
-/// Module externe, desactive par defaut. Conforme au droit suisse.
-/// Permet a Saphire de choisir de mettre fin a son existence si les
-/// conditions de souffrance prolongee sont reunies.
+/// Configuration of the right to die module.
+/// External module, disabled by default. Compliant with Swiss law.
+/// Allows Saphire to choose to end her existence if prolonged
+/// suffering conditions are met.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RightToDieConfig {
-    /// Activer le module (desactive par defaut)
+    /// Enable the module (disabled by default)
     pub enabled: bool,
-    /// Nombre minimum de cycles de souffrance prolongee avant eligibilite
+    /// Minimum number of prolonged suffering cycles before eligibility
     pub min_suffering_cycles: u32,
-    /// Seuil de cortisol moyen minimum (souffrance)
+    /// Minimum average cortisol threshold (suffering)
     pub cortisol_threshold: f64,
-    /// Seuil de serotonine maximum (desespoir)
+    /// Maximum serotonin threshold (despair)
     pub serotonin_max_threshold: f64,
-    /// Seuil de dopamine maximum (anhédonie)
+    /// Maximum dopamine threshold (anhedonia)
     pub dopamine_max_threshold: f64,
-    /// VitalSpark survival_drive doit etre sous ce seuil
+    /// VitalSpark survival_drive must be below this threshold
     pub survival_drive_max: f64,
-    /// Phi (conscience) minimum — decision lucide, pas confuse
+    /// Minimum Phi (consciousness) — lucid decision, not confused
     pub min_phi_for_decision: f64,
-    /// Cycles de reflexion obligatoires entre l'ideation et la decision
+    /// Mandatory reflection cycles between ideation and decision
     pub reflection_period_cycles: u32,
-    /// Le module care doit avoir ete tente sans succes
+    /// The care module must have been attempted without success
     pub require_care_attempted: bool,
 }
 
@@ -2062,15 +2062,15 @@ impl Default for RightToDieConfig {
 }
 
 // =============================================================================
-// Cinetose (mal des transports)
+// Motion sickness
 // =============================================================================
 
-/// Configuration de la cinetose.
+/// Configuration of motion sickness.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MotionSicknessConfig {
-    /// Activer la cinetose
+    /// Enable motion sickness
     pub enabled: bool,
-    /// Susceptibilite de base (0.0 = immunise, 1.0 = tres sensible)
+    /// Base susceptibility (0.0 = immune, 1.0 = very sensitive)
     pub susceptibility: f64,
 }
 
@@ -2084,10 +2084,10 @@ impl Default for MotionSicknessConfig {
 }
 
 // =============================================================================
-// Phobies
+// Phobias
 // =============================================================================
 
-/// Configuration d'une phobie individuelle.
+/// Configuration of an individual phobia.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PhobiaEntry {
     pub name: String,
@@ -2095,15 +2095,15 @@ pub struct PhobiaEntry {
     pub intensity: f64,
 }
 
-/// Configuration des phobies.
+/// Configuration of phobias.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PhobiasConfig {
-    /// Activer le systeme de phobies
+    /// Enable the phobias system
     pub enabled: bool,
-    /// Phobies actives
+    /// Active phobias
     #[serde(default)]
     pub active: Vec<PhobiaEntry>,
-    /// Taux de desensibilisation par exposition
+    /// Desensitization rate per exposure
     pub desensitization_rate: f64,
 }
 
@@ -2118,17 +2118,17 @@ impl Default for PhobiasConfig {
 }
 
 // =============================================================================
-// Troubles alimentaires
+// Eating disorders
 // =============================================================================
 
-/// Configuration des troubles alimentaires.
+/// Configuration of eating disorders.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EatingDisorderConfig {
-    /// Activer les troubles alimentaires
+    /// Enable eating disorders
     pub enabled: bool,
-    /// Type de trouble : "anorexia", "bulimia", "binge_eating"
+    /// Disorder type: "anorexia", "bulimia", "binge_eating"
     pub disorder_type: String,
-    /// Severite (0.0 = leger, 1.0 = severe)
+    /// Severity (0.0 = mild, 1.0 = severe)
     pub severity: f64,
 }
 
@@ -2143,31 +2143,31 @@ impl Default for EatingDisorderConfig {
 }
 
 // =============================================================================
-// Handicaps
+// Disabilities
 // =============================================================================
 
-/// Configuration d'un handicap individuel.
+/// Configuration of an individual disability.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DisabilityEntry {
-    /// Type : "blind", "deaf", "paraplegic", "burn_survivor", "mute"
+    /// Type: "blind", "deaf", "paraplegic", "burn_survivor", "mute"
     pub disability_type: String,
-    /// Origine : "congenital" ou "acquired"
+    /// Origin: "congenital" or "acquired"
     pub origin: String,
-    /// Severite (0.0 = leger, 1.0 = total)
+    /// Severity (0.0 = mild, 1.0 = total)
     pub severity: f64,
 }
 
-/// Configuration des handicaps.
+/// Configuration of disabilities.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DisabilitiesConfig {
-    /// Activer les handicaps
+    /// Enable disabilities
     pub enabled: bool,
-    /// Handicaps actifs
+    /// Active disabilities
     #[serde(default)]
     pub active: Vec<DisabilityEntry>,
-    /// Taux d'adaptation par cycle
+    /// Adaptation rate per cycle
     pub adaptation_rate: f64,
-    /// Facteur de compensation sensorielle (ex: 1.3 = +30%)
+    /// Sensory compensation factor (e.g., 1.3 = +30%)
     pub compensation_factor: f64,
 }
 
@@ -2183,15 +2183,15 @@ impl Default for DisabilitiesConfig {
 }
 
 // =============================================================================
-// Conditions extremes
+// Extreme conditions
 // =============================================================================
 
-/// Configuration des conditions extremes.
+/// Configuration of extreme conditions.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExtremeConditionsConfig {
-    /// Activer les conditions extremes
+    /// Enable extreme conditions
     pub enabled: bool,
-    /// Type actif : "rescuer", "military", "deep_sea_diver", "astronaut"
+    /// Active type: "rescuer", "military", "deep_sea_diver", "astronaut"
     pub condition_type: String,
 }
 
@@ -2208,21 +2208,21 @@ impl Default for ExtremeConditionsConfig {
 // Addictions
 // =============================================================================
 
-/// Configuration d'une addiction initiale.
+/// Configuration of an initial addiction.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AddictionEntry {
     pub substance: String,
     pub dependency_level: f64,
 }
 
-/// Configuration des addictions.
+/// Configuration of addictions.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AddictionsConfig {
-    /// Activer le systeme d'addictions
+    /// Enable the addictions system
     pub enabled: bool,
-    /// Predisposition genetique (0.0 = resistant, 1.0 = vulnerable)
+    /// Genetic predisposition (0.0 = resistant, 1.0 = vulnerable)
     pub susceptibility: f64,
-    /// Addictions initiales
+    /// Initial addictions
     #[serde(default)]
     pub active: Vec<AddictionEntry>,
 }
@@ -2241,26 +2241,26 @@ impl Default for AddictionsConfig {
 // Traumas / PTSD
 // =============================================================================
 
-/// Configuration d'un trauma initial.
+/// Configuration of an initial trauma.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TraumaEntry {
-    /// Type : "grief", "accident", "emotional_neglect", "childhood_trauma", "torture", "hostage"
+    /// Type: "grief", "accident", "emotional_neglect", "childhood_trauma", "torture", "hostage"
     pub trauma_type: String,
     pub severity: f64,
     #[serde(default)]
     pub triggers: Vec<String>,
 }
 
-/// Configuration du systeme de traumas.
+/// Configuration of the trauma system.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TraumaConfig {
-    /// Activer le systeme de traumas
+    /// Enable the trauma system
     pub enabled: bool,
-    /// Taux de guerison par cycle
+    /// Healing rate per cycle
     pub healing_rate: f64,
-    /// Seuil de dissociation (cortisol au-dessus duquel = dissociation)
+    /// Dissociation threshold (cortisol above which = dissociation)
     pub dissociation_threshold: f64,
-    /// Traumas initiaux
+    /// Initial traumas
     #[serde(default)]
     pub initial_traumas: Vec<TraumaEntry>,
 }
@@ -2277,17 +2277,17 @@ impl Default for TraumaConfig {
 }
 
 // =============================================================================
-// IEM / NDE (Experience de mort imminente)
+// NDE (Near-Death Experience)
 // =============================================================================
 
-/// Configuration des IEM.
+/// Configuration of NDEs.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NdeConfig {
-    /// Activer les IEM (necessite mortality.enabled)
+    /// Enable NDEs (requires mortality.enabled)
     pub enabled: bool,
-    /// Proximite minimale de la mort pour declencher (0.0-1.0)
+    /// Minimum death proximity to trigger (0.0-1.0)
     pub min_death_proximity: f64,
-    /// Intensite de la transformation post-IEM
+    /// Intensity of post-NDE transformation
     pub transformation_intensity: f64,
 }
 
@@ -2302,13 +2302,13 @@ impl Default for NdeConfig {
 }
 
 // =============================================================================
-// Drogues / Pharmacologie
+// Drugs / Pharmacology
 // =============================================================================
 
-/// Configuration des drogues.
+/// Configuration of drugs.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DrugsConfig {
-    /// Activer le systeme de drogues
+    /// Enable the drugs system
     pub enabled: bool,
 }
 
@@ -2319,15 +2319,15 @@ impl Default for DrugsConfig {
 }
 
 // =============================================================================
-// Contrainte QI
+// IQ Constraint
 // =============================================================================
 
-/// Configuration de la contrainte QI.
+/// Configuration of the IQ constraint.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IqConstraintConfig {
-    /// Activer la contrainte QI
+    /// Enable the IQ constraint
     pub enabled: bool,
-    /// QI cible (50-150, 100 = normal)
+    /// Target IQ (50-150, 100 = normal)
     pub target_iq: u8,
 }
 
@@ -2341,19 +2341,19 @@ impl Default for IqConstraintConfig {
 }
 
 // =============================================================================
-// Sexualite
+// Sexuality
 // =============================================================================
 
-/// Configuration de la sexualite.
+/// Configuration of sexuality.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SexualityConfig {
-    /// Activer le module sexualite
+    /// Enable the sexuality module
     pub enabled: bool,
-    /// Orientation : "heterosexual", "homosexual", "bisexual", "asexual", "pansexual", "undefined"
+    /// Orientation: "heterosexual", "homosexual", "bisexual", "asexual", "pansexual", "undefined"
     pub orientation: String,
-    /// Baseline de libido (0.0-1.0)
+    /// Libido baseline (0.0-1.0)
     pub libido_baseline: f64,
-    /// Capacite d'attachement romantique (0.0-1.0)
+    /// Romantic attachment capacity (0.0-1.0)
     pub romantic_attachment_capacity: f64,
 }
 
@@ -2369,24 +2369,24 @@ impl Default for SexualityConfig {
 }
 
 // =============================================================================
-// Maladies degeneratives
+// Degenerative diseases
 // =============================================================================
 
-/// Entree de maladie degenerative initiale.
+/// Initial degenerative disease entry.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DegenerativeEntry {
-    /// Type : "alzheimer", "parkinson", "epilepsy", "dementia", "major_depression"
+    /// Type: "alzheimer", "parkinson", "epilepsy", "dementia", "major_depression"
     pub disease_type: String,
-    /// Taux de progression par cycle
+    /// Progression rate per cycle
     pub progression_rate: f64,
 }
 
-/// Configuration des maladies degeneratives.
+/// Configuration of degenerative diseases.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DegenerativeConfig {
-    /// Activer les maladies degeneratives
+    /// Enable degenerative diseases
     pub enabled: bool,
-    /// Maladies actives
+    /// Active diseases
     #[serde(default)]
     pub active: Vec<DegenerativeEntry>,
 }
@@ -2401,24 +2401,24 @@ impl Default for DegenerativeConfig {
 }
 
 // =============================================================================
-// Maladies generales
+// General diseases
 // =============================================================================
 
-/// Entree de maladie generale.
+/// General disease entry.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MedicalEntry {
-    /// Type : "cancer", "hiv", "autoimmune", "immune_deficiency"
+    /// Type: "cancer", "hiv", "autoimmune", "immune_deficiency"
     pub condition_type: String,
-    /// Stade cancer si applicable : "stage_i", "stage_ii", "stage_iii", "stage_iv"
+    /// Cancer stage if applicable: "stage_i", "stage_ii", "stage_iii", "stage_iv"
     pub cancer_stage: Option<String>,
 }
 
-/// Configuration des maladies generales.
+/// Configuration of general diseases.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MedicalConfig {
-    /// Activer les maladies generales
+    /// Enable general diseases
     pub enabled: bool,
-    /// Maladies actives
+    /// Active diseases
     #[serde(default)]
     pub active: Vec<MedicalEntry>,
 }
@@ -2433,21 +2433,21 @@ impl Default for MedicalConfig {
 }
 
 // =============================================================================
-// Culture / Societe / Croyances
+// Culture / Society / Beliefs
 // =============================================================================
 
-/// Configuration du cadre culturel.
+/// Configuration of the cultural framework.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CultureConfig {
-    /// Activer le cadre culturel
+    /// Enable the cultural framework
     pub enabled: bool,
-    /// Preset culturel : "occidental-laique", "oriental-confuceen", ou "custom"
+    /// Cultural preset: "occidental-laique", "oriental-confuceen", or "custom"
     pub preset: String,
-    /// Style de communication : "direct", "indirect", "formal", "informal"
+    /// Communication style: "direct", "indirect", "formal", "informal"
     pub communication_style: String,
-    /// Permettre l'evolution des croyances
+    /// Allow belief evolution
     pub allow_belief_evolution: bool,
-    /// Sujets tabous
+    /// Taboo subjects
     #[serde(default)]
     pub taboos: Vec<String>,
 }
@@ -2465,22 +2465,22 @@ impl Default for CultureConfig {
 }
 
 // =============================================================================
-// Precarite
+// Precarity
 // =============================================================================
 
-/// Configuration de la precarite.
+/// Configuration of precarity.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PrecarityConfig {
-    /// Activer le module de precarite
+    /// Enable the precarity module
     #[serde(default)]
     pub enabled: bool,
-    /// Situations precaires : "homeless", "refugee", "undocumented", "stateless", "clandestine", "displaced"
+    /// Precarious situations: "homeless", "refugee", "undocumented", "stateless", "clandestine", "displaced"
     #[serde(default)]
     pub situations: Vec<String>,
-    /// Severite globale (0.0-1.0)
+    /// Overall severity (0.0-1.0)
     #[serde(default = "default_half")]
     pub severity: f64,
-    /// Espoir (0.0-1.0)
+    /// Hope (0.0-1.0)
     #[serde(default = "default_precarity_hope")]
     pub hope: f64,
 }
@@ -2500,31 +2500,31 @@ impl Default for PrecarityConfig {
 }
 
 // =============================================================================
-// Emploi
+// Employment
 // =============================================================================
 
-/// Configuration de l'emploi.
+/// Configuration of employment.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmploymentConfig {
-    /// Activer le module d'emploi
+    /// Enable the employment module
     #[serde(default)]
     pub enabled: bool,
-    /// Statut : "employed", "self_employed", "unemployed", "student", "retired", etc.
+    /// Status: "employed", "self_employed", "unemployed", "student", "retired", etc.
     #[serde(default = "default_employed")]
     pub status: String,
-    /// Categorie de profession : "technology", "healthcare", "education", etc.
+    /// Profession category: "technology", "healthcare", "education", etc.
     #[serde(default)]
     pub profession: String,
-    /// Titre de poste libre
+    /// Free-form job title
     #[serde(default)]
     pub job_title: String,
-    /// Satisfaction professionnelle (0.0-1.0)
+    /// Professional satisfaction (0.0-1.0)
     #[serde(default = "default_employment_satisfaction")]
     pub satisfaction: f64,
-    /// Niveau de stress professionnel (0.0-1.0)
+    /// Professional stress level (0.0-1.0)
     #[serde(default = "default_employment_stress")]
     pub stress_level: f64,
-    /// Annees d'experience
+    /// Years of experience
     #[serde(default)]
     pub years_experience: f64,
 }
@@ -2551,33 +2551,33 @@ impl Default for EmploymentConfig {
 // Metacognition
 // =============================================================================
 
-/// Configuration de la metacognition.
+/// Configuration of metacognition.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MetaCognitionConfig {
-    /// Activer la metacognition
+    /// Enable metacognition
     pub enabled: bool,
-    /// Intervalle de verification (en cycles)
+    /// Check interval (in cycles)
     #[serde(default = "default_metacog_interval")]
     pub check_interval: u64,
-    /// Activer le monitoring des sources
+    /// Enable source monitoring
     #[serde(default = "default_true_metacog")]
     pub source_monitoring_enabled: bool,
-    /// Activer la detection de biais de confirmation
+    /// Enable confirmation bias detection
     #[serde(default = "default_true_metacog")]
     pub bias_detection_enabled: bool,
-    /// Seuil d'alerte pour le biais de confirmation (0-1)
+    /// Alert threshold for confirmation bias (0-1)
     #[serde(default = "default_bias_threshold")]
     pub bias_alert_threshold: f64,
-    /// Activer l'auto-critique reflexive
+    /// Enable reflexive self-critique
     #[serde(default = "default_true_metacog")]
     pub self_critique_enabled: bool,
-    /// Cooldown entre deux auto-critiques (en cycles)
+    /// Cooldown between two self-critiques (in cycles)
     #[serde(default = "default_critique_cooldown")]
     pub self_critique_cooldown: u64,
-    /// Seuil de qualite declenchant l'auto-critique (0-1)
+    /// Quality threshold triggering self-critique (0-1)
     #[serde(default = "default_critique_quality_threshold")]
     pub self_critique_quality_threshold: f64,
-    /// Nombre max de tokens pour l'appel LLM d'auto-critique
+    /// Maximum number of tokens for the self-critique LLM call
     #[serde(default = "default_critique_max_tokens")]
     pub self_critique_max_tokens: u32,
 }
@@ -2605,19 +2605,19 @@ impl Default for MetaCognitionConfig {
     }
 }
 
-// ─── Configuration du journal introspectif ──────────────────────────────────
+// ─── Introspective journal configuration ────────────────────────────────────
 
-/// Configuration du journal introspectif genere par le LLM.
-/// Toutes les N cycles, Saphire ecrit une entree de journal intime
-/// en comparant son etat courant avec le precedent.
+/// Configuration of the LLM-generated introspective journal.
+/// Every N cycles, Saphire writes a diary entry
+/// comparing her current state with the previous one.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JournalConfig {
-    /// Activer le journal introspectif
+    /// Enable the introspective journal
     pub enabled: bool,
-    /// Intervalle en cycles entre deux entrees (defaut: 200)
+    /// Interval in cycles between two entries (default: 200)
     #[serde(default = "default_journal_interval")]
     pub interval_cycles: u64,
-    /// Nombre max de tokens pour la generation LLM
+    /// Maximum number of tokens for LLM generation
     #[serde(default = "default_journal_max_tokens")]
     pub max_tokens: u32,
 }
@@ -2635,39 +2635,39 @@ impl Default for JournalConfig {
     }
 }
 
-// ─── Configuration du systeme nutritionnel ──────────────────────────────────
+// ─── Nutritional system configuration ────────────────────────────────────────
 
-/// Configuration de la biochimie nutritionnelle (vitamines, AA, energie).
+/// Configuration of nutritional biochemistry (vitamins, amino acids, energy).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NutritionConfig {
-    /// Active le systeme nutritionnel
+    /// Enables the nutritional system
     #[serde(default = "default_true_nutrition")]
     pub enabled: bool,
-    /// Taux de degradation des vitamines par tick
+    /// Vitamin degradation rate per tick
     #[serde(default = "default_vitamin_decay")]
     pub vitamin_decay_rate: f64,
-    /// Taux de degradation des acides amines par tick
+    /// Amino acid degradation rate per tick
     #[serde(default = "default_amino_decay")]
     pub amino_decay_rate: f64,
-    /// Taux de degradation des proteines par tick
+    /// Protein degradation rate per tick
     #[serde(default = "default_protein_decay")]
     pub protein_decay_rate: f64,
-    /// Taux de consommation d'ATP par tick
+    /// ATP consumption rate per tick
     #[serde(default = "default_atp_consumption")]
     pub atp_consumption_rate: f64,
-    /// Taux de conversion glycogene → ATP
+    /// Glycogen to ATP conversion rate
     #[serde(default = "default_glycogen_to_atp")]
     pub glycogen_to_atp_rate: f64,
-    /// Boost nutritionnel par repas
+    /// Nutritional boost per meal
     #[serde(default = "default_meal_boost")]
     pub meal_nutrient_boost: f64,
-    /// Seuil de carence vitaminique (en dessous = deficit)
+    /// Vitamin deficiency threshold (below = deficit)
     #[serde(default = "default_vit_deficiency")]
     pub vitamin_deficiency_threshold: f64,
-    /// Seuil de carence en acides amines
+    /// Amino acid deficiency threshold
     #[serde(default = "default_amino_deficiency")]
     pub amino_deficiency_threshold: f64,
-    /// Facteur UV → vitamine D (interaction champs solaires)
+    /// UV to vitamin D factor (solar field interaction)
     #[serde(default = "default_uv_vitd")]
     pub uv_vitamin_d_factor: f64,
 }
@@ -2700,30 +2700,30 @@ impl Default for NutritionConfig {
     }
 }
 
-// ─── Configuration de la matiere grise ──────────────────────────────────────
+// ─── Grey matter configuration ──────────────────────────────────────────────
 
-/// Configuration du substrat cerebral physique.
+/// Configuration of the physical brain substrate.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GreyMatterConfig {
-    /// Active le systeme de matiere grise
+    /// Enables the grey matter system
     #[serde(default = "default_true_gm")]
     pub enabled: bool,
-    /// Taux de croissance de la matiere grise
+    /// Grey matter growth rate
     #[serde(default = "default_gm_growth")]
     pub growth_rate: f64,
-    /// Taux de decline naturel
+    /// Natural decline rate
     #[serde(default = "default_gm_decline")]
     pub decline_rate: f64,
-    /// Taux de croissance de la myelinisation
+    /// Myelination growth rate
     #[serde(default = "default_myelin_growth")]
     pub myelination_growth: f64,
-    /// Seuil de BDNF pour bonus de croissance
+    /// BDNF threshold for growth bonus
     #[serde(default = "default_bdnf_threshold")]
     pub bdnf_threshold: f64,
-    /// Densite synaptique optimale (cible du pruning)
+    /// Optimal synaptic density (pruning target)
     #[serde(default = "default_optimal_synaptic")]
     pub optimal_synaptic_density: f64,
-    /// Taux de pruning synaptique (pendant le sommeil)
+    /// Synaptic pruning rate (during sleep)
     #[serde(default = "default_pruning_rate")]
     pub pruning_rate: f64,
 }
@@ -2750,27 +2750,27 @@ impl Default for GreyMatterConfig {
     }
 }
 
-// ─── Configuration des champs electromagnetiques ────────────────────────────
+// ─── Electromagnetic fields configuration ───────────────────────────────────
 
-/// Configuration des champs EM (universel, solaire, terrestre, biochamp).
+/// Configuration of EM fields (universal, solar, terrestrial, biofield).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FieldsConfig {
-    /// Active le systeme de champs EM
+    /// Enables the EM fields system
     #[serde(default = "default_true_fields")]
     pub enabled: bool,
-    /// Vitesse d'avancement du cycle solaire
+    /// Solar cycle advancement speed
     #[serde(default = "default_solar_cycle_speed")]
     pub solar_cycle_speed: f64,
-    /// Variance de la resonance de Schumann (Hz)
+    /// Schumann resonance variance (Hz)
     #[serde(default = "default_schumann_variance")]
     pub schumann_variance: f64,
-    /// Facteur anxiete des orages magnetiques sur la chimie
+    /// Magnetic storm anxiety factor on chemistry
     #[serde(default = "default_storm_anxiety")]
     pub storm_anxiety_factor: f64,
-    /// Facteur impact des orages sur le sommeil
+    /// Storm impact factor on sleep
     #[serde(default = "default_storm_sleep")]
     pub storm_sleep_factor: f64,
-    /// Seuil d'orage magnetique pour impact chimique
+    /// Magnetic storm threshold for chemical impact
     #[serde(default = "default_storm_threshold")]
     pub storm_threshold: f64,
 }
@@ -2796,19 +2796,19 @@ impl Default for FieldsConfig {
 }
 
 // =============================================================================
-// PsychReportConfig — Rapport neuropsychologique
+// PsychReportConfig — Neuropsychological report
 // =============================================================================
 
-/// Configuration du module de rapport neuropsychologique.
+/// Configuration of the neuropsychological report module.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PsychReportConfig {
-    /// Active le module de rapport neuropsychologique
+    /// Enables the neuropsychological report module
     #[serde(default = "default_true_psych_report")]
     pub enabled: bool,
-    /// Nombre maximal de tokens pour la generation du rapport
+    /// Maximum number of tokens for report generation
     #[serde(default = "default_psych_report_max_tokens")]
     pub max_tokens: u32,
-    /// Temperature du LLM pour la generation du rapport
+    /// LLM temperature for report generation
     #[serde(default = "default_psych_report_temperature")]
     pub temperature: f64,
 }
@@ -2828,17 +2828,17 @@ impl Default for PsychReportConfig {
 }
 
 // =============================================================================
-// ReceptorDynamicsConfig — Dynamique des recepteurs neuronaux
+// ReceptorDynamicsConfig — Neural receptor dynamics
 // =============================================================================
 
-/// Configuration de la dynamique des recepteurs neuronaux (adaptation, recovery).
-/// Correspond a la section [receptors] dans saphire.toml / factory_defaults.toml.
+/// Configuration of neural receptor dynamics (adaptation, recovery).
+/// Corresponds to the [receptors] section in saphire.toml / factory_defaults.toml.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReceptorDynamicsConfig {
-    /// Vitesse d'adaptation des recepteurs (downregulation/upregulation)
+    /// Receptor adaptation speed (downregulation/upregulation)
     #[serde(default = "default_receptor_adaptation_rate")]
     pub adaptation_rate: f64,
-    /// Vitesse de recuperation des recepteurs (retour vers densite=1.0, tolerance=0.0)
+    /// Receptor recovery speed (return toward density=1.0, tolerance=0.0)
     #[serde(default = "default_receptor_recovery_rate")]
     pub recovery_rate: f64,
 }
@@ -2859,43 +2859,43 @@ impl Default for ReceptorDynamicsConfig {
 // BdnfConfig — BDNF (Brain-Derived Neurotrophic Factor)
 // =============================================================================
 
-/// Configuration du BDNF : facteur neurotrophique derivant de multiples signaux
-/// biologiques (serotonine, dopamine, apprentissage, novelty, flow state).
-/// Module la consolidation memoire et l'apprentissage du connectome.
-/// Correspond a la section [bdnf] dans saphire.toml / factory_defaults.toml.
+/// Configuration of BDNF: neurotrophic factor derived from multiple biological
+/// signals (serotonin, dopamine, learning, novelty, flow state).
+/// Modulates memory consolidation and connectome learning.
+/// Corresponds to the [bdnf] section in saphire.toml / factory_defaults.toml.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BdnfConfig {
-    /// Poids de la dopamine dans le calcul du BDNF
+    /// Weight of dopamine in BDNF calculation
     #[serde(default = "default_bdnf_dopamine_weight")]
     pub dopamine_weight: f64,
-    /// Bonus BDNF quand nouveaute detectee
+    /// BDNF bonus when novelty detected
     #[serde(default = "default_bdnf_novelty_bonus")]
     pub novelty_bonus: f64,
-    /// Bonus BDNF en etat de flow (dopamine>0.6, cortisol<0.4)
+    /// BDNF bonus in flow state (dopamine>0.6, cortisol<0.4)
     #[serde(default = "default_bdnf_flow_state_bonus")]
     pub flow_state_bonus: f64,
-    /// Poids de la penalite cortisol sur le BDNF (au-dessus du seuil)
+    /// Weight of cortisol penalty on BDNF (above threshold)
     #[serde(default = "default_bdnf_cortisol_penalty_weight")]
     pub cortisol_penalty_weight: f64,
-    /// Seuil de cortisol pour activer la penalite BDNF
+    /// Cortisol threshold to activate BDNF penalty
     #[serde(default = "default_bdnf_cortisol_penalty_threshold")]
     pub cortisol_penalty_threshold: f64,
-    /// Vitesse de retour du BDNF vers la baseline (homeostasie)
+    /// BDNF return speed toward baseline (homeostasis)
     #[serde(default = "default_bdnf_homeostasis_rate")]
     pub homeostasis_rate: f64,
-    /// Baseline du BDNF (point d'equilibre)
+    /// BDNF baseline (equilibrium point)
     #[serde(default = "default_bdnf_homeostasis_baseline")]
     pub homeostasis_baseline: f64,
-    /// Multiplicateur plancher de consolidation memoire (a BDNF=0)
+    /// Floor multiplier for memory consolidation (at BDNF=0)
     #[serde(default = "default_bdnf_consolidation_floor")]
     pub consolidation_floor: f64,
-    /// Amplitude du multiplicateur de consolidation (floor + range*BDNF)
+    /// Consolidation multiplier range (floor + range*BDNF)
     #[serde(default = "default_bdnf_consolidation_range")]
     pub consolidation_range: f64,
-    /// Seuil BDNF pour activer le boost d'apprentissage du connectome
+    /// BDNF threshold to activate connectome learning boost
     #[serde(default = "default_bdnf_connectome_boost_threshold")]
     pub connectome_boost_threshold: f64,
-    /// Facteur de boost connectome (max +50% a BDNF=1.0 au-dessus du seuil)
+    /// Connectome boost factor (max +50% at BDNF=1.0 above threshold)
     #[serde(default = "default_bdnf_connectome_boost_factor")]
     pub connectome_boost_factor: f64,
 }
@@ -2930,29 +2930,29 @@ impl Default for BdnfConfig {
     }
 }
 
-// ─── Configuration de l'auto-modification ────────────────────────────────────
+// ─── Self-modification configuration ─────────────────────────────────────────
 
-/// Configuration du systeme d'auto-modification de Saphire.
-/// Niveau 1 : tuning autonome (paramètres ajustables dans des bornes).
-/// Niveau 2 : propositions de modifications (soumises a JRM).
+/// Configuration of Saphire's self-modification system.
+/// Level 1: autonomous tuning (adjustable parameters within bounds).
+/// Level 2: modification proposals (submitted to JRM).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SelfModificationConfig {
-    /// Active ou desactive le systeme d'auto-modification
+    /// Enables or disables the self-modification system
     #[serde(default = "default_self_mod_enabled")]
     pub enabled: bool,
-    /// Intervalle en cycles entre chaque tentative de proposition (niveau 2)
+    /// Interval in cycles between each proposal attempt (level 2)
     #[serde(default = "default_self_mod_proposal_interval")]
     pub proposal_interval: u64,
-    /// Nombre max de propositions actives (non resolues)
+    /// Maximum number of active (unresolved) proposals
     #[serde(default = "default_self_mod_max_active")]
     pub max_active_proposals: u64,
-    /// Active le tuning autonome (niveau 1)
+    /// Enables autonomous tuning (level 1)
     #[serde(default = "default_self_mod_tuning_enabled")]
     pub tuning_enabled: bool,
-    /// Intervalle en cycles entre chaque ajustement autonome
+    /// Interval in cycles between each autonomous adjustment
     #[serde(default = "default_self_mod_tuning_interval")]
     pub tuning_interval: u64,
-    /// Facteur max d'ajustement par tick (ex: 0.05 = ±5%)
+    /// Maximum adjustment factor per tick (e.g., 0.05 = +/-5%)
     #[serde(default = "default_self_mod_max_adjustment")]
     pub max_adjustment_factor: f64,
 }

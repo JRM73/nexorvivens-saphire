@@ -1,5 +1,5 @@
-// main.rs — Point d'entree de Saphire
-// Les handlers HTTP/WebSocket sont dans le module saphire::api (src/api/).
+// main.rs — Saphire entry point
+// HTTP/WebSocket handlers are in the saphire::api module (src/api/).
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -20,11 +20,11 @@ use saphire::logging::db::LogsDb;
 
 use saphire::api::{AppState, ControlMessage};
 
-/// Point d'entree asynchrone principal.
-/// Le macro `#[tokio::main]` cree le runtime tokio et execute cette fonction.
+/// Main asynchronous entry point.
+/// The `#[tokio::main]` macro creates the tokio runtime and executes this function.
 #[tokio::main]
 async fn main() {
-    // Initialiser le systeme de traces (logs structures).
+    // Initialize the tracing system (structured logs).
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -38,7 +38,7 @@ async fn main() {
     println!("╚══════════════════════════════════════════════════════════════╝");
     println!();
 
-    // Verifier les arguments de la ligne de commande
+    // Check command-line arguments
     let args: Vec<String> = std::env::args().collect();
     let demo_mode = args.iter().any(|a| a == "--demo");
 
@@ -69,7 +69,7 @@ async fn main() {
         config.plugins.vector_memory.max_memories,
     )));
 
-    // Mode demonstration : backend LLM fictif, sans DB
+    // Demo mode: mock LLM backend, no DB
     if demo_mode {
         println!("  🎬 Mode démonstration (sans DB, sans LLM)");
         let mock_llm = llm::create_backend(&saphire::llm::LlmConfig {
@@ -88,7 +88,7 @@ async fn main() {
 
     let mut agent = SaphireAgent::new(config.clone(), llm_backend, plugins);
 
-    // Connexion a la base de donnees PostgreSQL
+    // Connect to the PostgreSQL database
     println!("  🗄️  Connexion à PostgreSQL ({}:{})...", config.database.host, config.database.port);
     match SaphireDb::connect(&config.database).await {
         Ok(db) => {
@@ -102,7 +102,7 @@ async fn main() {
         }
     }
 
-    // Connexion a la base de donnees de logs (separee)
+    // Connect to the logs database (separate)
     println!("  🗄️  Connexion à la base de logs ({}:{})...", config.logs_database.host, config.logs_database.port);
     let logs_db: Option<Arc<LogsDb>> = match LogsDb::connect(&config.logs_database).await {
         Ok(db) => {
@@ -130,9 +130,9 @@ async fn main() {
         agent.set_logs_db(ldb.clone());
     }
 
-    // Detection materielle
+    // Hardware detection
     if config.hardware.auto_detect {
-        // Extraire l'URL base Ollama depuis base_url (retirer /v1 si present)
+        // Extract Ollama base URL from base_url (remove /v1 if present)
         let ollama_url = config.llm.base_url.trim_end_matches("/v1").to_string();
         let hw = saphire::hardware::HardwareProfile::detect(&ollama_url);
         if config.hardware.log_profile {
@@ -145,12 +145,12 @@ async fn main() {
         agent.hardware_profile = Some(hw);
     }
 
-    // Generation du genome deterministe
+    // Deterministic genome generation
     if config.genome.enabled {
         let genome = saphire::genome::Genome::from_seed(config.genome.seed);
         genome.log_summary();
 
-        // Appliquer les genes chimiques aux baselines
+        // Apply chemical genes to baselines
         if config.genome.apply_at_boot {
             let chem = &genome.chemical;
             agent.adjust_baseline("dopamine", chem.baseline_dopamine_offset);
@@ -162,7 +162,7 @@ async fn main() {
         agent.genome = Some(genome);
     }
 
-    // Configuration de la mortalite
+    // Mortality configuration
     if config.mortality.enabled {
         agent.body.set_mortality_config(config.mortality.agony_duration_cycles);
         println!("  {} Mortalite activee (agonie: {} cycles)", '\u{1F480}', config.mortality.agony_duration_cycles);
@@ -197,7 +197,7 @@ async fn main() {
         rate_limiter,
     };
 
-    // Lancer le serveur web
+    // Start the web server
     let web_host = config.plugins.web_ui.host.clone();
     let web_port = config.plugins.web_ui.port;
     let state_for_web = app_state.clone();
@@ -205,7 +205,7 @@ async fn main() {
         start_web_server(&web_host, web_port, state_for_web).await;
     });
 
-    // Handler pour les signaux d'arret (SIGINT + SIGTERM)
+    // Handler for shutdown signals (SIGINT + SIGTERM)
     let shutdown_signal = shutdown.clone();
     tokio::spawn(async move {
         #[cfg(unix)]
@@ -235,13 +235,13 @@ async fn main() {
     println!("\n  🚀 Saphire est active. Interface : http://{}:{}\n",
         config.plugins.web_ui.host, config.plugins.web_ui.port);
 
-    // ─── Boucle de vie principale ───────────────────────────
+    // ─── Main life loop ───────────────────────────
     loop {
         if shutdown.load(Ordering::Relaxed) {
             break;
         }
 
-        // Verification mortalite : si Saphire est morte, arreter la boucle
+        // Mortality check: if Saphire is dead, stop the loop
         if config.mortality.enabled {
             let agent = agent.lock().await;
             if agent.body.mortality.state.is_dead() {
@@ -263,13 +263,13 @@ async fn main() {
             drop(agent);
         }
 
-        // Drainer tous les messages de controle en attente
+        // Drain all pending control messages
         while let Ok(ctrl) = ctrl_rx.try_recv() {
             let mut agent = agent.lock().await;
             handle_control_message(&mut agent, ctrl).await;
         }
 
-        // Traiter les messages utilisateur en attente
+        // Process pending user messages
         while let Ok(msg) = user_rx.try_recv() {
             let mut agent = agent.lock().await;
             let chat_resp = agent.handle_human_message(&msg.text, &msg.username).await;
@@ -286,18 +286,18 @@ async fn main() {
                 }
             }).to_string());
 
-            // Vocaliser la réponse via Sensoria (TTS)
+            // Vocalize the response via Sensoria (TTS)
             speak_via_sensoria(chat_resp.text.clone(), chat_resp.emotion.clone());
         }
 
-        // Pensee autonome ou tick de sommeil
+        // Autonomous thought or sleep tick
         {
             let mut agent = agent.lock().await;
             if agent.sleep.is_sleeping {
-                // Saphire dort : executer le tick de sommeil
+                // Saphire is sleeping: execute sleep tick
                 agent.sleep_tick().await;
             } else {
-                // Mise a jour de la pression de sommeil + subconscient
+                // Update sleep pressure + subconscious
                 agent.update_sleep_pressure().await;
 
                 if agent.should_initiate_sleep() {
@@ -332,7 +332,7 @@ async fn main() {
                     }
                 }).to_string());
 
-                // Vocaliser la réponse via Sensoria (TTS)
+                // Vocalize the response via Sensoria (TTS)
                 speak_via_sensoria(chat_resp.text.clone(), chat_resp.emotion.clone());
             },
             Some(ctrl) = ctrl_rx.recv() => {
@@ -343,12 +343,12 @@ async fn main() {
         }
     }
 
-    // Arret propre
+    // Graceful shutdown
     let mut agent = agent.lock().await;
     agent.shutdown().await;
 }
 
-/// Envoie le texte a Sensoria pour synthese vocale (non-bloquant).
+/// Sends text to Sensoria for speech synthesis (non-blocking).
 fn speak_via_sensoria(text: String, emotion: String) {
     tokio::spawn(async move {
         let result = tokio::task::spawn_blocking(move || {
@@ -377,7 +377,7 @@ fn speak_via_sensoria(text: String, emotion: String) {
     });
 }
 
-/// Tronque une chaine de caracteres a `max` caracteres.
+/// Truncates a string to `max` characters.
 fn truncate(s: &str, max: usize) -> String {
     if s.chars().count() <= max {
         s.to_string()
@@ -387,7 +387,7 @@ fn truncate(s: &str, max: usize) -> String {
     }
 }
 
-/// Traite un message de controle en appliquant l'action correspondante sur l'agent.
+/// Processes a control message by applying the corresponding action on the agent.
 async fn handle_control_message(agent: &mut SaphireAgent, ctrl: ControlMessage) {
     match ctrl {
         ControlMessage::SetBaseline { molecule, value } => {
@@ -420,7 +420,7 @@ async fn handle_control_message(agent: &mut SaphireAgent, ctrl: ControlMessage) 
     }
 }
 
-/// Lance le serveur web axum en utilisant le routeur construit par le module api.
+/// Starts the axum web server using the router built by the api module.
 async fn start_web_server(host: &str, port: u16, state: AppState) {
     let app = saphire::api::build_router(state);
 

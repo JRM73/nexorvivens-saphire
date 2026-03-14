@@ -1,54 +1,54 @@
 // =============================================================================
-// conditions/motion_sickness.rs — Cinetose (mal des transports)
+// conditions/motion_sickness.rs — Motion sickness (kinetosis)
 // =============================================================================
 //
-// Role : Modelise la cinetose : mal de l'air, mal de mer, vertige,
-//        barotraumatisme. Provoque par un conflit sensoriel entre les sens.
+// Purpose: Models motion sickness: air sickness, sea sickness, vertigo,
+//          barotrauma. Caused by a sensory conflict between the senses.
 //
-// Mecanique :
-//   - Mesure le conflit sensoriel (ecart entre les sens)
-//   - Genere nausee si conflit > seuil * susceptibilite
-//   - Impact chimique : cortisol +, confort --, concentration --
-//   - Adaptation progressive (accoutumance) avec expositions repetees
+// Mechanics:
+//   - Measures sensory conflict (gap between senses)
+//   - Generates nausea if conflict > threshold * susceptibility
+//   - Chemistry impact: cortisol +, comfort --, concentration --
+//   - Progressive adaptation (habituation) with repeated exposures
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 use crate::world::ChemistryAdjustment;
 
-/// Type de mal des transports.
+/// Type of motion sickness.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum MotionType {
-    /// Mal de l'air (altitude, turbulences)
+    /// Air sickness (altitude, turbulence)
     Air,
-    /// Mal de mer (mouvements rythmiques)
+    /// Sea sickness (rhythmic movements)
     Sea,
-    /// Mal de terre (apres un long voyage)
+    /// Land sickness (after a long trip)
     Land,
-    /// Vertige (hauteur, rotation)
+    /// Vertigo (height, rotation)
     Vertigo,
-    /// Barotraumatisme (pression, profondeur)
+    /// Barotrauma (pressure, depth)
     Barotrauma,
 }
 
-/// Etat de cinetose (mal des transports).
+/// Motion sickness state.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MotionSickness {
-    /// Predisposition a la cinetose (0.0 = immunise, 1.0 = tres sensible)
+    /// Susceptibility to motion sickness (0.0 = immune, 1.0 = very sensitive)
     pub susceptibility: f64,
-    /// Niveau de nausee actuel (0.0 = aucune, 1.0 = incapacitant)
+    /// Current nausea level (0.0 = none, 1.0 = incapacitating)
     pub current_nausea: f64,
-    /// Mesure du conflit sensoriel courant (0.0 = coherent, 1.0 = conflit total)
+    /// Current sensory conflict measurement (0.0 = coherent, 1.0 = total conflict)
     pub sensory_conflict: f64,
-    /// Niveau d'adaptation / accoutumance (0.0 = novice, 1.0 = agueri)
+    /// Adaptation / habituation level (0.0 = novice, 1.0 = seasoned)
     pub adaptation: f64,
-    /// Type de cinetose active (None si aucune)
+    /// Active motion sickness type (None if none)
     pub active_type: Option<MotionType>,
-    /// Nombre total d'episodes
+    /// Total number of episodes
     pub total_episodes: u64,
 }
 
 impl MotionSickness {
-    /// Cree un nouvel etat avec une susceptibilite donnee.
+    /// Creates a new state with a given susceptibility.
     pub fn new(susceptibility: f64) -> Self {
         Self {
             susceptibility: susceptibility.clamp(0.0, 1.0),
@@ -60,55 +60,55 @@ impl MotionSickness {
         }
     }
 
-    /// Evalue le conflit sensoriel a partir des intensites des 5 sens.
+    /// Evaluates sensory conflict from the 5 sense intensities.
     ///
-    /// Un conflit eleve se produit quand certains sens sont tres actifs
-    /// et d'autres pas du tout (incoherence perceptuelle).
+    /// A high conflict occurs when some senses are very active
+    /// and others are not at all (perceptual incoherence).
     pub fn evaluate_conflict(&mut self, sense_intensities: &[f64; 5]) {
-        // Calcul de la variance des intensites
+        // Compute the variance of intensities
         let mean: f64 = sense_intensities.iter().sum::<f64>() / 5.0;
         let variance: f64 = sense_intensities.iter()
             .map(|&s| (s - mean).powi(2))
             .sum::<f64>() / 5.0;
 
-        // Conflit = variance normalisee (max theorique ~0.25)
+        // Conflict = normalized variance (theoretical max ~0.25)
         self.sensory_conflict = (variance * 4.0).clamp(0.0, 1.0);
     }
 
-    /// Declenche un episode de type specifique (via API ou scenario).
+    /// Triggers an episode of a specific type (via API or scenario).
     pub fn trigger(&mut self, motion_type: MotionType) {
         self.active_type = Some(motion_type);
-        self.sensory_conflict = 0.7; // Conflit artificiel eleve
+        self.sensory_conflict = 0.7; // Artificially high conflict
         self.total_episodes += 1;
     }
 
-    /// Met a jour la nausee en fonction du conflit et de la susceptibilite.
+    /// Updates nausea based on conflict and susceptibility.
     ///
-    /// Appele a chaque cycle quand la cinetose est activee.
+    /// Called each cycle when motion sickness is active.
     pub fn tick(&mut self) {
-        // Nausee = conflit * susceptibilite * (1 - adaptation)
+        // Nausea = conflict * susceptibility * (1 - adaptation)
         let effective_susceptibility = self.susceptibility * (1.0 - self.adaptation * 0.7);
         let target_nausea = (self.sensory_conflict * effective_susceptibility).clamp(0.0, 1.0);
 
-        // Convergence douce vers la cible
+        // Smooth convergence toward target
         self.current_nausea += (target_nausea - self.current_nausea) * 0.15;
         self.current_nausea = self.current_nausea.clamp(0.0, 1.0);
 
-        // Adaptation progressive (exposition repetee → accoutumance)
+        // Progressive adaptation (repeated exposure -> habituation)
         if self.sensory_conflict > 0.3 {
             self.adaptation = (self.adaptation + 0.001).min(1.0);
         }
 
-        // Decroissance naturelle du conflit sensoriel
+        // Natural decay of sensory conflict
         self.sensory_conflict = (self.sensory_conflict - 0.02).max(0.0);
 
-        // Si le conflit est resolu, la nausee disparait
+        // If the conflict is resolved, nausea disappears
         if self.sensory_conflict < 0.05 {
             self.active_type = None;
         }
     }
 
-    /// Impact sur la chimie : cortisol +, serotonine -, endorphine +.
+    /// Chemistry impact: cortisol +, serotonin -, endorphin +.
     pub fn chemistry_influence(&self) -> ChemistryAdjustment {
         if self.current_nausea < 0.1 {
             return ChemistryAdjustment::default();
@@ -117,9 +117,9 @@ impl MotionSickness {
         ChemistryAdjustment {
             cortisol: self.current_nausea * 0.03,
             serotonin: -self.current_nausea * 0.02,
-            endorphin: self.current_nausea * 0.01, // reponse analgesique
+            endorphin: self.current_nausea * 0.01, // analgesic response
             adrenaline: if self.active_type == Some(MotionType::Vertigo) {
-                self.current_nausea * 0.04 // vertige = panique
+                self.current_nausea * 0.04 // vertigo = panic
             } else {
                 0.0
             },
@@ -127,10 +127,10 @@ impl MotionSickness {
         }
     }
 
-    /// Degradation cognitive due a la nausee [0.0 - 0.3].
+    /// Cognitive degradation due to nausea [0.0 - 0.3].
     pub fn cognitive_impact(&self) -> f64 {
         if self.current_nausea > 0.7 {
-            0.3 // Incapacitant
+            0.3 // Incapacitating
         } else if self.current_nausea > 0.3 {
             self.current_nausea * 0.2
         } else {
@@ -138,7 +138,7 @@ impl MotionSickness {
         }
     }
 
-    /// Serialise pour l'API.
+    /// Serializes for the API.
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::json!({
             "susceptibility": self.susceptibility,
@@ -163,7 +163,7 @@ mod tests {
     #[test]
     fn test_no_conflict_no_nausea() {
         let mut ms = MotionSickness::new(0.8);
-        // Tous les sens a la meme intensite = pas de conflit
+        // All senses at the same intensity = no conflict
         ms.evaluate_conflict(&[0.5, 0.5, 0.5, 0.5, 0.5]);
         ms.tick();
         assert!(ms.current_nausea < 0.01);
@@ -172,7 +172,7 @@ mod tests {
     #[test]
     fn test_high_conflict_causes_nausea() {
         let mut ms = MotionSickness::new(0.8);
-        // Grand ecart entre les sens
+        // Large gap between senses
         ms.evaluate_conflict(&[1.0, 0.0, 1.0, 0.0, 0.5]);
         ms.tick();
         assert!(ms.current_nausea > 0.0);
@@ -184,14 +184,14 @@ mod tests {
         let mut ms = MotionSickness::new(0.1);
         ms.evaluate_conflict(&[1.0, 0.0, 1.0, 0.0, 0.5]);
         ms.tick();
-        // Meme conflit mais faible susceptibilite → nausee reduite
+        // Same conflict but low susceptibility -> reduced nausea
         assert!(ms.current_nausea < 0.1);
     }
 
     #[test]
     fn test_adaptation_reduces_nausea() {
         let mut ms = MotionSickness::new(0.8);
-        ms.adaptation = 0.9; // Deja tres adapte
+        ms.adaptation = 0.9; // Already well adapted
         ms.evaluate_conflict(&[1.0, 0.0, 1.0, 0.0, 0.5]);
         ms.tick();
         assert!(ms.current_nausea < 0.1);
@@ -211,14 +211,14 @@ mod tests {
     fn test_chemistry_influence_vertigo() {
         let mut ms = MotionSickness::new(0.8);
         ms.trigger(MotionType::Vertigo);
-        // Plusieurs ticks pour que la nausee converge au-dessus du seuil
+        // Several ticks for nausea to converge above threshold
         for _ in 0..10 {
             ms.tick();
-            // Re-injecter le conflit car il decroit
+            // Re-inject the conflict as it decays
             ms.sensory_conflict = 0.7;
         }
         let adj = ms.chemistry_influence();
         assert!(adj.cortisol > 0.0);
-        assert!(adj.adrenaline > 0.0); // Vertige = panique
+        assert!(adj.adrenaline > 0.0); // Vertigo = panic
     }
 }

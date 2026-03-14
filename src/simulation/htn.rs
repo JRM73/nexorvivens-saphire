@@ -1,58 +1,58 @@
 // =============================================================================
-// htn.rs — Hierarchical Task Network (Planificateur hierarchique)
+// htn.rs — Hierarchical Task Network (Hierarchical planner)
 //
-// Role : Decompose des taches complexes en sequences d'actions primitives.
-//        Utilise par le pipeline pour planifier des projets multi-etapes
-//        (explorer un sujet, creer un texte, approfondir un lien).
+// Role: Decomposes complex tasks into sequences of primitive actions.
+//       Used by the pipeline to plan multi-step projects
+//       (explore a topic, create a text, deepen a bond).
 //
-// Place dans l'architecture :
-//   Integre dans phase_game_algorithms() pour decomposer les etapes GOAP.
-//   Ecrit le plan courant dans le Blackboard.
+// Place in the architecture:
+//   Integrated in phase_game_algorithms() to decompose GOAP steps.
+//   Writes the current plan to the Blackboard.
 // =============================================================================
 
 use std::collections::HashMap;
 
-/// Tache dans le reseau hierarchique.
+/// Task in the hierarchical network.
 #[derive(Debug, Clone)]
 pub enum HtnTask {
-    /// Action atomique directement executable
+    /// Atomic action directly executable
     Primitive {
         name: String,
         description: String,
     },
-    /// Tache composee decomposable en sous-taches
+    /// Compound task decomposable into sub-tasks
     Compound {
         name: String,
         methods: Vec<HtnMethod>,
     },
 }
 
-/// Methode de decomposition d'une tache composee.
+/// Decomposition method for a compound task.
 #[derive(Debug, Clone)]
 pub struct HtnMethod {
-    /// Nom de la methode
+    /// Method name
     pub name: String,
-    /// Preconditions booleennes (cle → valeur attendue)
+    /// Boolean preconditions (key -> expected value)
     pub preconditions: HashMap<String, bool>,
-    /// Sous-taches a executer si les preconditions sont remplies
+    /// Sub-tasks to execute if preconditions are met
     pub subtasks: Vec<HtnTask>,
 }
 
-/// Plan produit par le HTN : sequence d'actions primitives.
+/// Plan produced by the HTN: sequence of primitive actions.
 #[derive(Debug, Clone)]
 pub struct HtnPlan {
-    /// Sequence d'actions a executer
+    /// Sequence of actions to execute
     pub primitive_sequence: Vec<String>,
-    /// Descriptions correspondantes
+    /// Corresponding descriptions
     pub descriptions: Vec<String>,
-    /// Etape courante (0-indexed)
+    /// Current step (0-indexed)
     pub current_step: usize,
-    /// Nombre total d'etapes
+    /// Total number of steps
     pub total_steps: usize,
 }
 
 impl HtnPlan {
-    /// Avance a l'etape suivante. Retourne true si le plan est termine.
+    /// Advances to the next step. Returns true if the plan is complete.
     pub fn advance(&mut self) -> bool {
         if self.current_step < self.total_steps {
             self.current_step += 1;
@@ -60,12 +60,12 @@ impl HtnPlan {
         self.current_step >= self.total_steps
     }
 
-    /// Retourne la description de l'etape courante.
+    /// Returns the description of the current step.
     pub fn current_description(&self) -> Option<&str> {
         self.descriptions.get(self.current_step).map(|s| s.as_str())
     }
 
-    /// Genere une ligne pour le prompt LLM.
+    /// Generates a line for the LLM prompt.
     pub fn describe_for_prompt(&self) -> String {
         if self.current_step >= self.total_steps {
             return String::new();
@@ -74,15 +74,15 @@ impl HtnPlan {
         format!("Plan : etape {}/{} — {}", self.current_step + 1, self.total_steps, desc)
     }
 
-    /// Le plan est-il termine ?
+    /// Is the plan complete?
     pub fn is_complete(&self) -> bool {
         self.current_step >= self.total_steps
     }
 }
 
-/// Planificateur HTN.
+/// HTN planner.
 pub struct HtnPlanner {
-    /// Plan en cours (None si aucun)
+    /// Active plan (None if none)
     pub active_plan: Option<HtnPlan>,
 }
 
@@ -97,7 +97,7 @@ impl HtnPlanner {
         Self { active_plan: None }
     }
 
-    /// Decompose une tache en plan d'actions primitives.
+    /// Decomposes a task into a plan of primitive actions.
     pub fn plan(&mut self, task: &HtnTask, world_state: &HashMap<String, bool>) -> Option<HtnPlan> {
         let mut primitives = Vec::new();
         let mut descriptions = Vec::new();
@@ -117,7 +117,7 @@ impl HtnPlanner {
         }
     }
 
-    /// Decomposition recursive.
+    /// Recursive decomposition.
     fn decompose(
         &self,
         task: &HtnTask,
@@ -132,9 +132,9 @@ impl HtnPlanner {
                 true
             }
             HtnTask::Compound { methods, .. } => {
-                // Essayer chaque methode dans l'ordre
+                // Try each method in order
                 for method in methods {
-                    // Verifier les preconditions
+                    // Check preconditions
                     let preconditions_met = method.preconditions.iter().all(|(key, expected)| {
                         world_state.get(key).copied().unwrap_or(false) == *expected
                     });
@@ -157,7 +157,7 @@ impl HtnPlanner {
         }
     }
 
-    /// Avance le plan actif d'une etape.
+    /// Advances the active plan by one step.
     pub fn advance(&mut self) -> bool {
         if let Some(ref mut plan) = self.active_plan {
             let done = plan.advance();
@@ -170,7 +170,7 @@ impl HtnPlanner {
         }
     }
 
-    /// Description pour le prompt.
+    /// Description for the prompt.
     pub fn describe_for_prompt(&self) -> String {
         self.active_plan.as_ref()
             .map(|p| p.describe_for_prompt())
@@ -179,10 +179,10 @@ impl HtnPlanner {
 }
 
 // =============================================================================
-// Templates de taches predefinies
+// Predefined task templates
 // =============================================================================
 
-/// Template : explorer un sujet.
+/// Template: explore a topic.
 pub fn template_explorer_sujet(sujet: &str) -> HtnTask {
     HtnTask::Compound {
         name: format!("Explorer_{}", sujet),
@@ -207,7 +207,7 @@ pub fn template_explorer_sujet(sujet: &str) -> HtnTask {
     }
 }
 
-/// Template : approfondir un lien avec l'interlocuteur.
+/// Template: deepen a bond with the interlocutor.
 pub fn template_approfondir_lien() -> HtnTask {
     HtnTask::Compound {
         name: "Approfondir_Lien".into(),
@@ -257,9 +257,9 @@ mod tests {
         let mut planner = HtnPlanner::new();
         let task = template_approfondir_lien();
         planner.plan(&task, &HashMap::new());
-        assert!(!planner.advance()); // step 1 → 2
-        assert!(!planner.advance()); // step 2 → 3
-        assert!(planner.advance());  // step 3 → done
+        assert!(!planner.advance()); // step 1 -> 2
+        assert!(!planner.advance()); // step 2 -> 3
+        assert!(planner.advance());  // step 3 -> done
         assert!(planner.active_plan.is_none());
     }
 
@@ -284,11 +284,11 @@ mod tests {
 
         let mut planner = HtnPlanner::new();
 
-        // Sans precondition remplie
+        // Without precondition met
         let plan = planner.plan(&task, &HashMap::new());
         assert!(plan.is_none());
 
-        // Avec precondition remplie
+        // With precondition met
         let mut state = HashMap::new();
         state.insert("is_calm".into(), true);
         let plan = planner.plan(&task, &state);

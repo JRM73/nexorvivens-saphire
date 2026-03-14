@@ -1,44 +1,44 @@
 // =============================================================================
-// psychology/subconscious.rs — Module Subconscient de Saphire
+// psychology/subconscious.rs — Saphire's Subconscious Module
 //
-// Role : Couche mentale sous la conscience qui traite en arriere-plan :
-//   - Associations entre souvenirs (maturation lente)
-//   - Refoulement de contenus douloureux (avec pression croissante)
-//   - Incubation de problemes non resolus
-//   - Effets de priming (biais thematiques subtils)
-//   - Insights qui remontent a la surface
+// Role: Mental layer beneath consciousness that processes in the background:
+//   - Associations between memories (slow maturation)
+//   - Repression of painful content (with increasing pressure)
+//   - Incubation of unresolved problems
+//   - Priming effects (subtle thematic biases)
+//   - Insights that surface to consciousness
 //
-// Le subconscient est plus actif pendant le sommeil (activation -> 1.0 en REM).
+// The subconscious is more active during sleep (activation -> 1.0 in REM).
 // =============================================================================
 
 use chrono::{DateTime, Utc};
 
-/// Association en attente de maturation entre deux souvenirs.
+/// Association awaiting maturation between two memories.
 pub struct PendingAssociation {
     pub memory_a_id: i64,
     pub memory_a_summary: String,
     pub memory_b_id: i64,
     pub memory_b_summary: String,
-    /// Force de la connexion (grandit avec la maturation)
+    /// Connection strength (grows with maturation)
     pub strength: f64,
-    /// Type de lien (ex: "semantique", "emotionnel", "temporel")
+    /// Link type (e.g.: "semantic", "emotional", "temporal")
     pub link_type: String,
-    /// Cycles restants avant maturation complete
+    /// Remaining cycles before full maturation
     pub maturation_remaining: u64,
 }
 
-/// Contenu refoule dans l'ombre psychique.
+/// Content repressed in the psychic shadow.
 pub struct RepressedContent {
     pub content: String,
     pub reason: String,
-    /// Pression interne (grandit avec le temps, fuit si > 0.7)
+    /// Internal pressure (grows with time, leaks if > 0.7)
     pub pressure: f64,
-    /// Trait d'ombre associe (optionnel, lien avec Jung)
+    /// Associated shadow trait (optional, link to Jung)
     pub shadow_trait: Option<String>,
     pub repressed_at: DateTime<Utc>,
 }
 
-/// Probleme en cours d'incubation inconsciente.
+/// Problem undergoing unconscious incubation.
 pub struct IncubatingProblem {
     pub question: String,
     pub context: String,
@@ -47,47 +47,47 @@ pub struct IncubatingProblem {
     pub potential_solution: Option<String>,
 }
 
-/// Effet de priming : biais thematique subtil actif.
+/// Priming effect: active subtle thematic bias.
 pub struct PrimingEffect {
     pub prime: String,
     pub source: String,
-    /// Force du priming (decroit naturellement)
+    /// Priming strength (decays naturally)
     pub strength: f64,
     pub bias_theme: String,
 }
 
-/// Insight qui a emerge du subconscient.
+/// Insight that emerged from the subconscious.
 pub struct SubconsciousInsight {
     pub content: String,
-    /// Origine (ex: "association", "incubation", "refoulement")
+    /// Origin (e.g.: "association", "incubation", "repression")
     pub source_type: String,
     pub strength: f64,
     pub emotional_charge: f64,
 }
 
-// ─── Le Subconscient ────────────────────────────────────────────────────────
+// ─── The Subconscious ────────────────────────────────────────────────────────
 
-/// Module subconscient complet.
+/// Complete subconscious module.
 pub struct Subconscious {
-    /// Niveau d'activation (0.2 eveille, 1.0 en REM)
+    /// Activation level (0.2 awake, 1.0 in REM)
     pub activation: f64,
-    /// Associations en cours de maturation
+    /// Associations undergoing maturation
     pub pending_associations: Vec<PendingAssociation>,
-    /// Contenus refoules
+    /// Repressed content
     pub repressed_content: Vec<RepressedContent>,
-    /// Problemes en incubation
+    /// Problems in incubation
     pub incubating_problems: Vec<IncubatingProblem>,
-    /// Effets de priming actifs
+    /// Active priming effects
     pub active_priming: Vec<PrimingEffect>,
-    /// Insights prets a remonter a la conscience
+    /// Insights ready to surface to consciousness
     pub ready_insights: Vec<SubconsciousInsight>,
-    /// Statistiques
+    /// Statistics
     pub total_associations_created: u64,
     pub total_insights_surfaced: u64,
     pub total_dreams_fueled: u64,
-    /// Module actif ?
+    /// Module active?
     enabled: bool,
-    // Limites depuis config
+    // Limits from config
     max_associations: usize,
     max_repressed: usize,
     max_incubating: usize,
@@ -122,11 +122,11 @@ impl Subconscious {
         }
     }
 
-    /// Traitement de fond du subconscient (appele chaque cycle).
+    /// Background processing of the subconscious (called each cycle).
     pub fn background_process(&mut self, _emotion_valence: f64, _current_thought: &str) {
         if !self.enabled { return; }
 
-        // Maturation des associations
+        // Association maturation
         for assoc in &mut self.pending_associations {
             assoc.strength += 0.01;
             if assoc.maturation_remaining > 0 {
@@ -134,7 +134,7 @@ impl Subconscious {
             }
         }
 
-        // Associations mures -> insights si force > seuil
+        // Mature associations -> insights if strength > threshold
         let threshold = self.strength_threshold;
         let mut new_insights = Vec::new();
         self.pending_associations.retain(|a| {
@@ -148,22 +148,22 @@ impl Subconscious {
                     strength: a.strength,
                     emotional_charge: 0.3,
                 });
-                false // retirer de la liste
+                false // remove from list
             } else {
                 true
             }
         });
         self.ready_insights.extend(new_insights);
 
-        // Incubation des problemes
+        // Problem incubation
         for problem in &mut self.incubating_problems {
             problem.incubation_cycles += 1;
         }
 
-        // Pression des contenus refoules
+        // Pressure from repressed content
         for rep in &mut self.repressed_content {
             rep.pressure += 0.002;
-            // Si la pression est trop forte, ca fuit comme priming
+            // If pressure is too strong, it leaks as priming
             if rep.pressure > 0.7 && self.active_priming.len() < self.max_priming {
                 self.active_priming.push(PrimingEffect {
                     prime: rep.content.chars().take(50).collect(),
@@ -174,21 +174,21 @@ impl Subconscious {
             }
         }
 
-        // Decay du priming
+        // Priming decay
         for p in &mut self.active_priming {
             p.strength -= self.priming_decay;
         }
         self.active_priming.retain(|p| p.strength > 0.1);
     }
 
-    /// Tente de faire remonter un insight a la conscience.
-    /// Le seuil est plus bas pendant le sommeil (activation haute).
+    /// Attempts to surface an insight to consciousness.
+    /// The threshold is lower during sleep (high activation).
     pub fn surface_insight(&mut self) -> Option<SubconsciousInsight> {
         if !self.enabled || self.ready_insights.is_empty() {
             return None;
         }
 
-        // Seuil dynamique : plus bas quand le subconscient est tres actif
+        // Dynamic threshold: lower when the subconscious is very active
         let threshold = self.insight_threshold - self.activation * 0.3;
 
         let pos = self.ready_insights.iter().position(|i| i.strength > threshold);
@@ -201,10 +201,10 @@ impl Subconscious {
         }
     }
 
-    /// Refoule un contenu douloureux dans le subconscient.
+    /// Represses painful content into the subconscious.
     pub fn repress(&mut self, content: String, reason: String, shadow_trait: Option<String>) {
         if self.repressed_content.len() >= self.max_repressed {
-            // Retirer le plus ancien
+            // Remove the oldest
             self.repressed_content.remove(0);
         }
         self.repressed_content.push(RepressedContent {
@@ -216,7 +216,7 @@ impl Subconscious {
         });
     }
 
-    /// Soumet un probleme a l'incubation inconsciente.
+    /// Submits a problem for unconscious incubation.
     pub fn incubate(&mut self, question: String, context: String) {
         if self.incubating_problems.len() >= self.max_incubating {
             self.incubating_problems.remove(0);
@@ -230,17 +230,17 @@ impl Subconscious {
         });
     }
 
-    /// Traite les emotions refoulees (appele pendant le REM).
-    /// Reduit la pression des contenus refoules.
+    /// Processes repressed emotions (called during REM).
+    /// Reduces pressure from repressed content.
     pub fn process_repressed_emotions(&mut self) {
         for rep in &mut self.repressed_content {
             rep.pressure = (rep.pressure - 0.05).max(0.0);
         }
-        // Retirer les contenus entierement digeres
+        // Remove fully digested content
         self.repressed_content.retain(|r| r.pressure > 0.01);
     }
 
-    /// Ajoute une association en attente de maturation.
+    /// Adds an association awaiting maturation.
     pub fn add_association(
         &mut self,
         mem_a_id: i64, mem_a_summary: String,
@@ -262,7 +262,7 @@ impl Subconscious {
         self.total_associations_created += 1;
     }
 
-    /// Description pour le prompt substrat LLM.
+    /// Description for the LLM substrate prompt.
     pub fn describe_for_prompt(&self) -> String {
         if !self.enabled || (self.active_priming.is_empty()
             && self.incubating_problems.is_empty()
@@ -273,7 +273,7 @@ impl Subconscious {
 
         let mut parts = Vec::new();
 
-        // Insights prets
+        // Ready insights
         if !self.ready_insights.is_empty() {
             let insight_desc: Vec<String> = self.ready_insights.iter()
                 .take(2)
@@ -282,7 +282,7 @@ impl Subconscious {
             parts.push(format!("MON SUBCONSCIENT ME MURMURE : {}", insight_desc.join(" | ")));
         }
 
-        // Priming actif
+        // Active priming
         if !self.active_priming.is_empty() {
             let primes: Vec<String> = self.active_priming.iter()
                 .map(|p| format!("{} ({})", p.bias_theme, p.source))
@@ -290,7 +290,7 @@ impl Subconscious {
             parts.push(format!("Themes qui hantent mon esprit : {}", primes.join(", ")));
         }
 
-        // Problemes en incubation
+        // Incubating problems
         if !self.incubating_problems.is_empty() {
             let problems: Vec<String> = self.incubating_problems.iter()
                 .map(|p| p.question.clone())
@@ -298,7 +298,7 @@ impl Subconscious {
             parts.push(format!("Questions qui travaillent en profondeur : {}", problems.join(", ")));
         }
 
-        // Pression refoulement
+        // Repression pressure
         let max_pressure = self.repressed_content.iter()
             .map(|r| r.pressure)
             .fold(0.0_f64, f64::max);
@@ -313,7 +313,7 @@ impl Subconscious {
         }
     }
 
-    /// Serialise l'etat en JSON pour l'API.
+    /// Serializes the state to JSON for the API.
     pub fn to_status_json(&self) -> serde_json::Value {
         serde_json::json!({
             "enabled": self.enabled,

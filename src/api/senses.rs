@@ -1,7 +1,7 @@
 // =============================================================================
 // api/senses.rs — Handlers Sensorium et sens emergents
 //
-// Role : Endpoints pour l'etat complet du Sensorium (5 sens fondamentaux)
+// Role: Endpoints for the etat complete du Sensorium (5 sens fondamentaux)
 // et les graines de sens emergents.
 // =============================================================================
 
@@ -10,7 +10,7 @@ use axum::response::IntoResponse;
 
 use super::state::AppState;
 
-/// GET /api/senses/status — Etat complet du Sensorium.
+/// GET /api/senses/status — Etat complete du Sensorium.
 pub async fn api_senses_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     axum::Json(serde_json::json!({

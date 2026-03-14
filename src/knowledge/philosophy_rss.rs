@@ -1,50 +1,49 @@
 // =============================================================================
-// knowledge/philosophy_rss.rs — Client RSS pour essais philosophiques
+// knowledge/philosophy_rss.rs — RSS client for philosophical essays
 // =============================================================================
 //
-// Role : Recuperation d'essais philosophiques recents depuis des flux RSS.
-//        Contrairement aux autres sources (recherche par mot-cle), ce module
-//        recupere les DERNIERS articles publies, sans filtre de recherche.
-//        C'est une source de "serendipite intellectuelle" pour Saphire.
+// Purpose: Retrieves recent philosophical essays from RSS feeds.
+//          Unlike other sources (keyword search), this module fetches the
+//          LATEST published articles without any search filter.
+//          It serves as a source of "intellectual serendipity" for Saphire.
 //
-// Sources RSS :
-//   - Aeon.co : essais longs et profonds sur la conscience, l'existence,
-//     la beaute, l'ethique, l'identite. Publies par des philosophes,
-//     scientifiques et ecrivains.
-//   - Daily Nous : blog academique sur l'actualite philosophique,
-//     debats, publications, evenements dans le monde de la philosophie.
+// RSS Sources:
+//   - Aeon.co: long-form essays on consciousness, existence, beauty,
+//     ethics, identity. Published by philosophers, scientists and writers.
+//   - Daily Nous: academic blog on philosophical news, debates,
+//     publications and events in the philosophy world.
 //
-// Format RSS :
+// RSS Format:
 //   - <item><title>...<description>...<link>...</item>
-//   - Le contenu peut etre encapsule dans CDATA : <![CDATA[...]]>
-//   - Les descriptions contiennent souvent du HTML (balises <p>, <a>, etc.)
-//   - On nettoie avec strip_cdata() puis strip_html_tags()
+//   - Content may be wrapped in CDATA: <![CDATA[...]]>
+//   - Descriptions often contain HTML (tags like <p>, <a>, etc.)
+//   - Cleaned with strip_cdata() then strip_html_tags()
 //
-// Note User-Agent :
-//   On utilise un User-Agent de navigateur (Mozilla/5.0) car certains
-//   serveurs RSS rejettent les requetes avec des User-Agent generiques.
+// User-Agent note:
+//   We use a browser User-Agent (Mozilla/5.0) because some RSS servers
+//   reject requests with generic User-Agents.
 //
-// Score de pertinence : 0.80
+// Relevance score: 0.80
 // =============================================================================
 
 use chrono::Utc;
 use super::{WebKnowledge, KnowledgeResult, KnowledgeError};
 
 impl WebKnowledge {
-    /// Recuperer les essais philosophiques recents via RSS (Aeon + Daily Nous).
+    /// Retrieve recent philosophical essays via RSS (Aeon + Daily Nous).
     ///
-    /// Processus :
-    ///   1. Iterer sur les 2 flux RSS
-    ///   2. Pour chaque flux, telecharger le XML
-    ///   3. Parser les 3 premiers <item> de chaque flux
-    ///   4. Extraire titre, lien et description (avec fallback sur content:encoded)
-    ///   5. Nettoyer le contenu (CDATA + HTML)
-    ///   6. Filtrer les articles trop courts (<100 chars de description)
+    /// Process:
+    ///   1. Iterate over the 2 RSS feeds
+    ///   2. For each feed, download the XML
+    ///   3. Parse the first 3 <item> elements from each feed
+    ///   4. Extract title, link and description (with fallback to content:encoded)
+    ///   5. Clean the content (CDATA + HTML)
+    ///   6. Filter out articles with too short descriptions (<100 chars)
     ///
-    /// Retourne un Vec car on recupere jusqu'a 6 articles (3 par flux).
-    /// Retourne KnowledgeError::NotFound si aucun article n'est trouve.
+    /// Returns a Vec since we retrieve up to 6 articles (3 per feed).
+    /// Returns KnowledgeError::NotFound if no articles are found.
     pub fn search_philosophy_rss(&self) -> Result<Vec<KnowledgeResult>, KnowledgeError> {
-        // Les 2 flux RSS a interroger
+        // The 2 RSS feeds to query
         let feeds: &[(&str, &str)] = &[
             ("https://aeon.co/feed.rss", "Aeon"),
             ("https://dailynous.com/feed/", "Daily Nous"),
@@ -54,13 +53,13 @@ impl WebKnowledge {
         let max_chars = self.config.max_content_chars;
 
         for (url, source_name) in feeds {
-            // Securite : verifier que le domaine est dans la whitelist
+            // Safety: verify the domain is in the whitelist
             if !Self::is_url_allowed(url) {
                 continue;
             }
 
-            // Telecharger le flux RSS
-            // Note : User-Agent de navigateur pour eviter les rejets serveur
+            // Download the RSS feed
+            // Note: browser User-Agent to avoid server rejections
             let response = match self.http_client
                 .get(url)
                 .set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64; rv:120.0) Gecko/20100101 Firefox/120.0")
@@ -71,56 +70,56 @@ impl WebKnowledge {
                     Ok(s) => s,
                     Err(e) => {
                         tracing::warn!("RSS {} reponse illisible : {}", source_name, e);
-                        continue; // Passer au flux suivant
+                        continue; // Skip to the next feed
                     }
                 },
                 Err(e) => {
                     tracing::warn!("RSS {} echoue : {}", source_name, e);
-                    continue; // Passer au flux suivant
+                    continue; // Skip to the next feed
                 }
             };
 
-            // Parser les items RSS (on prend les 3 premiers)
-            // Le XML est decoupes par "<item>" — skip(1) car le premier fragment
-            // est l'en-tete du flux (avant le premier <item>)
+            // Parse the RSS items (take the first 3)
+            // The XML is split by "<item>" — skip(1) because the first fragment
+            // is the feed header (before the first <item>)
             for item in response.split("<item>").skip(1).take(3) {
-                // Extraire le titre (peut etre dans CDATA)
+                // Extract the title (may be in CDATA)
                 let title = Self::extract_tag(item, "title")
                     .map(|t| Self::strip_cdata(&t))
                     .unwrap_or_default();
 
-                // Extraire le lien de l'article
+                // Extract the article link
                 let link = Self::extract_tag(item, "link")
                     .map(|l| l.trim().to_string())
                     .unwrap_or_default();
 
-                // Extraire la description avec fallback sur content:encoded
-                // (certains flux mettent le contenu complet dans content:encoded
-                //  et un resume court dans description)
+                // Extract description with fallback to content:encoded
+                // (some feeds put full content in content:encoded
+                //  and a short summary in description)
                 let desc_raw = Self::extract_tag(item, "description")
                     .map(|d| Self::strip_cdata(&d))
-                    .filter(|d| d.len() > 20) // Ignorer les descriptions trop courtes
+                    .filter(|d| d.len() > 20) // Ignore too-short descriptions
                     .or_else(|| {
-                        // Fallback : utiliser content:encoded (contenu complet)
+                        // Fallback: use content:encoded (full content)
                         Self::extract_tag(item, "content:encoded")
                             .map(|d| Self::strip_cdata(&d))
                     })
                     .unwrap_or_default();
 
-                // Nettoyer le HTML et tronquer a max_chars
+                // Clean HTML and truncate to max_chars
                 let desc_text = Self::strip_html_tags(&desc_raw)
                     .chars()
                     .take(max_chars)
                     .collect::<String>();
 
-                // Ne garder que les articles avec titre et contenu substantiel
+                // Only keep articles with a title and substantial content
                 if !title.is_empty() && desc_text.len() > 100 {
                     results.push(KnowledgeResult {
                         source: source_name.to_string(),
                         title: title.clone(),
                         url: link,
                         extract: desc_text,
-                        section_titles: vec![], // Les RSS n'ont pas de sections
+                        section_titles: vec![], // RSS feeds have no sections
                         total_length: desc_raw.len(),
                         relevance_score: 0.80,
                         fetched_at: Utc::now(),

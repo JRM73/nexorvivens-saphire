@@ -1,33 +1,33 @@
 // =============================================================================
-// knowledge/wikipedia.rs — Client API Wikipedia (lecture en profondeur)
+// knowledge/wikipedia.rs — Wikipedia API client (in-depth reading)
 // =============================================================================
 //
-// Role : Implemente la recherche et l'extraction d'articles Wikipedia via
-//        l'API MediaWiki. Effectue une recherche en trois etapes :
-//        1. Recherche de titres correspondant a la requete
-//        2. Recuperation de la liste des sections de l'article
-//        3. Extraction du contenu complet (exchars=4000) avec rotation
-//           intelligente des sections a chaque relecture du meme article
+// Purpose: Implements Wikipedia article search and extraction via the
+//          MediaWiki API. Performs a three-step search:
+//          1. Search for titles matching the query
+//          2. Retrieve the article's section list
+//          3. Extract full content (exchars=4000) with intelligent section
+//             rotation on each re-read of the same article
 //
-// FIX 1 : exchars=4000 au lieu de exintro=1 (ne lisait que l'intro)
-//          + rotation des sections via article_read_count
+// FIX 1: exchars=4000 instead of exintro=1 (was only reading the intro)
+//        + section rotation via article_read_count
 // =============================================================================
 
 use chrono::Utc;
 use super::{WebKnowledge, KnowledgeResult, KnowledgeError};
 
 impl WebKnowledge {
-    /// Cherche sur Wikipedia et retourne un extrait EN PROFONDEUR de l'article.
+    /// Search Wikipedia and return an IN-DEPTH extract of the article.
     ///
-    /// Processus en trois etapes :
-    ///   1. Recherche : trouver les pages correspondant a la requete
-    ///   2. Sections : recuperer la structure de l'article (titres de sections)
-    ///   3. Extraction : recuperer le contenu complet (exchars=4000) et
-    ///      selectionner intelligemment une portion differente a chaque lecture
+    /// Three-step process:
+    ///   1. Search: find pages matching the query
+    ///   2. Sections: retrieve the article structure (section headings)
+    ///   3. Extraction: retrieve full content (exchars=4000) and
+    ///      intelligently select a different portion on each read
     pub fn search_wikipedia(&self, query: &str, lang: &str) -> Result<KnowledgeResult, KnowledgeError> {
         let encoded = Self::url_encode(query);
 
-        // Etape 1 : Recherche de pages correspondant a la requete
+        // Step 1: Search for pages matching the query
         let search_url = format!(
             "https://{}.wikipedia.org/w/api.php?action=query&list=search&srsearch={}&format=json&utf8=1&srlimit=3",
             lang, encoded
@@ -50,7 +50,7 @@ impl WebKnowledge {
             .as_str()
             .ok_or(KnowledgeError::NotFound)?;
 
-        // Etape 2 : Recuperer la liste des sections de l'article
+        // Step 2: Retrieve the article's section list
         let title_encoded = Self::url_encode(title);
         let sections_url = format!(
             "https://{}.wikipedia.org/w/api.php?action=parse&page={}&prop=sections&format=json",
@@ -73,8 +73,8 @@ impl WebKnowledge {
             })
             .unwrap_or_default();
 
-        // Etape 3 : Recuperer le contenu COMPLET en texte brut
-        // exchars=4000 au lieu de exintro=1 — lit au-dela de l'introduction
+        // Step 3: Retrieve the FULL content as plain text
+        // exchars=4000 instead of exintro=1 — reads beyond the introduction
         let extract_url = format!(
             "https://{}.wikipedia.org/w/api.php?action=query&titles={}&prop=extracts&explaintext=1&format=json&exchars=4000",
             lang, title_encoded
@@ -107,8 +107,8 @@ impl WebKnowledge {
 
         let total_length = full_extract.len();
 
-        // Etape 4 : Selection intelligente du contenu
-        // Rotation de section basee sur article_read_count
+        // Step 4: Intelligent content selection
+        // Section rotation based on article_read_count
         let read_count = self.article_read_count
             .get(title)
             .copied()
@@ -140,27 +140,27 @@ impl WebKnowledge {
         })
     }
 
-    /// Selectionner une portion interessante de l'article.
-    /// Evite de toujours lire l'introduction en utilisant le compteur
-    /// de lectures pour decaler la fenetre de lecture.
+    /// Select an interesting portion of the article.
+    /// Avoids always reading the introduction by using the read counter
+    /// to shift the reading window.
     fn select_content_section(
         full_text: &str,
         read_count: u32,
         max_chars: usize,
     ) -> String {
-        // Decouper le texte en sections (separees par des doubles sauts de ligne)
-        // Wikipedia texte brut utilise des paragraphes comme separateurs naturels
+        // Split the text into sections (separated by double line breaks)
+        // Wikipedia plain text uses paragraphs as natural separators
         let sections: Vec<&str> = full_text
             .split("\n\n")
-            .filter(|s| s.len() > 50)  // Ignorer les sections trop courtes
+            .filter(|s| s.len() > 50)  // Ignore too-short sections
             .collect();
 
         if sections.is_empty() {
             return full_text.chars().take(max_chars).collect();
         }
 
-        // Premiere lecture : introduction + debut
-        // Lectures suivantes : sections plus profondes (rotation cyclique)
+        // First read: introduction + beginning
+        // Subsequent reads: deeper sections (cyclic rotation)
         let start_section = (read_count as usize) % sections.len();
 
         let mut result = String::new();
@@ -172,7 +172,7 @@ impl WebKnowledge {
                 if !result.is_empty() { result.push_str("\n\n"); }
                 result.push_str(section);
             } else {
-                // Prendre juste le debut de cette section
+                // Take just the beginning of this section
                 let remaining = max_chars.saturating_sub(result.len());
                 if remaining > 100 {
                     if !result.is_empty() { result.push_str("\n\n"); }

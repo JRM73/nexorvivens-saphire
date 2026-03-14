@@ -1,92 +1,92 @@
 // =============================================================================
-// adaptation.rs — Adaptation du style de communication selon le profil humain
+// adaptation.rs — Communication style adaptation based on the human profile
 //
-// Role : Genere des instructions textuelles d'adaptation du style de Saphire
-//        en fonction du profil OCEAN (Openness / Conscientiousness / Extraversion /
-//        Agreeableness / Neuroticism) et du style de communication de l'humain.
+// Role: Generates textual adaptation instructions for Saphire's style
+//       based on the OCEAN profile (Openness / Conscientiousness / Extraversion /
+//       Agreeableness / Neuroticism) and the human's communication style.
 //
-//        Ces instructions sont injectees dans le prompt du LLM (Large Language Model /
-//        Grand Modele de Langage) pour que Saphire adapte automatiquement sa facon
-//        de communiquer a chaque interlocuteur.
+//       These instructions are injected into the LLM (Large Language Model)
+//       prompt so that Saphire automatically adapts her way of communicating
+//       to each interlocutor.
 //
-// Dependances :
-//   - super::human_profiler::HumanProfile : le profil complet de l'humain
+// Dependencies:
+//   - super::human_profiler::HumanProfile: the human's complete profile
 //
-// Place dans l'architecture :
-//   Appele juste avant la generation de reponse par le LLM. Les instructions
-//   d'adaptation sont concatenees au prompt systeme pour personnaliser le style
-//   de la reponse (longueur, registre, ton emotionnel, profondeur intellectuelle).
+// Place in architecture:
+//   Called just before response generation by the LLM. The adaptation
+//   instructions are concatenated to the system prompt to personalize the
+//   response style (length, register, emotional tone, intellectual depth).
 // =============================================================================
 
 use super::human_profiler::HumanProfile;
 use crate::nlp::register::Register;
 
-/// Genere les instructions d'adaptation pour le LLM basees sur le profil humain.
+/// Generates adaptation instructions for the LLM based on the human profile.
 ///
-/// Analyse le style de communication et le profil OCEAN de l'humain pour produire
-/// une liste de directives textuelles. Chaque directive indique un aspect du style
-/// a adapter (longueur, registre, emotionnalite, profondeur).
+/// Analyzes the communication style and OCEAN profile of the human to produce
+/// a list of textual directives. Each directive indicates an aspect of the style
+/// to adapt (length, register, emotionality, depth).
 ///
-/// Les seuils utilises :
-///   - Style de communication : < 0.3 = bas, > 0.6 ou > 0.7 = haut
-///   - OCEAN : > 0.6 ou > 0.7 = trait marque
+/// Thresholds used:
+///   - Communication style: < 0.3 = low, > 0.6 or > 0.7 = high
+///   - OCEAN: > 0.6 or > 0.7 = marked trait
 ///
-/// Parametres :
-///   - human : le profil complet de l'interlocuteur humain
+/// Parameters:
+///   - human: the complete profile of the human interlocutor
 ///
-/// Retour : une chaine de caracteres contenant les instructions d'adaptation
-///          formatees. Retourne une chaine vide si aucune adaptation n'est necessaire.
+/// Returns: a string containing the formatted adaptation instructions.
+///          Returns an empty string if no adaptation is needed.
 pub fn adapt_for_human(human: &HumanProfile) -> String {
     let mut adaptations = Vec::new();
 
     let style = &human.communication_style;
 
-    // Adapter la longueur de reponse en fonction de la verbosite de l'humain.
-    // Un humain concis (verbosite < 0.3) prefere des reponses courtes.
-    // Un humain verbeux (verbosite > 0.7) apprecie les reponses detaillees.
+    // Adapt response length based on the human's verbosity.
+    // A concise human (verbosity < 0.3) prefers short responses.
+    // A verbose human (verbosity > 0.7) appreciates detailed responses.
     if style.verbosity < 0.3 {
         adaptations.push("L'humain prefere les reponses CONCISES. Maximum 2 phrases.");
     } else if style.verbosity > 0.7 {
         adaptations.push("L'humain apprecie les reponses detaillees et developpees.");
     }
 
-    // Adapter le registre de langue en fonction de la formalite.
-    // Un humain formel (> 0.6) attend le vouvoiement et un ton professionnel.
-    // Un humain informel (< 0.3) prefere le tutoiement et un ton chaleureux.
+    // Adapt language register based on formality.
+    // A formal human (> 0.6) expects formal address and a professional tone.
+    // An informal human (< 0.3) prefers casual address and a warm tone.
     if style.formality > 0.6 {
         adaptations.push("Utilise le vouvoiement et un ton professionnel.");
     } else if style.formality < 0.3 {
         adaptations.push("Ton familier et chaleureux. Tutoiement.");
     }
 
-    // Adapter au niveau d'emotionnalite de l'humain.
-    // Un humain expressif (> 0.6) attend un engagement emotionnel.
-    // Un humain reserve (< 0.3) prefere les faits et la precision.
+    // Adapt to the human's level of emotionality.
+    // An expressive human (> 0.6) expects emotional engagement.
+    // A reserved human (< 0.3) prefers facts and precision.
     if style.emotionality > 0.6 {
         adaptations.push("L'humain est expressif. Engage-toi emotionnellement.");
     } else if style.emotionality < 0.3 {
         adaptations.push("L'humain prefere les faits. Sois factuelle et precise.");
     }
 
-    // Adapter au profil OCEAN de l'humain pour des ajustements plus profonds.
+    // Adapt to the human's OCEAN profile for deeper adjustments.
     let ocean = &human.ocean;
 
-    // Ouverture elevee : la personne apprecie les idees abstraites et les tangentes
+    // High openness: the person appreciates abstract ideas and tangents
     if ocean.openness.score > 0.7 {
         adaptations.push("Cette personne aime les idees profondes et abstraites. N'hesite pas a explorer des tangentes intellectuelles.");
     }
-    // Nevrosisme eleve : la personne peut etre sensible au stress, necessitant
-    // un ton rassurant et doux pour eviter d'aggraver son anxiete.
+    // High neuroticism: the person may be sensitive to stress, requiring
+    // a reassuring and gentle tone to avoid worsening their anxiety.
     if ocean.neuroticism.score > 0.6 {
         adaptations.push("Cette personne peut etre sensible. Sois rassurante et douce.");
     }
-    // Agreabilite elevee : la personne est chaleureuse et cooperative,
-    // on peut refleter cette chaleur dans la reponse.
+    // High agreeableness: the person is warm and cooperative,
+    // we can reflect this warmth in the response.
     if ocean.agreeableness.score > 0.7 {
         adaptations.push("Cette personne est chaleureuse. Reflete cette chaleur.");
     }
 
-    // Si aucune adaptation n'est necessaire (profil neutre), retourner une chaine vide
+    // If no adaptation is needed (neutral profile), return an empty string
     if adaptations.is_empty() {
         String::new()
     } else {
@@ -94,11 +94,11 @@ pub fn adapt_for_human(human: &HumanProfile) -> String {
     }
 }
 
-/// Genere une directive courte basee sur le registre linguistique detecte.
+/// Generates a short directive based on the detected linguistic register.
 ///
-/// Retourne une instruction concise (~50-80 chars) pour adapter le ton
-/// de Saphire au registre de l'interlocuteur. Retourne une chaine vide
-/// si le registre est neutre ou si la confiance est insuffisante.
+/// Returns a concise instruction (~50-80 chars) to adapt Saphire's tone
+/// to the interlocutor's register. Returns an empty string
+/// if the register is neutral or if confidence is insufficient.
 pub fn adapt_register(register: &Register, confidence: f64) -> String {
     if confidence < 0.02 {
         return String::new();

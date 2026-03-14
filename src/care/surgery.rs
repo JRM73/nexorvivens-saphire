@@ -1,52 +1,52 @@
 // =============================================================================
-// care/surgery.rs — Chirurgie et operations
+// care/surgery.rs — Surgery and operations
 // =============================================================================
 //
-// Role : Modelise les interventions chirurgicales avec leurs phases :
-//        pre-operatoire (anxiete), operation (anesthesie), post-operatoire
-//        (douleur + recuperation). Chaque phase a un impact chimique distinct.
+// Role: Models surgical interventions with their phases:
+//        pre-operative (anxiety), operation (anesthesia), post-operative
+//        (pain + recovery). Each phase has a distinct chemical impact.
 //
-// Integration :
-//   Affecte la physiologie (energie, douleur, immunite).
-//   Interagit avec les maladies (P2.3) comme traitement curatif.
+// Integration:
+//   Affects physiology (energy, pain, immunity).
+//   Interacts with diseases (P2.3) as curative treatment.
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 use crate::world::ChemistryAdjustment;
 
-/// Phase d'une operation chirurgicale.
+/// Phase of a surgical operation.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum SurgeryPhase {
-    /// Attente avant l'operation (anxiete, preparation)
+    /// Waiting before the operation (anxiety, preparation)
     PreOp,
-    /// Sous anesthesie (inconscience, pas de douleur)
+    /// Under anesthesia (unconscious, no pain)
     UnderAnesthesia,
-    /// Reveil post-operatoire immediat (douleur, confusion)
+    /// Immediate post-operative awakening (pain, confusion)
     PostOpImmediate,
-    /// Convalescence (guerison progressive)
+    /// Convalescence (progressive healing)
     Recovery,
-    /// Completement retabli
+    /// Completely recovered
     Recovered,
 }
 
-/// Une operation chirurgicale.
+/// A surgical operation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Surgery {
-    /// Description de l'operation
+    /// Operation description
     pub description: String,
-    /// Condition traitee (id texte libre)
+    /// Treated condition (free text id)
     pub target_condition: String,
-    /// Phase courante
+    /// Current phase
     pub phase: SurgeryPhase,
-    /// Gravite de l'operation (0.0 = mineure, 1.0 = lourde)
+    /// Operation severity (0.0 = minor, 1.0 = major)
     pub severity: f64,
-    /// Cycles dans la phase courante
+    /// Cycles in the current phase
     pub cycles_in_phase: u64,
-    /// Succes de l'operation (determine en sortie d'anesthesie)
+    /// Operation success (determined upon leaving anesthesia)
     pub success: bool,
-    /// Progres de guerison post-op (0.0-1.0)
+    /// Post-op recovery progress (0.0-1.0)
     pub recovery_progress: f64,
-    /// Niveau de douleur post-op (decroit avec la guerison)
+    /// Post-op pain level (decreases with healing)
     pub pain_level: f64,
 }
 
@@ -64,20 +64,20 @@ impl Surgery {
         }
     }
 
-    /// Fait avancer l'operation d'un cycle.
+    /// Advances the operation by one cycle.
     pub fn tick(&mut self) {
         self.cycles_in_phase += 1;
 
         match self.phase {
             SurgeryPhase::PreOp => {
-                // 20 cycles de preparation/attente
+                // 20 cycles of preparation/waiting
                 if self.cycles_in_phase >= 20 {
                     self.phase = SurgeryPhase::UnderAnesthesia;
                     self.cycles_in_phase = 0;
                 }
             }
             SurgeryPhase::UnderAnesthesia => {
-                // Duree proportionnelle a la gravite
+                // Duration proportional to severity
                 let op_duration = (self.severity * 30.0) as u64 + 10;
                 if self.cycles_in_phase >= op_duration {
                     self.phase = SurgeryPhase::PostOpImmediate;
@@ -86,7 +86,7 @@ impl Surgery {
                 }
             }
             SurgeryPhase::PostOpImmediate => {
-                // 30 cycles de reveil douloureux
+                // 30 cycles of painful waking
                 self.pain_level = (self.pain_level - 0.005).max(self.severity * 0.3);
                 if self.cycles_in_phase >= 30 {
                     self.phase = SurgeryPhase::Recovery;
@@ -94,7 +94,7 @@ impl Surgery {
                 }
             }
             SurgeryPhase::Recovery => {
-                // Guerison progressive
+                // Progressive healing
                 let recovery_rate = 0.002 * (1.0 - self.severity * 0.5);
                 self.recovery_progress = (self.recovery_progress + recovery_rate).min(1.0);
                 self.pain_level = (self.pain_level - 0.002).max(0.0);
@@ -105,12 +105,12 @@ impl Surgery {
                 }
             }
             SurgeryPhase::Recovered => {
-                // Rien a faire
+                // Nothing to do
             }
         }
     }
 
-    /// Impact chimique selon la phase.
+    /// Chemical impact according to the current phase.
     pub fn chemistry_influence(&self) -> ChemistryAdjustment {
         match self.phase {
             SurgeryPhase::PreOp => ChemistryAdjustment {
@@ -120,7 +120,7 @@ impl Surgery {
                 ..Default::default()
             },
             SurgeryPhase::UnderAnesthesia => ChemistryAdjustment {
-                // Anesthesie : tout est attenue
+                // Anesthesia: everything is dampened
                 endorphin: 0.02,
                 ..Default::default()
             },
@@ -138,7 +138,7 @@ impl Surgery {
                 ..Default::default()
             },
             SurgeryPhase::Recovered => ChemistryAdjustment {
-                serotonin: 0.005, // Soulagement
+                serotonin: 0.005, // Relief
                 dopamine: 0.003,  // Satisfaction
                 ..Default::default()
             },
@@ -163,11 +163,11 @@ impl Surgery {
     }
 }
 
-/// Gestionnaire de chirurgies.
+/// Surgery manager.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SurgeryManager {
     pub surgeries: Vec<Surgery>,
-    /// Historique des operations terminees
+    /// History of completed operations
     pub history_count: u32,
 }
 
@@ -176,12 +176,12 @@ impl SurgeryManager {
         Self { surgeries: Vec::new(), history_count: 0 }
     }
 
-    /// Planifie une operation.
+    /// Schedules an operation.
     pub fn schedule(&mut self, surgery: Surgery) {
         self.surgeries.push(surgery);
     }
 
-    /// Met a jour toutes les operations.
+    /// Updates all operations.
     pub fn tick(&mut self) {
         for s in &mut self.surgeries {
             s.tick();
@@ -191,7 +191,7 @@ impl SurgeryManager {
         self.surgeries.retain(|s| !s.is_complete());
     }
 
-    /// Impact chimique total.
+    /// Total chemical impact.
     pub fn chemistry_influence(&self) -> ChemistryAdjustment {
         let mut adj = ChemistryAdjustment::default();
         for s in &self.surgeries {
@@ -207,7 +207,7 @@ impl SurgeryManager {
         adj
     }
 
-    /// Douleur totale des operations en cours.
+    /// Total pain from ongoing operations.
     pub fn total_pain(&self) -> f64 {
         self.surgeries.iter().map(|s| s.pain_level).sum::<f64>().min(1.0)
     }
@@ -247,7 +247,7 @@ mod tests {
         assert_eq!(s.phase, SurgeryPhase::PostOpImmediate);
         assert!(s.pain_level > 0.0);
 
-        // Post-op immediat (30 cycles)
+        // Immediate post-op (30 cycles)
         for _ in 0..30 {
             s.tick();
         }
@@ -257,11 +257,11 @@ mod tests {
     #[test]
     fn test_surgery_recovery() {
         let mut s = Surgery::new("Test", "test", 0.3);
-        // Avancer jusqu'a la phase Recovery
+        // Advance to the Recovery phase
         for _ in 0..100 {
             s.tick();
         }
-        // Puis attendre longtemps
+        // Then wait a long time
         for _ in 0..1000 {
             s.tick();
         }
@@ -280,7 +280,7 @@ mod tests {
     fn test_manager_cleanup() {
         let mut mgr = SurgeryManager::new();
         mgr.schedule(Surgery::new("Test", "test", 0.2));
-        // Faire tourner longtemps
+        // Run for a long time
         for _ in 0..2000 {
             mgr.tick();
         }

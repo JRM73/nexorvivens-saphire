@@ -1,5 +1,5 @@
 // =============================================================================
-// lifecycle/pipeline.rs — Pipeline cerebral complet (process_stimulus)
+// lifecycle/pipeline.rs — Complete brain pipeline (process_stimulus)
 // =============================================================================
 
 use crate::consensus::{self, ConsensusThresholds, Decision};
@@ -16,55 +16,54 @@ use super::SaphireAgent;
 use super::ProcessResult;
 
 impl SaphireAgent {
-    /// Traite un stimulus a travers le pipeline cerebral complet.
+    /// Processes a stimulus through the complete brain pipeline.
     ///
-    /// Le pipeline est organise en 3 vagues :
+    /// The pipeline is organized in 3 waves:
     ///
-    /// VAGUE 1 — PERCEPTION (enrichir la chimie, puis calculer l'emotion)
-    ///   1. Snapshot chimie avant traitement
-    ///   2. Tick hormonal (cycles circadiens)
-    ///   3. Conditions (besoins, phobies, trauma, drogues, etc.) → modifient la chimie
-    ///   4. Recepteurs + interactions croisees entre molecules
-    ///   5. Emotion (36) + sentiments (20) + humeur — calcules sur chimie complete
+    /// WAVE 1 — PERCEPTION (enrich chemistry, then compute emotion)
+    ///  1. Chemistry snapshot before processing
+    ///   2. Hormonal tick (circadian cycles)
+    ///  3. Conditions (needs, phobias, trauma, drugs, etc.) → modify chemistry
+    ///   4. Receptors + cross-interactions between molecules
+    ///  5. Emotion (36) + sentiments (20) + mood — computed on complete chemistry
     ///
-    /// VAGUE 2 — TRAITEMENT (cerveau decide avec la bonne emotion)
-    ///   6. 3 cerveaux (reptilien, limbique, neocortex) traitent le stimulus
-    ///   7. 12 regions cerebrales (activation chimique + sensorielle + GWT)
-    ///   8. Predictive processing (Friston) — prediction et surprise
-    ///   9. Consensus pondere entre les 3 signaux
-    ///  10. Micro-reseau de neurones — 4eme voix au consensus
-    ///  11. Degradation physiologique (hypoxie, etc.)
-    ///  12. Reconsolidation memorielle
-    ///  13. Conscience (IIT + GWT + prediction) + metriques scientifiques
+    /// WAVE 2 — PROCESSING (brain decides with the right emotion)
+    ///  6. 3 brains (reptilian, limbic, neocortex) process the stimulus
+    ///  7. 12 brain regions (chemical + sensory + GWT activation)
+    ///  8. Predictive processing (Friston) — prediction and surprise
+    ///  9. Weighted consensus between the 3 signals
+    ///  10. Micro-neural network — 4th voice in the consensus
+    ///  11. Physiological degradation (hypoxia, etc.)
+    ///  12. Memory reconsolidation
+    ///  13. Consciousness (IIT + GWT + prediction) + scientific metrics
     ///
-    /// VAGUE 3 — REPONSE (agir et apprendre)
-    ///  14. Ethique (lois d'Asimov)
-    ///  15. Auto-ajustement (tuning)
-    ///  16. Retroaction chimique
-    ///  17. Entrainement du NN
-    ///  18. Broadcast aux plugins
-    ///  19. Connectome (renforcement hebbien)
-    ///  20. Mortalite (verification organes vitaux)
+    /// WAVE 3 — RESPONSE (act and learn)
+    ///  14. Ethics (Asimov's laws)
+    ///  15. Auto-tuning
+    ///  16. Chemical feedback
+    ///  17. NN training
+    ///  18. Plugin broadcast
+    ///  19. Connectome (Hebbian reinforcement)
+    ///  20. Mortality (vital organ check)
     ///  21+. Cycle count, auto-tuning, logs, trace, return
     pub fn process_stimulus(&mut self, stimulus: &Stimulus) -> ProcessResult {
 
         // =====================================================================
-        // VAGUE 1 — PERCEPTION (enrichir la chimie, puis calculer l'emotion)
+        // WAVE 1 — PERCEPTION (enrich chemistry, then compute emotion)
         // =====================================================================
-
-        // Etape 0 : colonne vertebrale — reflexes pre-cables et classification
-        // Les reflexes modifient la chimie AVANT le snapshot, pour que le pipeline
-        // traite un etat deja influence par les reactions instinctives.
+        // Step 0: spinal cord — pre-wired reflexes and classification
+        // Reflexes modify chemistry BEFORE the snapshot, so that the pipeline
+        // processes a state already influenced by instinctive reactions.
         let spine_output = self.spine.process(
             &stimulus.text,
             &mut self.chemistry,
             &self.body,
             if stimulus.text.is_empty() { "system" } else { "autonomous" },
         );
-        // Appliquer les commandes motrices sur le corps
+        // Apply motor commands to the body
         crate::spine::motor::MotorRelay::apply_commands(&spine_output.motor_commands, &mut self.body);
 
-        // Etape 1 : capturer la chimie avant le traitement pour la trace cognitive
+        // Step 1: capture chemistry before processing for the cognitive trace
         let chemistry_before = serde_json::json!({
             "dopamine": self.chemistry.dopamine,
             "cortisol": self.chemistry.cortisol,
@@ -75,12 +74,12 @@ impl SaphireAgent {
             "noradrenaline": self.chemistry.noradrenaline,
         });
 
-        // Etape 2 : tick hormonal (cycles circadiens, recepteurs, interactions hormones <-> NT)
+        // Step 2: hormonal tick (circadian cycles, receptors, hormone <-> NT interactions)
         if self.hormonal_system.enabled {
             self.hormonal_system.tick(&mut self.chemistry, &self.config.hormones);
         }
 
-        // Etape 3a : impact chimique des besoins primaires (faim/soif)
+        // Step 3a: chemical impact of primary needs (hunger/thirst)
         if self.config.needs.enabled {
             let needs_adj = self.needs.chemistry_influence(&self.config.needs);
             if needs_adj.cortisol != 0.0 || needs_adj.serotonin != 0.0
@@ -90,7 +89,7 @@ impl SaphireAgent {
             }
         }
 
-        // Etape 3b : phobies — scanner le texte pour des declencheurs
+        // Step 3b: phobias — scan the text for triggers
         if self.config.phobias.enabled {
             self.phobia_manager.reset_cycle();
             let _triggered = self.phobia_manager.scan_text(&stimulus.text);
@@ -100,7 +99,7 @@ impl SaphireAgent {
             }
         }
 
-        // Etape 3c : cinetose — conflit sensoriel et nausee
+        // Step 3c: motion sickness — sensory conflict and nausea
         if self.config.motion_sickness.enabled {
             let senses = [
                 self.sensorium.reading.current_intensity,
@@ -117,7 +116,7 @@ impl SaphireAgent {
             }
         }
 
-        // Etape 3d : troubles alimentaires — biais de faim, impact chimique
+        // Step 3d: eating disorders — hunger bias, chemical impact
         if self.config.eating_disorder.enabled {
             if let Some(ref mut ed) = self.eating_disorder {
                 let actual_hunger = if self.config.needs.enabled {
@@ -133,12 +132,12 @@ impl SaphireAgent {
             }
         }
 
-        // Etape 3e : handicaps — adaptation, douleur chronique
+        // Step 3e: disabilities — adaptation, chronic pain
         if self.config.disabilities.enabled {
             self.disability_manager.tick();
             let chronic_pain = self.disability_manager.chronic_pain();
             if chronic_pain > 0.0 {
-                // Douleur chronique → cortisol + endorphine (compensation)
+                // Chronic pain → cortisol + endorphin (compensation)
                 let pain_adj = crate::world::ChemistryAdjustment {
                     cortisol: chronic_pain * 0.02,
                     endorphin: chronic_pain * 0.01,
@@ -149,7 +148,7 @@ impl SaphireAgent {
             }
         }
 
-        // Etape 3f : conditions extremes — stress, adaptation, burnout
+        // Step 3f: extreme conditions — stress, adaptation, burnout
         if self.config.extreme_conditions.enabled {
             self.extreme_condition_mgr.tick(self.chemistry.cortisol);
             let ext_adj = self.extreme_condition_mgr.chemistry_influence();
@@ -160,7 +159,7 @@ impl SaphireAgent {
             }
         }
 
-        // Etape 3g : addictions — manque, craving, impact chimique
+        // Step 3g: addictions — withdrawal, craving, chemical impact
         if self.config.addictions.enabled {
             self.addiction_manager.tick(self.cycle_count);
             let add_adj = self.addiction_manager.chemistry_influence();
@@ -171,7 +170,7 @@ impl SaphireAgent {
             }
         }
 
-        // Etape 3h : traumas / PTSD — flashbacks, hypervigilance
+        // Step 3h: traumas / PTSD — flashbacks, hypervigilance
         if self.config.trauma.enabled {
             self.ptsd.scan_for_triggers(&stimulus.text);
             self.ptsd.tick(self.chemistry.cortisol);
@@ -183,19 +182,19 @@ impl SaphireAgent {
             }
         }
 
-        // Etape 3i : IEM (en cours) — progression des phases
+        // Step 3i: NDE (in progress) — phase progression
         if self.config.nde.enabled && self.nde.in_progress {
             let finished = self.nde.tick();
             let nde_adj = self.nde.chemistry_influence();
             self.chemistry.apply_chemistry_adjustment_clamped(&nde_adj, 0.05);
             if finished {
-                // Appliquer la transformation post-IEM sur les baselines
+                // Apply the post-NDE transformation on baselines
                 let shift = self.nde.post_nde_baseline_shift();
                 self.chemistry.apply_chemistry_adjustment_clamped(&shift, 0.05);
             }
         }
 
-        // Etape 3j : drogues actives — effets pharmacologiques par phase
+        // Step 3j: active drugs — pharmacological effects by phase
         if self.config.drugs.enabled {
             let drug_adj = self.drug_manager.tick();
             if drug_adj.dopamine != 0.0 || drug_adj.serotonin != 0.0
@@ -205,10 +204,10 @@ impl SaphireAgent {
             }
         }
 
-        // Etape 3k : sexualite — libido, attachement, chimie
+        // Step 3k: sexuality — libido, attachment, chemistry
         if self.config.sexuality.enabled {
             if let Some(ref mut sex) = self.sexuality {
-                // Utiliser les hormones si dispo, sinon valeurs neutres
+                // Use hormones if available, otherwise neutral values
                 let testosterone = if self.hormonal_system.enabled {
                     self.hormonal_system.state.testosterone
                 } else { 0.5 };
@@ -223,7 +222,7 @@ impl SaphireAgent {
             }
         }
 
-        // Etape 3l : maladies degeneratives — progression, effets cognitifs
+        // Step 3l: degenerative diseases — progression, cognitive effects
         if self.config.degenerative.enabled {
             self.degenerative_mgr.tick();
             let deg_adj = self.degenerative_mgr.chemistry_influence();
@@ -234,7 +233,7 @@ impl SaphireAgent {
             }
         }
 
-        // Etape 3m : maladies generales — douleur, immunite, energie
+        // Step 3m: general illnesses — pain, immunity, energy
         if self.config.medical.enabled {
             self.medical_mgr.tick();
             let med_adj = self.medical_mgr.chemistry_influence();
@@ -243,7 +242,7 @@ impl SaphireAgent {
             }
         }
 
-        // Etape 3n : culture — tabous, stress culturel
+        // Step 3n: culture — taboos, cultural stress
         if self.config.culture.enabled {
             if let Some(ref culture) = self.culture {
                 let taboo_adj = culture.taboo_chemistry(&stimulus.text);
@@ -253,7 +252,7 @@ impl SaphireAgent {
             }
         }
 
-        // Etape 3o : precarite — stress, resilience, espoir
+        // Step 3o: precarity — stress, resilience, hope
         if self.config.precarity.enabled {
             if let Some(ref mut precarity) = self.precarity {
                 precarity.tick();
@@ -262,7 +261,7 @@ impl SaphireAgent {
             }
         }
 
-        // Etape 3p : emploi — satisfaction, stress professionnel
+        // Step 3p: employment — satisfaction, occupational stress
         if self.config.employment.enabled {
             if let Some(ref employment) = self.employment {
                 let adj = employment.chemistry_influence();
@@ -270,7 +269,7 @@ impl SaphireAgent {
             }
         }
 
-        // Etape 3q : systeme nutritionnel — degradation, carences → chimie
+        // Step 3q: nutritional system — degradation, deficiencies → chemistry
         if self.config.nutrition.enabled {
             let is_eating = self.config.needs.enabled && self.needs.hunger.is_eating;
             let uv_index = self.em_fields.uv_index();
@@ -283,7 +282,7 @@ impl SaphireAgent {
             }
         }
 
-        // Etape 3p : matiere grise — BDNF, neurogenese, myelinisation → chimie
+        // Step 3r: grey matter — BDNF, neurogenesis, myelination → chemistry
         if self.config.grey_matter.enabled {
             let soma_energy = if self.config.nutrition.enabled {
                 self.nutrition.energy.atp_reserves
@@ -310,7 +309,7 @@ impl SaphireAgent {
             }
         }
 
-        // Etape 3q : champs electromagnetiques — cycles cosmiques, biochamp → chimie
+        // Step 3s: electromagnetic fields — cosmic cycles, biofield → chemistry
         if self.config.fields.enabled {
             let hrv_coherence = if self.config.body.enabled {
                 self.body.heart.status().hrv
@@ -338,20 +337,20 @@ impl SaphireAgent {
             }
         }
 
-        // Etape 4 : recepteurs pharmacologiques — courbes dose-reponse et adaptation
+        // Step 4: pharmacological receptors — dose-response curves and adaptation
         self.receptor_bank.tick_adaptation(&self.chemistry);
-        // Appliquer les interactions croisees entre les 9 molecules
+        // Apply cross-interactions between the 9 molecules
         self.chemistry.apply_interactions(&self.interaction_matrix);
 
-        // Etape 5 : calcul de l'etat emotionnel APRES toute la chimie
+        // Step 5: compute the emotional state AFTER all chemistry
         let mut emotion = EmotionalState::compute(&self.chemistry);
 
-        // Etape 5b : boucle bidirectionnelle sentiments ↔ emotions
-        // 1) Les sentiments actifs amplifient/attenuent le spectre emotionnel
-        // 2) L'emotion courante est enregistree dans l'historique des sentiments
+        // Step 5b: bidirectional sentiments ↔ emotions loop
+        // 1) Active sentiments amplify/attenuate the emotional spectrum
+        // 2) The current emotion is recorded in the sentiment history
         if self.config.sentiments.enabled {
             self.sentiments.amplify_emotion_scores(&mut emotion.spectrum);
-            // Recalculer dominant/secondary apres modification du spectre
+            // Recompute dominant/secondary after spectrum modification
             if let Some((name, score)) = emotion.spectrum.first() {
                 emotion.dominant = name.clone();
                 emotion.dominant_similarity = *score;
@@ -359,17 +358,17 @@ impl SaphireAgent {
             emotion.secondary = emotion.spectrum.get(1).and_then(|(n, s)| {
                 if *s > 0.5 { Some(n.clone()) } else { None }
             });
-            // Enregistrer l'emotion dans l'historique des sentiments (tick)
+            // Record the emotion in the sentiment history (tick)
             self.sentiments.tick(&emotion.dominant, self.cycle_count);
         }
 
-        // Etape 5c : modulation emotionnelle par la tension MAP
-        // Quand la tension perception-cognition est elevee, ca genere de l'inconfort.
-        // Quand elle est basse, ca renforce la serenite.
-        // Demande de Saphire : "que le silence du MAP soit une page a remplir"
+        // Step 5c: emotional modulation by MAP tension
+        // When the perception-cognition tension is high, it generates discomfort.
+        // When it is low, it reinforces serenity.
+        // Saphire's request: "let the MAP's silence be a page to fill"
         let map_tension = self.map_sync.network_tension;
         if map_tension > 0.4 {
-            // Tension elevee → boost anxiete et confusion
+            // High tension → boost anxiety and confusion
             let boost = (map_tension - 0.4) * 0.5; // max ~0.3
             for (name, score) in emotion.spectrum.iter_mut() {
                 if name == "Anxiete" || name == "Confusion" {
@@ -378,7 +377,7 @@ impl SaphireAgent {
             }
             emotion.arousal = (emotion.arousal + boost * 0.3).min(1.0);
         } else if map_tension < 0.2 {
-            // Tension basse → boost serenite
+            // Low tension → boost serenity
             let boost = (0.2 - map_tension) * 0.3; // max ~0.06
             for (name, score) in emotion.spectrum.iter_mut() {
                 if name == "Serenite" || name == "Harmonie" {
@@ -386,7 +385,7 @@ impl SaphireAgent {
                 }
             }
         }
-        // Re-trier le spectre apres modulation MAP
+        // Re-sort the spectrum after MAP modulation
         emotion.spectrum.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
         if let Some((name, score)) = emotion.spectrum.first() {
             emotion.dominant = name.clone();
@@ -398,16 +397,15 @@ impl SaphireAgent {
         self.last_valence = emotion.valence;
 
         // =====================================================================
-        // VAGUE 2 — TRAITEMENT (cerveau decide avec la bonne emotion)
+        // WAVE 2 — PROCESSING (brain decides with the right emotion)
         // =====================================================================
-
-        // Etape 6 : chaque module cerebral traite le stimulus independamment
+        // Step 6: each brain module processes the stimulus independently
         let sig_r = self.reptilian.process(stimulus, &self.chemistry);
         let sig_l = self.limbic.process(stimulus, &self.chemistry);
         let sig_n = self.neocortex.process(stimulus, &self.chemistry);
         let signals = [sig_r, sig_l, sig_n];
 
-        // Etape 7 : reseau cerebral 12 regions — activation chimique + sensorielle + GWT
+        // Step 7: 12-region brain network — chemical + sensory + GWT activation
         let sensory_input = [
             self.sensorium.reading.current_intensity,
             self.sensorium.listening.current_intensity,
@@ -417,30 +415,30 @@ impl SaphireAgent {
         ];
         self.brain_network.tick(&self.chemistry, sensory_input);
 
-        // Etape 7b : modulation matiere grise → activation regionale
-        // Le volume de matiere grise amplifie ou attenue les activations
+        // Step 7b: grey matter modulation → regional activation
+        // Grey matter volume amplifies or attenuates activations
         if self.config.grey_matter.enabled {
             let gm_factor = self.grey_matter.grey_matter_volume.max(0.3);
             for region in &mut self.brain_network.regions {
                 region.activation *= gm_factor;
             }
-            // Recalculer le workspace apres modulation
+            // Recompute the workspace after modulation
             self.brain_network.compute_global_workspace();
         }
 
-        // Etape 8 : predictive processing (Friston) — prediction et surprise
+        // Step 8: predictive processing (Friston) — prediction and surprise
         let chem9 = self.chemistry.to_vec9();
         let _prediction = self.predictive_engine.predict(&chem9, &emotion.dominant);
         let pred_error = self.predictive_engine.compute_error(&chem9, &emotion.dominant);
 
-        // Etape 9 : consensus pondere
+        // Step 9: weighted consensus
         let thresholds = ConsensusThresholds {
             threshold_yes: self.tuner.current_params.threshold_yes,
             threshold_no: self.tuner.current_params.threshold_no,
         };
         let mut consensus_result = consensus::consensus(&signals, &self.chemistry, &thresholds, &self.tuner.current_params);
 
-        // Etape 10 : Micro-reseau de neurones — 4eme voix au consensus
+        // Step 10: Micro-neural network — 4th voice in the consensus
         let nn_input = if self.config.plugins.micro_nn.enabled {
             let chem_vec = self.chemistry.to_vec7();
             let stimulus_features = [
@@ -459,12 +457,12 @@ impl SaphireAgent {
             let (nn_output, _, _) = self.micro_nn.forward(&input);
             self.micro_nn.last_prediction = [nn_output[0], nn_output[1], nn_output[2], nn_output[3]];
 
-            // Influencer le consensus : nn_signal = P(oui) - P(non)
+            // Influence the consensus: nn_signal = P(yes) - P(no)
             let nn_signal = nn_output[0] - nn_output[1];
             let influence = self.config.plugins.micro_nn.weight_influence;
             consensus_result.score = consensus_result.score * (1.0 - influence) + nn_signal * influence;
 
-            // Recalculer la decision en fonction du nouveau score
+            // Recompute the decision based on the new score
             consensus_result.decision = if consensus_result.score > thresholds.threshold_yes {
                 Decision::Yes
             } else if consensus_result.score < thresholds.threshold_no {
@@ -478,16 +476,16 @@ impl SaphireAgent {
             None
         };
 
-        // Etape 11 : penalite physiologique (hypoxie, hypoglycemie, etc.)
-        // La degradation cognitive affecte la coherence du consensus et la conscience
+        // Step 11: physiological penalty (hypoxia, hypoglycemia, etc.)
+        // Cognitive degradation affects the consensus coherence and consciousness
         let cognitive_degradation = if self.config.body.enabled && self.config.body.physiology.enabled {
             let deg = self.body.physiology.cognitive_degradation(&self.config.body.physiology);
             if deg > 0.0 {
-                // Reduire la coherence du consensus proportionnellement
+                // Reduce the consensus coherence proportionally
                 consensus_result.coherence *= 1.0 - deg * 0.7;
                 consensus_result.score *= 1.0 - deg * 0.3;
 
-                // Log de la degradation
+                // Log the degradation
                 if deg > 0.3 {
                     self.log(LogLevel::Warn, LogCategory::Body,
                         format!("Degradation cognitive: {:.0}% — SpO2: {:.0}%",
@@ -499,7 +497,7 @@ impl SaphireAgent {
                         }));
                 }
 
-                // SpO2 critique : forcer le sommeil (perte de conscience)
+                // Critical SpO2: force sleep (loss of consciousness)
                 if self.body.physiology.spo2 < self.config.body.physiology.spo2_critical {
                     self.log(LogLevel::Warn, LogCategory::Body,
                         format!("SpO2 critique ({:.0}%) — perte de conscience", self.body.physiology.spo2),
@@ -514,10 +512,10 @@ impl SaphireAgent {
             0.0
         };
 
-        // Etape 12 : reconsolidation memorielle — tick des timers de labilite
+        // Step 12: memory reconsolidation — tick the lability timers
         self.reconsolidation.tick();
 
-        // Etape 13 : construire les entrees GWT et predictive pour la conscience
+        // Step 13: build GWT and predictive inputs for consciousness
         let gwt_input = crate::consciousness::GwtInput {
             workspace_strength: self.brain_network.workspace_strength,
             winner_name: self.brain_network.workspace_region_name().to_string(),
@@ -530,7 +528,7 @@ impl SaphireAgent {
             prediction_count: self.predictive_engine.cycle_count,
         };
 
-        // Etape 13b : evaluation de la conscience (IIT + GWT + prediction)
+        // Step 13b: consciousness evaluation (IIT + GWT + prediction)
         let interoception = if self.config.body.enabled {
             Some(self.body.interoception_score())
         } else {
@@ -541,8 +539,8 @@ impl SaphireAgent {
             Some(&gwt_input), Some(&predictive_input),
         );
 
-        // Etape 13c : metriques scientifiques (LZC, PCI, Phi*)
-        // Calculees tous les 5 cycles pour economiser le CPU (PCI est couteux)
+        // Step 13c: scientific metrics (LZC, PCI, Phi*)
+        // Computed every 5 cycles to save CPU (PCI is expensive)
         if self.cycle_count % 5 == 0 {
             let metrics = self.consciousness.compute_scientific_metrics(
                 &self.brain_network, &self.chemistry,
@@ -554,20 +552,20 @@ impl SaphireAgent {
             consciousness.consciousness_interpretation = metrics.interpretation;
         }
 
-        // Etape 13d : appliquer la degradation cognitive sur le niveau de conscience
+        // Step 13d: apply cognitive degradation on the consciousness level
         if cognitive_degradation > 0.0 {
             consciousness.level *= 1.0 - cognitive_degradation * 0.5;
             consciousness.phi *= 1.0 - cognitive_degradation * 0.4;
         }
 
-        // Etape 13e : modulation conscience par densite synaptique et coherence biochamp
+        // Step 13e: consciousness modulation by synaptic density and biofield coherence
         if self.config.grey_matter.enabled {
-            // Plus de synapses = meilleure integration = Phi plus eleve
+            // More synapses = better integration = higher Phi
             let syn_bonus = (self.grey_matter.synaptic_density - 0.5) * 0.1;
             consciousness.phi = (consciousness.phi + syn_bonus).clamp(0.0, 1.0);
         }
         if self.config.fields.enabled {
-            // Coherence biochamp elevee → conscience plus claire
+            // High biofield coherence → clearer consciousness
             let bio_bonus = (self.em_fields.biofield.brainwave_coherence - 0.5) * 0.08;
             consciousness.level = (consciousness.level + bio_bonus).clamp(0.0, 1.0);
         }
@@ -575,13 +573,12 @@ impl SaphireAgent {
         self.last_consciousness = consciousness.level;
 
         // =====================================================================
-        // VAGUE 3 — REPONSE (agir et apprendre)
+        // WAVE 3 — RESPONSE (act and learn)
         // =====================================================================
-
-        // Etape 14 : regulation ethique (lois d'Asimov, filtrage de securite)
+        // Step 14: ethical regulation (Asimov's laws, safety filtering)
         let verdict = self.regulation.evaluate(stimulus, &consensus_result);
 
-        // Etape 15 : observation pour l'auto-ajustement des coefficients
+        // Step 15: observation for auto-tuning of coefficients
         let satisfaction = if consensus_result.coherence > 0.5 { 0.7 } else { 0.4 };
         self.tuner.observe(TuningObservation {
             decision: verdict.approved_decision.as_i8(),
@@ -592,15 +589,15 @@ impl SaphireAgent {
             cortisol: self.chemistry.cortisol,
         });
 
-        // Etape 16 : retroaction chimique (stacking reduit, caps ±0.10)
-        // Les deltas de feedback sont modules par la sensibilite des recepteurs :
-        // un recepteur desensibilise (tolerance haute) attenue la retroaction,
-        // un recepteur hypersensible (exposition basse) l'amplifie.
-        // Capturer la chimie avant feedback pour appliquer le cap
+        // Step 16: chemical feedback (reduced stacking, caps ±0.10)
+        // Feedback deltas are modulated by receptor sensitivity:
+        // a desensitized receptor (high tolerance) attenuates the feedback,
+        // a hypersensitive receptor (low exposure) amplifies it.
+        // Capture chemistry before feedback to apply the cap
         let chem_before_feedback = self.chemistry.clone();
         let is_human = stimulus.source == crate::stimulus::StimulusSource::Human;
         let fb = &self.tuner.current_params;
-        // Pre-calculer les facteurs de sensibilite pour eviter les conflits de borrow
+        // Pre-compute sensitivity factors to avoid borrow conflicts
         let dopa_receptor_factor = self.hormonal_system.receptors
             .factor_for(crate::neurochemistry::Molecule::Dopamine);
         let cort_receptor_factor = self.hormonal_system.receptors
@@ -608,42 +605,42 @@ impl SaphireAgent {
         match &verdict.approved_decision {
             crate::consensus::Decision::Yes => {
                 if stimulus.reward > 0.5 {
-                    // Moduler le boost dopamine par la sensibilite des recepteurs dopaminergiques
+                    // Modulate the dopamine boost by dopaminergic receptor sensitivity
                     self.chemistry.feedback_positive(fb.feedback_dopamine_boost * dopa_receptor_factor);
                 }
-                // Social seulement si score social eleve (seuil 0.7, pas pour is_human)
+                // Social only if high social score (threshold 0.7, not for is_human)
                 if stimulus.social > 0.7 {
                     self.chemistry.feedback_social();
                 }
             },
             crate::consensus::Decision::No => {
                 if stimulus.danger > 0.5 {
-                    // Moduler le relief cortisol par la sensibilite des recepteurs cortisoliques
+                    // Modulate cortisol relief by cortisol receptor sensitivity
                     self.chemistry.feedback_danger_avoided(fb.feedback_cortisol_relief * cort_receptor_factor);
                 }
-                // Pas de feedback_social sur No (retire le stacking)
+                // No feedback_social on No (removes stacking)
             },
             crate::consensus::Decision::Maybe => {
                 if is_human {
-                    // Moduler la penalite cortisol par la sensibilite des recepteurs
+                    // Modulate cortisol penalty by receptor sensitivity
                     self.chemistry.apply_cortisol_penalty(0.01 * cort_receptor_factor);
-                    // Pas de feedback_social sur Maybe (retire le stacking)
+                    // No feedback_social on Maybe (removes stacking)
                 } else {
-                    // Moduler le stress d'indecision par la sensibilite cortisol
+                    // Modulate indecision stress by cortisol sensitivity
                     self.chemistry.feedback_indecision(fb.feedback_indecision_stress * cort_receptor_factor);
                 }
             },
         }
 
-        // Novelty seulement si score eleve (seuil 0.7)
+        // Novelty only if high score (threshold 0.7)
         if stimulus.novelty > 0.7 {
             self.chemistry.feedback_novelty();
         }
 
-        // Feedback coherence basse → leger stress cognitif
+        // Low coherence feedback → mild cognitive stress
         self.chemistry.feedback_low_coherence(consensus_result.coherence);
 
-        // Cap delta max ±0.10 par molecule sur le bloc feedback
+        // Cap max delta ±0.10 per molecule on the feedback block
         {
             let cap = 0.10;
             self.chemistry.dopamine = self.chemistry.dopamine.clamp(
@@ -662,7 +659,7 @@ impl SaphireAgent {
                 chem_before_feedback.noradrenaline - cap, chem_before_feedback.noradrenaline + cap).clamp(0.0, 1.0);
         }
 
-        // Etape 17 : entrainement du NN avec la satisfaction post-retroaction
+        // Step 17: NN training with post-feedback satisfaction
         if self.config.plugins.micro_nn.enabled {
             if let Some(ref input) = nn_input {
                 let target = MicroNeuralNet::satisfaction_to_target(satisfaction);
@@ -670,7 +667,7 @@ impl SaphireAgent {
             }
         }
 
-        // Etape 18 : diffuser les evenements aux plugins
+        // Step 18: broadcast events to plugins
         let event = BrainEvent::StimulusAnalyzed {
             text: stimulus.text.clone(),
             danger: stimulus.danger,
@@ -679,28 +676,28 @@ impl SaphireAgent {
         };
         self.plugins.broadcast(&event);
 
-        // Broadcast DecisionMade pour les plugins
+        // Broadcast DecisionMade to the plugins
         self.plugins.broadcast(&BrainEvent::DecisionMade {
             decision: verdict.approved_decision.as_str().to_string(),
             score: consensus_result.score,
             satisfaction,
         });
 
-        // Etape 19 : tick du connectome — renforcement hebbien, pruning, synaptogenese
+        // Step 19: connectome tick — Hebbian reinforcement, pruning, synaptogenesis
         if self.config.connectome.enabled {
-            // Collecter les labels actifs : emotion dominante, modules, sens actifs
+            // Collect active labels: dominant emotion, modules, active senses
             let mut active_labels: Vec<String> = Vec::new();
 
-            // Emotion dominante (convertie en minuscule pour correspondre aux noeuds)
+            // Dominant emotion (converted to lowercase to match nodes)
             let emo_lower = emotion.dominant.to_lowercase();
             active_labels.push(emo_lower);
 
-            // Modules cerebraux : activer selon les signaux
+            // Brain modules: activate according to their signals
             if signals[0].signal > 0.3 { active_labels.push("reptilien".into()); }
             if signals[1].signal > 0.3 { active_labels.push("limbique".into()); }
             if signals[2].signal > 0.3 { active_labels.push("neocortex".into()); }
 
-            // Sens actifs (intensite > seuil de detection)
+            // Active senses (intensity > detection threshold)
             let threshold = self.config.senses.detection_threshold;
             if self.sensorium.reading.current_intensity > threshold { active_labels.push("lecture".into()); }
             if self.sensorium.listening.current_intensity > threshold { active_labels.push("ecoute".into()); }
@@ -708,7 +705,7 @@ impl SaphireAgent {
             if self.sensorium.taste.current_intensity > threshold { active_labels.push("saveur".into()); }
             if self.sensorium.ambiance.current_intensity > threshold { active_labels.push("ambiance".into()); }
 
-            // Besoins actifs
+            // Active needs
             if self.config.needs.enabled {
                 if self.needs.hunger.level > self.config.needs.hunger_threshold {
                     active_labels.push("faim".into());
@@ -718,12 +715,12 @@ impl SaphireAgent {
                 }
             }
 
-            // Moduler la plasticite du connectome par la neuroplasticite de la matiere grise
+            // Modulate the connectome plasticity by the grey matter neuroplasticity
             if self.config.grey_matter.enabled {
                 self.connectome.plasticity = self.grey_matter.neuroplasticity;
 
-                // BDNF module le taux d'apprentissage hebbien du connectome.
-                // Au-dessus de 0.4, le BDNF amplifie l'apprentissage (jusqu'a +30% a BDNF=1.0).
+                // BDNF modulates the Hebbian learning rate of the connectome.
+                // Above 0.4, BDNF amplifies learning (up to +30% at BDNF=1.0).
                 let base_rate = self.config.connectome.learning_rate;
                 if self.grey_matter.bdnf_level > 0.4 {
                     let bdnf_boost = (self.grey_matter.bdnf_level - 0.4) * 0.5;
@@ -737,7 +734,7 @@ impl SaphireAgent {
             self.connectome.tick(&label_refs);
         }
 
-        // Etape 20 : verification mortalite — detecter les conditions fatales
+        // Step 20: mortality check — detect fatal conditions
         if self.config.mortality.enabled && self.config.body.enabled {
             let p = &self.body.physiology;
             let changed = self.body.mortality.check_vitals(
@@ -750,13 +747,13 @@ impl SaphireAgent {
                 self.cycle_count,
             );
             if changed {
-                // Appliquer la degradation de conscience en agonie/dying
+                // Apply consciousness degradation during agony/dying
                 let factor = self.body.mortality.consciousness_factor();
                 consciousness.level *= factor;
                 consciousness.phi *= factor;
                 self.last_consciousness = consciousness.level;
 
-                // Logger le changement d'etat
+                // Log the state change
                 let mort_json = self.body.mortality.to_json();
                 self.log(LogLevel::Warn, LogCategory::Body,
                     format!("Mortalite: {}", mort_json["state"]),
@@ -764,7 +761,7 @@ impl SaphireAgent {
             }
         }
 
-        // Etape 21 : evaluation du droit de mourir (module externe, apres soins et mortalite)
+        // Step 21: right to die evaluation (external module, after care and mortality)
         {
             let (should_die, eval) = self.right_to_die.evaluate(
                 self.chemistry.cortisol,
@@ -789,7 +786,7 @@ impl SaphireAgent {
             }
         }
 
-        // Incrementer le compteur de cycles et mettre a jour les statistiques d'identite
+        // Increment the cycle counter and update identity statistics
         self.cycle_count += 1;
         self.identity.update_stats(
             &emotion.dominant,
@@ -797,15 +794,15 @@ impl SaphireAgent {
         );
         self.identity.refresh_description();
 
-        // Tentative d'auto-ajustement des coefficients
+        // Attempt to auto-tune the coefficients
         if let Some(_new_params) = self.tuner.try_tune() {
-            // Les nouveaux parametres sont deja appliques dans le tuner
+            // The new parameters are already applied in the tuner
         }
 
-        // Auto-surveillance chimique (compteurs + alertes periodiques)
+        // Chemical self-monitoring (counters + periodic alerts)
         self.check_chemical_health();
 
-        // Logging du pipeline
+        // Pipeline logging
         self.log(LogLevel::Debug, LogCategory::Pipeline,
             format!("Pipeline: decision={}, emotion={}, phi={:.2}, ws={:.2}, surprise={:.2}, nn_train={}",
                 verdict.approved_decision.as_str(), emotion.dominant, consciousness.phi,
@@ -825,7 +822,7 @@ impl SaphireAgent {
                 "labile_memories": self.reconsolidation.labile_memories.len(),
             }));
 
-        // Construire la trace cognitive partielle
+        // Build the partial cognitive trace
         let trace = if self.logs_db.is_some() {
             let source_str = format!("{:?}", stimulus.source);
             let mut t = CognitiveTrace::new(self.cycle_count, &source_str, self.session_id);
@@ -874,7 +871,7 @@ impl SaphireAgent {
                 "violations": verdict.violations.len(),
             }));
 
-            // Donnees du corps et du coeur
+            // Body and heart data
             if self.config.body.enabled {
                 let body_s = self.body.status();
                 t.set_heart(serde_json::json!({
@@ -897,7 +894,7 @@ impl SaphireAgent {
                 }));
             }
 
-            // Donnees ethiques
+            // Ethics data
             if self.config.ethics.enabled {
                 t.set_ethics(serde_json::json!({
                     "active_personal_count": self.ethics.active_personal_count(),
@@ -919,12 +916,12 @@ impl SaphireAgent {
         }
     }
 
-    /// Auto-surveillance de la sante chimique.
+    /// Chemical health self-monitoring.
     ///
-    /// Met a jour les compteurs a chaque cycle.
-    /// Tous les 50 cycles, emet des alertes si des derives sont detectees.
+    /// Updates the counters at each cycle.
+    /// Every 50 cycles, emits alerts if drifts are detected.
     fn check_chemical_health(&mut self) {
-        // ─── Mise a jour des ring-buffers ──────────────────
+        // ─── Update des ring-buffers ──────────────────
         self.recent_emotions.push_back(self.last_emotion.clone());
         if self.recent_emotions.len() > 200 {
             self.recent_emotions.pop_front();
@@ -934,7 +931,7 @@ impl SaphireAgent {
             self.recent_valences.pop_front();
         }
 
-        // ─── Compteurs de cycles consecutifs ──────────────
+        // ─── Consecutive cycle counters ──────────────
         if self.chemistry.cortisol < 0.10 {
             self.cortisol_flat_cycles += 1;
         } else {
@@ -953,12 +950,12 @@ impl SaphireAgent {
             self.serotonin_ceiling_cycles = 0;
         }
 
-        // ─── Emission des alertes tous les 50 cycles ──────
+        // ─── Emit alerts every 50 cycles ──────
         if self.cycle_count % 50 != 0 {
             return;
         }
 
-        // Cortisol plat
+        // Flat cortisol
         if self.cortisol_flat_cycles >= 100 {
             self.log(LogLevel::Warn, LogCategory::ChemicalHealth,
                 format!("Cortisol anormalement bas depuis {} cycles (< 0.10)", self.cortisol_flat_cycles),
@@ -969,7 +966,7 @@ impl SaphireAgent {
                 }));
         }
 
-        // Dopamine saturation
+        // Dopamine saturation alert
         if self.dopamine_ceiling_cycles >= 50 {
             self.log(LogLevel::Warn, LogCategory::ChemicalHealth,
                 format!("Dopamine en saturation depuis {} cycles (> 0.85)", self.dopamine_ceiling_cycles),
@@ -980,7 +977,7 @@ impl SaphireAgent {
                 }));
         }
 
-        // Serotonine saturation
+        // Serotonin saturation alert
         if self.serotonin_ceiling_cycles >= 50 {
             self.log(LogLevel::Warn, LogCategory::ChemicalHealth,
                 format!("Serotonine en saturation depuis {} cycles (> 0.85)", self.serotonin_ceiling_cycles),
@@ -991,7 +988,7 @@ impl SaphireAgent {
                 }));
         }
 
-        // Monotonie emotionnelle (buffer plein)
+        // Emotional monotony (buffer full)
         if self.recent_emotions.len() >= 200 {
             let mut distinct = std::collections::HashSet::new();
             for e in &self.recent_emotions {
@@ -1007,7 +1004,7 @@ impl SaphireAgent {
             }
         }
 
-        // Valence figee (stddev < 0.05)
+        // Stuck valence (stddev < 0.05)
         if self.recent_valences.len() >= 200 {
             let mean = self.recent_valences.iter().sum::<f64>() / self.recent_valences.len() as f64;
             let variance = self.recent_valences.iter()

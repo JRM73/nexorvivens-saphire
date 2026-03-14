@@ -1,8 +1,8 @@
 // =============================================================================
-// api/nn_learnings.rs — Endpoints pour les apprentissages vectoriels
+// api/nn_learnings.rs — Endpoints for the learnings vector
 //
-// Role : Fournit 2 endpoints REST pour consulter les nn_learnings
-// depuis le dashboard (sous-onglet memoire + panneau systeme).
+// Role: Fournit 2 endpoints REST for consulter les nn_learnings
+// from the dashboard (sous-onglet memoire + panneau systeme).
 // =============================================================================
 
 use std::collections::HashMap;
@@ -45,7 +45,7 @@ pub async fn api_nn_learnings_recent(
     }
 }
 
-/// GET /api/nn-learnings/stats — Statistiques des apprentissages vectoriels.
+/// GET /api/nn-learnings/stats — Statistiques des learnings vector.
 pub async fn api_nn_learnings_stats(
     State(state): State<AppState>,
 ) -> impl IntoResponse {
@@ -56,7 +56,7 @@ pub async fn api_nn_learnings_stats(
 
     if let Some(ref db) = agent.db {
         let count = db.count_learnings().await.unwrap_or(0);
-        // Domaines uniques via les apprentissages recents
+        // Domaines uniques via les learnings recents
         let recent = db.load_recent_learnings(100).await.unwrap_or_default();
         let mut domains: Vec<String> = recent.iter().map(|l| l.domain.clone()).collect();
         domains.sort();

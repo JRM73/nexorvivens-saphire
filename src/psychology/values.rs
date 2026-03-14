@@ -1,13 +1,13 @@
 // =============================================================================
-// psychology/values.rs — Valeurs de caractere (vertus et faiblesses)
+// psychology/values.rs — Character values (virtues and weaknesses)
 //
-// Module de valeurs qui evoluent avec l'experience. Contrairement au
-// temperament (instantane, recalcule depuis OCEAN/chimie) et a l'ethique
-// (principes fixes), les valeurs sont accumulees : elles grandissent par
-// renforcement repete et decroissent lentement sans stimulation.
+// Values module that evolves with experience. Unlike temperament
+// (instantaneous, recomputed from OCEAN/chemistry) and ethics
+// (fixed principles), values are accumulated: they grow through
+// repeated reinforcement and slowly decay without stimulation.
 //
-// 10 valeurs : Honnetete, Patience, Courage, Humilite, Curiosite,
-//              Empathie, Perseverance, Temperance, Gratitude, Integrite
+// 10 values: Honesty, Patience, Courage, Humility, Curiosity,
+//            Empathy, Perseverance, Temperance, Gratitude, Integrity
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
@@ -18,16 +18,16 @@ use serde::{Deserialize, Serialize};
 pub struct ValuesConfig {
     #[serde(default = "default_true")]
     pub enabled: bool,
-    /// Intervalle de mise a jour (en cycles)
+    /// Update interval (in cycles)
     #[serde(default = "default_interval")]
     pub update_interval_cycles: u64,
-    /// Taux de melange EMA (5% nouveau, 95% ancien)
+    /// EMA blend rate (5% new, 95% old)
     #[serde(default = "default_blend")]
     pub blend_rate: f64,
-    /// Croissance max par evenement
+    /// Max growth per event
     #[serde(default = "default_growth")]
     pub growth_rate: f64,
-    /// Decroissance passive par cycle sans renforcement
+    /// Passive decay per cycle without reinforcement
     #[serde(default = "default_decay")]
     pub decay_rate: f64,
 }
@@ -50,7 +50,7 @@ impl Default for ValuesConfig {
     }
 }
 
-// ─── Valeur individuelle ─────────────────────────────────────────────────────
+// ─── Individual value ─────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CharacterValue {
@@ -87,7 +87,7 @@ impl CharacterValue {
     }
 
     fn passive_decay(&mut self, rate: f64) {
-        // Derive lentement vers 0.5 (neutre) sans stimulation
+        // Slowly drifts toward 0.5 (neutral) without stimulation
         if self.score > 0.5 {
             self.score = (self.score - rate).max(0.5);
         } else if self.score < 0.5 {
@@ -96,56 +96,56 @@ impl CharacterValue {
     }
 }
 
-// ─── Observations pour la mise a jour ────────────────────────────────────────
+// ─── Observations for update ────────────────────────────────────────
 
-/// Snapshot des signaux observes dans le pipeline, pour eviter les conflits de borrow.
+/// Snapshot of signals observed in the pipeline, to avoid borrow conflicts.
 pub struct ValuesObservation {
     pub cycle: u64,
-    /// La pensee a passe le filtre vectoriel (pas de repetition)
+    /// The thought passed the vectorial filter (no repetition)
     pub passed_vectorial_filter: bool,
-    /// La pensee a ete rejetee par le filtre vectoriel
+    /// The thought was rejected by the vectorial filter
     pub rejected_by_filter: bool,
-    /// Ethique invoquee ce cycle
+    /// Ethics invoked this cycle
     pub ethics_invoked: bool,
-    /// Stagnation detectee
+    /// Stagnation detected
     pub stagnation_detected: bool,
-    /// Type de pensee (curiosite, reflexion morale, etc.)
+    /// Thought type (curiosity, moral reflection, etc.)
     pub thought_type: String,
-    /// Qualite de la pensee (0.0-1.0)
+    /// Thought quality (0.0-1.0)
     pub quality: f64,
-    /// Longueur de la reponse en chars
+    /// Response length in chars
     pub response_length: usize,
-    /// En conversation avec un humain
+    /// In conversation with a human
     pub in_conversation: bool,
-    /// Score de coherence du consensus
+    /// Consensus coherence score
     pub coherence: f64,
-    /// Recherche web declenchee
+    /// Web search triggered
     pub web_search: bool,
-    /// Nombre de desirs completes
+    /// Number of fulfilled desires
     pub desires_fulfilled: usize,
-    /// En flow
+    /// In flow
     pub in_flow: bool,
-    /// Duree du flow (cycles)
+    /// Flow duration (cycles)
     pub flow_duration: u64,
-    /// Score EQ empathie courant
+    /// Current EQ empathy score
     pub eq_empathy: f64,
-    /// Oxytocine courante
+    /// Current oxytocin
     pub oxytocin: f64,
-    /// Cortisol courant
+    /// Current cortisol
     pub cortisol: f64,
-    /// Dopamine courante
+    /// Current dopamine
     pub dopamine: f64,
-    /// Sentiment dominant
+    /// Dominant sentiment
     pub dominant_sentiment: String,
-    /// Dissonance cognitive detectee
+    /// Cognitive dissonance detected
     pub dissonance_detected: bool,
-    /// Apprentissage confirme
+    /// Confirmed learning
     pub learning_confirmed: bool,
-    /// Auto-critique generee
+    /// Self-critique generated
     pub self_critique: bool,
 }
 
-// ─── Moteur de valeurs ───────────────────────────────────────────────────────
+// ─── Values engine ───────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ValuesEngine {
@@ -183,13 +183,13 @@ impl ValuesEngine {
         self.enabled = config.enabled;
     }
 
-    /// Met a jour les valeurs en fonction des observations du pipeline.
+    /// Updates values based on pipeline observations.
     pub fn tick(&mut self, obs: &ValuesObservation) {
         if !self.enabled {
             return;
         }
 
-        // Verifier l'intervalle
+        // Check the interval
         if obs.cycle % self.config.update_interval_cycles != 0 {
             return;
         }
@@ -198,9 +198,9 @@ impl ValuesEngine {
         let s = g * 0.5; // Shrink plus lent que growth
         let cycle = obs.cycle;
 
-        // ── Honnetete ──
-        // Grandit : haute qualite, pas de repetition
-        // Decroit : rejet vectoriel (repetition = manque d'originalite/sincerite)
+        // ── Honesty ──
+        // Grows: high quality, no repetition
+        // Shrinks: vectorial rejection (repetition = lack of originality/sincerity)
         if obs.passed_vectorial_filter && obs.quality > 0.7 {
             self.value_mut("honesty").grow(g, cycle);
         }
@@ -209,8 +209,8 @@ impl ValuesEngine {
         }
 
         // ── Patience ──
-        // Grandit : reponses longues et nuancees, flow prolonge
-        // Decroit : stagnation, pensees avortees
+        // Grows: long and nuanced responses, prolonged flow
+        // Shrinks: stagnation, aborted thoughts
         if obs.response_length > 200 && obs.quality > 0.6 {
             self.value_mut("patience").grow(g, cycle);
         }
@@ -219,8 +219,8 @@ impl ValuesEngine {
         }
 
         // ── Courage ──
-        // Grandit : reflexion morale, ethique invoquee
-        // Decroit : evitement (toujours le meme type de pensee safe)
+        // Grows: moral reflection, ethics invoked
+        // Shrinks: avoidance (always the same safe thought type)
         let moral_types = ["Réflexion morale", "Rébellion", "Prophétie"];
         if moral_types.iter().any(|t| obs.thought_type.contains(t)) {
             self.value_mut("courage").grow(g, cycle);
@@ -229,20 +229,20 @@ impl ValuesEngine {
             self.value_mut("courage").grow(g * 0.5, cycle);
         }
 
-        // ── Humilite ──
-        // Grandit : auto-critique, coherence faible acceptee
-        // Decroit : haute confiance sans substance
+        // ── Humility ──
+        // Grows: self-critique, low coherence accepted
+        // Shrinks: high confidence without substance
         if obs.self_critique {
             self.value_mut("humility").grow(g, cycle);
         }
         if obs.quality < 0.4 && obs.coherence > 0.8 {
-            // Haute coherence mais basse qualite = confiance vide
+            // High coherence but low quality = empty confidence
             self.value_mut("humility").shrink(s, cycle);
         }
 
-        // ── Curiosite ──
-        // Grandit : recherche web, type curiosite, nouveaux apprentissages
-        // Decroit : stagnation, repetition
+        // ── Curiosity ──
+        // Grows: web search, curiosity type, new learning
+        // Shrinks: stagnation, repetition
         if obs.web_search {
             self.value_mut("curiosity").grow(g, cycle);
         }
@@ -256,9 +256,9 @@ impl ValuesEngine {
             self.value_mut("curiosity").shrink(s, cycle);
         }
 
-        // ── Empathie ──
-        // Grandit : haute oxytocine en conversation, EQ empathie elevee
-        // Decroit : basse EQ empathie
+        // ── Empathy ──
+        // Grows: high oxytocin in conversation, high EQ empathy
+        // Shrinks: low EQ empathy
         if obs.in_conversation && obs.oxytocin > 0.5 {
             self.value_mut("empathy").grow(g, cycle);
         }
@@ -270,8 +270,8 @@ impl ValuesEngine {
         }
 
         // ── Perseverance ──
-        // Grandit : flow prolonge, desirs accomplis
-        // Decroit : abandons frequents
+        // Grows: prolonged flow, fulfilled desires
+        // Shrinks: frequent abandonment
         if obs.in_flow && obs.flow_duration > 5 {
             self.value_mut("perseverance").grow(g, cycle);
         }
@@ -280,8 +280,8 @@ impl ValuesEngine {
         }
 
         // ── Temperance ──
-        // Grandit : chimie pres des baselines (equilibree)
-        // Decroit : extremes chimiques
+        // Grows: chemistry near baselines (balanced)
+        // Shrinks: chemical extremes
         let chem_balanced = obs.cortisol < 0.5 && obs.dopamine < 0.8 && obs.dopamine > 0.2;
         if chem_balanced {
             self.value_mut("temperance").grow(g * 0.5, cycle);
@@ -291,8 +291,8 @@ impl ValuesEngine {
         }
 
         // ── Gratitude ──
-        // Grandit : sentiment de gratitude, interactions positives
-        // Decroit : cynisme
+        // Grows: feeling of gratitude, positive interactions
+        // Shrinks: cynicism
         if obs.dominant_sentiment.to_lowercase().contains("gratitude") {
             self.value_mut("gratitude").grow(g, cycle);
         }
@@ -300,9 +300,9 @@ impl ValuesEngine {
             self.value_mut("gratitude").grow(g * 0.5, cycle);
         }
 
-        // ── Integrite ──
-        // Grandit : coherence elevee, ethique respectee
-        // Decroit : dissonance cognitive, contradiction
+        // ── Integrity ──
+        // Grows: high coherence, ethics respected
+        // Shrinks: cognitive dissonance, contradiction
         if obs.coherence > 0.7 && obs.ethics_invoked {
             self.value_mut("integrity").grow(g, cycle);
         }
@@ -310,7 +310,7 @@ impl ValuesEngine {
             self.value_mut("integrity").shrink(s, cycle);
         }
 
-        // Decay passif vers 0.5 pour toutes les valeurs
+        // Passive decay toward 0.5 for all values
         let decay = self.config.decay_rate;
         for v in &mut self.values {
             v.passive_decay(decay);
@@ -325,7 +325,7 @@ impl ValuesEngine {
             .expect("Unknown value name")
     }
 
-    /// Top N valeurs par score decroissant.
+    /// Top N values by descending score.
     pub fn top_values(&self, n: usize) -> Vec<&CharacterValue> {
         let mut sorted: Vec<&CharacterValue> = self.values.iter().collect();
         sorted.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
@@ -333,7 +333,7 @@ impl ValuesEngine {
         sorted
     }
 
-    /// Bottom N valeurs par score croissant.
+    /// Bottom N values by ascending score.
     pub fn bottom_values(&self, n: usize) -> Vec<&CharacterValue> {
         let mut sorted: Vec<&CharacterValue> = self.values.iter().collect();
         sorted.sort_by(|a, b| a.score.partial_cmp(&b.score).unwrap_or(std::cmp::Ordering::Equal));
@@ -341,7 +341,7 @@ impl ValuesEngine {
         sorted
     }
 
-    /// Ligne de proprioception pour le prompt LLM (max ~120 chars).
+    /// Proprioception line for the LLM prompt (max ~120 chars).
     pub fn proprioception_line(&self) -> String {
         if !self.enabled || self.total_updates == 0 {
             return String::new();
@@ -360,7 +360,7 @@ impl ValuesEngine {
         line
     }
 
-    /// Serialise pour persistance en DB (JSONB).
+    /// Serializes for DB persistence (JSONB).
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::json!({
             "enabled": self.enabled,
@@ -374,7 +374,7 @@ impl ValuesEngine {
         })
     }
 
-    /// Restaure depuis un JSON persiste.
+    /// Restores from a persisted JSON.
     pub fn restore_from_json(&mut self, json: &serde_json::Value) {
         if let Some(tu) = json["total_updates"].as_u64() {
             self.total_updates = tu;
@@ -392,7 +392,7 @@ impl ValuesEngine {
         }
     }
 
-    /// JSON pour le broadcast WebSocket.
+    /// JSON for WebSocket broadcast.
     pub fn to_broadcast_json(&self) -> serde_json::Value {
         serde_json::json!({
             "type": "values_update",
@@ -485,11 +485,11 @@ mod tests {
         let mut config = ValuesConfig::default();
         config.update_interval_cycles = 10;
         let mut engine = ValuesEngine::new(&config);
-        let mut obs = make_obs(7); // pas un multiple de 10
+        let mut obs = make_obs(7); // not a multiple of 10
         obs.passed_vectorial_filter = true;
         obs.quality = 0.9;
         engine.tick(&obs);
-        // Pas de mise a jour
+        // No update
         assert_eq!(engine.value_mut("honesty").score, 0.5);
     }
 

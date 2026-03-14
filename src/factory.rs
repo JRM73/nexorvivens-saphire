@@ -1,83 +1,83 @@
 // =============================================================================
-// factory.rs — Valeurs d'usine et mecanisme de reset
+// factory.rs — Factory defaults and reset mechanism
 // =============================================================================
 //
-// Role : Charge les valeurs de conception originales de Saphire depuis
-//        factory_defaults.toml (embarque dans le binaire). Fournit 9 niveaux
-//        de reset : chimie, parametres, sens, intuition, ethique, psychologie,
-//        sommeil, biologie, et reset complet.
+// Role: Loads the original design values of Saphire from
+//        factory_defaults.toml (embedded in the binary). Provides 9 reset
+//  levels: chemistry, parameters, senses, intuition, ethics, psychology,
+//        sleep, biology, and full reset.
 //
-// Dependances :
-//   - toml : parsing du fichier TOML
-//   - serde/serde_json : serialisation
+// Dependencies:
+//   - toml : TOML file parsing
+//  - serde/serde_json : serialization
 //
-// Place dans l'architecture :
-//   Ce module est utilise par l'API REST et le WebSocket pour restaurer
-//   les parametres d'usine quand une modification manuelle desequilibre
-//   le systeme.
+// Place in architecture:
+//   This module is used by the REST API and WebSocket to restore
+//  factory defaults when a manual modification unbalances
+//   the system.
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 
-/// Le fichier factory_defaults.toml est embarque dans le binaire
+/// The factory_defaults.toml file is embedded in the binary
 const FACTORY_DEFAULTS_TOML: &str = include_str!("../factory_defaults.toml");
 
-/// Niveaux de reset disponibles
+/// Available reset levels
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ResetLevel {
-    /// Reset chimie seulement — remet les 7 molecules aux baselines.
-    /// Ne touche PAS aux souvenirs, personnalite, ou identite.
+    /// Reset chemistry only — resets the 7 molecules to baselines.
+    /// Does NOT touch memories, personality, or identity.
     ChemistryOnly,
-    /// Reset parametres — remet tous les parametres de fonctionnement
-    /// aux valeurs d'usine. Ne touche PAS aux souvenirs ou identite.
+    /// Reset parameters — resets all operating parameters
+    /// to factory defaults. Does NOT touch memories or identity.
     ParametersOnly,
-    /// Reset sens — remet les acuites des 5 sens aux valeurs initiales
-    /// et reinitialise la stimulation des graines emergentes.
-    /// Les sens germes sont PRESERVES.
+    /// Reset senses — resets the 5 senses' acuities to initial values
+    /// and reinitializes emergent seed stimulation.
+    /// Germinated senses are PRESERVED.
     SensesOnly,
-    /// Reset intuition + premonition — remet acuite et precision a l'initial.
-    /// Efface les predictions actives mais pas les patterns appris.
+    /// Reset intuition + premonition — resets acuity and accuracy to initial values.
+    /// Clears active predictions but not learned patterns.
     IntuitionOnly,
-    /// Reset ethique personnelle — desactive tous les principes personnels.
-    /// NE TOUCHE PAS aux couches 0 (Suisse) et 1 (Asimov).
+    /// Reset personal ethics — deactivates all personal principles.
+    /// Does NOT touch layers 0 (Swiss law) and 1 (Asimov).
     PersonalEthicsOnly,
-    /// Reset psychologie — reinitialise tous les frameworks psychologiques
-    /// (Freud, Maslow, Tolteques, Jung, EQ, Flow) aux valeurs initiales.
-    /// Ne touche PAS aux souvenirs, chimie, ou identite.
+    /// Reset psychology — reinitializes all psychological frameworks
+    /// (Freud, Maslow, Toltec, Jung, EQ, Flow) to initial values.
+    /// Does NOT touch memories, chemistry, or identity.
     PsychologyOnly,
-    /// Reset sommeil — remet la pression de sommeil, les compteurs de fatigue.
-    /// NE TOUCHE PAS : sleep_history, neural_connections, subconscient.
+    /// Reset sleep — resets sleep pressure and fatigue counters.
+    /// Does NOT touch: sleep_history, neural_connections, subconscious.
     SleepOnly,
-    /// Reset biologie — remet les recepteurs (sensibilite=1.0, tolerance=0.0),
-    /// le BDNF (0.5 baseline), et la matiere grise aux valeurs par defaut.
-    /// Ne touche PAS aux souvenirs, chimie courante, ou identite.
+    /// Reset biology — resets receptors (sensitivity=1.0, tolerance=0.0),
+    /// BDNF (0.5 baseline), and grey matter to default values.
+    /// Does NOT touch memories, current chemistry, or identity.
     BiologyReset,
-    /// Reset complet — remet TOUT aux valeurs d'usine.
-    /// ATTENTION : efface les souvenirs episodiques et reinitialise le profil.
-    /// Les founding_memories, la LTM, et l'etincelle sont PRESERVEES.
-    /// Le beat_count du coeur n'est JAMAIS remis a zero.
+    /// Full reset — resets EVERYTHING to factory defaults.
+    /// WARNING: erases episodic memories and reinitializes the profile.
+    /// Founding_memories, LTM, and the spark are PRESERVED.
+    /// The heart's beat_count is NEVER reset to zero.
     FullReset,
 }
 
-/// Parametres de fonctionnement extraits des valeurs d'usine
+/// Operating parameters extracted from factory defaults
 #[derive(Debug, Clone, Serialize)]
 pub struct FactoryParams {
-    // Chimie
+    // Chemistry
     pub homeostasis_rate: f64,
     pub baselines: [f64; 7],
-    // Cerveau
+    // Brain
     pub threshold_yes: f64,
     pub threshold_no: f64,
-    // Pensee
+    // Thought
     pub thought_interval: u64,
     // LLM
     pub temperature: f64,
     pub max_tokens: u32,
     pub max_tokens_thought: u32,
-    // Corps
+    // Body
     pub resting_bpm: f64,
-    // Memoire
+    // Memory
     pub wm_capacity: usize,
     pub wm_decay: f64,
     pub episodic_decay: f64,
@@ -89,17 +89,17 @@ pub struct FactoryParams {
     pub intuition_initial_accuracy: f64,
     // Premonition
     pub premonition_initial_accuracy: f64,
-    // Sens
+    // Senses
     pub senses_detection_threshold: f64,
     pub reading_initial_acuity: f64,
     pub listening_initial_acuity: f64,
     pub contact_initial_acuity: f64,
     pub taste_initial_acuity: f64,
     pub ambiance_initial_acuity: f64,
-    // Ethique
+    // Ethics
     pub ethics_max_principles: usize,
     pub ethics_cooldown_cycles: u64,
-    // Apprentissages vectoriels (nn_learning)
+    // Vector learnings (nn_learning)
     pub nn_learning_enabled: bool,
     pub nn_learning_cooldown: u64,
     pub nn_max_learnings: u64,
@@ -107,14 +107,14 @@ pub struct FactoryParams {
     pub nn_min_conditions: u64,
     pub nn_learning_search_limit: u64,
     pub nn_learning_search_threshold: f64,
-    // Sommeil
+    // Sleep
     pub sleep_enabled: bool,
     pub sleep_threshold: f64,
     pub forced_sleep_threshold: f64,
-    // Subconscient
+    // Subconscious
     pub subconscious_enabled: bool,
     pub subconscious_awake_activation: f64,
-    // Recepteurs
+    // Receptors
     pub receptor_adaptation_rate: f64,
     pub receptor_recovery_rate: f64,
     // BDNF
@@ -131,21 +131,21 @@ pub struct FactoryParams {
     pub bdnf_connectome_boost_factor: f64,
 }
 
-/// Gestionnaire des valeurs d'usine
+/// Factory defaults manager
 pub struct FactoryDefaults {
     config: toml::Value,
 }
 
 impl FactoryDefaults {
-    /// Charge les valeurs d'usine depuis le TOML embarque
+    /// Loads factory defaults from the embedded TOML
     pub fn load() -> Result<Self, String> {
         let config: toml::Value = toml::from_str(FACTORY_DEFAULTS_TOML)
             .map_err(|e| format!("Erreur parsing factory_defaults.toml: {}", e))?;
         Ok(Self { config })
     }
 
-    /// Retourne les 7 baselines chimiques d'usine
-    /// Ordre : [dopamine, cortisol, serotonin, adrenaline, oxytocin, endorphin, noradrenaline]
+    /// Returns the 7 factory chemical baselines
+    /// Order: [dopamine, cortisol, serotonin, adrenaline, oxytocin, endorphin, noradrenaline]
     pub fn reset_chemistry(&self) -> [f64; 7] {
         let b = &self.config["chemistry"]["baselines"];
         [
@@ -159,7 +159,7 @@ impl FactoryDefaults {
         ]
     }
 
-    /// Retourne tous les parametres d'usine
+    /// Returns all factory parameters
     pub fn reset_parameters(&self) -> FactoryParams {
         let baselines = self.reset_chemistry();
         FactoryParams {
@@ -183,17 +183,17 @@ impl FactoryDefaults {
             intuition_initial_accuracy: self.get_f64("intuition.initial_accuracy", 0.5),
             // Premonition
             premonition_initial_accuracy: self.get_f64("premonition.initial_accuracy", 0.5),
-            // Sens
+            // Senses
             senses_detection_threshold: self.get_f64("senses.detection_threshold", 0.1),
             reading_initial_acuity: self.get_f64("senses.reading.initial_acuity", 0.3),
             listening_initial_acuity: self.get_f64("senses.listening.initial_acuity", 0.3),
             contact_initial_acuity: self.get_f64("senses.contact.initial_acuity", 0.3),
             taste_initial_acuity: self.get_f64("senses.taste.initial_acuity", 0.3),
             ambiance_initial_acuity: self.get_f64("senses.ambiance.initial_acuity", 0.2),
-            // Ethique
+            // Ethics
             ethics_max_principles: self.get_u64("ethics.personal.max_personal_principles", 20) as usize,
             ethics_cooldown_cycles: self.get_u64("ethics.personal.formulation_cooldown_cycles", 100),
-            // Apprentissages vectoriels
+            // Vector learnings
             nn_learning_enabled: self.get_bool("nn_learning.enabled", true),
             nn_learning_cooldown: self.get_u64("nn_learning.cooldown_cycles", 15),
             nn_max_learnings: self.get_u64("nn_learning.max_learnings", 200),
@@ -201,14 +201,14 @@ impl FactoryDefaults {
             nn_min_conditions: self.get_u64("nn_learning.min_conditions", 2),
             nn_learning_search_limit: self.get_u64("nn_learning.search_limit", 3),
             nn_learning_search_threshold: self.get_f64("nn_learning.search_threshold", 0.35),
-            // Sommeil
+            // Sleep
             sleep_enabled: self.get_bool("sleep.enabled", true),
             sleep_threshold: self.get_f64("sleep.sleep_threshold", 0.7),
             forced_sleep_threshold: self.get_f64("sleep.forced_sleep_threshold", 0.95),
-            // Subconscient
+            // Subconscious
             subconscious_enabled: self.get_bool("subconscious.enabled", true),
             subconscious_awake_activation: self.get_f64("subconscious.awake_activation", 0.2),
-            // Recepteurs
+            // Receptors
             receptor_adaptation_rate: self.get_f64("receptors.adaptation_rate", 0.02),
             receptor_recovery_rate: self.get_f64("receptors.recovery_rate", 0.005),
             // BDNF
@@ -226,12 +226,12 @@ impl FactoryDefaults {
         }
     }
 
-    /// Retourne tout le contenu du factory_defaults.toml en JSON
+    /// Returns the entire content of factory_defaults.toml as JSON
     pub fn as_json(&self) -> serde_json::Value {
         serde_json::to_value(&self.config).unwrap_or_default()
     }
 
-    /// Naviguer dans le TOML par chemin pointe (ex: "chemistry.baselines.dopamine")
+    /// Navigate the TOML by dotted path (e.g.: "chemistry.baselines.dopamine")
     pub fn get_f64(&self, path: &str, default: f64) -> f64 {
         let parts: Vec<&str> = path.split('.').collect();
         let mut current = &self.config;

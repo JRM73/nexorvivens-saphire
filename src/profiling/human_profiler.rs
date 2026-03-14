@@ -1,34 +1,34 @@
 // =============================================================================
-// human_profiler.rs — HumanProfiler : profilage psychologique des interlocuteurs
+// human_profiler.rs — HumanProfiler: psychological profiling of interlocutors
 //
-// Role : Analyse les messages des interlocuteurs humains pour construire et
-//        mettre a jour leur profil psychologique OCEAN (Openness /
-//        Conscientiousness / Extraversion / Agreeableness / Neuroticism)
-//        et leur style de communication.
+// Role: Analyzes human interlocutors' messages to build and update their
+//       OCEAN psychological profile (Openness / Conscientiousness /
+//       Extraversion / Agreeableness / Neuroticism) and their
+//       communication style.
 //
-// Fonctionnement :
-//   A chaque message humain, le profiler met a jour :
-//     1. Le style de communication (verbosite, formalite, emotionnalite, etc.)
-//     2. Les dimensions OCEAN (par inference a partir du contenu et du style)
-//     3. Les patterns emotionnels (historique des polarites de sentiment)
-//     4. Le score de rapport (qualite de la relation)
+// How it works:
+//   For each human message, the profiler updates:
+//     1. Communication style (verbosity, formality, emotionality, etc.)
+//     2. OCEAN dimensions (inferred from content and style)
+//     3. Emotional patterns (sentiment polarity history)
+//     4. Rapport score (relationship quality)
 //
-//   Le lissage exponentiel (80% ancien + 20% nouveau) est utilise pour le style
-//   de communication, et (90% ancien + 10% nouveau) pour les dimensions OCEAN,
-//   afin d'eviter les fluctuations brusques.
+//   Exponential smoothing (80% old + 20% new) is used for communication
+//   style, and (90% old + 10% new) for OCEAN dimensions, to avoid
+//   abrupt fluctuations.
 //
-// Dependances :
-//   - std::collections::HashMap : stockage des profils et des patterns emotionnels
-//   - chrono : horodatage des interactions
-//   - serde : serialisation pour la persistance
-//   - crate::nlp : NlpResult (resultat de l'analyse NLP du message)
-//   - crate::nlp::intent : Intent (intention detectee du message)
-//   - super::ocean : OceanProfile
+// Dependencies:
+//   - std::collections::HashMap: storage of profiles and emotional patterns
+//   - chrono: interaction timestamps
+//   - serde: serialization for persistence
+//   - crate::nlp: NlpResult (NLP analysis result of the message)
+//   - crate::nlp::intent: Intent (detected intent of the message)
+//   - super::ocean: OceanProfile
 //
-// Place dans l'architecture :
-//   Appele par la boucle cognitive principale quand un message humain est recu.
-//   Le profil humain produit est consomme par le module adaptation pour generer
-//   des instructions de style adaptees a l'interlocuteur.
+// Place in architecture:
+//   Called by the main cognitive loop when a human message is received.
+//   The resulting human profile is consumed by the adaptation module to
+//   generate style instructions adapted to the interlocutor.
 // =============================================================================
 
 use std::collections::HashMap;
@@ -38,44 +38,44 @@ use crate::nlp::NlpResult;
 use crate::nlp::intent::Intent;
 use super::ocean::OceanProfile;
 
-/// Profil psychologique d'un interlocuteur humain construit par observation.
+/// Psychological profile of a human interlocutor built through observation.
 ///
-/// Accumule les donnees au fil des interactions pour affiner progressivement
-/// le portrait psychologique et le style de communication de l'humain.
+/// Accumulates data over interactions to progressively refine
+/// the psychological portrait and communication style of the human.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HumanProfile {
-    /// Nom ou identifiant de l'humain profile
+    /// Name or identifier of the profiled human
     pub name: String,
-    /// Profil OCEAN (Big Five) estime par observation des messages
+    /// OCEAN (Big Five) profile estimated through message observation
     pub ocean: OceanProfile,
-    /// Style de communication observe (verbosite, formalite, etc.)
+    /// Observed communication style (verbosity, formality, etc.)
     pub communication_style: CommunicationStyle,
-    /// Nombre total d'interactions enregistrees avec cet humain
+    /// Total number of recorded interactions with this human
     pub interaction_count: u64,
-    /// Horodatage de la premiere interaction
+    /// Timestamp of the first interaction
     pub first_seen: DateTime<Utc>,
-    /// Horodatage de la derniere interaction
+    /// Timestamp of the last interaction
     pub last_seen: DateTime<Utc>,
-    /// Liste des sujets preferes detectes dans les conversations
+    /// List of preferred topics detected in conversations
     pub preferred_topics: Vec<String>,
-    /// Historique des patterns emotionnels : cle = label de polarite
-    /// ("positif", "negatif", "neutre"), valeur = nombre d'occurrences
+    /// Emotional pattern history: key = polarity label
+    /// ("positif", "negatif", "neutre"), value = occurrence count
     pub emotional_patterns: HashMap<String, u32>,
-    /// Score de rapport dans [0.0, 1.0] : qualite estimee de la relation.
-    /// Augmente quand les interactions sont positives, stagne ou diminue sinon.
+    /// Rapport score in [0.0, 1.0]: estimated relationship quality.
+    /// Increases when interactions are positive, stagnates or decreases otherwise.
     pub rapport_score: f64,
 }
 
 impl HumanProfile {
-    /// Cree un nouveau profil humain avec les valeurs par defaut.
+    /// Creates a new human profile with default values.
     ///
-    /// Le profil OCEAN est initialise a neutre (0.5), le style de communication
-    /// est a la valeur mediane, et le rapport est a 0.5.
+    /// The OCEAN profile is initialized to neutral (0.5), communication style
+    /// is at median value, and rapport is at 0.5.
     ///
-    /// Parametres :
-    ///   - name : le nom ou identifiant de l'humain
+    /// Parameters:
+    ///   - name: the name or identifier of the human
     ///
-    /// Retour : un HumanProfile initialise
+    /// Returns: an initialized HumanProfile
     pub fn new(name: &str) -> Self {
         Self {
             name: name.to_string(),
@@ -91,34 +91,34 @@ impl HumanProfile {
     }
 }
 
-/// Style de communication observe d'un humain.
+/// Observed communication style of a human.
 ///
-/// Chaque dimension est une valeur dans [0.0, 1.0] qui est mise a jour
-/// par lissage exponentiel (80% ancien + 20% nouveau) a chaque message.
+/// Each dimension is a value in [0.0, 1.0] updated by exponential
+/// smoothing (80% old + 20% new) with each message.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CommunicationStyle {
-    /// Verbosite : tendance a ecrire des messages longs (0 = tres concis, 1 = tres verbeux).
-    /// Calculee a partir du nombre de mots par message, normalisee a 50 mots = 1.0.
+    /// Verbosity: tendency to write long messages (0 = very concise, 1 = very verbose).
+    /// Computed from word count per message, normalized to 50 words = 1.0.
     pub verbosity: f64,
-    /// Formalite : registre de langue (0 = tres familier/tutoiement, 1 = tres formel/vouvoiement).
-    /// Estimee par le ratio marqueurs formels / (marqueurs formels + informels).
+    /// Formality: language register (0 = very informal, 1 = very formal).
+    /// Estimated by the ratio of formal markers / (formal + informal markers).
     pub formality: f64,
-    /// Emotionnalite : tendance a exprimer des emotions dans les messages.
-    /// Basee sur la valeur absolue du score compose de sentiment (compound).
+    /// Emotionality: tendency to express emotions in messages.
+    /// Based on the absolute value of the sentiment compound score.
     pub emotionality: f64,
-    /// Directivite : tendance a donner des ordres ou des instructions directes.
-    /// Haute si le message commence par un verbe imperatif ou si l'intention est Command.
+    /// Directness: tendency to give orders or direct instructions.
+    /// High if the message starts with an imperative verb or if the intent is Command.
     pub directness: f64,
-    /// Taux de questionnement : proportion de messages contenant des questions.
-    /// 1.0 si le message contient '?', 0.0 sinon.
+    /// Questioning rate: proportion of messages containing questions.
+    /// 1.0 if the message contains '?', 0.0 otherwise.
     pub questioning_rate: f64,
-    /// Langue preferee de l'interlocuteur ("fr" pour francais, "en" pour anglais).
+    /// Preferred language of the interlocutor ("fr" for French, "en" for English).
     pub preferred_language: String,
 }
 
 impl Default for CommunicationStyle {
-    /// Style de communication par defaut : toutes les dimensions a 0.5 (neutre),
-    /// langue preferee = francais.
+    /// Default communication style: all dimensions at 0.5 (neutral),
+    /// preferred language = French.
     fn default() -> Self {
         Self {
             verbosity: 0.5,
@@ -131,12 +131,12 @@ impl Default for CommunicationStyle {
     }
 }
 
-/// Profiler des interlocuteurs humains interagissant avec Saphire.
+/// Profiler for human interlocutors interacting with Saphire.
 ///
-/// Maintient un dictionnaire de profils indexes par identifiant humain.
-/// Chaque nouveau message est analyse pour mettre a jour le profil correspondant.
+/// Maintains a dictionary of profiles indexed by human identifier.
+/// Each new message is analyzed to update the corresponding profile.
 pub struct HumanProfiler {
-    /// Dictionnaire des profils humains : cle = identifiant, valeur = profil
+    /// Dictionary of human profiles: key = identifier, value = profile
     profiles: HashMap<String, HumanProfile>,
 }
 
@@ -147,93 +147,93 @@ impl Default for HumanProfiler {
 }
 
 impl HumanProfiler {
-    /// Cree un nouveau HumanProfiler avec un dictionnaire vide.
+    /// Creates a new HumanProfiler with an empty dictionary.
     ///
-    /// Retour : une instance de HumanProfiler prete a observer
+    /// Returns: a HumanProfiler instance ready to observe
     pub fn new() -> Self {
         Self {
             profiles: HashMap::new(),
         }
     }
 
-    /// Retourne le profil d'un humain identifie par son ID.
+    /// Returns the profile of a human identified by their ID.
     ///
-    /// Parametres :
-    ///   - human_id : l'identifiant de l'humain
+    /// Parameters:
+    ///   - human_id: the human's identifier
     ///
-    /// Retour : Some(&HumanProfile) si le profil existe, None sinon
+    /// Returns: Some(&HumanProfile) if the profile exists, None otherwise
     pub fn get_profile(&self, human_id: &str) -> Option<&HumanProfile> {
         self.profiles.get(human_id)
     }
 
-    /// Retourne le profil actif (l'humain vu le plus recemment).
+    /// Returns the active profile (the most recently seen human).
     ///
-    /// Utile pour obtenir le profil de l'interlocuteur courant sans connaitre
-    /// son identifiant.
+    /// Useful for getting the current interlocutor's profile without knowing
+    /// their identifier.
     ///
-    /// Retour : Some(&HumanProfile) du profil le plus recent, None si aucun profil
+    /// Returns: Some(&HumanProfile) of the most recent profile, None if no profile
     pub fn current_profile(&self) -> Option<&HumanProfile> {
-        // Selectionner le profil avec le last_seen le plus recent
+        // Select the profile with the most recent last_seen
         self.profiles.values()
             .max_by_key(|p| p.last_seen)
     }
 
-    /// Charge des profils depuis une source externe (base de donnees).
+    /// Loads profiles from an external source (database).
     ///
-    /// Parametres :
-    ///   - profiles : liste de tuples (identifiant, profil) a charger
+    /// Parameters:
+    ///   - profiles: list of (identifier, profile) tuples to load
     pub fn load_profiles(&mut self, profiles: Vec<(String, HumanProfile)>) {
         for (id, profile) in profiles {
             self.profiles.insert(id, profile);
         }
     }
 
-    /// Retourne une reference vers le dictionnaire complet des profils.
+    /// Returns a reference to the complete profile dictionary.
     ///
-    /// Utile pour la sauvegarde periodique en base de donnees.
+    /// Useful for periodic database saving.
     ///
-    /// Retour : reference vers le HashMap de tous les profils
+    /// Returns: reference to the HashMap of all profiles
     pub fn all_profiles(&self) -> &HashMap<String, HumanProfile> {
         &self.profiles
     }
 
-    /// Analyse un message humain et met a jour le profil de l'interlocuteur.
+    /// Analyzes a human message and updates the interlocutor's profile.
     ///
-    /// Le traitement se fait en 4 etapes :
-    ///   1. Mise a jour du style de communication (verbosite, formalite, etc.)
-    ///   2. Estimation des dimensions OCEAN par inference
-    ///   3. Mise a jour des patterns emotionnels
-    ///   4. Mise a jour du score de rapport
+    /// Processing is done in 4 steps:
+    ///   1. Update communication style (verbosity, formality, etc.)
+    ///   2. Estimate OCEAN dimensions by inference
+    ///   3. Update emotional patterns
+    ///   4. Update rapport score
     ///
-    /// Parametres :
-    ///   - human_id : l'identifiant de l'humain
-    ///   - message : le texte brut du message
-    ///   - nlp_result : le resultat de l'analyse NLP du message
+    /// Parameters:
+    ///   - human_id: the human's identifier
+    ///   - message: the raw text of the message
+    ///   - nlp_result: the NLP analysis result of the message
     pub fn observe_message(
         &mut self,
         human_id: &str,
         message: &str,
         nlp_result: &NlpResult,
     ) {
-        // Obtenir ou creer le profil de l'humain
+        // Get or create the human's profile
         let profile = self.profiles.entry(human_id.to_string())
             .or_insert_with(|| HumanProfile::new(human_id));
 
         profile.interaction_count += 1;
         profile.last_seen = Utc::now();
 
-        // === Etape 1 : Estimer le style de communication ===
+        // === Step 1: Estimate communication style ===
         let word_count = message.split_whitespace().count() as f64;
         let style = &mut profile.communication_style;
 
-        // Verbosite : nombre de mots normalise a 50 (50 mots = verbosite maximale)
-        // Lissage exponentiel : 80% ancien + 20% nouveau
+        // Verbosity: word count normalized to 50 (50 words = maximum verbosity)
+        // Exponential smoothing: 80% old + 20% new
         let msg_verbosity = (word_count / 50.0).min(1.0);
         style.verbosity = style.verbosity * 0.8 + msg_verbosity * 0.2;
 
-        // Formalite : ratio marqueurs formels / (formels + informels)
-        // Marqueurs formels : vouvoiement, formules de politesse
-        // Marqueurs informels : tutoiement, argot, abreviations
+        // Formality: ratio of formal markers / (formal + informal)
+        // Formal markers: formal address, polite expressions
+        // Informal markers: casual address, slang, abbreviations
         let formal_markers = ["vous", "veuillez", "cordialement", "merci de",
                               "pourriez-vous", "je vous prie", "would you"];
         let informal_markers = ["tu", "salut", "cool", "mdr", "lol", "hey",
@@ -248,12 +248,12 @@ impl HumanProfiler {
         } else { 0.5 };
         style.formality = style.formality * 0.8 + msg_formality * 0.2;
 
-        // Emotionnalite : basee sur la valeur absolue du score compose de sentiment
+        // Emotionality: based on the absolute value of the sentiment compound score
         let msg_emotionality = nlp_result.sentiment.compound.abs();
         style.emotionality = style.emotionality * 0.8 + msg_emotionality * 0.2;
 
-        // Directivite : haute si le message commence par un verbe imperatif
-        // ou si l'intention NLP detectee est un ordre (Command)
+        // Directness: high if the message starts with an imperative verb
+        // or if the detected NLP intent is a Command
         let directive_markers = ["fais", "cree", "montre", "donne", "change",
                                  "arrete", "do", "make", "show", "give"];
         let is_directive = directive_markers.iter()
@@ -262,53 +262,53 @@ impl HumanProfiler {
         let msg_directness = if is_directive { 0.9 } else { 0.4 };
         style.directness = style.directness * 0.8 + msg_directness * 0.2;
 
-        // Taux de questionnement : 1.0 si le message contient '?', 0.0 sinon
+        // Questioning rate: 1.0 if the message contains '?', 0.0 otherwise
         let has_question = message.contains('?');
         let msg_questioning = if has_question { 1.0 } else { 0.0 };
         style.questioning_rate = style.questioning_rate * 0.8 + msg_questioning * 0.2;
 
-        // Langue preferee : mise a jour si la langue est detectee
+        // Preferred language: updated if the language is detected
         style.preferred_language = match nlp_result.language {
             crate::nlp::preprocessor::Language::French => "fr".into(),
             crate::nlp::preprocessor::Language::English => "en".into(),
             crate::nlp::preprocessor::Language::Unknown => style.preferred_language.clone(),
         };
 
-        // === Etape 2 : Estimer les dimensions OCEAN de l'humain ===
-        // Les estimations utilisent un lissage plus lent (90% ancien + 10% nouveau)
-        // car le profil OCEAN doit etre stable dans le temps.
+        // === Step 2: Estimate the human's OCEAN dimensions ===
+        // Estimates use slower smoothing (90% old + 10% new)
+        // because the OCEAN profile must remain stable over time.
         let ocean = &mut profile.ocean;
 
-        // Ouverture (Openness) : augmente si le message est philosophique ou interrogatif,
-        // car la curiosite et la reflexion sont des marqueurs d'ouverture.
+        // Openness: increases if the message is philosophical or questioning,
+        // as curiosity and reflection are markers of openness.
         if nlp_result.intent.primary_intent == Intent::Philosophical
            || nlp_result.intent.primary_intent == Intent::Question {
             ocean.openness.score = (ocean.openness.score * 0.9 + 0.8 * 0.1).min(1.0);
         }
 
-        // Extraversion : augmente si le message est long (> 30 mots) ou contient des '!',
-        // car l'expressivite et l'enthousiasme sont des marqueurs d'extraversion.
+        // Extraversion: increases if the message is long (> 30 words) or contains '!',
+        // as expressiveness and enthusiasm are markers of extraversion.
         if word_count > 30.0 || message.contains('!') {
             ocean.extraversion.score = (ocean.extraversion.score * 0.9 + 0.7 * 0.1).min(1.0);
         }
 
-        // Agreabilite : augmente si le message contient des mots chaleureux
-        // (remerciements, compliments, confiance).
+        // Agreeableness: increases if the message contains warm words
+        // (thanks, compliments, trust).
         let warm_words = ["merci", "bravo", "super", "bien", "confiance",
                           "j'apprecie", "thanks", "great", "love"];
         if warm_words.iter().any(|w| lower.contains(w)) {
             ocean.agreeableness.score = (ocean.agreeableness.score * 0.9 + 0.8 * 0.1).min(1.0);
         }
 
-        // Nevrosisme (Neuroticism) : augmente si le stimulus du message a une
-        // forte urgence (> 0.5) ou un danger significatif (> 0.3), car l'anxiete
-        // et le stress sont des marqueurs de nevrosisme.
+        // Neuroticism: increases if the message stimulus has high
+        // urgency (> 0.5) or significant danger (> 0.3), as anxiety
+        // and stress are markers of neuroticism.
         if nlp_result.stimulus.urgency > 0.5 || nlp_result.stimulus.danger > 0.3 {
             ocean.neuroticism.score = (ocean.neuroticism.score * 0.9 + 0.6 * 0.1).min(1.0);
         }
 
-        // === Etape 3 : Patterns emotionnels ===
-        // Classe le sentiment du message en 3 categories et incremente le compteur
+        // === Step 3: Emotional patterns ===
+        // Classifies the message sentiment into 3 categories and increments the counter
         let polarity_label = if nlp_result.sentiment.compound > 0.2 { "positif" }
             else if nlp_result.sentiment.compound < -0.2 { "negatif" }
             else { "neutre" };
@@ -316,10 +316,10 @@ impl HumanProfiler {
             .entry(polarity_label.to_string()).or_insert(0);
         *emotion_entry += 1;
 
-        // === Etape 4 : Score de rapport ===
-        // Le rapport augmente legerement (+0.02) a chaque interaction positive.
-        // Il est plafonne a 1.0. Les interactions negatives ne diminuent pas le rapport
-        // (stabilite relationnelle).
+        // === Step 4: Rapport score ===
+        // Rapport increases slightly (+0.02) with each positive interaction.
+        // It is capped at 1.0. Negative interactions do not decrease rapport
+        // (relational stability).
         if nlp_result.sentiment.compound > 0.0 {
             profile.rapport_score = (profile.rapport_score + 0.02).min(1.0);
         }

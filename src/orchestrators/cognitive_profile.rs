@@ -1,18 +1,17 @@
 // =============================================================================
-// orchestrators/cognitive_profile.rs — Orchestrateur de Profils Cognitifs
+// orchestrators/cognitive_profile.rs — Cognitive Profile Orchestrator
 //
-// Role : Charge et applique des profils cognitifs neurodivergents (TDAH,
-// autisme, TAG, HPI, bipolaire, TOC) sous forme de presets TOML embarques.
-// Chaque profil surcharge les baselines chimiques et les parametres des
-// orchestrateurs existants. Gere les transitions douces et les cycles
-// bipolaires.
+// Role: Loads and applies neurodivergent cognitive profiles (ADHD, autism,
+// GAD, HPI, bipolar, OCD) as embedded TOML presets. Each profile overrides
+// chemical baselines and existing orchestrator parameters. Manages smooth
+// transitions and bipolar cycles.
 //
-// Pattern identique aux orchestrateurs existants (attention, healing, etc.) :
-//   - new() : construction depuis la config
-//   - load_profile() : charge un profil par son ID
-//   - tick() : transitions douces + cycles bipolaires
-//   - describe_for_prompt() : contexte LLM
-//   - to_status_json() : etat JSON pour dashboard/API
+// Same pattern as existing orchestrators (attention, healing, etc.):
+//   - new(): construction from config
+//   - load_profile(): loads a profile by its ID
+//   - tick(): smooth transitions + bipolar cycles
+//   - describe_for_prompt(): LLM context
+//   - to_status_json(): JSON state for dashboard/API
 // =============================================================================
 
 use std::collections::HashMap;
@@ -20,7 +19,7 @@ use serde::Deserialize;
 
 use crate::neurochemistry::NeuroBaselines;
 
-// ─── Profils embarques via include_str! ─────────────────────────────────────
+// --- Embedded profiles via include_str! ---------------------------------------
 
 const EMBEDDED_PROFILES: &[(&str, &str)] = &[
     ("neurotypique", include_str!("../../profiles/neurotypique.toml")),
@@ -34,9 +33,9 @@ const EMBEDDED_PROFILES: &[(&str, &str)] = &[
     ("toc", include_str!("../../profiles/toc.toml")),
 ];
 
-// ─── Structures de deserialization TOML ─────────────────────────────────────
+// --- TOML deserialization structures ------------------------------------------
 
-/// Structure brute d'un fichier preset TOML (deserialization partielle).
+/// Raw structure of a TOML preset file (partial deserialization).
 #[derive(Debug, Deserialize, Default)]
 struct RawProfile {
     #[serde(default)]
@@ -159,12 +158,12 @@ struct RawBipolarPhaseOverrides {
     min_dopamine_for_birth: Option<f64>,
 }
 
-// ─── Structures publiques ───────────────────────────────────────────────────
+// --- Public structures --------------------------------------------------------
 
-/// Surcharges d'un profil cognitif — seuls les champs Some() sont appliques.
+/// Cognitive profile overrides — only Some() fields are applied.
 #[derive(Debug, Clone, Default)]
 pub struct ProfileOverrides {
-    // Chimie baselines
+    // Chemical baselines
     pub baseline_dopamine: Option<f64>,
     pub baseline_serotonin: Option<f64>,
     pub baseline_noradrenaline: Option<f64>,
@@ -181,28 +180,28 @@ pub struct ProfileOverrides {
     pub initial_concentration: Option<f64>,
     pub fatigue_per_cycle: Option<f64>,
     pub recovery_per_cycle: Option<f64>,
-    // Desirs
+    // Desires
     pub desires_max_active: Option<usize>,
     pub desires_min_dopamine: Option<f64>,
     pub desires_max_cortisol: Option<f64>,
-    // Apprentissage
+    // Learning
     pub learning_cycle_interval: Option<u64>,
     pub learning_initial_confidence: Option<f64>,
     pub learning_confirmation_boost: Option<f64>,
     pub learning_contradiction_penalty: Option<f64>,
-    // Guerison
+    // Healing
     pub healing_melancholy_threshold: Option<u64>,
     pub healing_loneliness_hours: Option<f64>,
     pub healing_overload_noradrenaline: Option<f64>,
-    // Sommeil
+    // Sleep
     pub sleep_threshold: Option<f64>,
     pub sleep_time_factor_divisor: Option<u64>,
     pub sleep_adrenaline_resistance: Option<f64>,
-    // Poids des pensees
+    // Thought weights
     pub thought_weights: Option<HashMap<String, f64>>,
 }
 
-/// Descripteur complet d'un profil cognitif.
+/// Complete descriptor of a cognitive profile.
 #[derive(Debug, Clone)]
 pub struct ProfileDescriptor {
     pub id: String,
@@ -214,7 +213,7 @@ pub struct ProfileDescriptor {
     pub bipolar_config: Option<BipolarConfig>,
 }
 
-/// Configuration des cycles bipolaires.
+/// Bipolar cycle configuration.
 #[derive(Debug, Clone)]
 pub struct BipolarConfig {
     pub cycle_length_cycles: u64,
@@ -224,7 +223,7 @@ pub struct BipolarConfig {
     pub depression_overrides: ProfileOverrides,
 }
 
-/// Phase actuelle du cycle bipolaire.
+/// Current phase of the bipolar cycle.
 #[derive(Debug, Clone, PartialEq)]
 pub enum BipolarPhase {
     Euthymie,
@@ -242,45 +241,45 @@ impl BipolarPhase {
     }
 }
 
-// ─── Orchestrateur ──────────────────────────────────────────────────────────
+// --- Orchestrator -------------------------------------------------------------
 
-/// Orchestrateur de profils cognitifs neurodivergents.
+/// Neurodivergent cognitive profile orchestrator.
 ///
-/// Charge des presets TOML, applique les surcharges sur les baselines et
-/// parametres, gere les transitions douces et les cycles bipolaires.
+/// Loads TOML presets, applies overrides on baselines and parameters,
+/// manages smooth transitions and bipolar cycles.
 pub struct CognitiveProfileOrchestrator {
-    /// Profil actuellement actif (None = aucun charge)
+    /// Currently active profile (None = none loaded)
     pub active_profile: Option<ProfileDescriptor>,
-    /// IDs des profils disponibles
+    /// IDs of available profiles
     pub available_profiles: Vec<String>,
-    /// Transition en cours entre deux profils
+    /// Transition in progress between two profiles
     pub transition_in_progress: bool,
-    /// Progression de la transition (0.0 → 1.0)
+    /// Transition progression (0.0 -> 1.0)
     pub transition_progress: f64,
-    /// Baselines cibles de la transition
+    /// Target baselines for the transition
     transition_target_baselines: Option<[f64; 7]>,
-    /// Baselines de depart de la transition
+    /// Source baselines for the transition
     transition_source_baselines: Option<[f64; 7]>,
-    /// Nombre total de cycles pour la transition
+    /// Total number of cycles for the transition
     transition_total_cycles: u64,
-    /// Cycles ecoules dans la transition
+    /// Elapsed cycles in the transition
     transition_elapsed_cycles: u64,
-    // Bipolaire
-    /// Phase actuelle du cycle bipolaire (si applicable)
+    // Bipolar
+    /// Current phase of the bipolar cycle (if applicable)
     pub bipolar_phase: Option<BipolarPhase>,
-    /// Compteur de cycles dans le cycle bipolaire
+    /// Cycle counter in the bipolar cycle
     bipolar_cycle_counter: u64,
     // Config
-    /// Module active ou non
+    /// Module enabled or not
     pub enabled: bool,
-    /// Dossier des profils custom
+    /// Custom profiles directory
     pub profiles_dir: String,
-    /// Nombre de cycles pour une transition douce
+    /// Number of cycles for a smooth transition
     pub transition_cycles: u64,
 }
 
 impl CognitiveProfileOrchestrator {
-    /// Cree un nouvel orchestrateur de profils cognitifs.
+    /// Creates a new cognitive profile orchestrator.
     pub fn new(enabled: bool, active: &str, profiles_dir: &str, transition_cycles: u64) -> Self {
         let available = EMBEDDED_PROFILES.iter()
             .map(|(id, _)| id.to_string())
@@ -302,7 +301,7 @@ impl CognitiveProfileOrchestrator {
             transition_cycles,
         };
 
-        // Charger le profil initial
+        // Load the initial profile
         if enabled && active != "neurotypique" {
             if let Ok(profile) = orch.parse_profile(active) {
                 orch.active_profile = Some(profile);
@@ -317,14 +316,14 @@ impl CognitiveProfileOrchestrator {
         orch
     }
 
-    /// Parse un profil embarque par son ID.
+    /// Parses an embedded profile by its ID.
     fn parse_profile(&self, id: &str) -> Result<ProfileDescriptor, String> {
-        // Chercher dans les profils embarques
+        // Search in embedded profiles
         let toml_str = EMBEDDED_PROFILES.iter()
             .find(|(eid, _)| *eid == id)
             .map(|(_, content)| *content);
 
-        // Si pas embarque, tenter le filesystem
+        // If not embedded, try the filesystem
         let toml_content = if let Some(content) = toml_str {
             content.to_string()
         } else {
@@ -350,7 +349,7 @@ impl CognitiveProfileOrchestrator {
         })
     }
 
-    /// Convertit les donnees brutes TOML en ProfileOverrides.
+    /// Converts raw TOML data to ProfileOverrides.
     fn raw_to_overrides(raw: &RawProfile) -> ProfileOverrides {
         ProfileOverrides {
             baseline_dopamine: raw.personality.baseline_dopamine,
@@ -383,7 +382,7 @@ impl CognitiveProfileOrchestrator {
         }
     }
 
-    /// Convertit les donnees brutes bipolaires en BipolarConfig.
+    /// Converts raw bipolar data to BipolarConfig.
     fn raw_to_bipolar_config(raw: &RawBipolar) -> BipolarConfig {
         let manie_overrides = Self::bipolar_phase_to_overrides(&raw.manie);
         let depression_overrides = Self::bipolar_phase_to_overrides(&raw.depression);
@@ -397,7 +396,7 @@ impl CognitiveProfileOrchestrator {
         }
     }
 
-    /// Convertit les surcharges d'une phase bipolaire en ProfileOverrides.
+    /// Converts a bipolar phase's overrides to ProfileOverrides.
     fn bipolar_phase_to_overrides(raw: &RawBipolarPhaseOverrides) -> ProfileOverrides {
         ProfileOverrides {
             baseline_dopamine: raw.baseline_dopamine,
@@ -415,11 +414,11 @@ impl CognitiveProfileOrchestrator {
         }
     }
 
-    /// Charge un profil par son ID. Retourne le descripteur ou une erreur.
+    /// Loads a profile by its ID. Returns the descriptor or an error.
     pub fn load_profile(&mut self, id: &str) -> Result<ProfileDescriptor, String> {
         let profile = self.parse_profile(id)?;
 
-        // Initialiser le cycle bipolaire si necessaire
+        // Initialize bipolar cycle if needed
         if profile.bipolar_config.is_some() {
             self.bipolar_phase = Some(BipolarPhase::Euthymie);
             self.bipolar_cycle_counter = 0;
@@ -433,8 +432,8 @@ impl CognitiveProfileOrchestrator {
         Ok(profile)
     }
 
-    /// Demarre une transition douce vers les baselines cibles.
-    /// Les baselines actuelles convergent vers les cibles sur N cycles.
+    /// Starts a smooth transition toward target baselines.
+    /// Current baselines converge toward targets over N cycles.
     pub fn start_transition(&mut self, current_baselines: &NeuroBaselines, target: &ProfileOverrides) {
         let source = [
             current_baselines.dopamine,
@@ -464,14 +463,14 @@ impl CognitiveProfileOrchestrator {
         self.transition_progress = 0.0;
     }
 
-    /// Tick : avance les transitions douces et les cycles bipolaires.
-    /// Appelee chaque cycle dans phase_orchestrators().
+    /// Tick: advances smooth transitions and bipolar cycles.
+    /// Called each cycle in phase_orchestrators().
     pub fn tick(&mut self, baselines: &mut NeuroBaselines) {
         if !self.enabled {
             return;
         }
 
-        // Transition douce en cours
+        // Smooth transition in progress
         if self.transition_in_progress {
             self.transition_elapsed_cycles += 1;
             let t = (self.transition_elapsed_cycles as f64) / (self.transition_total_cycles as f64);
@@ -497,7 +496,7 @@ impl CognitiveProfileOrchestrator {
             }
         }
 
-        // Cycle bipolaire
+        // Bipolar cycle
         if let Some(ref profile) = self.active_profile.clone() {
             if let Some(ref bp_config) = profile.bipolar_config {
                 self.bipolar_cycle_counter += 1;
@@ -516,7 +515,7 @@ impl CognitiveProfileOrchestrator {
                     BipolarPhase::Euthymie
                 };
 
-                // Changement de phase : demarrer une transition
+                // Phase change: start a transition
                 let current_phase = self.bipolar_phase.clone().unwrap_or(BipolarPhase::Euthymie);
                 if new_phase != current_phase {
                     tracing::info!(
@@ -537,7 +536,7 @@ impl CognitiveProfileOrchestrator {
         }
     }
 
-    /// Genere le contexte pour le prompt LLM.
+    /// Generates context for the LLM prompt.
     pub fn describe_for_prompt(&self) -> String {
         let profile = match &self.active_profile {
             Some(p) => p,
@@ -563,7 +562,7 @@ impl CognitiveProfileOrchestrator {
         desc
     }
 
-    /// Retourne l'etat JSON pour le dashboard et l'API.
+    /// Returns the JSON state for the dashboard and API.
     pub fn to_status_json(&self) -> serde_json::Value {
         let profile_json = self.active_profile.as_ref().map(|p| {
             serde_json::json!({
@@ -593,7 +592,7 @@ impl CognitiveProfileOrchestrator {
         })
     }
 
-    /// Liste les profils disponibles avec leurs metadonnees.
+    /// Lists available profiles with their metadata.
     pub fn list_profiles(&self) -> Vec<serde_json::Value> {
         EMBEDDED_PROFILES.iter()
             .filter_map(|(id, content)| {
@@ -610,7 +609,7 @@ impl CognitiveProfileOrchestrator {
             .collect()
     }
 
-    /// Compare deux profils et retourne les differences.
+    /// Compares two profiles and returns the differences.
     pub fn compare_profiles(&self, id_a: &str, id_b: &str) -> Result<serde_json::Value, String> {
         let profile_a = self.parse_profile(id_a)?;
         let profile_b = self.parse_profile(id_b)?;
@@ -620,7 +619,7 @@ impl CognitiveProfileOrchestrator {
 
         let mut diffs = Vec::new();
 
-        // Macro pour comparer les champs Option<f64>
+        // Macro to compare Option<f64> fields
         macro_rules! cmp_f64 {
             ($field:ident, $label:expr) => {
                 let va = ov_a.$field;

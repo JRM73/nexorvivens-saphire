@@ -1,42 +1,40 @@
 // =============================================================================
-// anomaly.rs — Détection d'anomalies par Z-Score
+// anomaly.rs — Z-Score anomaly detection
 // =============================================================================
 //
-// Rôle : Implémente un détecteur d'anomalies basé sur le Z-Score (score
-//        standard). Une valeur est considérée comme anomalie si son écart
-//        par rapport à la moyenne dépasse un seuil en nombre d'écarts-types.
+// Role: Implements a Z-Score-based anomaly detector (standard score).
+//  A value is considered an anomaly if its deviation from the mean
+//  exceeds a threshold measured in standard deviations.
 //
-// Dépendances : aucune (calcul statistique pur)
+// Dependencies: none (pure statistical computation)
 //
-// Place dans l'architecture :
-//   Utilisé par Saphire pour détecter des changements anormaux dans ses
-//   niveaux de neurotransmetteurs, son humeur, ou toute métrique interne.
-//   Permet une forme de « conscience des anomalies » — un signal d'alerte
-//   quand quelque chose sort de l'ordinaire. Fait partie du sous-module
-//   algorithms/.
+// Place in architecture:
+//  Used by Saphire to detect abnormal changes in its neurotransmitter
+//  levels, mood, or any internal metric. Enables a form of "anomaly
+//  awareness" — an alert signal when something falls outside the norm.
+//  Part of the algorithms/ submodule.
 // =============================================================================
-
-/// Détecteur d'anomalies par Z-Score — maintient un historique glissant
-/// de valeurs et calcule le Z-Score de chaque nouvelle observation.
+/// Z-Score anomaly detector — maintains a sliding window of values
+/// and computes the Z-Score of each new observation.
 ///
-/// Le Z-Score mesure combien d'écarts-types une valeur est éloignée de la
-/// moyenne : z = (valeur - moyenne) / écart_type
+/// The Z-Score measures how many standard deviations a value is from
+/// the mean: z = (value - mean) / std_dev
 pub struct ZScoreDetector {
-    /// Historique des valeurs observées (fenêtre glissante)
+    /// History of observed values (sliding window)
     history: Vec<f64>,
-    /// Taille maximale de l'historique (les plus anciennes valeurs sont supprimées)
+    /// Maximum history size (oldest values are discarded)
     max_size: usize,
-    /// Seuil Z-Score au-delà duquel une valeur est considérée comme anomalie
-    /// (typiquement 2.0 ou 3.0 — respectivement ~5% ou ~0.3% des données normales)
+    /// Z-Score threshold beyond which a value is considered an anomaly
+    /// (typically 2.0 or 3.0 — respectively ~5% or ~0.3% of normal data)
     threshold: f64,
 }
 
 impl ZScoreDetector {
-    /// Crée un nouveau détecteur d'anomalies.
+    /// Creates a new anomaly detector.
     ///
-    /// Paramètre `max_size` : taille de la fenêtre d'historique glissante
-    /// Paramètre `threshold` : seuil Z-Score pour la détection d'anomalie
-    /// Retourne : une instance de ZScoreDetector vide
+    /// Parameter `max_size`: sliding history window size
+    /// Parameter `threshold`: Z-Score threshold for anomaly detection
+    /// Returns: an empty ZScoreDetector instance
     pub fn new(max_size: usize, threshold: f64) -> Self {
         Self {
             history: Vec::new(),
@@ -45,26 +43,26 @@ impl ZScoreDetector {
         }
     }
 
-    /// Observe une nouvelle valeur et détermine si c'est une anomalie.
+    /// Observes a new value and determines whether it is an anomaly.
     ///
-    /// Ajoute la valeur à l'historique, maintient la fenêtre glissante,
-    /// puis calcule la moyenne, l'écart-type et le Z-Score de la nouvelle
-    /// valeur.
+    /// Adds the value to the history, maintains the sliding window,
+    /// then computes the mean, standard deviation, and Z-Score of the
+    /// new value.
     ///
-    /// Pourquoi 5 minimum : avec moins de 5 observations, les statistiques
-    /// sont trop instables pour détecter des anomalies de manière fiable.
+    /// Why 5 minimum: with fewer than 5 observations, the statistics
+    /// are too unstable for reliable anomaly detection.
     ///
-    /// Paramètre `value` : nouvelle valeur observée
-    /// Retourne : un AnomalyResult contenant le diagnostic et les statistiques
+    /// Parameter `value`: new observed value
+    /// Returns: an AnomalyResult containing the diagnosis and statistics
     pub fn observe(&mut self, value: f64) -> AnomalyResult {
-        // Ajouter la valeur à l'historique
+        // Add the value to the history
         self.history.push(value);
-        // Maintenir la fenêtre glissante en supprimant la valeur la plus ancienne
+        // Maintain the sliding window by removing the oldest value
         if self.history.len() > self.max_size {
             self.history.remove(0);
         }
 
-        // Pas assez de données pour des statistiques fiables
+        // Not enough data for reliable statistics
         if self.history.len() < 5 {
             return AnomalyResult {
                 is_anomaly: false,
@@ -74,16 +72,16 @@ impl ZScoreDetector {
             };
         }
 
-        // Calculer la moyenne de l'historique
+        // Compute the mean of the history
         let n = self.history.len() as f64;
         let mean = self.history.iter().sum::<f64>() / n;
-        // Calculer la variance (moyenne des carrés des écarts)
+        // Compute the variance (mean of squared deviations)
         let variance = self.history.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / n;
-        // Écart-type = racine carrée de la variance
+        // Standard deviation = square root of the variance
         let std_dev = variance.sqrt();
 
-        // Calculer le Z-Score : nombre d'écarts-types entre la valeur et la moyenne
-        // Protection contre la division par zéro si l'écart-type est quasi-nul
+        // Compute the Z-Score: number of standard deviations between the value and the mean
+        // Guard against division by zero if std_dev is near-zero
         let z_score = if std_dev > 1e-10 {
             (value - mean) / std_dev
         } else {
@@ -91,7 +89,7 @@ impl ZScoreDetector {
         };
 
         AnomalyResult {
-            // Une anomalie est détectée si le Z-Score en valeur absolue dépasse le seuil
+            // An anomaly is detected if the absolute Z-Score exceeds the threshold
             is_anomaly: z_score.abs() > self.threshold,
             z_score,
             mean,
@@ -99,25 +97,25 @@ impl ZScoreDetector {
         }
     }
 
-    /// Retourne la moyenne actuelle de l'historique.
+    /// Returns the current mean of the history.
     ///
-    /// Retourne : la moyenne des valeurs dans l'historique, ou 0.0 si vide
+    /// Returns: the mean of values in the history, or 0.0 if empty
     pub fn mean(&self) -> f64 {
         if self.history.is_empty() { return 0.0; }
         self.history.iter().sum::<f64>() / self.history.len() as f64
     }
 }
 
-/// Résultat de la détection d'anomalie — contient le diagnostic et les
-/// statistiques utilisées pour le calcul.
+/// Anomaly detection result — contains the diagnosis and the
+/// statistics used for the computation.
 pub struct AnomalyResult {
-    /// Vrai si la valeur est considérée comme une anomalie (|z_score| > seuil)
+    /// True if the value is considered an anomaly (|z_score| > threshold)
     pub is_anomaly: bool,
-    /// Z-Score calculé : (valeur - moyenne) / écart_type
-    /// Positif si la valeur est au-dessus de la moyenne, négatif sinon
+    /// Computed Z-Score: (value - mean) / std_dev
+    /// Positive if the value is above the mean, negative otherwise
     pub z_score: f64,
-    /// Moyenne de l'historique au moment de l'observation
+    /// History mean at the time of observation
     pub mean: f64,
-    /// Écart-type de l'historique au moment de l'observation
+    /// History standard deviation at the time of observation
     pub std_dev: f64,
 }

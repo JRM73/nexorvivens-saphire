@@ -1,7 +1,7 @@
 // =============================================================================
 // api/body.rs — Handlers corps virtuel et coeur
 //
-// Role : Endpoints pour le corps virtuel (statut, coeur, historique BPM/HRV,
+// Role: Endpoints for the virtual body (statut, coeur, historique BPM/HRV,
 // historique corporel, milestones de battements cardiaques).
 // =============================================================================
 
@@ -11,14 +11,14 @@ use axum::response::IntoResponse;
 
 use super::state::AppState;
 
-/// GET /api/body/status — Etat complet du corps (temps reel).
+/// GET /api/body/status — Etat complete du corps (temps reel).
 pub async fn api_body_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let status = agent.body_status();
     axum::Json(serde_json::json!(status))
 }
 
-/// GET /api/body/heart — Details du coeur (BPM, beat_count, HRV).
+/// GET /api/body/heart — Details of the heart (BPM, beat_count, HRV).
 pub async fn api_body_heart(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let heart = agent.heart_status();
@@ -57,7 +57,7 @@ pub async fn api_body_history(
     }
 }
 
-/// GET /api/body/vitals — Details physiologiques (parametres vitaux, metabolisme).
+/// GET /api/body/vitals — Details physiologiques (parameters vitaux, metabolisme).
 pub async fn api_body_vitals(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     let status = agent.body_status();

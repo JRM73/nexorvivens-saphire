@@ -1,5 +1,5 @@
 // =============================================================================
-// api/fields.rs — Handlers des champs electromagnetiques
+// api/fields.rs — Handlers des electromagnetic fields
 // =============================================================================
 
 use axum::extract::State;
@@ -7,7 +7,7 @@ use axum::response::IntoResponse;
 
 use super::state::AppState;
 
-/// GET /api/fields/status — Etat complet des champs EM.
+/// GET /api/fields/status — Etat complete of the fields EM.
 pub async fn api_fields_status(State(state): State<AppState>) -> impl IntoResponse {
     let agent = state.agent.lock().await;
     axum::Json(agent.em_fields.to_json())

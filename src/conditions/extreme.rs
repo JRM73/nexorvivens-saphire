@@ -1,45 +1,45 @@
 // =============================================================================
-// conditions/extreme.rs — Conditions extremes
+// conditions/extreme.rs — Extreme conditions
 // =============================================================================
 //
-// Role : Modelise les conditions de travail extreme : secouriste, militaire,
-//        plongeur, astronaute. Stress chronique, adaptation physiologique,
-//        resilience ou epuisement (burnout).
+// Purpose: Models extreme working conditions: rescuer, military,
+//          deep-sea diver, astronaut. Chronic stress, physiological
+//          adaptation, resilience or burnout.
 //
-// Integration :
-//   Modifie les baselines de cortisol/adrenaline, la physiologie (SpO2,
-//   temperature), et peut declencher des traumas ou renforcer la resilience.
+// Integration:
+//   Modifies cortisol/adrenaline baselines, physiology (SpO2,
+//   temperature), and can trigger traumas or strengthen resilience.
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 use crate::world::ChemistryAdjustment;
 
-/// Type de condition extreme.
+/// Type of extreme condition.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ExtremeConditionType {
-    /// Confrontation a la mort, stress aigu repete
+    /// Confrontation with death, repeated acute stress
     Rescuer,
-    /// Combat, hypervigilance, bruit
+    /// Combat, hypervigilance, noise
     Military,
-    /// Pression, narcose, froid
+    /// Pressure, narcosis, cold
     DeepSeaDiver,
-    /// Isolation, gravite zero, radiation
+    /// Isolation, zero gravity, radiation
     Astronaut,
 }
 
-/// Etat d'une condition extreme active.
+/// State of an active extreme condition.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExtremeCondition {
     pub condition_type: ExtremeConditionType,
-    /// Cycles depuis le debut de la condition
+    /// Cycles since the condition began
     pub duration_cycles: u64,
-    /// Stress cumule (0.0 = frais, 1.0 = sature)
+    /// Accumulated stress (0.0 = fresh, 1.0 = saturated)
     pub stress_accumulation: f64,
-    /// Adaptation physiologique (0.0 = non adapte, 1.0 = adapte)
+    /// Physiological adaptation (0.0 = unadapted, 1.0 = adapted)
     pub physiological_adaptation: f64,
-    /// Resilience psychologique (0.0 = fragile, 1.0 = resilient)
+    /// Psychological resilience (0.0 = fragile, 1.0 = resilient)
     pub psychological_resilience: f64,
-    /// Risque de burnout (0.0 = aucun, 1.0 = imminent)
+    /// Burnout risk (0.0 = none, 1.0 = imminent)
     pub burnout_risk: f64,
 }
 
@@ -55,11 +55,11 @@ impl ExtremeCondition {
         }
     }
 
-    /// Met a jour a chaque cycle.
+    /// Updates each cycle.
     pub fn tick(&mut self, cortisol: f64) {
         self.duration_cycles += 1;
 
-        // Stress s'accumule, surtout si cortisol est eleve
+        // Stress accumulates, especially if cortisol is high
         let stress_rate = match self.condition_type {
             ExtremeConditionType::Military => 0.003,
             ExtremeConditionType::Rescuer => 0.002,
@@ -68,30 +68,30 @@ impl ExtremeCondition {
         };
         self.stress_accumulation = (self.stress_accumulation + stress_rate * (1.0 + cortisol)).min(1.0);
 
-        // Adaptation physiologique croît
+        // Physiological adaptation grows
         let adapt_rate = 0.001;
         self.physiological_adaptation = (self.physiological_adaptation + adapt_rate).min(1.0);
 
-        // Resilience croît si stress pas trop eleve, decroit sinon
+        // Resilience grows if stress is not too high, decreases otherwise
         if self.stress_accumulation < 0.7 {
             self.psychological_resilience = (self.psychological_resilience + 0.0005).min(1.0);
         } else {
             self.psychological_resilience = (self.psychological_resilience - 0.001).max(0.0);
         }
 
-        // Burnout = stress eleve + resilience faible
+        // Burnout = high stress + low resilience
         self.burnout_risk = ((self.stress_accumulation - self.psychological_resilience * 0.5) * 0.8)
             .clamp(0.0, 1.0);
     }
 
-    /// Impact chimique de la condition.
+    /// Chemistry impact of the condition.
     pub fn chemistry_influence(&self) -> ChemistryAdjustment {
         let mut adj = ChemistryAdjustment::default();
 
-        // Cortisol de base eleve en conditions extremes
+        // Elevated baseline cortisol in extreme conditions
         adj.cortisol += self.stress_accumulation * 0.02;
 
-        // Adrenaline chronique (militaire, secouriste)
+        // Chronic adrenaline (military, rescuer)
         match self.condition_type {
             ExtremeConditionType::Military | ExtremeConditionType::Rescuer => {
                 adj.adrenaline += 0.01;
@@ -100,10 +100,10 @@ impl ExtremeCondition {
             _ => {}
         }
 
-        // Endorphines comme mecanisme de coping
+        // Endorphins as coping mechanism
         adj.endorphin += self.psychological_resilience * 0.005;
 
-        // Burnout → serotonine chute
+        // Burnout -> serotonin drops
         if self.burnout_risk > 0.5 {
             adj.serotonin -= self.burnout_risk * 0.02;
         }
@@ -111,22 +111,22 @@ impl ExtremeCondition {
         adj
     }
 
-    /// Impact sur la physiologie (retourne des offsets).
+    /// Impact on physiology (returns offsets).
     /// (spo2_offset, temperature_offset, bp_systolic_offset)
     pub fn physiology_impact(&self) -> (f64, f64, f64) {
         match self.condition_type {
             ExtremeConditionType::Astronaut => {
-                // SpO2 reduit, temperature legèrement basse
+                // Reduced SpO2, slightly low temperature
                 let spo2_penalty = -3.0 * (1.0 - self.physiological_adaptation * 0.5);
                 (-spo2_penalty.abs(), -0.3, 0.0)
             }
             ExtremeConditionType::DeepSeaDiver => {
-                // Pression → SpO2 fluctue, froid
+                // Pressure -> SpO2 fluctuates, cold
                 let depth_factor = 1.0 - self.physiological_adaptation * 0.5;
                 (-2.0 * depth_factor, -0.5 * depth_factor, 10.0 * depth_factor)
             }
             ExtremeConditionType::Military => {
-                // Stress → pression elevee
+                // Stress -> elevated blood pressure
                 (0.0, 0.0, self.stress_accumulation * 15.0)
             }
             ExtremeConditionType::Rescuer => {
@@ -135,7 +135,7 @@ impl ExtremeCondition {
         }
     }
 
-    /// Serialise pour l'API.
+    /// Serializes for the API.
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::json!({
             "type": format!("{:?}", self.condition_type),
@@ -148,7 +148,7 @@ impl ExtremeCondition {
     }
 }
 
-/// Gestionnaire de conditions extremes (une seule active a la fois).
+/// Extreme condition manager (only one active at a time).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExtremeConditionManager {
     pub active: Option<ExtremeCondition>,
@@ -220,8 +220,8 @@ mod tests {
     fn test_astronaut_physiology_impact() {
         let ec = ExtremeCondition::new(ExtremeConditionType::Astronaut);
         let (spo2, temp, _bp) = ec.physiology_impact();
-        assert!(spo2 < 0.0); // SpO2 reduit
-        assert!(temp < 0.0);  // Temperature basse
+        assert!(spo2 < 0.0); // Reduced SpO2
+        assert!(temp < 0.0);  // Low temperature
     }
 
     #[test]

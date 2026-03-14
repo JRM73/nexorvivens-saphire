@@ -1,91 +1,91 @@
 // =============================================================================
-// limbic.rs — Module limbique : émotions, récompense, liens sociaux
+// limbic.rs — Limbic module: emotions, reward, social bonds
 // =============================================================================
 //
-// Rôle : Ce fichier implémente le module limbique de Saphire, inspiré du
-// système limbique dans le modèle du cerveau triunique de Paul MacLean.
-// Il gère les réactions émotionnelles : peur (amygdale), plaisir (circuit
-// de récompense), attachement social (ocytocine) et résilience (endorphines).
+// Role: This file implements Saphire's limbic module, inspired by the
+// limbic system in Paul MacLean's triune brain model. It handles
+// emotional reactions: fear (amygdala), pleasure (reward circuit),
+// social attachment (oxytocin) and resilience (endorphins).
 //
-// Dépendances :
-//   - crate::neurochemistry::NeuroChemicalState : état chimique (dopamine,
-//     ocytocine, sérotonine, endorphine influencent le traitement)
-//   - crate::stimulus::Stimulus : entrée sensorielle (danger, reward, social)
-//   - super::BrainModule, ModuleSignal : trait et type de sortie communs
+// Dependencies:
+//   - crate::neurochemistry::NeuroChemicalState: chemical state (dopamine,
+//     oxytocin, serotonin, endorphin influence processing)
+//   - crate::stimulus::Stimulus: sensory input (danger, reward, social)
+//   - super::BrainModule, ModuleSignal: common trait and output type
 //
-// Place dans l'architecture :
-//   Deuxième des 3 modules cérébraux. Son signal reflète la réaction
-//   émotionnelle au stimulus. Son poids dans le consensus augmente quand
-//   la dopamine, la sérotonine et l'ocytocine sont élevées.
+// Place in the architecture:
+//   Second of the 3 brain modules. Its signal reflects the emotional
+//   reaction to the stimulus. Its weight in the consensus increases when
+//   dopamine, serotonin and oxytocin are high.
 // =============================================================================
 
 use crate::neurochemistry::NeuroChemicalState;
 use crate::stimulus::Stimulus;
 use super::{BrainModule, ModuleSignal};
 
-/// Le système limbique — traitement émotionnel, empathie et circuit de récompense.
-/// Ce module représente les réponses émotionnelles de Saphire, incluant :
-/// - L'amygdale (réaction de peur face au danger)
-/// - Le circuit de récompense (attraction vers le plaisir)
-/// - Le lien social (empathie, attachement)
-/// - La résilience émotionnelle (endorphines)
+/// The limbic system — emotional processing, empathy and reward circuit.
+/// This module represents Saphire's emotional responses, including:
+/// - The amygdala (fear reaction to danger)
+/// - The reward circuit (attraction to pleasure)
+/// - Social bonding (empathy, attachment)
+/// - Emotional resilience (endorphins)
 pub struct LimbicModule;
 
 impl BrainModule for LimbicModule {
-    /// Retourne le nom du module : "Limbique".
+    /// Returns the module name: "Limbique".
     fn name(&self) -> &str {
         "Limbique"
     }
 
-    /// Traite un stimulus du point de vue émotionnel.
+    /// Processes a stimulus from an emotional perspective.
     ///
-    /// Algorithme en 4 composantes :
-    /// 1. Amygdale : réaction négative proportionnelle au danger (facteur 0.8).
-    /// 2. Circuit de récompense : attraction proportionnelle à la récompense,
-    ///    amplifiée par la dopamine.
-    /// 3. Lien social : composante sociale amplifiée par l'ocytocine.
-    /// 4. Résilience : les endorphines atténuent la douleur émotionnelle.
-    ///    Le signal final intègre aussi la sérotonine (bien-être de fond).
+    /// Algorithm with 4 components:
+    /// 1. Amygdala: negative reaction proportional to danger (factor 0.8).
+    /// 2. Reward circuit: attraction proportional to reward,
+    ///    amplified by dopamine.
+    /// 3. Social bonding: social component amplified by oxytocin.
+    /// 4. Resilience: endorphins attenuate emotional pain.
+    ///    The final signal also integrates serotonin (baseline well-being).
     ///
-    /// # Paramètres
-    /// - `stimulus` : entrée sensorielle avec ses scores perceptuels.
-    /// - `chemistry` : état chimique (dopamine, ocytocine, sérotonine,
-    ///   endorphine modulent la réponse).
+    /// # Parameters
+    /// - `stimulus`: sensory input with its perceptual scores.
+    /// - `chemistry`: chemical state (dopamine, oxytocin, serotonin,
+    ///   endorphin modulate the response).
     ///
-    /// # Retour
-    /// Un `ModuleSignal` avec signal, confiance et raisonnement explicatif.
+    /// # Returns
+    /// A `ModuleSignal` with signal, confidence and explanatory reasoning.
     fn process(&self, stimulus: &Stimulus, chemistry: &NeuroChemicalState) -> ModuleSignal {
-        // Amygdale : réaction émotionnelle instinctive au danger.
-        // Le signe négatif traduit le rejet/la peur. Le facteur 0.8 est
-        // légèrement inférieur à 1.0 car le limbique est moins « brutal »
-        // que le reptilien face au danger.
+        // Amygdala: instinctive emotional reaction to danger.
+        // The negative sign reflects rejection/fear. The 0.8 factor is
+        // slightly below 1.0 because the limbic system is less "brutal"
+        // than the reptilian brain when facing danger.
         let amygdala = -stimulus.danger * 0.8;
 
-        // Circuit de récompense : la dopamine amplifie l'attrait de la
-        // récompense. Quand la dopamine est élevée, même une récompense
-        // modeste devient très attirante (biais motivationnel).
+        // Reward circuit: dopamine amplifies the attraction of the
+        // reward. When dopamine is high, even a modest reward becomes
+        // very attractive (motivational bias).
         let reward = stimulus.reward * (1.0 + chemistry.dopamine);
 
-        // Lien social : l'ocytocine amplifie la sensibilité aux interactions
-        // sociales. Base de 0.5 pour garantir un minimum de réceptivité sociale.
+        // Social bonding: oxytocin amplifies sensitivity to social
+        // interactions. Base of 0.5 to guarantee a minimum of social receptivity.
         let social = stimulus.social * (0.5 + chemistry.oxytocin * 0.5);
 
-        // Résilience : les endorphines atténuent la douleur émotionnelle
-        // et ajoutent un léger biais positif (capacité à encaisser).
+        // Resilience: endorphins attenuate emotional pain
+        // and add a slight positive bias (ability to absorb hits).
         let resilience = chemistry.endorphin * 0.2;
 
-        // Signal brut : somme des 4 composantes + bien-être de fond (sérotonine).
-        // tanh() borne naturellement le résultat entre -1 et +1.
+        // Raw signal: sum of the 4 components + baseline well-being (serotonin).
+        // tanh() naturally bounds the result between -1 and +1.
         let raw = amygdala + reward + social + chemistry.serotonin * 0.3 + resilience;
         let signal = raw.tanh();
 
-        // Confiance fixe à 0.7 : le limbique est toujours assez confiant
-        // car les émotions sont par nature ressenties avec certitude
-        // (on ne doute pas de ce qu'on ressent).
+        // Fixed confidence at 0.7: the limbic system is always fairly confident
+        // because emotions are by nature felt with certainty
+        // (one does not doubt what one feels).
         let confidence = 0.7;
 
-        // Raisonnement : construction dynamique en listant les composantes
-        // significatives (au-dessus de leur seuil respectif).
+        // Reasoning: dynamic construction by listing significant components
+        // (above their respective thresholds).
         let parts: Vec<String> = [
             if amygdala.abs() > 0.2 {
                 Some(format!("Amygdale réactive ({:.2})", amygdala))

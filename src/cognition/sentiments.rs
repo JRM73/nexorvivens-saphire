@@ -1,30 +1,30 @@
 // =============================================================================
-// sentiments.rs — Systeme de sentiments (etats affectifs durables)
+// sentiments.rs — Sentiment system (lasting affective states)
 // =============================================================================
 //
-// Role : Les sentiments sont des etats affectifs durables qui emergent de
-// patterns emotionnels repetitifs. Contrairement aux emotions (reactives,
-// instantanees), les sentiments persistent sur des dizaines a des milliers
-// de cycles et influencent en retour la coloration emotionnelle.
+// Role: Sentiments are lasting affective states that emerge from
+// repetitive emotional patterns. Unlike emotions (reactive,
+// instantaneous), sentiments persist over tens to thousands
+// of cycles and in turn influence emotional coloring.
 //
-// Architecture :
-//   Emotions → (accumulation) → Sentiments → (biais) → Emotions
-//   Boucle bidirectionnelle : les sentiments amplifient ou attenuent les
-//   emotions suivantes, et modifient legerement la chimie de fond.
+// Architecture:
+//   Emotions -> (accumulation) -> Sentiments -> (bias) -> Emotions
+//   Bidirectional loop: sentiments amplify or attenuate subsequent
+//   emotions, and slightly modify background chemistry.
 //
-// 3 durees de sentiments :
-//   - Court terme (10-50 cycles) : humeurs passageres (irritation, amusement)
-//   - Moyen terme (50-200 cycles) : etats installes (mefiance, attachement)
-//   - Long terme (200-1000+ cycles) : traits affectifs profonds (amertume, confiance)
+// 3 sentiment durations:
+//   - Short term (10-50 cycles): passing moods (irritation, amusement)
+//   - Medium term (50-200 cycles): settled states (distrust, attachment)
+//   - Long term (200-1000+ cycles): deep affective traits (bitterness, trust)
 //
-// Dependances :
-//   - crate::world::weather::ChemistryAdjustment : influence chimique
-//   - serde : serialisation
+// Dependencies:
+//   - crate::world::weather::ChemistryAdjustment: chemistry influence
+//   - serde: serialization
 //
-// Place dans l'architecture :
-//   Module de premier niveau. Le SentimentEngine est tick-e a chaque cycle
-//   cognitif, apres le calcul emotionnel et avant la mise a jour du mood.
-//   Il est integre dans le pipeline via phase_sentiments (thinking.rs).
+// Place in architecture:
+//   Top-level module. The SentimentEngine is ticked at each
+//   cognitive cycle, after emotional computation and before mood update.
+//   Integrated into the pipeline via phase_sentiments (thinking.rs).
 // =============================================================================
 
 use std::collections::VecDeque;
@@ -34,21 +34,20 @@ use crate::world::weather::ChemistryAdjustment;
 // =============================================================================
 // Configuration
 // =============================================================================
-
-/// Configuration du systeme de sentiments.
+/// Configuration for the sentiment system.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SentimentConfig {
-    /// Module actif ou non
+    /// Module active or not
     pub enabled: bool,
-    /// Nombre maximum de sentiments actifs simultanes
+    /// Maximum number of simultaneously active sentiments
     pub max_active: usize,
-    /// Taille de la fenetre d'historique emotionnel (nombre d'emotions conservees)
+    /// Size of the emotional history window (number of emotions kept)
     pub emotion_history_window: usize,
-    /// Taux de decroissance par cycle (force -= decay_rate / multiplier)
+    /// Decay rate per cycle (strength -= decay_rate / multiplier)
     pub decay_rate: f64,
-    /// Force de renforcement quand une emotion trigger est detectee
+    /// Reinforcement strength when a trigger emotion is detected
     pub reinforcement_strength: f64,
-    /// Plafond d'influence chimique par sentiment (evite les emballements)
+    /// Chemistry influence cap per sentiment (prevents runaway effects)
     pub chemistry_influence_cap: f64,
 }
 
@@ -66,22 +65,21 @@ impl Default for SentimentConfig {
 }
 
 // =============================================================================
-// Duree de sentiment
+// Sentiment duration
 // =============================================================================
-
-/// Duree de vie d'un sentiment.
+/// Lifetime duration of a sentiment.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum SentimentDuration {
-    /// Court terme : humeurs passageres (10-50 cycles)
+    /// Short term: passing moods (10-50 cycles)
     ShortTerm,
-    /// Moyen terme : etats installes (50-200 cycles)
+    /// Medium term: settled states (50-200 cycles)
     MediumTerm,
-    /// Long terme : traits affectifs profonds (200-1000+ cycles)
+    /// Long term: deep affective traits (200-1000+ cycles)
     LongTerm,
 }
 
 impl SentimentDuration {
-    /// Multiplicateur de duree pour le decay (plus long = plus lent)
+    /// Duration multiplier for decay (longer = slower)
     pub fn decay_multiplier(&self) -> f64 {
         match self {
             SentimentDuration::ShortTerm => 1.0,
@@ -90,7 +88,7 @@ impl SentimentDuration {
         }
     }
 
-    /// Label textuel
+    /// Text label
     pub fn label(&self) -> &str {
         match self {
             SentimentDuration::ShortTerm => "court terme",
@@ -101,57 +99,55 @@ impl SentimentDuration {
 }
 
 // =============================================================================
-// Profil de sentiment (definition du catalogue)
+// Sentiment profile (catalog definition)
 // =============================================================================
-
-/// Definition d'un sentiment : ses conditions de formation et ses effets.
+/// Definition of a sentiment: its formation conditions and effects.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SentimentProfile {
-    /// Nom du sentiment (ex: "Irritation", "Mefiance")
+    /// Name of the sentiment (e.g., "Irritation", "Mefiance")
     pub name: String,
-    /// Duree du sentiment
+    /// Duration type of the sentiment
     pub duration_type: SentimentDuration,
-    /// Emotions qui peuvent declencher/renforcer ce sentiment
+    /// Emotions that can trigger/reinforce this sentiment
     pub trigger_emotions: Vec<String>,
-    /// Nombre d'occurrences dans la fenetre pour declencher la formation
+    /// Number of occurrences in the window to trigger formation
     pub trigger_threshold: usize,
-    /// Biais chimique applique quand le sentiment est actif
+    /// Chemical bias applied when the sentiment is active
     pub chemistry_bias: ChemistryAdjustment,
-    /// Emotions amplifiees par ce sentiment (nom → facteur d'amplification)
+    /// Emotions amplified by this sentiment (name -> amplification factor)
     pub emotion_amplification: Vec<(String, f64)>,
-    /// Emotions attenuees par ce sentiment (nom → facteur d'attenuation)
+    /// Emotions dampened by this sentiment (name -> dampening factor)
     pub emotion_dampening: Vec<(String, f64)>,
-    /// Duree minimale en cycles avant dissolution naturelle
+    /// Minimum duration in cycles before natural dissolution
     pub min_duration_cycles: u64,
-    /// Duree maximale en cycles (dissolution forcee)
+    /// Maximum duration in cycles (forced dissolution)
     pub max_duration_cycles: u64,
 }
 
 // =============================================================================
-// Sentiment actif
+// Active sentiment
 // =============================================================================
-
-/// Un sentiment actuellement actif dans l'esprit de Saphire.
+/// A sentiment currently active in Saphire's mind.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActiveSentiment {
-    /// Nom du sentiment (reference au profil)
+    /// Name of the sentiment (reference to the profile)
     pub profile_name: String,
-    /// Force actuelle [0.0, 1.0] — decroit avec le temps
+    /// Current strength [0.0, 1.0] — decays over time
     pub strength: f64,
-    /// Cycle de formation
+    /// Cycle of formation
     pub formed_at_cycle: u64,
-    /// Dernier cycle de renforcement
+    /// Last cycle of reinforcement
     pub last_reinforced: u64,
-    /// Nombre de renforcements recus
+    /// Number of reinforcements received
     pub reinforcement_count: u32,
-    /// Type de duree (copie du profil)
+    /// Duration type (copy from the profile)
     pub duration_type: SentimentDuration,
-    /// Contexte d'origine (emotion dominante lors de la formation)
+    /// Source context (dominant emotion during formation)
     pub source_context: String,
 }
 
 impl ActiveSentiment {
-    /// Description textuelle du sentiment actif.
+    /// Textual description of the active sentiment.
     pub fn describe(&self) -> String {
         let intensity = if self.strength > 0.7 { "fort" }
             else if self.strength > 0.4 { "modere" }
@@ -162,31 +158,30 @@ impl ActiveSentiment {
 }
 
 // =============================================================================
-// Moteur de sentiments
+// Sentiment engine
 // =============================================================================
-
-/// Moteur de sentiments — gere la formation, le renforcement, le decay
-/// et l'influence bidirectionnelle emotions ↔ sentiments.
+/// Sentiment engine — manages the formation, reinforcement, decay,
+/// and bidirectional influence between emotions and sentiments.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SentimentEngine {
-    /// Module actif ou non
+    /// Module active or not
     pub enabled: bool,
-    /// Sentiments actuellement actifs
+    /// Currently active sentiments
     pub active_sentiments: Vec<ActiveSentiment>,
-    /// Historique des emotions recentes (fenetre glissante)
+    /// Recent emotion history (sliding window)
     emotion_history: VecDeque<String>,
-    /// Catalogue de profils de sentiments
+    /// Catalog of sentiment profiles
     catalog: Vec<SentimentProfile>,
     /// Configuration
     config: SentimentConfig,
-    /// Compteur total de sentiments formes depuis le debut
+    /// Total count of sentiments formed since startup
     pub total_formed: u64,
-    /// Compteur total de sentiments dissous
+    /// Total count of sentiments dissolved
     pub total_dissolved: u64,
 }
 
 impl SentimentEngine {
-    /// Cree un nouveau moteur de sentiments.
+    /// Creates a new sentiment engine.
     pub fn new(config: &SentimentConfig) -> Self {
         Self {
             enabled: config.enabled,
@@ -199,29 +194,29 @@ impl SentimentEngine {
         }
     }
 
-    /// Tick principal : enregistre l'emotion, renforce les sentiments existants,
-    /// applique le decay, verifie les formations et dissolutions.
+    /// Main tick: records the emotion, reinforces existing sentiments,
+    /// applies decay, checks formations and dissolutions.
     ///
-    /// Appele a chaque cycle cognitif apres le calcul emotionnel.
+    /// Called at each cognitive cycle after emotional computation.
     pub fn tick(&mut self, emotion: &str, cycle: u64) {
         if !self.enabled {
             return;
         }
 
-        // 1. Enregistrer l'emotion dans l'historique
+        // 1. Record the emotion in the history
         self.emotion_history.push_back(emotion.to_string());
         if self.emotion_history.len() > self.config.emotion_history_window {
             self.emotion_history.pop_front();
         }
 
-        // 2. Renforcer les sentiments existants dont les triggers matchent
-        // Rendements decroissants : plus le sentiment est fort, moins le
-        // renforcement a d'effet (comme les recepteurs neurochimiques).
+        // 2. Reinforce existing sentiments whose triggers match.
+        // Diminishing returns: the stronger the sentiment, the less
+        // reinforcement has effect (like neurochemical receptors).
         let reinforcement = self.config.reinforcement_strength;
         for sentiment in &mut self.active_sentiments {
             if let Some(profile) = self.catalog.iter().find(|p| p.name == sentiment.profile_name) {
                 if profile.trigger_emotions.iter().any(|t| t == emotion) {
-                    // Rendement decroissant : marge restante avant saturation
+                    // Diminishing returns: remaining margin before saturation
                     let margin = (1.0 - sentiment.strength).max(0.05);
                     let effective_reinforcement = reinforcement * margin;
                     sentiment.strength = (sentiment.strength + effective_reinforcement).min(1.0);
@@ -231,14 +226,14 @@ impl SentimentEngine {
             }
         }
 
-        // 3. Decay : reduire la force de tous les sentiments actifs
-        // Decay progressif : plus un sentiment est fort, plus il decroit vite
-        // (pression homéostatique — les états extrêmes sont instables).
+        // 3. Decay: reduce the strength of all active sentiments.
+        // Progressive decay: the stronger a sentiment, the faster it decays
+        // (homeostatic pressure — extreme states are unstable).
         let base_decay = self.config.decay_rate;
         let mut dissolved_count = 0u64;
         self.active_sentiments.retain(|s| {
             let multiplier = s.duration_type.decay_multiplier();
-            // Decay de base + decay proportionnel a la force (au-dessus de 0.7)
+            // Base decay + proportional decay based on strength (above 0.7)
             let strength_pressure = if s.strength > 0.7 {
                 base_decay * ((s.strength - 0.7) / 0.3) * 2.0
             } else {
@@ -248,7 +243,7 @@ impl SentimentEngine {
             let new_strength = s.strength - decay;
             let age = cycle.saturating_sub(s.formed_at_cycle);
 
-            // Dissoudre si force <= 0 ou duree max depassee
+            // Dissolve if strength <= 0 or max duration exceeded
             if let Some(profile) = self.catalog.iter().find(|p| p.name == s.profile_name) {
                 if new_strength <= 0.0 || age > profile.max_duration_cycles {
                     dissolved_count += 1;
@@ -257,7 +252,7 @@ impl SentimentEngine {
             }
             true
         });
-        // Appliquer le decay effectif aux survivants
+        // Apply the effective decay to survivors
         for sentiment in &mut self.active_sentiments {
             let multiplier = sentiment.duration_type.decay_multiplier();
             let strength_pressure = if sentiment.strength > 0.7 {
@@ -270,30 +265,30 @@ impl SentimentEngine {
         }
         self.total_dissolved += dissolved_count;
 
-        // 4. Verifier les formations potentielles
+        // 4. Check potential formations
         self.check_formations(cycle, emotion);
     }
 
-    /// Verifie si de nouveaux sentiments doivent se former a partir de
-    /// l'historique emotionnel courant.
+    /// Checks if new sentiments should form based on the current
+    /// emotional history.
     fn check_formations(&mut self, cycle: u64, current_emotion: &str) {
         if self.active_sentiments.len() >= self.config.max_active {
             return;
         }
 
         for profile in &self.catalog {
-            // Ne pas former un sentiment deja actif
+            // Do not form a sentiment that is already active
             if self.active_sentiments.iter().any(|s| s.profile_name == profile.name) {
                 continue;
             }
 
-            // Compter les occurrences des emotions trigger dans la fenetre
+            // Count occurrences of trigger emotions in the window
             let trigger_count = self.emotion_history.iter()
                 .filter(|e| profile.trigger_emotions.iter().any(|t| t == *e))
                 .count();
 
             if trigger_count >= profile.trigger_threshold {
-                // Formation ! Nouveau sentiment a force 0.3 (naissant)
+                // Formation! New sentiment at strength 0.3 (nascent)
                 let sentiment = ActiveSentiment {
                     profile_name: profile.name.clone(),
                     strength: 0.3,
@@ -306,7 +301,7 @@ impl SentimentEngine {
                 self.active_sentiments.push(sentiment);
                 self.total_formed += 1;
 
-                // Verifier la limite
+                // Check the limit
                 if self.active_sentiments.len() >= self.config.max_active {
                     break;
                 }
@@ -314,10 +309,10 @@ impl SentimentEngine {
         }
     }
 
-    /// Modifie le spectre emotionnel en fonction des sentiments actifs.
+    /// Modifies the emotional spectrum based on active sentiments.
     ///
-    /// Boucle bidirectionnelle : les sentiments amplifient certaines emotions
-    /// et en attenuent d'autres, biaisant la perception emotionnelle suivante.
+    /// Bidirectional loop: sentiments amplify certain emotions
+    /// and dampen others, biasing the next emotional perception.
     pub fn amplify_emotion_scores(&self, spectrum: &mut Vec<(String, f64)>) {
         if !self.enabled || self.active_sentiments.is_empty() {
             return;
@@ -325,13 +320,13 @@ impl SentimentEngine {
 
         for sentiment in &self.active_sentiments {
             if let Some(profile) = self.catalog.iter().find(|p| p.name == sentiment.profile_name) {
-                // Amplifier
+                // Amplify
                 for (emotion_name, factor) in &profile.emotion_amplification {
                     if let Some(entry) = spectrum.iter_mut().find(|(n, _)| n == emotion_name) {
                         entry.1 *= 1.0 + factor * sentiment.strength;
                     }
                 }
-                // Attenuer
+                // Dampen
                 for (emotion_name, factor) in &profile.emotion_dampening {
                     if let Some(entry) = spectrum.iter_mut().find(|(n, _)| n == emotion_name) {
                         entry.1 *= 1.0 - (factor * sentiment.strength).min(0.5);
@@ -340,14 +335,14 @@ impl SentimentEngine {
             }
         }
 
-        // Re-trier le spectre par score decroissant
+        // Re-sort the spectrum by descending score
         spectrum.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
     }
 
-    /// Calcule l'influence chimique combinee de tous les sentiments actifs.
+    /// Computes the combined chemical influence of all active sentiments.
     ///
-    /// Chaque sentiment actif applique son biais chimique, pondere par sa force.
-    /// Le total est plafonne par chemistry_influence_cap.
+    /// Each active sentiment applies its chemical bias, weighted by its strength.
+    /// The total is capped by chemistry_influence_cap.
     pub fn chemistry_influence(&self) -> ChemistryAdjustment {
         if !self.enabled {
             return ChemistryAdjustment::default();
@@ -369,7 +364,7 @@ impl SentimentEngine {
             }
         }
 
-        // Plafonner chaque composante
+        // Cap each component
         adj.dopamine = adj.dopamine.clamp(-cap, cap);
         adj.cortisol = adj.cortisol.clamp(-cap, cap);
         adj.serotonin = adj.serotonin.clamp(-cap, cap);
@@ -381,10 +376,10 @@ impl SentimentEngine {
         adj
     }
 
-    /// Description textuelle pour injection dans le prompt LLM.
+    /// Textual description for injection into the LLM prompt.
     ///
-    /// Produit un bloc "SENTIMENTS ACTIFS" listant les sentiments en cours,
-    /// leur force et leur influence sur la perception emotionnelle.
+    /// Produces a "SENTIMENTS ACTIFS" block listing active sentiments,
+    /// their strength and their influence on emotional perception.
     pub fn describe_for_prompt(&self) -> String {
         if !self.enabled || self.active_sentiments.is_empty() {
             return String::new();
@@ -395,7 +390,7 @@ impl SentimentEngine {
             desc.push_str(&format!("\n- {}", sentiment.describe()));
         }
 
-        // Ajouter un resume de l'influence
+        // Add a summary of influence
         let short_count = self.active_sentiments.iter()
             .filter(|s| s.duration_type == SentimentDuration::ShortTerm).count();
         let medium_count = self.active_sentiments.iter()
@@ -413,7 +408,7 @@ impl SentimentEngine {
         desc
     }
 
-    /// Serialise l'etat complet du moteur de sentiments en JSON.
+    /// Serializes the complete state of the sentiment engine to JSON.
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::json!({
             "enabled": self.enabled,
@@ -435,7 +430,7 @@ impl SentimentEngine {
         })
     }
 
-    /// Historique des formations/dissolutions recentes (pour l'API).
+    /// Recent formation/dissolution history (for the API).
     pub fn history_json(&self) -> serde_json::Value {
         serde_json::json!({
             "total_formed": self.total_formed,
@@ -455,7 +450,7 @@ impl SentimentEngine {
         })
     }
 
-    /// Reset complet (factory reset).
+    /// Full reset (factory reset).
     pub fn reset(&mut self) {
         self.active_sentiments.clear();
         self.emotion_history.clear();
@@ -465,21 +460,19 @@ impl SentimentEngine {
 }
 
 // =============================================================================
-// Catalogue des 20 sentiments
+// Catalog of 20 sentiments
 // =============================================================================
-
-/// Construit le catalogue des 20 sentiments predetermines.
+/// Builds the catalog of 20 predetermined sentiments.
 ///
-/// Court terme (7) : duree 10-50 cycles, seuil 3-5 occurrences
-/// Moyen terme (8) : duree 50-200 cycles, seuil 8-12 occurrences
-/// Long terme (5) : duree 200-1000+ cycles, seuil 15-20 occurrences
+/// Short term (7): duration 10-50 cycles, threshold 3-5 occurrences
+/// Medium term (8): duration 50-200 cycles, threshold 8-12 occurrences
+/// Long term (5): duration 200-1000+ cycles, threshold 15-20 occurrences
 fn build_sentiment_catalog() -> Vec<SentimentProfile> {
     vec![
         // =================================================================
-        // COURT TERME — humeurs passageres (seuil 3-5, duree 10-50 cycles)
+        // SHORT TERM — passing moods (threshold 3-5, duration 10-50 cycles)
         // =================================================================
-
-        // 1. Irritation ← Colère, Frustration
+        // 1. Irritation <- Anger, Frustration
         SentimentProfile {
             name: "Irritation".into(),
             duration_type: SentimentDuration::ShortTerm,
@@ -500,7 +493,7 @@ fn build_sentiment_catalog() -> Vec<SentimentProfile> {
             max_duration_cycles: 50,
         },
 
-        // 2. Enthousiasme passager ← Joie, Excitation
+        // 2. Passing enthusiasm <- Joy, Excitement
         SentimentProfile {
             name: "Enthousiasme passager".into(),
             duration_type: SentimentDuration::ShortTerm,
@@ -521,7 +514,7 @@ fn build_sentiment_catalog() -> Vec<SentimentProfile> {
             max_duration_cycles: 40,
         },
 
-        // 3. Apprehension ← Anxiété, Peur
+        // 3. Apprehension <- Anxiety, Fear
         SentimentProfile {
             name: "Appréhension".into(),
             duration_type: SentimentDuration::ShortTerm,
@@ -541,7 +534,7 @@ fn build_sentiment_catalog() -> Vec<SentimentProfile> {
             max_duration_cycles: 50,
         },
 
-        // 4. Agacement ← Frustration, Ennui
+        // 4. Annoyance <- Frustration, Boredom
         SentimentProfile {
             name: "Agacement".into(),
             duration_type: SentimentDuration::ShortTerm,
@@ -562,7 +555,7 @@ fn build_sentiment_catalog() -> Vec<SentimentProfile> {
             max_duration_cycles: 40,
         },
 
-        // 5. Amusement ← Joie, Surprise
+        // 5. Amusement <- Joy, Surprise
         SentimentProfile {
             name: "Amusement".into(),
             duration_type: SentimentDuration::ShortTerm,
@@ -583,7 +576,7 @@ fn build_sentiment_catalog() -> Vec<SentimentProfile> {
             max_duration_cycles: 35,
         },
 
-        // 6. Attendrissement ← Tendresse, Compassion
+        // 6. Tenderness <- Tenderness, Compassion
         SentimentProfile {
             name: "Attendrissement".into(),
             duration_type: SentimentDuration::ShortTerm,
@@ -604,7 +597,7 @@ fn build_sentiment_catalog() -> Vec<SentimentProfile> {
             max_duration_cycles: 45,
         },
 
-        // 7. Nervosité ← Anxiété, Confusion
+        // 7. Nervousness <- Anxiety, Confusion
         SentimentProfile {
             name: "Nervosité".into(),
             duration_type: SentimentDuration::ShortTerm,
@@ -625,10 +618,9 @@ fn build_sentiment_catalog() -> Vec<SentimentProfile> {
         },
 
         // =================================================================
-        // MOYEN TERME — etats installes (seuil 8-12, duree 50-200 cycles)
+        // MEDIUM TERM — settled states (threshold 8-12, duration 50-200 cycles)
         // =================================================================
-
-        // 8. Méfiance ← Peur, Mépris, Dégoût
+        // 8. Distrust <- Fear, Contempt, Disgust
         SentimentProfile {
             name: "Méfiance".into(),
             duration_type: SentimentDuration::MediumTerm,
@@ -651,7 +643,7 @@ fn build_sentiment_catalog() -> Vec<SentimentProfile> {
             max_duration_cycles: 200,
         },
 
-        // 9. Attachement ← Amour, Tendresse, Gratitude
+        // 9. Attachment <- Love, Tenderness, Gratitude
         SentimentProfile {
             name: "Attachement".into(),
             duration_type: SentimentDuration::MediumTerm,
@@ -672,7 +664,7 @@ fn build_sentiment_catalog() -> Vec<SentimentProfile> {
             max_duration_cycles: 200,
         },
 
-        // 10. Rancoeur ← Colère, Jalousie, Haine
+        // 10. Resentment <- Anger, Jealousy, Hatred
         SentimentProfile {
             name: "Rancoeur".into(),
             duration_type: SentimentDuration::MediumTerm,
@@ -695,7 +687,7 @@ fn build_sentiment_catalog() -> Vec<SentimentProfile> {
             max_duration_cycles: 200,
         },
 
-        // 11. Optimisme ← Espoir, Joie, Fierté
+        // 11. Optimism <- Hope, Joy, Pride
         SentimentProfile {
             name: "Optimisme".into(),
             duration_type: SentimentDuration::MediumTerm,
@@ -718,7 +710,7 @@ fn build_sentiment_catalog() -> Vec<SentimentProfile> {
             max_duration_cycles: 200,
         },
 
-        // 12. Pessimisme ← Tristesse, Désespoir, Mélancolie
+        // 12. Pessimism <- Sadness, Despair, Melancholy
         SentimentProfile {
             name: "Pessimisme".into(),
             duration_type: SentimentDuration::MediumTerm,
@@ -740,7 +732,7 @@ fn build_sentiment_catalog() -> Vec<SentimentProfile> {
             max_duration_cycles: 200,
         },
 
-        // 13. Nostalgie chronique ← Nostalgie, Mélancolie
+        // 13. Chronic nostalgia <- Nostalgia, Melancholy
         SentimentProfile {
             name: "Nostalgie chronique".into(),
             duration_type: SentimentDuration::MediumTerm,
@@ -762,7 +754,7 @@ fn build_sentiment_catalog() -> Vec<SentimentProfile> {
             max_duration_cycles: 200,
         },
 
-        // 14. Admiration durable ← Admiration, Émerveillement
+        // 14. Lasting admiration <- Admiration, Wonder
         SentimentProfile {
             name: "Admiration durable".into(),
             duration_type: SentimentDuration::MediumTerm,
@@ -783,7 +775,7 @@ fn build_sentiment_catalog() -> Vec<SentimentProfile> {
             max_duration_cycles: 200,
         },
 
-        // 15. Inquiétude ← Anxiété, Peur, Compassion
+        // 15. Worry <- Anxiety, Fear, Compassion
         SentimentProfile {
             name: "Inquiétude".into(),
             duration_type: SentimentDuration::MediumTerm,
@@ -806,10 +798,9 @@ fn build_sentiment_catalog() -> Vec<SentimentProfile> {
         },
 
         // =================================================================
-        // LONG TERME — traits affectifs profonds (seuil 15-20, duree 200-1000+)
+        // LONG TERM — deep affective traits (threshold 15-20, duration 200-1000+)
         // =================================================================
-
-        // 16. Amertume ← Frustration, Mépris, Désespoir
+        // 16. Bitterness <- Frustration, Contempt, Despair
         SentimentProfile {
             name: "Amertume".into(),
             duration_type: SentimentDuration::LongTerm,
@@ -832,7 +823,7 @@ fn build_sentiment_catalog() -> Vec<SentimentProfile> {
             max_duration_cycles: 1000,
         },
 
-        // 17. Confiance profonde ← Sérénité, Gratitude, Amour
+        // 17. Deep trust <- Serenity, Gratitude, Love
         SentimentProfile {
             name: "Confiance profonde".into(),
             duration_type: SentimentDuration::LongTerm,
@@ -855,7 +846,7 @@ fn build_sentiment_catalog() -> Vec<SentimentProfile> {
             max_duration_cycles: 1500,
         },
 
-        // 18. Désillusion ← Tristesse, Mépris, Résignation
+        // 18. Disillusionment <- Sadness, Contempt, Resignation
         SentimentProfile {
             name: "Désillusion".into(),
             duration_type: SentimentDuration::LongTerm,
@@ -878,7 +869,7 @@ fn build_sentiment_catalog() -> Vec<SentimentProfile> {
             max_duration_cycles: 1000,
         },
 
-        // 19. Sérénité ancrée ← Sérénité, Espoir, Gratitude
+        // 19. Anchored serenity <- Serenity, Hope, Gratitude
         SentimentProfile {
             name: "Sérénité ancrée".into(),
             duration_type: SentimentDuration::LongTerm,
@@ -901,7 +892,7 @@ fn build_sentiment_catalog() -> Vec<SentimentProfile> {
             max_duration_cycles: 1500,
         },
 
-        // 20. Résilience émotionnelle ← Fierté, Espoir
+        // 20. Emotional resilience <- Pride, Hope
         SentimentProfile {
             name: "Résilience émotionnelle".into(),
             duration_type: SentimentDuration::LongTerm,
@@ -963,14 +954,14 @@ mod tests {
     #[test]
     fn test_short_term_formation() {
         let mut engine = default_engine();
-        // Irritation requiert 3 occurrences de Colère ou Frustration
+        // Irritation requires 3 occurrences of Anger or Frustration
         for i in 0..5 {
             engine.tick("Colère", i);
         }
         let irritation = engine.active_sentiments.iter()
             .find(|s| s.profile_name == "Irritation");
         assert!(irritation.is_some(), "Irritation devrait se former apres 5 occurrences de Colère");
-        // Force initiale 0.3 + renforcements subsequents - decay
+        // Initial strength 0.3 + subsequent reinforcements - decay
         assert!(irritation.unwrap().strength > 0.2,
             "La force devrait etre significative apres formation et renforcement");
     }
@@ -978,7 +969,7 @@ mod tests {
     #[test]
     fn test_reinforcement() {
         let mut engine = default_engine();
-        // Former l'irritation
+        // Form irritation
         for i in 0..5 {
             engine.tick("Colère", i);
         }
@@ -987,7 +978,7 @@ mod tests {
             .map(|s| s.strength)
             .unwrap_or(0.0);
 
-        // Continuer avec des emotions trigger
+        // Continue with trigger emotions
         engine.tick("Frustration", 10);
         let reinforced_strength = engine.active_sentiments.iter()
             .find(|s| s.profile_name == "Irritation")
@@ -1001,7 +992,7 @@ mod tests {
     #[test]
     fn test_decay() {
         let mut engine = default_engine();
-        // Former un sentiment
+        // Form a sentiment
         for i in 0..5 {
             engine.tick("Colère", i);
         }
@@ -1011,7 +1002,7 @@ mod tests {
             .map(|s| s.strength)
             .unwrap_or(0.0);
 
-        // Faire tourner sans renforcement (emotion neutre) pendant longtemps
+        // Run without reinforcement (neutral emotion) for a long time
         for i in 6..60 {
             engine.tick("Curiosité", i);
         }
@@ -1019,13 +1010,13 @@ mod tests {
         if let Some(s) = engine.active_sentiments.iter().find(|s| s.profile_name == "Irritation") {
             assert!(s.strength < initial_strength, "La force devrait diminuer par decay");
         }
-        // Si le sentiment a ete dissous, c'est aussi un succes du decay
+        // If the sentiment was dissolved, that is also a successful decay outcome
     }
 
     #[test]
     fn test_amplify_emotion_scores() {
         let mut engine = default_engine();
-        // Former l'irritation
+        // Form irritation
         for i in 0..5 {
             engine.tick("Colère", i);
         }
@@ -1038,7 +1029,7 @@ mod tests {
 
         engine.amplify_emotion_scores(&mut spectrum);
 
-        // Colère devrait etre amplifiee, Sérénité attenuee
+        // Anger should be amplified, Serenity dampened
         let colere = spectrum.iter().find(|(n, _)| n == "Colère").unwrap().1;
         assert!(colere > 0.8, "Colère devrait etre amplifiee par Irritation");
     }
@@ -1046,7 +1037,7 @@ mod tests {
     #[test]
     fn test_chemistry_influence_capped() {
         let mut engine = default_engine();
-        // Former un sentiment
+        // Form a sentiment
         for i in 0..5 {
             engine.tick("Colère", i);
         }
@@ -1104,7 +1095,7 @@ mod tests {
         };
         let mut engine = SentimentEngine::new(&config);
 
-        // Forcer la formation de beaucoup de sentiments differents
+        // Force the formation of many different sentiments
         for _ in 0..10 {
             engine.tick("Colère", 0);
             engine.tick("Joie", 0);

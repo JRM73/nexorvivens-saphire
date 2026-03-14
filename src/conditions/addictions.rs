@@ -1,37 +1,37 @@
 // =============================================================================
-// conditions/addictions.rs — Addictions et dependances
+// conditions/addictions.rs — Addictions and dependencies
 // =============================================================================
 //
-// Role : Modelise le cycle de l'addiction : exposition → tolerance →
-//        dependance → manque → craving → sevrage → rechute.
+// Purpose: Models the addiction cycle: exposure -> tolerance ->
+//          dependency -> withdrawal -> craving -> detox -> relapse.
 //
-// Integration :
-//   Modifie la chimie (dopamine effondree en manque, cortisol eleve),
-//   interagit avec le systeme de recepteurs (tolerance).
-//   Le craving peut declencher des pensees obsedantes.
+// Integration:
+//   Modifies chemistry (dopamine collapse during withdrawal, elevated cortisol),
+//   interacts with the receptor system (tolerance).
+//   Craving can trigger obsessive thoughts.
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 use crate::world::ChemistryAdjustment;
 
-/// Etat d'une addiction individuelle.
+/// State of an individual addiction.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AddictionState {
-    /// Nom de la substance ou comportement
+    /// Name of the substance or behavior
     pub substance: String,
-    /// Niveau de dependance (0.0 = aucune, 1.0 = severe)
+    /// Dependency level (0.0 = none, 1.0 = severe)
     pub dependency_level: f64,
-    /// Tolerance (0.0 = aucune, 1.0 = besoin de beaucoup plus pour le meme effet)
+    /// Tolerance (0.0 = none, 1.0 = needs much more for the same effect)
     pub tolerance: f64,
-    /// Severite du manque (0.0 = aucun, 1.0 = insupportable)
+    /// Withdrawal severity (0.0 = none, 1.0 = unbearable)
     pub withdrawal_level: f64,
-    /// Dernier cycle de consommation
+    /// Last consumption cycle
     pub last_use_cycle: Option<u64>,
-    /// Nombre total d'utilisations
+    /// Total number of uses
     pub total_uses: u64,
-    /// Envie de consommer (0.0 = aucune, 1.0 = irresistible)
+    /// Urge to consume (0.0 = none, 1.0 = irresistible)
     pub craving: f64,
-    /// En sevrage actif (reduction volontaire)
+    /// In active withdrawal (voluntary reduction)
     pub in_withdrawal: bool,
 }
 
@@ -49,29 +49,29 @@ impl AddictionState {
         }
     }
 
-    /// Simule une consommation.
+    /// Simulates a substance use.
     pub fn use_substance(&mut self, current_cycle: u64) {
         self.last_use_cycle = Some(current_cycle);
         self.total_uses += 1;
 
-        // Tolerance monte avec l'usage
+        // Tolerance increases with use
         self.tolerance = (self.tolerance + 0.02).min(1.0);
 
-        // Dependance monte progressivement
+        // Dependency increases progressively
         self.dependency_level = (self.dependency_level + 0.01).min(1.0);
 
-        // Consommation reduit temporairement le manque et le craving
+        // Consumption temporarily reduces withdrawal and craving
         self.withdrawal_level = (self.withdrawal_level - 0.5).max(0.0);
         self.craving = (self.craving - 0.6).max(0.0);
     }
 
-    /// Met a jour l'etat a chaque cycle.
+    /// Updates the state each cycle.
     pub fn tick(&mut self, current_cycle: u64) {
         let cycles_since_use = self.last_use_cycle
             .map(|c| current_cycle.saturating_sub(c))
             .unwrap_or(0);
 
-        // Manque augmente si dependant et pas consomme recemment
+        // Withdrawal increases if dependent and not consumed recently
         if self.dependency_level > 0.1 && cycles_since_use > 10 {
             let manque_rate = self.dependency_level * 0.005;
             self.withdrawal_level = (self.withdrawal_level + manque_rate).min(1.0);
@@ -79,27 +79,27 @@ impl AddictionState {
             self.withdrawal_level = (self.withdrawal_level - 0.002).max(0.0);
         }
 
-        // Craving = fonction du manque et de la dependance
+        // Craving = function of withdrawal and dependency
         let target_craving = (self.withdrawal_level * 0.6 + self.dependency_level * 0.3)
             .clamp(0.0, 1.0);
         self.craving += (target_craving - self.craving) * 0.1;
         self.craving = self.craving.clamp(0.0, 1.0);
 
-        // En sevrage actif : tolerance et dependance decroissent lentement
+        // In active withdrawal: tolerance and dependency decrease slowly
         if self.in_withdrawal {
             self.tolerance = (self.tolerance - 0.001).max(0.0);
             self.dependency_level = (self.dependency_level - 0.0005).max(0.0);
         }
     }
 
-    /// Effet dopaminergique de la consommation (reduit par tolerance).
+    /// Dopaminergic effect of consumption (reduced by tolerance).
     pub fn dopamine_effect(&self) -> f64 {
-        // Plus la tolerance est haute, moins l'effet est fort
+        // The higher the tolerance, the weaker the effect
         let base_effect = 0.1;
         base_effect * (1.0 - self.tolerance * 0.8)
     }
 
-    /// Serialise pour l'API.
+    /// Serializes for the API.
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::json!({
             "substance": self.substance,
@@ -113,11 +113,11 @@ impl AddictionState {
     }
 }
 
-/// Gestionnaire d'addictions (peut en avoir plusieurs).
+/// Addiction manager (can have multiple addictions).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AddictionManager {
     pub active: Vec<AddictionState>,
-    /// Predisposition genetique (0.0 = resistant, 1.0 = tres vulnerable)
+    /// Genetic predisposition (0.0 = resistant, 1.0 = very vulnerable)
     pub susceptibility: f64,
 }
 
@@ -141,20 +141,20 @@ impl AddictionManager {
         }
     }
 
-    /// Impact chimique global : manque = dysphorie.
+    /// Overall chemistry impact: withdrawal = dysphoria.
     pub fn chemistry_influence(&self) -> ChemistryAdjustment {
         let mut adj = ChemistryAdjustment::default();
 
         for a in &self.active {
             if a.withdrawal_level > 0.1 {
-                // Manque → dopamine basse, cortisol eleve
+                // Withdrawal -> low dopamine, high cortisol
                 adj.dopamine -= a.withdrawal_level * 0.02;
                 adj.cortisol += a.withdrawal_level * 0.02;
                 adj.serotonin -= a.withdrawal_level * 0.01;
                 adj.noradrenaline += a.withdrawal_level * 0.01;
             }
 
-            // Craving eleve → agitation
+            // High craving -> agitation
             if a.craving > 0.5 {
                 adj.noradrenaline += a.craving * 0.01;
             }
@@ -163,12 +163,12 @@ impl AddictionManager {
         adj
     }
 
-    /// Craving maximal parmi les addictions actives.
+    /// Maximum craving among active addictions.
     pub fn max_craving(&self) -> f64 {
         self.active.iter().map(|a| a.craving).fold(0.0_f64, f64::max)
     }
 
-    /// Serialise pour l'API.
+    /// Serializes for the API.
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::json!({
             "addictions": self.active.iter().map(|a| a.to_json()).collect::<Vec<_>>(),
@@ -202,7 +202,7 @@ mod tests {
         let mut a = AddictionState::new("nicotine");
         a.dependency_level = 0.8;
         a.last_use_cycle = Some(0);
-        // Simuler beaucoup de cycles sans consommation
+        // Simulate many cycles without consumption
         for c in 1..=200 {
             a.tick(c);
         }

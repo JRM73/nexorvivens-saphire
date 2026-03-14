@@ -1,20 +1,20 @@
 // =============================================================================
-// knowledge/arxiv.rs — Client API arXiv (Atom XML) — CORRIGE
+// knowledge/arxiv.rs — arXiv API client (Atom XML) — FIXED
 // =============================================================================
 //
-// Role : Implemente la recherche d'articles scientifiques sur arXiv via
-//        l'API publique (format Atom XML).
+// Purpose: Implements scientific article search on arXiv via
+//          the public API (Atom XML format).
 //
-// FIX 2 : 3 corrections critiques :
-//   a) HTTPS au lieu de HTTP (arXiv redirige, ureq peut ne pas suivre)
-//   b) Traduction FR -> EN des requetes (arXiv est 100% anglais)
-//   c) Parsing XML robuste avec validation et logging
+// FIX 2: 3 critical corrections:
+//   a) HTTPS instead of HTTP (arXiv redirects, ureq may not follow)
+//   b) FR -> EN query translation (arXiv is 100% English)
+//   c) Robust XML parsing with validation and logging
 // =============================================================================
 
 use chrono::Utc;
 use super::{WebKnowledge, KnowledgeResult, KnowledgeError};
 
-/// Entree arXiv parsee — structure intermediaire pour le parsing robuste
+/// Parsed arXiv entry — intermediate structure for robust parsing
 #[derive(Debug)]
 struct ArxivEntry {
     title: String,
@@ -25,15 +25,15 @@ struct ArxivEntry {
 }
 
 impl WebKnowledge {
-    /// Cherche des articles sur arXiv — version corrigee.
-    /// Traduit automatiquement les requetes FR -> EN.
+    /// Search for articles on arXiv — fixed version.
+    /// Automatically translates FR -> EN queries.
     pub fn search_arxiv(&self, query: &str, max_results: u32) -> Result<Vec<KnowledgeResult>, KnowledgeError> {
-        // FIX A : Traduire la requete en anglais si elle est en francais
+        // FIX A: Translate the query to English if it is in French
         let english_query = Self::translate_query_to_english(query);
 
         let encoded = Self::url_encode(&english_query);
 
-        // FIX B : Utiliser HTTPS (pas HTTP)
+        // FIX B: Use HTTPS (not HTTP)
         let url = format!(
             "https://export.arxiv.org/api/query?search_query=all:{}&start=0&max_results={}&sortBy=relevance",
             encoded,
@@ -44,7 +44,7 @@ impl WebKnowledge {
             return Err(KnowledgeError::DomainBlocked);
         }
 
-        // FIX C : User-Agent descriptif requis par arXiv
+        // FIX C: Descriptive User-Agent required by arXiv
         let response = self.http_client
             .get(&url)
             .set("User-Agent", "Saphire/1.0 (Autonomous Cognitive Entity; educational research)")
@@ -59,7 +59,7 @@ impl WebKnowledge {
                 KnowledgeError::Parse(e.to_string())
             })?;
 
-        // FIX D : Verifier que la reponse est du XML Atom valide
+        // FIX D: Verify the response is valid Atom XML
         if !response.contains("<feed") {
             tracing::warn!("arXiv: reponse inattendue (pas du XML Atom)");
             if response.len() > 10 {
@@ -68,7 +68,7 @@ impl WebKnowledge {
             return Err(KnowledgeError::Parse("Réponse non-Atom".into()));
         }
 
-        // FIX E : Parser robuste
+        // FIX E: Robust parser
         let entries = Self::parse_arxiv_xml_robust(&response);
 
         if entries.is_empty() {
@@ -104,8 +104,8 @@ impl WebKnowledge {
         Ok(results)
     }
 
-    /// Traduction FR -> EN des termes de recherche courants.
-    /// Utilisee par arXiv et Semantic Scholar (100% anglais).
+    /// FR -> EN translation of common search terms.
+    /// Used by arXiv and Semantic Scholar (100% English).
     pub(crate) fn translate_query_to_english(query: &str) -> String {
         let translations: &[(&str, &str)] = &[
             ("conscience artificielle", "artificial consciousness"),
@@ -142,14 +142,14 @@ impl WebKnowledge {
             }
         }
 
-        // Si pas de traduction trouvee, garder tel quel
-        // (beaucoup de termes scientifiques sont similaires FR/EN)
+        // If no translation found, keep as-is
+        // (many scientific terms are similar in FR/EN)
         query.to_string()
     }
 
-    /// Parser robuste du XML Atom retourne par l'API arXiv.
-    /// Gere les cas limites : sauts de ligne dans les titres, tags avec
-    /// attributs, entrees incompletes.
+    /// Robust parser for the Atom XML returned by the arXiv API.
+    /// Handles edge cases: line breaks in titles, tags with attributes,
+    /// incomplete entries.
     fn parse_arxiv_xml_robust(xml: &str) -> Vec<ArxivEntry> {
         let mut results = Vec::new();
 
@@ -157,29 +157,29 @@ impl WebKnowledge {
             let end = entry_block.find("</entry>").unwrap_or(entry_block.len());
             let entry = &entry_block[..end];
 
-            // Extraire le titre (peut contenir des sauts de ligne)
+            // Extract the title (may contain line breaks)
             let title = Self::extract_tag(entry, "title")
                 .map(|t| t.replace('\n', " ").split_whitespace().collect::<Vec<&str>>().join(" "))
                 .unwrap_or_default();
 
-            // Extraire le resume
+            // Extract the abstract
             let summary = Self::extract_tag(entry, "summary")
                 .map(|s| s.replace('\n', " ").split_whitespace().collect::<Vec<&str>>().join(" "))
                 .unwrap_or_default();
 
-            // L'ID arXiv est l'URL de l'article
+            // The arXiv ID is the article URL
             let url = Self::extract_tag(entry, "id")
                 .map(|u| u.trim().to_string())
                 .unwrap_or_default();
 
-            // Extraire les auteurs
+            // Extract authors
             let authors: Vec<String> = entry.split("<author>")
                 .skip(1)
                 .filter_map(|a| Self::extract_tag(a, "name"))
                 .map(|n| n.trim().to_string())
                 .collect();
 
-            // Extraire les categories
+            // Extract categories
             let categories: Vec<String> = entry.split("term=\"")
                 .skip(1)
                 .filter_map(|c| c.split('"').next().map(|s| s.to_string()))

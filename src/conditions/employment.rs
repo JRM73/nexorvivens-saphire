@@ -1,42 +1,42 @@
 // =============================================================================
-// conditions/employment.rs — Emploi et statut professionnel
+// conditions/employment.rs — Employment and professional status
 // =============================================================================
 //
-// Role : Modelise le statut professionnel (salarie, independant, chomeur,
-//        etudiant, retraite, etc.) avec categorie de profession et impact
-//        chimique base sur la satisfaction et le stress.
+// Role: Models the professional status (employed, self-employed, unemployed,
+//       student, retired, etc.) with profession category and chemistry
+//       impact based on satisfaction and stress.
 //
-// Integration :
-//   Fournit un supplement au system prompt LLM et impacte la chimie.
-//   Activable via [employment] enabled = true dans saphire.toml.
+// Integration:
+//   Provides a supplement to the LLM system prompt and impacts chemistry.
+//   Enabled via [employment] enabled = true in saphire.toml.
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
 use crate::world::ChemistryAdjustment;
 
-/// Statut d'emploi.
+/// Employment status.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum EmploymentStatus {
-    /// Salarie (CDI, CDD, etc.)
+    /// Employee (permanent, fixed-term, etc.)
     Employed,
-    /// Travailleur independant (freelance, auto-entrepreneur)
+    /// Self-employed worker (freelance, sole proprietor)
     SelfEmployed,
-    /// Sans emploi / chomeur
+    /// Unemployed / jobless
     Unemployed,
-    /// Etudiant
+    /// Student
     Student,
-    /// Retraite
+    /// Retired
     Retired,
-    /// Invalide / en situation de handicap professionnel
+    /// Disabled / occupationally handicapped
     Disabled,
-    /// Au foyer (parent, aidant)
+    /// Homemaker (parent, caregiver)
     Homemaker,
-    /// Benevole
+    /// Volunteer
     Volunteer,
 }
 
 impl EmploymentStatus {
-    /// Parse depuis une chaine de configuration.
+    /// Parses from a configuration string.
     pub fn from_str_config(s: &str) -> Self {
         match s.to_lowercase().as_str() {
             "employed" | "salarie" => Self::Employed,
@@ -51,7 +51,7 @@ impl EmploymentStatus {
         }
     }
 
-    /// Nom affichable en francais.
+    /// Display name in French.
     fn label_fr(&self) -> &'static str {
         match self {
             Self::Employed => "salarie",
@@ -66,7 +66,7 @@ impl EmploymentStatus {
     }
 }
 
-/// Categorie de profession.
+/// Profession category.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ProfessionCategory {
     Technology,
@@ -86,7 +86,7 @@ pub enum ProfessionCategory {
 }
 
 impl ProfessionCategory {
-    /// Parse depuis une chaine de configuration.
+    /// Parses from a configuration string.
     pub fn from_str_config(s: &str) -> Self {
         match s.to_lowercase().as_str() {
             "technology" | "tech" | "informatique" => Self::Technology,
@@ -106,7 +106,7 @@ impl ProfessionCategory {
         }
     }
 
-    /// Nom affichable en francais.
+    /// Display name in French.
     fn label_fr(&self) -> &'static str {
         match self {
             Self::Technology => "technologie",
@@ -127,25 +127,25 @@ impl ProfessionCategory {
     }
 }
 
-/// Etat professionnel complet.
+/// Complete employment state.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmploymentState {
-    /// Statut d'emploi actuel
+    /// Current employment status
     pub status: EmploymentStatus,
-    /// Categorie de profession (si applicable)
+    /// Profession category (if applicable)
     pub profession: Option<ProfessionCategory>,
-    /// Titre de poste libre
+    /// Free-form job title
     pub job_title: Option<String>,
-    /// Satisfaction professionnelle (0.0-1.0)
+    /// Professional satisfaction (0.0-1.0)
     pub satisfaction: f64,
-    /// Niveau de stress professionnel (0.0-1.0)
+    /// Professional stress level (0.0-1.0)
     pub stress_level: f64,
-    /// Annees d'experience
+    /// Years of experience
     pub years_experience: f64,
 }
 
 impl EmploymentState {
-    /// Constructeur.
+    /// Constructor.
     pub fn new(
         status: EmploymentStatus,
         profession: Option<ProfessionCategory>,
@@ -164,7 +164,7 @@ impl EmploymentState {
         }
     }
 
-    /// Impact chimique base sur le statut, la satisfaction et le stress.
+    /// Chemistry impact based on status, satisfaction and stress.
     pub fn chemistry_influence(&self) -> ChemistryAdjustment {
         let mut adj = ChemistryAdjustment::default();
         let sat = self.satisfaction;
@@ -215,7 +215,7 @@ impl EmploymentState {
         adj
     }
 
-    /// Supplement au system prompt LLM.
+    /// Supplement for the LLM system prompt.
     pub fn prompt_supplement(&self) -> String {
         let status_str = self.status.label_fr();
 
@@ -254,7 +254,7 @@ impl EmploymentState {
         )
     }
 
-    /// Serialise pour l'API.
+    /// Serializes for the API.
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::json!({
             "active": true,

@@ -1,13 +1,13 @@
 // =============================================================================
-// api/sensoria.rs — Pont entre Saphire et Sensoria (service sensoriel)
+// api/sensoria.rs — Bridge between Saphire and Sensoria (sensory service)
 //
-// Sensoria tourne sur une machine separee (i7, 192.168.1.129) et fournit
-// les oreilles (STT), la bouche (TTS) et les yeux (vision) de Saphire.
+// Sensoria runs on a separate machine (i7, 192.168.1.129) and provides
+// ears (STT), mouth (TTS) and eyes (vision) for Saphire.
 //
-// Endpoints :
-//   POST /api/hear     — Sensoria envoie une transcription (ce que Saphire entend)
-//   POST /api/speak    — Saphire demande a Sensoria de parler
-//   GET  /api/sensoria — Statut de la connexion Sensoria
+// Endpoints:
+//  POST /api/hear — Sensoria sends a transcription (what Saphire hears)
+//  POST /api/speak — Saphire asks Sensoria to speak
+//  GET /api/sensoria — Sensoria connection status
 // =============================================================================
 
 use axum::{
@@ -23,13 +23,13 @@ use crate::agent::lifecycle::UserMessage;
 
 const SENSORIA_HOST: &str = "192.168.1.129:9090";
 
-// ─── Transcription entrante (Sensoria → Saphire) ─────────────────────────
+// ─── Incoming transcription (Sensoria → Saphire) ─────────────────────────
 
 #[derive(Deserialize)]
 pub struct HearRequest {
-    /// Texte transcrit par Whisper via Sensoria
+    /// Text transcribed by Whisper via Sensoria
     pub text: String,
-    /// Source de la transcription
+    /// Transcription source
     #[serde(default = "default_source")]
     pub source: String,
 }
@@ -38,9 +38,9 @@ fn default_source() -> String {
     "sensoria".into()
 }
 
-/// Recoit une transcription vocale depuis Sensoria.
-/// Le texte est injecte dans le pipeline cognitif de Saphire
-/// comme un message utilisateur (via le canal user_tx).
+/// Receives a voice transcription from Sensoria.
+/// The text is injected into Saphire's cognitive pipeline
+/// as a user message (via the user_tx channel).
 pub async fn api_hear(
     State(state): State<AppState>,
     Json(req): Json<HearRequest>,
@@ -55,7 +55,7 @@ pub async fn api_hear(
 
     tracing::info!("[SENSORIA] Transcription recue : \"{}\"", text);
 
-    // Injecter dans le pipeline cognitif comme un message de JRM
+    // Inject into the cognitive pipeline as a message from JRM
     let msg = UserMessage {
         text: text.clone(),
         username: "JRM".to_string(),
@@ -77,18 +77,18 @@ pub async fn api_hear(
     }
 }
 
-// ─── Demande de parole (Saphire → Sensoria) ──────────────────────────────
+// ─── Speech request (Saphire → Sensoria) ──────────────────────────────
 
 #[derive(Deserialize)]
 pub struct SpeakRequest {
-    /// Texte que Saphire veut prononcer
+    /// Text that Saphire wants to speak
     pub text: String,
-    /// Emotion dominante (optionnelle — pour modulation vocale Qwen3-TTS)
+    /// Dominant emotion (optional — for Qwen3-TTS voice modulation)
     pub emotion: Option<String>,
 }
 
-/// Envoie du texte a Sensoria pour synthese vocale (TTS).
-/// Si une emotion est fournie, elle est transmise pour modulation vocale.
+/// Sends text to Sensoria for speech synthesis (TTS).
+/// If an emotion is provided, it is forwarded for voice modulation.
 pub async fn api_speak(
     State(_state): State<AppState>,
     Json(req): Json<SpeakRequest>,
@@ -105,7 +105,7 @@ pub async fn api_speak(
 
     tracing::info!("[SENSORIA] Envoi TTS vers Sensoria : \"{}\" [{}]", text, emotion);
 
-    // Appel synchrone via ureq dans un spawn_blocking (pour ne pas bloquer le runtime)
+    // Synchronous call via ureq in a spawn_blocking (to not block the runtime)
     let text_clone = text.clone();
     let emotion_clone = emotion.clone();
     let result = tokio::task::spawn_blocking(move || {
@@ -147,9 +147,8 @@ pub async fn api_speak(
     }
 }
 
-// ─── Statut de la connexion Sensoria ─────────────────────────────────────
-
-/// Retourne le statut de la connexion avec Sensoria.
+// ─── Sensoria connection status ─────────────────────────────────────
+/// Returns the connection status with Sensoria.
 pub async fn api_sensoria_status(
     State(_state): State<AppState>,
 ) -> impl IntoResponse {

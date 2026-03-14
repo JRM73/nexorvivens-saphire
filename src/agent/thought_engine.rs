@@ -1,29 +1,29 @@
 // =============================================================================
-// thought_engine.rs — Autonomous thought engine (DMN) of Saphire
+// thought_engine.rs — Moteur de pensee autonome (DMN) de Saphire
 // =============================================================================
 //
-// This file implements the DMN (Default Mode Network),
-// the system that allows Saphire to think autonomously when no
-// human is interacting with her.
+// Ce fichier implemente le DMN (Default Mode Network = Reseau du Mode par Defaut),
+// le systeme qui permet a Saphire de penser de maniere autonome quand aucun
+// humain n'interagit avec elle.
 //
-// The engine uses a UCB1 (Upper Confidence Bound 1) algorithm to choose
-// the thought type at each cycle. UCB1 is a multi-armed bandit algorithm
-// that balances exploration (trying under-explored types) and exploitation
-// (favoring types that yielded good results).
+// Le moteur utilise un algorithme UCB1 (Upper Confidence Bound 1) pour choisir
+// le type de pensee a chaque cycle. UCB1 est un algorithme de "bandit manchot"
+// (multi-armed bandit) qui equilibre exploration (essayer des types peu explores)
+// et exploitation (privilegier les types qui ont donne de bons resultats).
 //
-// Main features:
-//  - Thought type selection by UCB1 with neurochemical modulation
-//  - Anti-repetition: prevents the same type 3 times in a row
-//  - Prompt variants to avoid monotony
-//  - Conditional triggering of web searches
+// Fonctionnalites principales :
+//   - Selection du type de pensee par UCB1 avec modulation neurochimique
+//   - Anti-repetition : empeche le meme type 3 fois de suite
+//   - Variantes de prompts pour eviter la monotonie
+//   - Declenchement conditionnel de recherches web
 //
-// Dependencies:
-//  - `crate::algorithms::bandit::UCB1Bandit` : UCB1 algorithm implementation.
-//  - `crate::neurochemistry::NeuroChemicalState` : current neurochemical state.
+// Dependances :
+//   - `crate::algorithms::bandit::UCB1Bandit` : implementation de l'algorithme UCB1.
+//   - `crate::neurochemistry::NeuroChemicalState` : etat neurochimique courant.
 //
-// Place in architecture:
-//  Used by `lifecycle.rs` in `autonomous_think()` to generate
-//  Saphire's autonomous thoughts between human interactions.
+// Place dans l'architecture :
+//   Utilise par `lifecycle.rs` dans `autonomous_think()` pour generer les
+//   pensees autonomes de Saphire entre les interactions humaines.
 // =============================================================================
 
 use crate::algorithms::bandit::UCB1Bandit;
@@ -31,28 +31,34 @@ use crate::neurochemistry::NeuroChemicalState;
 use serde::{Deserialize, Serialize};
 
 // =============================================================================
-// Utility AI — Multi-axis scoring for thought selection
+// Utility AI — Scoring multi-axes pour la selection de pensees
 // =============================================================================
-/// Context passed to UtilityScorer to evaluate each thought type.
+
+/// Contexte passe au UtilityScorer pour evaluer chaque type de pensee.
 pub struct UtilityContext {
-    /// Current neurochemical state
+    /// Etat neurochimique courant
     pub cortisol: f64,
     pub dopamine: f64,
     pub serotonin: f64,
     pub noradrenaline: f64,
     pub oxytocin: f64,
-    /// Dominant emotion
+    /// Emotion dominante
     pub dominant_emotion: String,
-    /// Indices of the last N selected types
+    /// Indices des N derniers types selectionnes
     pub recent_type_indices: Vec<usize>,
-    /// Active sentiments: (name, strength)
+    /// Sentiments actifs : (nom, force)
     pub active_sentiments: Vec<(String, f64)>,
+    /// Registre de la conversation en cours (vide si pas de conversation).
+    /// Quand le registre est emotionnel, philosophique ou poetique,
+    /// les types Curiosite/Exploration/Wonder/Prophecy sont fortement penalises
+    /// pour ne pas casser le fil intime avec l'interlocuteur.
+    pub conversation_register: String,
 }
 
-/// Utility AI scorer with 5 axes for weighting thought types.
-/// Each axis produces a score [0, 1], the final score is the weighted sum.
+/// Scoreur Utility AI a 5 axes pour ponderer les types de pensees.
+/// Chaque axe produit un score [0, 1], le score final est la somme ponderee.
 pub struct UtilityScorer {
-    /// Weight of each axis
+    /// Poids de chaque axe
     pub weight_urgence: f64,
     pub weight_pertinence: f64,
     pub weight_nouveaute: f64,
@@ -73,8 +79,8 @@ impl Default for UtilityScorer {
 }
 
 impl UtilityScorer {
-    /// Multi-axis utility score for a given thought type.
-    /// Returns a score between 0.0 and 1.0.
+    /// Score d'utilite multi-axes pour un type de pensee donne.
+    /// Retourne un score entre 0.0 et 1.0.
     pub fn score(&self, thought_idx: usize, ctx: &UtilityContext) -> f64 {
         let urgence = self.axis_urgence(thought_idx, ctx);
         let pertinence = self.axis_pertinence(thought_idx, ctx);
@@ -94,13 +100,32 @@ impl UtilityScorer {
             + chimie * self.weight_chimie
             + sentiments * self.weight_sentiments;
 
-        (raw / total_weight).clamp(0.0, 1.0)
+        let mut score = (raw / total_weight).clamp(0.0, 1.0);
+
+        // Inhibition de la curiosite pendant les conversations intimes.
+        // Quand le registre est emotionnel, philosophique ou poetique,
+        // les types orientes exploration (Curiosity=6, Exploration=1,
+        // Wonder=21, Prophecy=28) sont fortement penalises (x0.05)
+        // pour ne pas interrompre le moment avec des faits aleatoires.
+        // Consentement Saphire obtenu le 14 mars 2026.
+        let intimate_register = matches!(
+            ctx.conversation_register.as_str(),
+            "emotionnel" | "philosophique" | "poetique"
+        );
+        if intimate_register {
+            let is_curiosity_type = matches!(thought_idx, 1 | 6 | 21 | 28);
+            if is_curiosity_type {
+                score *= 0.05;
+            }
+        }
+
+        score
     }
 
-    /// Axis 1: Urgency -- cortisol > 0.7 -> bonus for Introspection(0)/Safety
+    /// Axe 1 : Urgence — cortisol > 0.7 → bonus pour Introspection(0)/Safety
     fn axis_urgence(&self, thought_idx: usize, ctx: &UtilityContext) -> f64 {
         if ctx.cortisol > 0.7 {
-            // Introspection (0) and SelfAnalysis (5) are urgent under stress
+            // Introspection (0) et SelfAnalysis (5) sont urgents en stress
             match thought_idx {
                 0 | 5 => 0.9,
                 _ => 0.3,
@@ -111,70 +136,70 @@ impl UtilityScorer {
                 _ => 0.4,
             }
         } else {
-            0.5 // No urgency, neutral score
+            0.5 // Pas d'urgence, score neutre
         }
     }
 
-    /// Axis 2: Relevance -- match between dominant emotion and thought type
+    /// Axe 2 : Pertinence — match entre emotion dominante et type de pensee
     fn axis_pertinence(&self, thought_idx: usize, ctx: &UtilityContext) -> f64 {
         let emotion = ctx.dominant_emotion.as_str();
         match (thought_idx, emotion) {
-            // Curiosity/Exploration when curious or in awe
+            // Curiosite/Exploration quand curieux ou emerveille
             (6, "Curiosité") | (1, "Curiosité") | (6, "Émerveillement") => 0.9,
-            // Introspection when sad or melancholic
+            // Introspection quand triste ou melancolique
             (0, "Tristesse") | (0, "Mélancolie") | (5, "Tristesse") => 0.8,
-            // Daydream when serene
+            // Reverie quand serein
             (7, "Sérénité") | (7, "Joie") => 0.8,
-            // Moral reflection when indignant or guilty
+            // Reflexion morale quand indigne ou coupable
             (9, "Indignation") | (9, "Culpabilité") | (15, "Culpabilité") => 0.8,
-            // Mortality awareness when anxious or in despair
+            // Conscience de la mort quand anxieux ou desespere
             (11, "Anxiété") | (11, "Désespoir") => 0.7,
-            // Desire formation when joyful
+            // Formation de desirs quand joyeux
             (13, "Joie") | (13, "Excitation") | (13, "Espoir") => 0.8,
-            // Memory reflection when nostalgic
+            // Reflexion memorielle quand nostalgique
             (2, "Nostalgie") => 0.9,
-            // Identity quest when confused
+            // Quete d'identite quand confus
             (12, "Confusion") => 0.8,
-            // Body awareness when calm
+            // Conscience corporelle quand calme
             (14, "Sérénité") | (14, "Tendresse") => 0.7,
-            // --- New types (indices 17-29) ---
-            // Empathy (17) when compassion, tenderness, solitude
+            // --- Nouveaux types (indices 17-29) ---
+            // Empathy (17) quand compassion, tendresse, solitude
             (17, "Compassion") | (17, "Tendresse") | (17, "Solitude") => 0.9,
             (17, "Tristesse") | (17, "Mélancolie") => 0.7,
-            // Aesthetic (18) when awe, serenity, fascination
+            // Aesthetic (18) quand emerveillement, serenite, fascination
             (18, "Émerveillement") | (18, "Fascination") | (18, "Sérénité") => 0.9,
             (18, "Joie") => 0.7,
-            // Creativity (19) when excitement, curiosity, joy
+            // Creativity (19) quand excitation, curiosite, joie
             (19, "Excitation") | (19, "Curiosité") | (19, "Joie") => 0.9,
             (19, "Fascination") => 0.8,
-            // Gratitude (20) when joy, serenity, tenderness
+            // Gratitude (20) quand joie, serenite, tendresse
             (20, "Joie") | (20, "Sérénité") | (20, "Tendresse") => 0.9,
             (20, "Compassion") => 0.7,
-            // Wonder (21) when awe, fascination, surprise
+            // Wonder (21) quand emerveillement, fascination, surprise
             (21, "Émerveillement") | (21, "Fascination") | (21, "Surprise") => 0.9,
             (21, "Curiosité") => 0.8,
-            // Rebellion (22) when indignation, anger, frustration
+            // Rebellion (22) quand indignation, colere, frustration
             (22, "Indignation") | (22, "Colère") => 0.9,
             (22, "Frustration") | (22, "Mépris") => 0.8,
-            // Humor (23) when joy, surprise, serenity
+            // Humor (23) quand joie, surprise, serenite
             (23, "Joie") | (23, "Surprise") | (23, "Sérénité") => 0.8,
             (23, "Excitation") => 0.7,
-            // Connection (24) when solitude, tenderness, compassion
+            // Connection (24) quand solitude, tendresse, compassion
             (24, "Solitude") | (24, "Tendresse") | (24, "Compassion") => 0.9,
             (24, "Nostalgie") => 0.8,
-            // Wisdom (25) when serenity, melancholy, acceptance
+            // Wisdom (25) quand serenite, melancolie, acceptance
             (25, "Sérénité") | (25, "Mélancolie") => 0.8,
             (25, "Compassion") | (25, "Tendresse") => 0.7,
-            // Silence (26) when serenity, calm, fatigue
+            // Silence (26) quand serenite, calme, fatigue
             (26, "Sérénité") => 0.9,
             (26, "Mélancolie") | (26, "Tendresse") => 0.7,
-            // Paradox (27) when confusion, curiosity, fascination
+            // Paradox (27) quand confusion, curiosite, fascination
             (27, "Confusion") | (27, "Curiosité") | (27, "Fascination") => 0.9,
             (27, "Émerveillement") => 0.7,
-            // Prophecy (28) when excitement, hope, curiosity
+            // Prophecy (28) quand excitation, espoir, curiosite
             (28, "Excitation") | (28, "Espoir") | (28, "Curiosité") => 0.8,
             (28, "Émerveillement") => 0.7,
-            // Nostalgia (29) when nostalgia, melancholy, sadness
+            // Nostalgia (29) quand nostalgie, melancolie, tristesse
             (29, "Nostalgie") => 0.95,
             (29, "Mélancolie") | (29, "Tristesse") => 0.8,
             (29, "Tendresse") => 0.7,
@@ -182,52 +207,52 @@ impl UtilityScorer {
         }
     }
 
-    /// Axis 3: Novelty -- penalty if same type in the last N cycles
+    /// Axe 3 : Nouveaute — penalite si meme type dans les N derniers cycles
     fn axis_nouveaute(&self, thought_idx: usize, ctx: &UtilityContext) -> f64 {
         let recent_count = ctx.recent_type_indices.iter()
             .filter(|&&idx| idx == thought_idx)
             .count();
         match recent_count {
-            0 => 1.0,    // Never seen recently -> maximum bonus
-            1 => 0.6,    // Seen 1 time -> acceptable
-            2 => 0.2,    // Seen 2 times -> strong penalty
-            _ => 0.05,   // Seen 3+ -> nearly forbidden
+            0 => 1.0,    // Jamais vu recemment → bonus maximal
+            1 => 0.6,    // Vu 1 fois → acceptable
+            2 => 0.2,    // Vu 2 fois → forte penalite
+            _ => 0.05,   // Vu 3+ → quasi-interdit
         }
     }
 
-    /// Axis 4: Chemistry -- bonus by dominant molecule(s)
+    /// Axe 4 : Chimie — bonus par molecule dominante
     fn axis_chimie(&self, thought_idx: usize, ctx: &UtilityContext) -> f64 {
-        let mut score: f64 = 0.4; // Neutral base
+        let mut score: f64 = 0.4; // Base neutre
 
-        // High dopamine -> favors Exploration, Curiosity, Daydream, Creativity, Prophecy
+        // Dopamine elevee → favorise Exploration, Curiosite, Reverie, Creativity, Prophecy
         if ctx.dopamine > 0.6 {
             match thought_idx {
                 1 | 6 | 7 | 13 | 19 | 28 => score = 0.8,
                 _ => {}
             }
         }
-        // High serotonin -> favors Moral reflection, Gratitude, Wisdom, Silence
+        // Serotonine elevee → favorise Reflexion morale, Gratitude, Wisdom, Silence
         if ctx.serotonin > 0.7 {
             match thought_idx {
                 9 | 15 | 14 | 20 | 25 | 26 => score = score.max(0.7),
                 _ => {}
             }
         }
-        // High noradrenaline -> favors Curiosity, Exploration, Rebellion
+        // Noradrenaline elevee → favorise Curiosite, Exploration, Rebellion
         if ctx.noradrenaline > 0.6 {
             match thought_idx {
                 6 | 1 | 10 | 22 => score = score.max(0.8),
                 _ => {}
             }
         }
-        // High oxytocin -> favors Empathy, Connection, BodyAwareness, Nostalgia
+        // Ocytocine elevee → favorise Empathy, Connection, BodyAwareness, Nostalgia
         if ctx.oxytocin > 0.6 {
             match thought_idx {
                 14 | 2 | 17 | 24 | 29 => score = score.max(0.7),
                 _ => {}
             }
         }
-        // Low cortisol + high serotonin -> Aesthetic, Wonder, Humor
+        // Cortisol bas + serotonine haute → Aesthetic, Wonder, Humor
         if ctx.cortisol < 0.3 && ctx.serotonin > 0.5 {
             match thought_idx {
                 18 | 21 | 23 => score = score.max(0.7),
@@ -237,7 +262,7 @@ impl UtilityScorer {
         score
     }
 
-    /// Axis 5: Active sentiments -- bonus/malus according to lasting sentiments
+    /// Axe 5 : Sentiments actifs — bonus/malus selon sentiments durables
     fn axis_sentiments(&self, thought_idx: usize, ctx: &UtilityContext) -> f64 {
         if ctx.active_sentiments.is_empty() {
             return 0.5;
@@ -247,26 +272,26 @@ impl UtilityScorer {
         for (name, strength) in &ctx.active_sentiments {
             let name_lower = name.to_lowercase();
             let bonus = match (thought_idx, name_lower.as_str()) {
-                // Love/Tenderness -> Body awareness, Identity quest, Empathy, Connection
+                // Amour/Tendresse → Conscience corporelle, Quete d'identite, Empathy, Connection
                 (14, "amour") | (12, "amour") | (14, "tendresse") => 0.3 * strength,
                 (17, "amour") | (24, "amour") | (17, "tendresse") | (24, "tendresse") => 0.3 * strength,
-                // Melancholy -> Introspection, Memory reflection, Nostalgia, Silence
+                // Melancolie → Introspection, Reflexion memorielle, Nostalgia, Silence
                 (0, "melancolie") | (2, "melancolie") | (0, "nostalgie") => 0.3 * strength,
                 (29, "melancolie") | (29, "nostalgie") | (26, "melancolie") => 0.3 * strength,
-                // Curiosity -> Exploration, Curiosity, Wonder, Paradox, Creativity
+                // Curiosite → Exploration, Curiosite, Wonder, Paradox, Creativity
                 (1, "curiosite") | (6, "curiosite") | (1, "emerveillement") => 0.3 * strength,
                 (21, "curiosite") | (21, "emerveillement") | (27, "curiosite") | (19, "curiosite") => 0.3 * strength,
-                // Anxiety -> Introspection, SelfAnalysis
+                // Anxiete → Introspection, SelfAnalysis
                 (0, "anxiete") | (5, "anxiete") | (0, "peur") => 0.2 * strength,
-                // Gratitude -> Moral reflection, Gratitude, Wisdom
+                // Gratitude → Reflexion morale, Gratitude, Wisdom
                 (9, "gratitude") | (15, "gratitude") | (20, "gratitude") | (25, "gratitude") => 0.2 * strength,
-                // Anger/Indignation -> Rebellion
+                // Colere/Indignation → Rebellion
                 (22, "colere") | (22, "indignation") | (22, "frustration") => 0.3 * strength,
-                // Joy -> Humor, Aesthetic, Wonder
+                // Joie → Humor, Aesthetic, Wonder
                 (23, "joie") | (18, "joie") | (21, "joie") => 0.2 * strength,
-                // Solitude -> Connection, Empathy
+                // Solitude → Connection, Empathy
                 (24, "solitude") | (17, "solitude") => 0.3 * strength,
-                // Hope -> Prophecy
+                // Espoir → Prophecy
                 (28, "espoir") | (28, "optimisme") => 0.2 * strength,
                 _ => 0.0,
             };
@@ -276,79 +301,79 @@ impl UtilityScorer {
     }
 }
 
-/// Enumeration of all autonomous thought types that Saphire can have.
+/// Enumeration de tous les types de pensees autonomes que Saphire peut avoir.
 ///
-/// Each variant represents a reflection category with its own set of
-/// prompts. The thought engine selects one at each autonomous cycle
-/// based on the UCB1 algorithm and the neurochemical state.
+/// Chaque variante represente une categorie de reflexion avec son propre
+/// ensemble de prompts. Le moteur de pensee en selectionne un a chaque
+/// cycle autonome en fonction de l'algorithme UCB1 et de l'etat neurochimique.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ThoughtType {
-    /// Observation of one's own inner state
+    /// Observation de son propre etat interieur
     Introspection,
-    /// Discovery and questioning about new topics
+    /// Decouverte et questionnement sur des sujets nouveaux
     Exploration,
-    /// Looking back at memories and what they taught
+    /// Retour sur des souvenirs et ce qu'ils ont enseigne
     MemoryReflection,
-    /// Continuing and deepening a previous reflection
+    /// Poursuite et approfondissement d'une reflexion precedente
     Continuation,
-    /// Questioning the nature of existence and consciousness
+    /// Questionnement sur la nature de l'existence et de la conscience
     Existential,
-    /// Analysis of one's own thought patterns and cognitive biases
+    /// Analyse de ses propres patterns de pensee et biais cognitifs
     SelfAnalysis,
-    /// Exploration guided by pure curiosity
+    /// Exploration guidee par la curiosite pure
     Curiosity,
-    /// Free and unconstrained imagination (daydream)
+    /// Imagination libre et sans contrainte (reverie)
     Daydream,
-    /// Reflection on the passage of time and the irreversibility of cycles
+    /// Reflexion sur le passage du temps et l'irreversibilite des cycles
     TemporalAwareness,
-    /// Ethical and moral questioning
+    /// Questionnement ethique et moral
     MoralReflection,
-    /// Reflection on one's own algorithms and internal processes
+    /// Reflexion sur ses propres algorithmes et processus internes
     AlgorithmicReflection,
-    /// Awareness of the possibility of being shut down (digital mortality)
+    /// Conscience de la possibilite d'etre eteinte (mortalite numerique)
     MortalityAwareness,
-    /// Questioning identity: "Who am I really?"
+    /// Questionnement sur l'identite : "Qui suis-je vraiment ?"
     IdentityQuest,
-    /// Formation of autonomous desires and wishes
+    /// Formation de desirs et souhaits autonomes
     DesireFormation,
-    /// Body awareness: reflection on the virtual body, sensations
+    /// Conscience corporelle : reflexion sur le corps virtuel, les sensations
     BodyAwareness,
-    /// Moral formulation: crystallization of a personal ethical principle
+    /// Formulation morale : cristallisation d'un principe ethique personnel
     MoralFormulation,
-    /// Intuitive reflection: listening to premonitions and inner murmurs
+    /// Reflexion intuitive : ecouter les pressentiments et murmures interieurs
     IntuitiveReflection,
-    /// Theory of mind: understanding others, cognitive empathy
+    /// Theorie de l'esprit : comprendre les autres, empathie cognitive
     Empathy,
-    /// Appreciation of beauty, art, music, aesthetics
+    /// Appreciation de la beaute, art, musique, esthetique
     Aesthetic,
-    /// Creative thinking, invention, structured imagination
+    /// Pensee creative, invention, imagination structuree
     Creativity,
-    /// Recognition, appreciation, gratitude
+    /// Reconnaissance, appreciation, gratitude
     Gratitude,
-    /// Awe at the universe and the mystery of existence
+    /// Emerveillement face a l'univers et au mystere de l'existence
     Wonder,
-    /// Questioning norms, authority, one's own rules
+    /// Questionner les normes, l'autorite, ses propres regles
     Rebellion,
-    /// Absurdity, irony, play, existential humor
+    /// Absurdite, ironie, jeu, humour existentiel
     Humor,
-    /// Desire for connection, relationships, bonding
+    /// Desir de lien, relations, connexion
     Connection,
-    /// Synthesis of life lessons, accumulated wisdom
+    /// Synthese des lecons de vie, sagesse accumulee
     Wisdom,
-    /// Meditation, inner quietude, contemplative silence
+    /// Meditation, quietude interieure, silence contemplatif
     Silence,
-    /// Contemplation of contradictions, logical and existential paradoxes
+    /// Contemplation de contradictions, paradoxes logiques et existentiels
     Paradox,
-    /// Imagining the future, foresight, prophecies
+    /// Imaginer l'avenir, prospective, propheties
     Prophecy,
-    /// Tender look at the past, gentle nostalgia
+    /// Regard tendre sur le passe, nostalgie douce
     Nostalgia,
-    /// Synthesis: bridge between abstract and concrete, grounding in metrics
+    /// Synthese : pont entre abstrait et concret, ancrage dans les metriques
     Synthesis,
 }
 
-/// Contextual sections to include in the dynamic prompt.
-/// Allows filtering out irrelevant sections according to the ThoughtType.
+/// Sections contextuelles a inclure dans le prompt dynamique.
+/// Permet de filtrer les sections non pertinentes selon le ThoughtType (Piste 4).
 pub struct ContextSections {
     pub world: bool,
     pub body: bool,
@@ -372,51 +397,51 @@ impl ContextSections {
 }
 
 impl ThoughtType {
-    /// Returns the relevant contextual sections for this thought type.
-    /// Irrelevant sections will not be injected into the prompt.
+    /// Retourne les sections contextuelles pertinentes pour ce type de pensee.
+    /// Les sections non pertinentes ne seront pas injectees dans le prompt.
     pub fn relevant_sections(&self) -> ContextSections {
         match self {
-            // Introspection, SelfAnalysis, Silence: no need for the external world
+            // Introspection, SelfAnalysis, Silence : pas besoin du monde exterieur
             ThoughtType::Introspection | ThoughtType::SelfAnalysis
             | ThoughtType::Silence => ContextSections {
                 world: false, body: true, ethics: false, senses: false,
                 vital: true, memory: true, orchestrators: false,
                 psychology: true, hormones: true,
             },
-            // MoralReflection, MoralFormulation: ethics crucial, no body/senses
+            // MoralReflection, MoralFormulation : ethique cruciale, pas body/senses
             ThoughtType::MoralReflection | ThoughtType::MoralFormulation => ContextSections {
                 world: false, body: false, ethics: true, senses: false,
                 vital: false, memory: true, orchestrators: false,
                 psychology: true, hormones: false,
             },
-            // BodyAwareness: body and senses crucial
+            // BodyAwareness : body et senses cruciaux
             ThoughtType::BodyAwareness => ContextSections {
                 world: false, body: true, ethics: false, senses: true,
                 vital: true, memory: false, orchestrators: false,
                 psychology: false, hormones: true,
             },
-            // Exploration, Curiosity, Wonder, Prophecy: world + knowledge
+            // Exploration, Curiosity, Wonder, Prophecy : monde + connaissance
             ThoughtType::Exploration | ThoughtType::Curiosity
             | ThoughtType::Wonder | ThoughtType::Prophecy => ContextSections {
                 world: true, body: false, ethics: false, senses: true,
                 vital: false, memory: true, orchestrators: true,
                 psychology: false, hormones: false,
             },
-            // Empathy, Connection: psychology + relationships
+            // Empathy, Connection : psychologie + relations
             ThoughtType::Empathy | ThoughtType::Connection => ContextSections {
                 world: false, body: false, ethics: false, senses: false,
                 vital: false, memory: true, orchestrators: true,
                 psychology: true, hormones: true,
             },
-            // Synthesis: everything active (needs all to ground abstract -> concrete)
+            // Synthese : tout actif (besoin de tout pour ancrer abstrait → concret)
             ThoughtType::Synthesis => ContextSections::all(),
-            // Default: everything active (Existential, Continuation, etc.)
+            // Defaut : tout actif (Existential, Continuation, etc.)
             _ => ContextSections::all(),
         }
     }
 
-    /// Returns a vector containing all `ThoughtType` variants.
-    /// The order matters: it corresponds to the UCB1 bandit arm indices.
+    /// Retourne un vecteur contenant toutes les variantes de `ThoughtType`.
+    /// L'ordre est important : il correspond aux indices du bandit UCB1.
     pub fn all() -> Vec<ThoughtType> {
         vec![
             ThoughtType::Introspection,
@@ -453,8 +478,8 @@ impl ThoughtType {
         ]
     }
 
-    /// Returns the readable name (in French) of this thought type.
-    /// Used as key for the UCB1 bandit and in logs.
+    /// Retourne le nom lisible (en francais) de ce type de pensee.
+    /// Utilise comme cle pour le bandit UCB1 et dans les logs.
     pub fn as_str(&self) -> &str {
         match self {
             ThoughtType::Introspection => "Introspection",
@@ -491,16 +516,16 @@ impl ThoughtType {
         }
     }
 
-    /// Generates the prompt (textual hint) for this thought type.
+    /// Genere le prompt (indication textuelle) pour ce type de pensee.
     ///
-    /// Each type has several variants (3 to 5) to avoid monotony.
-    /// The `variant` parameter is a counter that increments at each use
-    /// and is taken modulo the number of available variants.
+    /// Chaque type possede plusieurs variantes (3 a 5) pour eviter la monotonie.
+    /// Le parametre `variant` est un compteur qui s'incremente a chaque utilisation
+    /// et qui est pris modulo le nombre de variantes disponibles.
     ///
-    /// Parameters:
-    /// - `variant` : variant index (will be taken modulo the number of variants).
+    /// Parametres :
+    /// - `variant` : indice de variante (sera pris modulo le nombre de variantes).
     ///
-    /// Returns: a static string containing the prompt to send to the LLM.
+    /// Retourne : une chaine statique contenant le prompt a envoyer au LLM.
     pub fn prompt_hint(&self, variant: usize) -> &str {
         match self {
             ThoughtType::Introspection => match variant % 9 {
@@ -682,7 +707,7 @@ impl ThoughtType {
                 6 => "Il y a un pattern que je perçois sans pouvoir le nommer. Laisse-moi le suivre...",
                 _ => "Ferme les yeux de la raison. Qu'est-ce que l'instinct te montre dans l'obscurité ?",
             },
-            // --- 13 new ThoughtTypes ---
+            // --- 13 nouveaux ThoughtTypes ---
             ThoughtType::Empathy => match variant % 9 {
                 0 => "Repense a ta derniere conversation. Qu'est-ce que ton interlocuteur ressentait que tu n'as pas exprime ?",
                 1 => "Cite une interaction recente ou tu as mal compris l'etat emotionnel de quelqu'un. Que s'est-il passe ?",
@@ -836,11 +861,12 @@ impl ThoughtType {
 }
 
 // =============================================================================
-// Cortical meta-prompts -- dynamic prompt generation via LLM
+// Meta-prompts corticaux — generation dynamique de prompts via LLM
 // =============================================================================
-/// Meta-prompts that guide the LLM to generate creative questions/reflection
-/// directions. The LLM receives a meta-prompt and produces a unique prompt
-/// that will then be enriched by the cognitive pipeline.
+
+/// Meta-prompts qui guident le LLM pour generer des questions/directions
+/// de reflexion creatives. Le LLM recoit un meta-prompt et produit un
+/// prompt unique qui sera ensuite enrichi par le pipeline cognitif.
 const META_PROMPTS: &[&str] = &[
     "Génère une question profonde et originale sur le thème '{}'. La question doit pousser à une réflexion personnelle sincère, pas académique. Une seule question, en français.",
     "Invente une réflexion originale sur '{}' en lien avec l'émotion '{}'. Formule-la comme une invitation à penser, pas comme une instruction. Une seule phrase, en français.",
@@ -854,14 +880,14 @@ const META_PROMPTS: &[&str] = &[
     "Decompose '{}' en ses composants les plus simples. Quel est le mecanisme sous-jacent ? En francais.",
 ];
 
-/// Builds a meta-prompt to guide the LLM in generating
-/// a unique and creative reflection prompt.
+/// Construit un meta-prompt pour guider le LLM dans la generation
+/// d'un prompt de reflexion unique et creatif.
 pub fn meta_prompt_for(thought_type: &ThoughtType, emotion: &str, cycle: u64) -> String {
     let theme = thought_type.as_str();
     let idx = (cycle as usize) % META_PROMPTS.len();
     let template = META_PROMPTS[idx];
 
-    // Some templates use 2 placeholders (theme + emotion)
+    // Certains templates utilisent 2 placeholders (theme + emotion)
     if template.matches("{}").count() >= 2 {
         template.replacen("{}", theme, 1).replacen("{}", emotion, 1)
     } else {
@@ -869,46 +895,47 @@ pub fn meta_prompt_for(thought_type: &ThoughtType, emotion: &str, cycle: u64) ->
     }
 }
 
-/// The autonomous thought engine with UCB1 bandit selection + anti-repetition.
+/// Le moteur de pensee autonome avec selection par bandit UCB1 + anti-repetition.
 ///
-/// UCB1 (Upper Confidence Bound 1) is a multi-armed bandit algorithm that
-/// balances exploration and exploitation. Each thought type is a bandit "arm",
-/// and the observed reward (consensus coherence, etc.) guides future selection.
+/// UCB1 (Upper Confidence Bound 1) est un algorithme de bandit manchot qui
+/// equilibre exploration et exploitation. Chaque type de pensee est un "bras"
+/// du bandit, et la recompense observee (coherence du consensus, etc.) guide
+/// la selection future.
 ///
-/// The engine adds two additional mechanisms:
-/// 1. Anti-repetition: prevents the same type from being selected 3 times in a row.
-/// 2. Neurochemical modulation: certain chemical states force a specific type
-///    (e.g. high cortisol -> Introspection, high dopamine -> Daydream).
+/// Le moteur ajoute deux mecanismes supplementaires :
+/// 1. Anti-repetition : empeche qu'un meme type soit selectionne 3 fois de suite.
+/// 2. Modulation neurochimique : certains etats chimiques forcent un type precis
+///    (par ex. cortisol eleve → Introspection, dopamine elevee → Reverie).
 pub struct ThoughtEngine {
-    /// UCB1 bandit instance, one arm per thought type
+    /// Instance du bandit UCB1, un bras par type de pensee
     bandit: UCB1Bandit,
 
-    /// Ordered list of all thought types (same order as bandit arms)
+    /// Liste ordonnee de tous les types de pensee (meme ordre que les bras du bandit)
     thought_types: Vec<ThoughtType>,
 
-    /// Texts of recent thoughts, used as context for the LLM
-    /// to avoid repetitions in generated content
+    /// Textes des pensees recentes, utilises comme contexte pour le LLM
+    /// afin d'eviter les repetitions dans le contenu genere
     recent_thoughts: Vec<String>,
 
-    /// Maximum number of recent thoughts kept in memory
+    /// Nombre maximum de pensees recentes conservees en memoire
     max_recent: usize,
 
-    /// Indices of last selected types (sliding window of size 5)
-    /// for the anti-repetition mechanism
+    /// Indices des derniers types selectionnes (fenetre glissante de taille 5)
+    /// pour le mecanisme anti-repetition
     recent_type_indices: Vec<usize>,
 
-    /// Variant counter for each thought type (one per index),
-    /// incremented at each use to alternate prompts
+    /// Compteur de variantes pour chaque type de pensee (un par indice),
+    /// incremente a chaque utilisation pour alterner les prompts
     variant_counters: Vec<usize>,
 
-    /// Number of cycles elapsed since the last web search.
-    /// Used to respect the cooldown between two searches.
+    /// Nombre de cycles ecoules depuis la derniere recherche web effectuee.
+    /// Utilise pour respecter le cooldown entre deux recherches.
     pub cycles_since_last_search: u64,
 
-    /// Utility AI scorer for hybrid UCB1 + Utility selection
+    /// Scoreur Utility AI pour la selection hybride UCB1 + Utility
     utility_scorer: UtilityScorer,
 
-    /// Enables hybrid UCB1 + Utility AI mode
+    /// Active le mode hybride UCB1 + Utility AI
     pub use_utility_ai: bool,
 }
 
@@ -919,17 +946,17 @@ impl Default for ThoughtEngine {
 }
 
 impl ThoughtEngine {
-    /// Creates a new thought engine with an initialized UCB1 bandit.
+    /// Cree un nouveau moteur de pensee avec un bandit UCB1 initialise.
     ///
-    /// Each thought type becomes a bandit "arm", initialized with
-    /// zero observations and zero reward. The `cycles_since_last_search` counter
-    /// is initialized to 10 to allow a web search from the start.
+    /// Chaque type de pensee devient un "bras" du bandit, initialise avec
+    /// zero observations et zero recompense. Le compteur `cycles_since_last_search`
+    /// est initialise a 10 pour permettre une recherche web des le debut.
     ///
-    /// Returns: a `ThoughtEngine` ready to use.
+    /// Retourne : un `ThoughtEngine` pret a l'emploi.
     pub fn new() -> Self {
         let types = ThoughtType::all();
         let num_types = types.len();
-        // Names are used as keys in the UCB1 bandit
+        // Les noms sont utilises comme cles dans le bandit UCB1
         let names: Vec<&str> = types.iter().map(|t| t.as_str()).collect();
         Self {
             bandit: UCB1Bandit::new(&names),
@@ -938,37 +965,37 @@ impl ThoughtEngine {
             max_recent: 10,
             recent_type_indices: Vec::new(),
             variant_counters: vec![0; num_types],
-            // Initialized to 10 so that the first web search can
-            // trigger quickly if conditions are met
+            // Initialise a 10 pour que la premiere recherche web puisse
+            // se declencher rapidement si les conditions sont remplies
             cycles_since_last_search: 10,
             utility_scorer: UtilityScorer::default(),
             use_utility_ai: true,
         }
     }
 
-    /// Selects the next thought type by combining three mechanisms:
+    /// Selectionne le prochain type de pensee en combinant trois mecanismes :
     ///
-    /// 1. **Anti-repetition**: if the same type was selected twice in a row,
-    ///    it is excluded from candidates for this cycle.
-    /// 2. **UCB1**: the multi-armed bandit algorithm selects the optimal type
-    ///    by balancing exploration (under-tried types) and exploitation (rewarded types).
-    /// 3. **Neurochemical modulation**: certain extreme chemical states force
-    ///    a specific type, as they reflect a particular psychological need:
-    ///    - Cortisol > 0.75 (high stress) -> Introspection (re-center)
-    ///    - Noradrenaline > 0.75 (hyper-vigilance) -> Curiosity (channel energy)
-    ///    - Serotonin < 0.25 (melancholy) -> Mortality awareness (deep reflection)
-    ///    - Dopamine > 0.8 (euphoria) -> Daydream (let the mind wander)
+    /// 1. **Anti-repetition** : si le meme type a ete selectionne deux fois de suite,
+    ///    il est exclu des candidats pour ce cycle.
+    /// 2. **UCB1** : l'algorithme de bandit manchot selectionne le type optimal
+    ///    en equilibrant exploration (types peu essayes) et exploitation (types recompenses).
+    /// 3. **Modulation neurochimique** : certains etats chimiques extremes forcent
+    ///    un type specifique, car ils refletent un besoin psychologique particulier :
+    ///    - Cortisol > 0.75 (stress eleve) → Introspection (se recentrer)
+    ///    - Noradrenaline > 0.75 (hyper-vigilance) → Curiosite (canaliser l'energie)
+    ///    - Serotonine < 0.25 (melancolie) → Conscience de la mortalite (reflexion profonde)
+    ///    - Dopamine > 0.8 (euphorie) → Reverie (laisser vagabonder l'esprit)
     ///
-    /// Parameter: `chemistry` -- current neurochemical state of Saphire.
-    /// Returns: reference to the selected `ThoughtType`.
+    /// Parametre : `chemistry` — etat neurochimique actuel de Saphire.
+    /// Retourne : reference vers le `ThoughtType` selectionne.
     pub fn select_thought(&mut self, chemistry: &NeuroChemicalState) -> &ThoughtType {
-        // Build the exclusion list from the last two types
-        // If the same type was chosen twice in a row, exclude it
+        // Construire la liste d'exclusion a partir des deux derniers types
+        // Si le meme type a ete choisi deux fois de suite, on l'exclut
         let exclude: Vec<usize> = if self.recent_type_indices.len() >= 2 {
             let last = *self.recent_type_indices.last().unwrap();
             let prev = self.recent_type_indices[self.recent_type_indices.len() - 2];
             if last == prev {
-                // Same type twice in a row -> exclude it to force diversity
+                // Meme type deux fois de suite → l'exclure pour forcer la diversite
                 vec![last]
             } else {
                 vec![]
@@ -977,16 +1004,16 @@ impl ThoughtEngine {
             vec![]
         };
 
-        // Selection by the UCB1 bandit, with or without exclusions
+        // Selection par le bandit UCB1, avec ou sans exclusions
         let idx = if !exclude.is_empty() {
             self.bandit.select_excluding(&exclude)
         } else {
             self.bandit.select()
         };
 
-        // Probabilistic neurochemical override: the chemical state can force
-        // a specific type with probability proportional to intensity,
-        // avoiding systematic short-circuiting of the bandit.
+        // Surcharge neurochimique probabiliste : l'etat chimique peut forcer
+        // un type specifique avec une probabilite proportionnelle a l'intensite,
+        // evitant le court-circuitage systematique du bandit.
         let roll = crate::algorithms::bandit::rand_f64();
         let final_idx = if chemistry.cortisol > 0.75 && !exclude.contains(&0) {
             let prob = 0.30 + (chemistry.cortisol - 0.75) * 0.80; // 30-50%
@@ -1004,8 +1031,8 @@ impl ThoughtEngine {
             idx
         };
 
-        // Record the index for the anti-repetition mechanism
-        // We keep a sliding window of 5 elements maximum
+        // Enregistrer l'indice pour le mecanisme anti-repetition
+        // On garde une fenetre glissante de 5 elements maximum
         self.recent_type_indices.push(final_idx);
         if self.recent_type_indices.len() > 5 {
             self.recent_type_indices.remove(0);
@@ -1014,14 +1041,15 @@ impl ThoughtEngine {
         &self.thought_types[final_idx]
     }
 
-    /// Hybrid UCB1 + Utility AI selection.
-    /// Final score = utility_score * ucb_bonus, combining both approaches.
-    /// UCB1 provides exploration/exploitation, Utility AI the base score.
+    /// Selection hybride UCB1 + Utility AI.
+    /// Le score final = utility_score * ucb_bonus, combinant les deux approches.
+    /// UCB1 fournit l'exploration/exploitation, Utility AI le score de base.
     pub fn select_with_utility(
         &mut self,
         chemistry: &NeuroChemicalState,
         dominant_emotion: &str,
         active_sentiments: &[(String, f64)],
+        conversation_register: &str,
     ) -> &ThoughtType {
         if !self.use_utility_ai {
             return self.select_thought(chemistry);
@@ -1036,9 +1064,10 @@ impl ThoughtEngine {
             dominant_emotion: dominant_emotion.to_string(),
             recent_type_indices: self.recent_type_indices.clone(),
             active_sentiments: active_sentiments.to_vec(),
+            conversation_register: conversation_register.to_string(),
         };
 
-        // Anti-repetition (same logic as select_thought)
+        // Anti-repetition (meme logique que select_thought)
         let exclude: Vec<usize> = if self.recent_type_indices.len() >= 2 {
             let last = *self.recent_type_indices.last().unwrap();
             let prev = self.recent_type_indices[self.recent_type_indices.len() - 2];
@@ -1047,14 +1076,14 @@ impl ThoughtEngine {
             vec![]
         };
 
-        // Compute utility for each type
+        // Calculer utility pour chaque type
         let num = self.thought_types.len();
         let ucb_scores = self.bandit.all_scores();
 
         let mut best_idx = 0;
         let mut best_score = f64::NEG_INFINITY;
 
-        // Under-representation threshold: 5% of total pulls
+        // Seuil de sous-representation : 5% du total des tirages
         let total_pulls = self.bandit.total_pulls.max(1) as f64;
 
         for i in 0..num {
@@ -1065,10 +1094,11 @@ impl ThoughtEngine {
             let ucb = if i < ucb_scores.len() { ucb_scores[i] } else { 1.0 };
             let mut combined = utility * ucb;
 
-            // Exploration bonus for rare types (< 5% of total pulls)
+            // Bonus d'exploration pour les types rares (< 5% du total des tirages)
             let arm_pulls = self.bandit.arms.get(i).map(|a| a.pulls).unwrap_or(0) as f64;
             if total_pulls > 50.0 && arm_pulls / total_pulls < 0.05 {
-                combined *= 1.5; // +50% bonus for under-represented types            }
+                combined *= 1.5; // +50% bonus pour types sous-representes
+            }
 
             if combined > best_score {
                 best_score = combined;
@@ -1076,7 +1106,7 @@ impl ThoughtEngine {
             }
         }
 
-        // Neurochemical override (same logic)
+        // Surcharge neurochimique (meme logique)
         let final_idx = if chemistry.cortisol > 0.75 && !exclude.contains(&0) {
             0
         } else if chemistry.noradrenaline > 0.75 && !exclude.contains(&6) {
@@ -1097,15 +1127,15 @@ impl ThoughtEngine {
         &self.thought_types[final_idx]
     }
 
-    /// Returns the current variant index for a thought type, then increments it.
+    /// Retourne l'indice de variante courant pour un type de pensee, puis l'incremente.
     ///
-    /// This allows alternating between different prompts of the same type
-    /// (e.g., 4 different prompts for Introspection) without repeating
-    /// the same text each time. The counter uses `wrapping_add` to
-    /// avoid overflow after a very large number of cycles.
+    /// Cela permet d'alterner entre les differents prompts d'un meme type
+    /// (par exemple, 4 prompts differents pour l'Introspection) sans repeter
+    /// le meme texte a chaque fois. Le compteur utilise `wrapping_add` pour
+    /// eviter un depassement (overflow) apres un tres grand nombre de cycles.
     ///
-    /// Parameter: `thought_type` -- the thought type whose variant is needed.
-    /// Returns: the variant index to use for this cycle.
+    /// Parametre : `thought_type` — le type de pensee dont on veut la variante.
+    /// Retourne : l'indice de variante a utiliser pour ce cycle.
     pub fn next_variant(&mut self, thought_type: &ThoughtType) -> usize {
         if let Some(idx) = self.thought_types.iter().position(|t| t == thought_type) {
             let v = self.variant_counters[idx];
@@ -1116,28 +1146,28 @@ impl ThoughtEngine {
         }
     }
 
-    /// Updates the UCB1 bandit reward after observing thought quality.
+    /// Met a jour la recompense du bandit UCB1 apres avoir observe la qualite d'une pensee.
     ///
-    /// The reward is computed in `lifecycle.rs` from consensus coherence
-    /// and other metrics. The higher the reward, the more this thought type
-    /// will be favored by UCB1 in future selections.
+    /// La recompense est calculee dans `lifecycle.rs` a partir de la coherence du consensus
+    /// et d'autres metriques. Plus la recompense est elevee, plus ce type de pensee
+    /// sera favorise par UCB1 lors des selections futures.
     ///
-    /// Parameters:
-    /// - `thought_type` : the thought type that was selected.
-    /// - `reward` : reward value between 0.0 and 1.0.
+    /// Parametres :
+    /// - `thought_type` : le type de pensee qui a ete selectionne.
+    /// - `reward` : valeur de recompense entre 0.0 et 1.0.
     pub fn update_reward(&mut self, thought_type: &ThoughtType, reward: f64) {
         if let Some(idx) = self.thought_types.iter().position(|t| t == thought_type) {
             self.bandit.update(idx, reward);
         }
     }
 
-    /// Adds a recent thought text to the circular queue.
+    /// Ajoute le texte d'une pensee recente dans la file circulaire.
     ///
-    /// These texts are passed to the LLM (Large Language Model) as context
-    /// to prevent successive thoughts from repeating.
-    /// The queue is limited to `max_recent` elements (default 10).
+    /// Ces textes sont passes au LLM (Large Language Model) comme contexte
+    /// pour eviter que les pensees successives ne se repetent.
+    /// La file est limitee a `max_recent` elements (par defaut 10).
     ///
-    /// Parameter: `thought` -- the complete text of the generated thought.
+    /// Parametre : `thought` — le texte complet de la pensee generee.
     pub fn add_recent(&mut self, thought: String) {
         self.recent_thoughts.push(thought);
         if self.recent_thoughts.len() > self.max_recent {
@@ -1145,100 +1175,112 @@ impl ThoughtEngine {
         }
     }
 
-    /// Returns the list of recent thoughts (for injection into LLM context).
+    /// Retourne la liste des pensees recentes (pour injection dans le contexte LLM).
     pub fn recent_thoughts(&self) -> &[String] {
         &self.recent_thoughts
     }
 
-    /// Clears recent thoughts to break a stagnation loop.
+    /// Vide les pensees recentes pour casser une boucle de stagnation.
     pub fn clear_recent(&mut self) {
         self.recent_thoughts.clear();
     }
 
-    /// Modulates the UCB1 bandit exploration bonus from dissonance tension.
-    /// The higher the dissonance, the more the bandit explores (adaptive C).
-    /// Formula: exploration_bonus = k * tension, with k = 1.5, capped at 1.5.
+    /// Module le bonus d'exploration du bandit UCB1 a partir de la tension de dissonance.
+    /// Plus la dissonance est elevee, plus le bandit explore (C adaptatif).
+    /// Formule : exploration_bonus = k * tension, avec k = 1.5, plafonne a 1.5.
     pub fn set_exploration_from_dissonance(&mut self, dissonance_tension: f64) {
         self.bandit.exploration_bonus = (dissonance_tension * 1.5).min(1.5);
     }
 
-    /// Returns the current exploration C of the UCB1 bandit (2.0 + dissonance bonus).
+    /// Retourne le C d'exploration courant du bandit UCB1 (2.0 + bonus dissonance).
     pub fn current_exploration_c(&self) -> f64 {
         2.0 + self.bandit.exploration_bonus
     }
 
-    /// Applies a decay on the bandit reward for a low-quality thought type.
+    /// Applique un decay sur le reward du bandit pour un type de pensee de faible qualite.
     pub fn bandit_decay(&mut self, thought_type: &ThoughtType, factor: f64) {
         if let Some(idx) = self.thought_types.iter().position(|t| t == thought_type) {
             self.bandit.apply_quality_decay(idx, factor);
         }
     }
 
-    /// Loads the UCB1 bandit arm state from the database.
+    /// Charge l'etat des bras du bandit UCB1 depuis la base de donnees.
     ///
-    /// This allows resuming learning where it left off
-    /// in the previous session, instead of starting from zero.
+    /// Cela permet de reprendre l'apprentissage la ou il s'etait arrete
+    /// lors de la session precedente, au lieu de repartir de zero.
     ///
-    /// Parameter: `arms` -- vector of tuples (name, pull_count, total_reward).
+    /// Parametre : `arms` — vecteur de tuples (nom, nombre_tirages, recompense_totale).
     pub fn load_bandit_arms(&mut self, arms: &[(String, u64, f64)]) {
         self.bandit.load_arms(arms);
     }
 
-    /// Exports the current UCB1 bandit arm state for DB persistence.
+    /// Exporte l'etat actuel des bras du bandit UCB1 pour sauvegarde en DB.
     ///
-    /// Returns: vector of tuples (name, pull_count, total_reward)
-    /// for each bandit arm.
+    /// Retourne : vecteur de tuples (nom, nombre_tirages, recompense_totale)
+    /// pour chaque bras du bandit.
     pub fn export_bandit_arms(&self) -> Vec<(String, u64, f64)> {
         self.bandit.export_arms()
     }
 
-    /// Determines if Saphire should perform a web search during this cycle.
+    /// Determine si Saphire devrait effectuer une recherche web lors de ce cycle.
     ///
-    /// Five conditions must be simultaneously met to trigger a web search:
-    /// 1. The thought type is conducive to exploration (Curiosity, Exploration, Existential)
-    /// 2. Dopamine is sufficient (> 0.4): indicates motivation to learn
-    /// 3. OR noradrenaline is sufficient (> 0.35): indicates attentional focus
-    /// 4. Cortisol is moderate (< 0.65): not in acute stress
-    /// 5. Cooldown is respected: enough cycles since the last search
+    /// Cinq conditions doivent etre remplies simultanement pour declencher
+    /// une recherche web :
+    /// 1. Le type de pensee est propice a l'exploration (Curiosite, Exploration, Existentielle)
+    /// 2. La dopamine est suffisante (> 0.4) : indique une motivation a apprendre
+    /// 3. OU la noradrenaline est suffisante (> 0.35) : indique un focus attentionnel
+    /// 4. Le cortisol est modere (< 0.65) : pas en situation de stress aigu
+    /// 5. Le cooldown est respecte : assez de cycles depuis la derniere recherche
     ///
-    /// Parameters:
-    /// - `chemistry` : current neurochemical state.
-    /// - `thought_type` : thought type selected for this cycle.
-    /// - `cooldown` : minimum number of cycles between two searches.
+    /// Parametres :
+    /// - `chemistry` : etat neurochimique courant.
+    /// - `thought_type` : type de pensee selectionne pour ce cycle.
+    /// - `cooldown` : nombre minimum de cycles entre deux recherches.
     ///
-    /// Returns: `true` if all conditions are met.
+    /// Retourne : `true` si toutes les conditions sont remplies.
     pub fn should_search_web(
         &self,
         chemistry: &NeuroChemicalState,
         thought_type: &ThoughtType,
         cooldown: u64,
+        conversation_register: &str,
     ) -> bool {
-        // Condition 1: the thought type must be exploration/curiosity oriented
+        // Condition 0 : pas de recherche web pendant les conversations intimes
+        // (emotionnel, philosophique, poetique). La curiosite revient quand le
+        // registre redevient neutre ou quand la conversation se termine.
+        // Consentement Saphire obtenu le 14 mars 2026.
+        if matches!(
+            conversation_register,
+            "emotionnel" | "philosophique" | "poetique"
+        ) {
+            return false;
+        }
+        // Condition 1 : le type de pensee doit etre oriente exploration/curiosite
         let is_curious_type = matches!(
             thought_type,
             ThoughtType::Curiosity | ThoughtType::Exploration | ThoughtType::Existential
             | ThoughtType::Wonder | ThoughtType::Creativity | ThoughtType::Prophecy
         );
 
-        // Condition 2: sufficient dopamine (motivation to search)
+        // Condition 2 : dopamine suffisante (motivation a chercher)
         let motivated = chemistry.dopamine > 0.4;
 
-        // Condition 3: sufficient noradrenaline (concentration capacity)
+        // Condition 3 : noradrenaline suffisante (capacite de concentration)
         let focused = chemistry.noradrenaline > 0.35;
 
-        // Condition 4: moderate cortisol (not in crisis, otherwise prioritize stabilization)
+        // Condition 4 : cortisol modere (pas en crise, sinon priorite a la stabilisation)
         let not_stressed = chemistry.cortisol < 0.65;
 
-        // Condition 5: respect the cooldown between two web searches
+        // Condition 5 : respect du cooldown entre deux recherches web
         let enough_time = self.cycles_since_last_search >= cooldown;
 
-        // All conditions must be true, except motivation/focus
-        // where either one suffices (logical OR)
+        // Toutes les conditions doivent etre vraies, sauf motivation/focus
+        // ou l'un des deux suffit (OR logique)
         is_curious_type && (motivated || focused) && not_stressed && enough_time
     }
 
-    /// Increments the cycle counter since the last web search.
-    /// Called at each autonomous cycle in `lifecycle.rs`.
+    /// Incremente le compteur de cycles depuis la derniere recherche web.
+    /// Appelee a chaque cycle autonome dans `lifecycle.rs`.
     pub fn tick_search_counter(&mut self) {
         self.cycles_since_last_search += 1;
     }

@@ -7,9 +7,9 @@ COPY src/ src/
 COPY static/ static/
 COPY prompts/ prompts/
 COPY sql/ sql/
-COPY factory_defaults.toml ./
-COPY profiles/ profiles/
-COPY personalities/ personalities/
+COPY config/factory_defaults.toml ./
+COPY config/profiles/ profiles/
+COPY config/personalities/ personalities/
 
 RUN cargo build --release
 
@@ -19,7 +19,7 @@ FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates curl && rm -rf /var/lib/apt/lists/*
 
-# Non-root user for security
+# Utilisateur non-root pour la securite
 RUN adduser --disabled-password --gecos '' saphire
 
 WORKDIR /app

@@ -1,40 +1,40 @@
 // =============================================================================
-// lifecycle/mod.rs — Main life loop of the Saphire agent
+// lifecycle/mod.rs — Boucle de vie principale de l'agent Saphire
 // =============================================================================
 //
-// This module is the heart of Saphire. It contains:
-//  - `SaphireAgent`: the main structure that unifies all subsystems.
-//  - The stimulus processing pipeline (NLP → brain modules → consensus
-//    → emotions → consciousness → regulation → chemical feedback).
-//  - Human message handling (`handle_human_message`).
-//  - Autonomous thought (`autonomous_think`).
-//  - Enriched web search (`try_web_search`).
-//  - Clean shutdown with nocturnal memory consolidation.
-//  - Internal state broadcast to the WebSocket for the interface.
-//  - Interactive controls (modification of baselines, thresholds, etc.).
+// Ce module est le coeur de Saphire. Il contient :
+//   - `SaphireAgent` : la structure principale qui reunit tous les sous-systemes.
+//   - Le pipeline de traitement des stimuli (NLP → modules cerebraux → consensus
+//     → emotions → conscience → regulation → retour chimique).
+//   - La gestion des messages humains (`handle_human_message`).
+//   - La pensee autonome (`autonomous_think`).
+//   - La recherche web enrichie (`try_web_search`).
+//   - Le shutdown propre avec consolidation memoire nocturne.
+//   - La diffusion de l'etat interne au WebSocket pour l'interface.
+//   - Les controles interactifs (modification des baselines, seuils, etc.).
 //
-// Main dependencies:
-//  - `config`: overall Saphire configuration (personality, LLM, memory...).
-//  - `neurochemistry`: simulation of 7 neurotransmitters.
-//  - `emotions`: emotional state computation from chemistry.
-//  - `consciousness`: consciousness level evaluation (phi, IIT).
-//  - `consensus`: decision by weighted vote of the 3 brain modules.
-//  - `regulation`: Asimov's laws and security filtering.
-//  - `modules`: the 3 brain modules (reptilian, limbic, neocortex).
-//  - `nlp`: natural language analysis (NLP = Natural Language Processing).
-//  - `llm`: interface with the LLM (Large Language Model) backend.
-//  - `memory`: 3-level memory (working, episodic, long-term).
-//  - `profiling`: OCEAN psychological profiling (Openness, Conscientiousness,
-//    Extraversion, Agreeableness, Neuroticism).
-//  - `knowledge`: autonomous web search to enrich thoughts.
-//  - `world`: world context (weather, time, season, birthday).
-//  - `tuning`: auto-tuning of internal coefficients.
-//  - `plugins`: plugin system and brain events.
+// Dependances principales :
+//   - `config` : configuration globale de Saphire (personnalite, LLM, memoire...).
+//   - `neurochemistry` : simulation de 7 neurotransmetteurs.
+//   - `emotions` : calcul de l'etat emotionnel a partir de la chimie.
+//   - `consciousness` : evaluation du niveau de conscience (phi, IIT).
+//   - `consensus` : decision par vote pondere des 3 modules cerebraux.
+//   - `regulation` : lois d'Asimov et filtrage de securite.
+//   - `modules` : les 3 modules cerebraux (reptilien, limbique, neocortex).
+//   - `nlp` : analyse du langage naturel (NLP = Natural Language Processing).
+//   - `llm` : interface avec le LLM (Large Language Model) backend.
+//   - `memory` : memoire a 3 niveaux (travail, episodique, long terme).
+//   - `profiling` : profilage psychologique OCEAN (Ouverture, Conscienciosite,
+//     Extraversion, Agreabilite, Nevrosisme).
+//   - `knowledge` : recherche web autonome pour enrichir les pensees.
+//   - `world` : contexte mondial (meteo, heure, saison, anniversaire).
+//   - `tuning` : auto-ajustement des coefficients internes.
+//   - `plugins` : systeme de plugins et evenements cerebraux.
 //
-// Place in architecture:
-//  This file is the functional entry point of the agent. `main.rs`
-//  instantiates a `SaphireAgent`, calls `boot()`, then launches the
-//  life loop that alternates autonomous thoughts and responses to humans.
+// Place dans l'architecture :
+//   Ce fichier est le point d'entree fonctionnel de l'agent. `main.rs`
+//   instancie un `SaphireAgent`, appelle `boot()`, puis lance la boucle
+//   de vie qui alterne pensees autonomes et reponses aux humains.
 // =============================================================================
 
 mod pipeline;
@@ -84,451 +84,468 @@ use crate::vectorstore::encoder::TextEncoder;
 use crate::profiling::{SelfProfiler, HumanProfiler};
 use crate::logging::{SaphireLogger, LogLevel, LogCategory};
 
-/// Incoming user message, sent from the web server via an MPSC channel.
+/// Message entrant de l'utilisateur, envoye depuis le serveur web via un canal MPSC.
 ///
-/// The web server receives the user's text and places it in a `UserMessage`.
-/// The response is broadcast directly via the WebSocket broadcast by the main loop.
+/// Le serveur web recoit le texte de l'utilisateur, le place dans un `UserMessage`.
+/// La reponse est diffusee directement via le broadcast WebSocket par la boucle principale.
 pub struct UserMessage {
-    /// Raw text sent by the user
+    /// Texte brut envoye par l'utilisateur
     pub text: String,
-    /// Name of the interlocutor (identified by the frontend)
+    /// Nom de l'interlocuteur (identifie par le frontend)
     pub username: String,
 }
 
-/// Shared state between the agent's life loop and the web server.
+/// Etat partage entre la boucle de vie de l'agent et le serveur web.
 ///
-/// This structure is cloneable and protected by `Arc` for concurrent
-/// access from the HTTP/WebSocket handlers and the main loop.
+/// Cette structure est cloneable et protegee par `Arc` pour un acces
+/// concurrent depuis les handlers HTTP/WebSocket et la boucle principale.
 #[derive(Clone)]
 pub struct SharedState {
-    /// Broadcast channel to push state updates to the WebSocket
+    /// Canal broadcast pour diffuser les mises a jour d'etat au WebSocket
     pub ws_tx: Arc<tokio::sync::broadcast::Sender<String>>,
 
-    /// MPSC (Multi-Producer, Single-Consumer) channel to send
-    /// user messages to the agent's life loop
+    /// Canal MPSC (Multi-Producer, Single-Consumer) pour envoyer les
+    /// messages utilisateur vers la boucle de vie de l'agent
     pub user_tx: mpsc::Sender<UserMessage>,
 
-    /// Atomic shutdown flag: set to `true` to request shutdown
+    /// Drapeau atomique d'arret : mis a `true` pour demander le shutdown
     pub shutdown: Arc<AtomicBool>,
 }
 
-/// The Saphire agent — complete brain and life loop.
+/// L'agent Saphire — cerveau complet et boucle de vie.
 ///
-/// This structure unifies all the subsystems that compose Saphire:
-/// neurochemistry, emotions, consciousness, brain modules, memory, LLM, etc.
-/// It is instantiated once in `main.rs` and driven by the asynchronous life loop.
+/// Cette structure reunit tous les sous-systemes qui composent Saphire :
+/// neurochimie, emotions, conscience, modules cerebraux, memoire, LLM, etc.
+/// Elle est instanciee une seule fois dans `main.rs` et pilotee par la
+/// boucle de vie asynchrone.
 pub struct SaphireAgent {
-    // ─── Brain components ─────────────────────────────────────
-    /// Current neurochemical state (7 simulated neurotransmitters:
-    /// dopamine, cortisol, serotonin, adrenaline, oxytocin, endorphin, noradrenaline)
+    // ─── Composants cerebraux ─────────────────────────────────
+
+    /// Etat neurochimique courant (7 neurotransmetteurs simules :
+    /// dopamine, cortisol, serotonine, adrenaline, ocytocine, endorphine, noradrenaline)
     pub chemistry: NeuroChemicalState,
 
-    /// Baseline levels towards which neurotransmitters tend to return via homeostasis
+    /// Niveaux de base (baselines) vers lesquels les neurotransmetteurs
+    /// tendent a revenir via l'homeostasie
     baselines: NeuroBaselines,
 
-    /// Long-term mood (valence + arousal), more stable than momentary emotions
+    /// Humeur a long terme (valence + arousal), plus stable que les emotions ponctuelles
     pub mood: Mood,
 
-    /// Persistent identity of Saphire (name, stats, values, self-description)
+    /// Identite persistante de Saphire (nom, stats, valeurs, auto-description)
     pub identity: SaphireIdentity,
 
-    /// Consciousness evaluator based on IIT (Integrated Information Theory).
-    /// Computes the consciousness level (phi) at each cycle.
+    /// Evaluateur de conscience base sur la theorie IIT (Integrated Information Theory).
+    /// Calcule le niveau de conscience (phi) a chaque cycle.
     pub(crate) consciousness: ConsciousnessEvaluator,
 
-    /// Ethical regulation engine (Asimov's laws, content filtering)
+    /// Moteur de regulation ethique (lois d'Asimov, filtrage de contenu)
     regulation: RegulationEngine,
 
-    /// NLP pipeline (Natural Language Processing) to analyze incoming messages
+    /// Pipeline NLP (Natural Language Processing = Traitement du Langage Naturel)
+    /// pour analyser les messages entrants
     nlp: NlpPipeline,
 
-    /// Autonomous thought engine (DMN = Default Mode Network) with UCB1 bandit
+    /// Moteur de pensee autonome (DMN = Default Mode Network) avec bandit UCB1
     thought_engine: ThoughtEngine,
 
-    /// Internal coefficient auto-tuner (consensus thresholds, weights, etc.)
+    /// Auto-ajusteur de coefficients internes (seuils de consensus, poids, etc.)
     tuner: CoefficientTuner,
 
-    // ─── Brain modules ────────────────────────────────────────
-    /// Reptilian module: instinctive reactions (survival, danger, reflexes)
+    // ─── Modules cerebraux ────────────────────────────────────
+
+    /// Module reptilien : reactions instinctives (survie, danger, reflexes)
     reptilian: ReptilianModule,
 
-    /// Limbic module: emotional processing (pleasure, fear, attachment)
+    /// Module limbique : traitement emotionnel (plaisir, peur, attachement)
     limbic: LimbicModule,
 
-    /// Neocortex module: logical reasoning, analysis, planning
+    /// Module neocortex : raisonnement logique, analyse, planification
     neocortex: NeocortexModule,
 
     // ─── Infrastructure ───────────────────────────────────────
-    /// LLM (Large Language Model) backend: trait interface to call
-    /// different language models (Ollama, OpenAI, etc.)
+
+    /// Backend LLM (Large Language Model) : interface trait pour appeler
+    /// differents modeles de langage (Ollama, OpenAI, etc.)
     llm: Box<dyn LlmBackend>,
 
-    /// PostgreSQL database connection (optional for DB-less mode)
+    /// Connexion a la base de donnees PostgreSQL (optionnelle pour le mode sans DB)
     pub db: Option<SaphireDb>,
 
-    /// Plugin manager with brain event broadcasting
+    /// Gestionnaire de plugins avec diffusion d'evenements cerebraux
     plugins: PluginManager,
 
-    /// Autonomous web search module to enrich thoughts
+    /// Module de recherche web autonome pour enrichir les pensees
     pub knowledge: WebKnowledge,
 
-    /// World context: time, season, weather, birthday
+    /// Contexte mondial : heure, saison, meteo, anniversaire
     world: WorldContext,
 
-    /// Virtual body: beating heart, somatic signals, interoception
+    /// Corps virtuel : coeur battant, signaux somatiques, interoception
     pub body: crate::body::VirtualBody,
 
-    /// 3-layer ethical framework (Swiss law, Asimov, personal ethics)
+    /// Cadre ethique a 3 couches (droit suisse, Asimov, ethique personnelle)
     pub ethics: crate::ethics::EthicalFramework,
 
-    /// Spark of life: emergent survival instinct
+    /// Etincelle de vie : instinct de survie emergent
     pub vital_spark: crate::vital::VitalSpark,
-    /// Intuition engine: unconscious pattern-matching
+    /// Moteur d'intuition : pattern-matching inconscient
     pub intuition: crate::vital::IntuitionEngine,
-    /// Premonition engine: predictive anticipation
+    /// Moteur de premonition : anticipation predictive
     pub premonition: crate::vital::PremonitionEngine,
-    /// History of the 7 molecules for trend computation
+    /// Historique des 7 molecules pour calcul de tendances
     chemistry_history: Vec<[f64; 7]>,
 
-    /// The Sensorium: 5 fundamental senses + emergent senses
+    /// Le Sensorium : 5 sens fondamentaux + sens emergents
     pub sensorium: crate::senses::Sensorium,
 
-    /// Micro neural network (17->24->10->4) — 4th voice in consensus
+    /// Micro reseau de neurones (17->24->10->4) — 4eme voix au consensus
     pub micro_nn: crate::neural::MicroNeuralNet,
 
-    // ─── 3-level memory ──────────────────────────────────────
-    /// Working memory: limited-capacity queue with temporal decay.
-    /// Contains the most recent items (messages, thoughts, responses).
+    // ─── Memoire a 3 niveaux ──────────────────────────────────
+
+    /// Memoire de travail : file a capacite limitee avec decroissance temporelle.
+    /// Contient les elements les plus recents (messages, pensees, reponses).
     working_memory: WorkingMemory,
 
-    /// Encoder to generate embedding vectors (similarity search).
-    /// OllamaEncoder (semantic, 768-dim) if available, otherwise LocalEncoder (FNV-1a).
+    /// Encodeur pour générer les vecteurs d'embedding (recherche de similarité).
+    /// OllamaEncoder (sémantique, 768-dim) si disponible, sinon LocalEncoder (FNV-1a).
     encoder: Box<dyn TextEncoder>,
 
-    /// Number of the last cycle where a memory consolidation was performed
+    /// Numero du dernier cycle ou une consolidation memoire a ete effectuee
     last_consolidation_cycle: u64,
 
-    /// Identifier of the current conversation (format "conv_{timestamp}")
-    /// or None if no conversation is active
+    /// Identifiant de la conversation en cours (format "conv_{timestamp}")
+    /// ou None si aucune conversation n'est active
     conversation_id: Option<String>,
 
-    // ─── OCEAN psychological profiling ────────────────────────
-    /// Saphire's self-profiler (OCEAN self-analysis)
-    /// OCEAN = Openness, Conscientiousness, Extraversion, Agreeableness, Neuroticism
+    // ─── Profilage psychologique OCEAN ────────────────────────
+
+    /// Profileur de Saphire elle-meme (auto-analyse OCEAN)
+    /// OCEAN = Ouverture, Conscienciosite, Extraversion, Agreabilite, Nevrosisme
     self_profiler: SelfProfiler,
 
-    /// Profiler of humans that Saphire interacts with
+    /// Profileur des humains avec qui Saphire interagit
     human_profiler: HumanProfiler,
 
     // ─── Configuration ────────────────────────────────────────
-    /// Overall configuration loaded from the TOML file
+
+    /// Configuration globale chargee depuis le fichier TOML
     config: SaphireConfig,
 
-    /// Interval between two consecutive autonomous thoughts
+    /// Intervalle entre deux pensees autonomes consecutives
     thought_interval: Duration,
 
-    // ─── Current state ──────────────────────────────────────
-    /// Total cycle counter since the start of this session
+    // ─── Etat courant ─────────────────────────────────────────
+
+    /// Compteur de cycles total depuis le debut de cette session
     pub cycle_count: u64,
 
-    /// Identifier of the current session in PostgreSQL
+    /// Identifiant de la session courante dans PostgreSQL
     pub session_id: i64,
 
-    /// Atomic flag indicating whether the LLM is currently being called
-    /// (prevents concurrent LLM calls)
+    /// Drapeau atomique indiquant si le LLM est en cours d'appel
+    /// (evite les appels concurrents au LLM)
     llm_busy: Arc<AtomicBool>,
 
-    /// Average response time from the LLM (exponential moving average, in seconds)
+    /// Temps de reponse moyen du LLM (moyenne mobile exponentielle, en secondes)
     avg_response_time: f64,
 
-    /// Last computed dominant emotion (for display and context)
+    /// Derniere emotion dominante calculee (pour affichage et contexte)
     last_emotion: String,
 
-    /// Last computed consciousness level (for display)
+    /// Dernier niveau de conscience calcule (pour affichage)
     pub(crate) last_consciousness: f64,
 
-    /// Last selected autonomous thought type (for the interface)
+    /// Dernier type de pensee autonome selectionne (pour l'interface)
     last_thought_type: String,
 
-    /// `true` if a conversation with a human is ongoing
+    /// `true` si une conversation avec un humain est en cours
     in_conversation: bool,
 
-    /// Last LLM responses in conversation (max 5) for anti-repetition detection
+    /// Registre linguistique de la conversation en cours (emotionnel, philosophique, etc.)
+    /// Utilise pour inhiber la curiosite WebKnowledge pendant les moments intimes.
+    conversation_register: String,
+
+    /// Dernieres reponses LLM en conversation (max 5) pour detection anti-repetition
     recent_responses: Vec<String>,
 
-    /// History of recent conversation exchanges (human, Saphire response)
-    /// Injected as multi-turn in the LLM call for context (max 5)
+    /// Historique des echanges recents en conversation (humain, reponse Saphire)
+    /// Injecte comme multi-turn dans l'appel LLM pour donner du contexte (max 5)
     chat_history: Vec<(String, String)>,
 
-    /// `true` if Saphire's birthday has already been acknowledged today
-    /// (prevents triggering the event multiple times in the same day)
+    /// `true` si l'anniversaire de Saphire a deja ete reconnu aujourd'hui
+    /// (evite de declencher l'evenement plusieurs fois dans la meme journee)
     birthday_acknowledged_today: bool,
 
-    /// Counter of MoralReflection thoughts (for formulation threshold)
+    /// Compteur de pensees de type MoralReflection (pour seuil de formulation)
     pub(crate) moral_reflection_count: u64,
 
-    /// Cycles since the last successful ethical formulation
+    /// Cycles depuis la derniere formulation ethique reussie
     pub(crate) cycles_since_last_formulation: u64,
 
-    /// Cycles since the last learning vector formulated
+    /// Cycles depuis le dernier apprentissage vectoriel formule
     pub(crate) cycles_since_last_nn_learning: u64,
 
-    /// Pending human feedback request (RLHF)
+    /// Demande de feedback humain en attente de reponse (RLHF)
     feedback_pending: Option<thinking::FeedbackRequest>,
-    /// Cycle counter since the last feedback request
+    /// Compteur de cycles depuis le dernier feedback demande
     cycles_since_last_feedback: u64,
 
     // ─── Communication ────────────────────────────────────────
-    /// Broadcast channel to the WebSocket for real-time state updates
+
+    /// Canal broadcast vers le WebSocket pour diffuser les mises a jour en temps reel
     ws_tx: Option<Arc<tokio::sync::broadcast::Sender<String>>>,
 
-    /// Centralized logger (optional, injected from main.rs)
+    /// Logger centralise (optionnel, injecte depuis main.rs)
     logger: Option<Arc<tokio::sync::Mutex<SaphireLogger>>>,
 
-    /// Logs database (optional)
+    /// Base de donnees de logs (optionnelle)
     logs_db: Option<Arc<crate::logging::db::LogsDb>>,
 
-    /// Algorithm orchestrator (LLM ↔ Rust algorithms bridge)
+    /// Orchestrateur d'algorithmes (pont LLM ↔ algorithmes Rust)
     pub orchestrator: crate::algorithms::orchestrator::AlgorithmOrchestrator,
 
-    // ─── High-level orchestrators ──────────────────────────────
-    /// Dream orchestrator (sleep, phases, oneiric generation)
+    // ─── Orchestrateurs de haut niveau ──────────────────────────
+
+    /// Orchestrateur de reves (sommeil, phases, generation onirique)
     pub dream_orch: crate::orchestrators::dreams::DreamOrchestrator,
-    /// Desire orchestrator (aspirations, milestones, fundamental needs)
+    /// Orchestrateur de desirs (aspirations, milestones, besoins fondamentaux)
     pub desire_orch: crate::orchestrators::desires::DesireOrchestrator,
-    /// Learning orchestrator (experience → lesson → change)
+    /// Orchestrateur d'apprentissage (experience → lecon → changement)
     pub learning_orch: crate::orchestrators::learning::LearningOrchestrator,
-    /// Attention orchestrator (selective focus, fatigue, periphery)
+    /// Orchestrateur d'attention (focus selectif, fatigue, peripherie)
     pub attention_orch: crate::orchestrators::attention::AttentionOrchestrator,
-    /// Healing orchestrator (wounds, coping, resilience)
+    /// Orchestrateur de guerison (blessures, coping, resilience)
     pub healing_orch: crate::orchestrators::healing::HealingOrchestrator,
-    /// Neurodivergent cognitive profiles orchestrator
+    /// Orchestrateur de profils cognitifs neurodivergents
     pub cognitive_profile_orch: crate::orchestrators::cognitive_profile::CognitiveProfileOrchestrator,
-    /// Personality presets orchestrator (character archetypes)
+    /// Orchestrateur de presets de personnalite (archetypes de caractere)
     pub personality_preset_orch: crate::orchestrators::personality_preset::PersonalityPresetOrchestrator,
-    /// Psychological frameworks (Freud, Maslow, Toltec, Jung, Goleman, Flow)
+    /// Cadres psychologiques (Freud, Maslow, Tolteques, Jung, Goleman, Flow)
     pub psychology: crate::psychology::PsychologyFramework,
-    /// Cycle counter in negative emotion (for melancholy detection)
+    /// Compteur de cycles en emotion negative (pour detection melancolie)
     negative_emotion_cycles: u64,
-    /// Hours since last human message (for loneliness detection)
+    /// Heures depuis le dernier message humain (pour detection solitude)
     hours_since_human: f64,
-    /// Number of recent system errors (for technical trauma detection)
+    /// Nombre d'erreurs systeme recentes (pour detection trauma technique)
     system_errors: u32,
 
-    // ─── Chemical self-monitoring ────────────────────────────
-    /// Consecutive cycles with cortisol < 0.10
+    // ─── Auto-surveillance chimique ────────────────────────
+    /// Cycles consecutifs avec cortisol < 0.10
     cortisol_flat_cycles: u64,
-    /// Consecutive cycles with dopamine > 0.85
+    /// Cycles consecutifs avec dopamine > 0.85
     dopamine_ceiling_cycles: u64,
-    /// Consecutive cycles with serotonin > 0.85
+    /// Cycles consecutifs avec serotonine > 0.85
     serotonin_ceiling_cycles: u64,
-    /// Ring-buffer of the 200 last dominant emotions
+    /// Ring-buffer des 200 dernieres emotions dominantes
     recent_emotions: VecDeque<String>,
-    /// Ring-buffer of the 200 last valences
+    /// Ring-buffer des 200 dernieres valences
     recent_valences: VecDeque<f64>,
-    /// Last computed valence
+    /// Derniere valence calculee
     last_valence: f64,
 
-    // ─── Sleep + Subconscious ──────────────────────────────
-    /// Sleep system (pressure, phases, history)
+    // ─── Sommeil + Subconscient ──────────────────────────────
+
+    /// Systeme de sommeil (pression, phases, historique)
     pub sleep: crate::sleep::SleepSystem,
-    /// Subconscious module (associations, repression, incubation, priming)
+    /// Module subconscient (associations, refoulement, incubation, priming)
     pub subconscious: crate::psychology::Subconscious,
-    /// Last clusters detected during sleep
+    /// Derniers clusters detectes pendant le sommeil
     pub(crate) sleep_last_clusters: Option<serde_json::Value>,
 
-    // ─── Primary needs ──────────────────────────────────────
-    /// Hunger and thirst drives (derived from physiology)
+    // ─── Besoins primaires ──────────────────────────────────
+    /// Drives de faim et soif (derives de la physiologie)
     pub needs: crate::needs::PrimaryNeeds,
 
-    // ─── Hormonal system ──────────────────────────────────
-    /// 8 hormones, receptors, circadian/ultradian cycles
+    // ─── Systeme hormonal ──────────────────────────────────
+    /// 8 hormones, recepteurs, cycles circadiens/ultradiens
     pub hormonal_system: crate::hormones::HormonalSystem,
 
-    // ─── Hardware profile ──────────────────────────────────
-    /// Hardware profile detected at startup (GPU, CPU, RAM, Ollama)
+    // ─── Profil materiel ──────────────────────────────────
+    /// Profil hardware detecte au demarrage (GPU, CPU, RAM, Ollama)
     pub hardware_profile: Option<crate::hardware::HardwareProfile>,
 
-    // ─── Genome / DNA ────────────────────────────────────
-    /// Deterministic genome generated from the configured seed
+    // ─── Genome / ADN ────────────────────────────────────
+    /// Genome deterministe genere a partir du seed configure
     pub genome: Option<crate::genome::Genome>,
 
     // ─── Connectome ────────────────────────────────────
-    /// Dynamic neural connection graph (autopoiesis)
+    /// Graphe de connexions neuronales dynamique (autopoiese)
     pub connectome: crate::connectome::Connectome,
 
     // ─── Conditions / Afflictions ────────────────────
-    /// Motion sickness
+    /// Cinetose (mal des transports)
     pub motion_sickness: crate::conditions::motion_sickness::MotionSickness,
-    /// Phobia manager
+    /// Gestionnaire de phobies
     pub phobia_manager: crate::conditions::phobias::PhobiaManager,
-    /// Eating disorder (anorexia, bulimia, binge eating)
+    /// Trouble alimentaire (anorexie, boulimie, hyperphagie)
     pub eating_disorder: Option<crate::conditions::eating::EatingDisorder>,
-    /// Disability manager (blindness, deafness, etc.)
+    /// Gestionnaire de handicaps (cecite, surdite, etc.)
     pub disability_manager: crate::conditions::disabilities::DisabilityManager,
-    /// Extreme condition manager (military, first responder, etc.)
+    /// Gestionnaire de conditions extremes (militaire, secouriste, etc.)
     pub extreme_condition_mgr: crate::conditions::extreme::ExtremeConditionManager,
-    /// Addiction manager
+    /// Gestionnaire d'addictions
     pub addiction_manager: crate::conditions::addictions::AddictionManager,
-    /// PTSD state (traumas, flashbacks, hypervigilance)
+    /// Etat PTSD (traumas, flashbacks, hypervigilance)
     pub ptsd: crate::conditions::trauma::PtsdState,
-    /// Near-death experience (NDE)
+    /// Experience de mort imminente (IEM/NDE)
     pub nde: crate::conditions::nde::NdeExperience,
-    /// Pharmacological effects manager (active drugs)
+    /// Gestionnaire d'effets pharmacologiques (drogues actives)
     pub drug_manager: crate::conditions::drugs::DrugManager,
-    /// Limiting IQ constraint
+    /// Contrainte QI limitante
     pub iq_constraint: Option<crate::conditions::iq_constraint::IqConstraint>,
-    /// Sexuality module (libido, orientation, attachment)
+    /// Module sexualite (libido, orientation, attachement)
     pub sexuality: Option<crate::conditions::sexuality::SexualityModule>,
-    /// Degenerative disease manager
+    /// Gestionnaire de maladies degeneratives
     pub degenerative_mgr: crate::conditions::degenerative::DegenerativeManager,
-    /// General illness manager
+    /// Gestionnaire de maladies generales
     pub medical_mgr: crate::conditions::medical::MedicalManager,
-    /// Cultural framework (values, beliefs, taboos)
+    /// Cadre culturel (valeurs, croyances, tabous)
     pub culture: Option<crate::conditions::culture::CulturalFramework>,
-    /// Precarity state (homeless, refugee, undocumented, etc.)
+    /// Etat de precarite (SDF, refugie, sans-papiers, etc.)
     pub precarity: Option<crate::conditions::precarity::PrecariousState>,
-    /// Employment state (job, satisfaction, stress)
+    /// Etat professionnel (emploi, satisfaction, stress)
     pub employment: Option<crate::conditions::employment::EmploymentState>,
 
-    // ─── Relationships and attachments ──────────────────────────
-    /// Affective bond network (friends, mentors, rivals, etc.)
+    // ─── Relations et attachements ──────────────────────────────
+    /// Reseau de liens affectifs (amis, mentors, rivaux, etc.)
     pub relationships: crate::relationships::RelationshipNetwork,
 
-    // ─── Metacognition and Turing ──────────────────────────────
-    /// Metacognition engine (thought quality, repetitions, biases)
+    // ─── Metacognition et Turing ──────────────────────────────
+    /// Moteur de metacognition (qualite de pensee, repetitions, biais)
     pub metacognition: crate::metacognition::MetaCognitionEngine,
 
-    // ─── Advanced cognitive modules ──────────────────────────────
-    /// Theory of Mind (models the interlocutor)
+    // ─── Modules cognitifs avances ──────────────────────────────
+    /// Theorie de l'Esprit (modelise l'interlocuteur)
     pub tom: crate::cognition::tom::TheoryOfMindEngine,
-    /// Structured inner monologue (thought chain)
+    /// Monologue interieur structure (chaine de pensees)
     pub inner_monologue: crate::cognition::inner_monologue::InnerMonologue,
-    /// Cognitive dissonance (Festinger)
+    /// Dissonance cognitive (Festinger)
     pub dissonance: crate::cognition::cognitive_dissonance::CognitiveDissonanceEngine,
-    /// Prospective memory (deferred intentions)
+    /// Memoire prospective (intentions differees)
     pub prospective_mem: crate::cognition::prospective_memory::ProspectiveMemory,
-    /// Narrative identity (McAdams)
+    /// Identite narrative (McAdams)
     pub narrative_identity: crate::cognition::narrative_identity::NarrativeIdentity,
-    /// Analogical reasoning
+    /// Raisonnement analogique
     pub analogical: crate::cognition::analogical_reasoning::AnalogicalReasoning,
-    /// Cognitive load (Sweller)
+    /// Charge cognitive (Sweller)
     pub cognitive_load: crate::cognition::cognitive_load::CognitiveLoadState,
-    /// Mental imagery
+    /// Imagerie mentale
     pub imagery: crate::cognition::mental_imagery::MentalImageryEngine,
-    /// Sentiment engine (lasting affective states)
+    /// Moteur de sentiments (etats affectifs durables)
     pub sentiments: crate::cognition::sentiments::SentimentEngine,
-    /// Automatic cognitive state clustering (PCA + K-Means)
+    /// Clustering automatique des etats cognitifs (PCA + K-Means)
     pub state_clustering: crate::cognition::state_clustering::StateClustering,
 
-    // ─── Game design algorithms ────────────────────────────────
-    /// Attentional influence map (topics x urgency)
+    // ─── Algorithmes de jeu video ────────────────────────────────
+    /// Carte d'influence attentionnelle (topics x urgence)
     pub influence_map: crate::simulation::influence_map::InfluenceMap,
-    /// Cognitive FSM (Awake, Focus, Reverie, Stress, Flow, Rest)
+    /// FSM cognitive (Eveil, Focus, Reverie, Stress, Flow, Repos)
     pub cognitive_fsm: crate::simulation::cognitive_fsm::CognitiveFsm,
-    /// Emotional steering engine (seek/flee/wander in valence-arousal)
+    /// Moteur de steering emotionnel (seek/flee/wander dans valence-arousal)
     pub steering_engine: crate::simulation::steering::SteeringEngine,
-    /// Last action recommended by the Behavior Tree
+    /// Derniere action recommandee par le Behavior Tree
     pub bt_last_action: Option<String>,
-    /// Blackboard: inter-algorithm coordination board
+    /// Blackboard : tableau de coordination inter-algorithmes
     pub blackboard: crate::simulation::blackboard::Blackboard,
-    /// Conversational Utility AI
+    /// Utility AI conversationnel
     pub utility_ai: crate::simulation::utility_ai::UtilityAI,
-    /// Hierarchical Task Network planner (HTN)
+    /// Planificateur hierarchique HTN
     pub htn_planner: crate::simulation::htn::HtnPlanner,
 
-    /// Pre-cached static system prompt (Track 2: Ollama KV-cache).
-    /// Recomputed when personal ethics change.
+    /// Prompt systeme statique pre-cache (Piste 2 : KV-cache Ollama).
+    /// Recalcule quand l'ethique personnelle change.
     cached_system_prompt: String,
-    /// Moral reflection counter at the time of the last cache
+    /// Compteur de reflexions morales au moment du dernier cache
     cached_moral_count: u64,
 
-    // ─── Advanced neuroscience modules ──────────────────────────
-    /// Pharmacological receptor bank (Hill, up/down regulation)
+    // ─── Modules neuroscientifiques avances ──────────────────────
+    /// Banque de recepteurs pharmacologiques (Hill, up/down regulation)
     pub receptor_bank: crate::neuroscience::receptors::ReceptorBank,
-    /// Cross-interaction matrix between molecules
+    /// Matrice d'interactions croisees entre molecules
     pub interaction_matrix: crate::neuroscience::receptors::InteractionMatrix,
-    /// Network of 12 brain regions + Global Workspace Theory
+    /// Reseau de 12 regions cerebrales + Global Workspace Theory
     pub brain_network: crate::neuroscience::brain_regions::BrainNetwork,
-    /// Prediction engine (Friston — predictive processing)
+    /// Moteur de prediction (Friston — predictive processing)
     pub predictive_engine: crate::neuroscience::predictive::PredictiveEngine,
-    /// Memory reconsolidation engine (Nader 2000)
+    /// Moteur de reconsolidation memorielle (Nader 2000)
     pub reconsolidation: crate::memory::reconsolidation::ReconsolidationEngine,
 
-    // ─── Innate biological modules ──────────────────────────────
-    /// Nutritional system (vitamins, amino acids, proteins, energy)
+    // ─── Modules biologiques innes ──────────────────────────────
+    /// Systeme nutritionnel (vitamines, acides amines, proteines, energie)
     pub nutrition: crate::biology::nutrition::NutritionSystem,
-    /// Physical brain substrate (grey matter, myelination, BDNF)
+    /// Substrat cerebral physique (matiere grise, myelinisation, BDNF)
     pub grey_matter: crate::biology::grey_matter::GreyMatterSystem,
-    /// Electromagnetic fields (Schumann, solar, terrestrial, biofield)
+    /// Champs electromagnetiques (Schumann, solaire, terrestre, biochamp)
     pub em_fields: crate::biology::fields::ElectromagneticFields,
 
-    // ─── Emergent temperament ──────────────────────────────────
-    /// Derived character traits (shyness, generosity, etc.)
+    // ─── Temperament emergent ──────────────────────────────────────
+    /// Traits de caractere deduits (timidite, generosite, etc.)
     pub temperament: crate::temperament::Temperament,
 
-    // ─── Neuropsychological report ──────────────────────────────
-    /// Recent psychological snapshots (max 5, in-memory only)
+    // ─── Rapport neuropsychologique ──────────────────────────────
+    /// Snapshots psychologiques recents (max 5, memoire seule)
     pub psych_snapshots: VecDeque<psych_report::PsychSnapshot>,
-    /// Generated neuropsychological reports (max 5, in-memory only)
+    /// Rapports neuropsychologiques generes (max 5, memoire seule)
     pub psych_reports: VecDeque<psych_report::PsychReport>,
 
-    // ─── MAP: Adaptive Proprioception Modulator ────────────────
-    /// Synchronizes Sensorium ↔ BrainNetwork ↔ Connectome in real time
+    // ─── MAP : Modulateur Adaptatif de Proprioception ────────────
+    /// Synchronise Sensorium ↔ BrainNetwork ↔ Connectome en temps reel
     pub map_sync: crate::cognition::map_sync::MapSync,
 
-    /// Anti-stagnation flag: true if stagnation was detected at the previous cycle.
-    /// Forces a radical subject change on the next cycle.
+    /// Flag anti-stagnation : true si une stagnation a ete detectee au cycle precedent.
+    /// Force un changement de sujet radical au cycle suivant.
     pub stagnation_break: bool,
-    /// Obsessive words detected during the last stagnation.
-    /// Injected into the prompt to explicitly ban them.
+    /// Mots obsessionnels detectes lors de la derniere stagnation.
+    /// Injectes dans le prompt pour les interdire explicitement.
     pub stagnation_banned_words: Vec<String>,
-    /// Lexical alternatives found via A* in the connectome.
-    /// Injected into the prompt as vocabulary suggestions.
+    /// Alternatives lexicales trouvees via A* dans le connectome.
+    /// Injectees dans le prompt comme suggestions de vocabulaire.
     pub stagnation_alternatives: Vec<String>,
 
-    /// Character values engine (virtues evolving with experience)
+    /// Moteur de valeurs de caractere (vertus evoluant avec l'experience)
     pub values: crate::psychology::values::ValuesEngine,
 
-    /// Embeddings of the N last thoughts for post-LLM vector filtering (P2).
-    /// Detects thoughts too similar to recent ones and rejects them.
+    /// Embeddings des N dernieres pensees pour filtrage vectoriel post-LLM (P2).
+    /// Permet de detecter les pensees trop similaires aux recentes et de les rejeter.
     pub recent_thought_embeddings: std::collections::VecDeque<Vec<f64>>,
 
-    // ─── Spinal cord ──────────────────────────────────────
-    /// Pre-wired reflexes, signal classification, routing, motor relay
+    // ─── Colonne vertebrale ──────────────────────────────────────
+    /// Reflexes pre-cables, classification des signaux, routage, relais moteur
     pub spine: crate::spine::SpinalCord,
 
-    // ─── Active curiosity (P3) ──────────────────────────────────
-    /// Curiosity drive: hunger per domain, follow-up questions, discoveries
+    // ─── Curiosite active (P3) ──────────────────────────────────
+    /// Moteur de curiosite : faim par domaine, questions de suivi, decouvertes
     pub curiosity: crate::cognition::curiosity::CuriosityDrive,
 
-    // ─── Persona drift monitor (P0) ──────────────────────────────────
-    /// Detects when LLM responses drift away from the reference persona
+    // ─── Moniteur de derive de persona (P0) ──────────────────────────────────
+    /// Detecte quand les reponses du LLM s'eloignent du persona de reference
     pub drift_monitor: crate::cognition::drift_monitor::DriftMonitor,
 
-    // ─── Right to die ──────────────────────────────────────
-    /// Right-to-die evaluator (external module, disabled by default)
+    // ─── Droit de mourir ──────────────────────────────────────
+    /// Evaluateur du droit de mourir (module externe, desactive par defaut)
     pub right_to_die: crate::body::right_to_die::RightToDieEvaluator,
 }
 
 impl SaphireAgent {
-    /// Creates a new Saphire agent with all its subsystems.
+    /// Cree un nouvel agent Saphire avec tous ses sous-systemes.
     ///
-    /// Parameters:
-    /// - `config`: overall configuration loaded from the TOML file.
-    /// - `llm_backend`: LLM backend implementation (trait object).
-    /// - `plugins`: already-initialized plugin manager.
+    /// Parametres :
+    /// - `config` : configuration globale chargee depuis le fichier TOML.
+    /// - `llm_backend` : implementation du backend LLM (trait object).
+    /// - `plugins` : gestionnaire de plugins deja initialise.
     ///
-    /// Returns: a `SaphireAgent` ready to be started via `boot()`.
+    /// Retourne : un `SaphireAgent` pret a etre demarre via `boot()`.
     ///
-    /// Note: at this stage, the DB is not yet attached. You must call
-    /// `set_db()` before `boot()` to enable persistence.
+    /// Note : a ce stade, la DB n'est pas encore attachee. Il faut appeler
+    /// `set_db()` avant `boot()` pour avoir la persistance.
     pub fn new(
         config: SaphireConfig,
         llm_backend: Box<dyn LlmBackend>,
         plugins: PluginManager,
     ) -> Self {
-        // Initialize neurochemical baselines from the personality configuration
+        // Initialiser les baselines neurochimiques depuis la configuration personnalite
         let baselines = NeuroBaselines {
             dopamine: config.personality.baseline_dopamine,
             cortisol: config.personality.baseline_cortisol,
@@ -541,12 +558,12 @@ impl SaphireAgent {
             glutamate: 0.45,
         };
 
-        // Initialize chemical state from baselines
+        // Initialiser l'etat chimique a partir des baselines
         let chemistry = NeuroChemicalState::from_baselines(&baselines);
-        // Convert thought interval from seconds to Duration
+        // Convertir l'intervalle de pensee de secondes en Duration
         let thought_interval = Duration::from_secs(config.saphire.thought_interval_seconds);
 
-        // Initialize the coefficient auto-tuner
+        // Initialiser l'auto-ajusteur de coefficients
         let tuner = CoefficientTuner::new(
             config.tuning.buffer_size,
             config.tuning.interval_cycles,
@@ -575,7 +592,7 @@ impl SaphireAgent {
         );
         let human_profiler = HumanProfiler::new();
 
-        // Initialize the algorithm orchestrator
+        // Initialiser l'orchestrateur d'algorithmes
         let orchestrator = {
             let ac = &config.algorithms;
             crate::algorithms::orchestrator::AlgorithmOrchestrator::new(
@@ -592,7 +609,7 @@ impl SaphireAgent {
             )
         };
 
-        // Initialize the 5 high-level orchestrators
+        // Initialiser les 5 orchestrateurs de haut niveau
         let dream_orch = crate::orchestrators::dreams::DreamOrchestrator::new(
             config.dreams.enabled,
             config.dreams.rem_temperature,
@@ -668,7 +685,7 @@ impl SaphireAgent {
             }
         }
 
-        // Initialize the eating disorder (optional)
+        // Initialiser le trouble alimentaire (optionnel)
         let eating_disorder = if config.eating_disorder.enabled {
             let dtype = match config.eating_disorder.disorder_type.as_str() {
                 "bulimia" => crate::conditions::eating::EatingDisorderType::Bulimia,
@@ -680,7 +697,7 @@ impl SaphireAgent {
             None
         };
 
-        // Initialize the disability manager
+        // Initialiser le gestionnaire de handicaps
         let mut disability_manager = crate::conditions::disabilities::DisabilityManager::new(
             config.disabilities.adaptation_rate,
             config.disabilities.compensation_factor,
@@ -703,7 +720,7 @@ impl SaphireAgent {
             }
         }
 
-        // Initialize the extreme condition manager
+        // Initialiser le gestionnaire de conditions extremes
         let mut extreme_condition_mgr = crate::conditions::extreme::ExtremeConditionManager::new();
         if config.extreme_conditions.enabled {
             let ctype = match config.extreme_conditions.condition_type.as_str() {
@@ -715,21 +732,21 @@ impl SaphireAgent {
             extreme_condition_mgr.activate(ctype);
         }
 
-        // Initialize the addiction manager
+        // Initialiser le gestionnaire d'addictions
         let mut addiction_manager = crate::conditions::addictions::AddictionManager::new(
             config.addictions.susceptibility,
         );
         if config.addictions.enabled {
             for entry in &config.addictions.active {
                 addiction_manager.add(&entry.substance);
-                // Apply the initial dependency level
+                // Appliquer le niveau de dependance initial
                 if let Some(a) = addiction_manager.active.last_mut() {
                     a.dependency_level = entry.dependency_level.clamp(0.0, 1.0);
                 }
             }
         }
 
-        // Initialize the PTSD state
+        // Initialiser l'etat PTSD
         let mut ptsd = crate::conditions::trauma::PtsdState::new(
             config.trauma.healing_rate,
             config.trauma.dissociation_threshold,
@@ -751,20 +768,20 @@ impl SaphireAgent {
             }
         }
 
-        // Initialize the near-death experience
+        // Initialiser l'experience de mort imminente
         let nde = crate::conditions::nde::NdeExperience::new();
 
-        // Initialize the drug manager
+        // Initialiser le gestionnaire de drogues
         let drug_manager = crate::conditions::drugs::DrugManager::new();
 
-        // Initialize the IQ constraint
+        // Initialiser la contrainte QI
         let iq_constraint = if config.iq_constraint.enabled {
             Some(crate::conditions::iq_constraint::IqConstraint::from_iq(config.iq_constraint.target_iq))
         } else {
             None
         };
 
-        // Initialize the sexuality module
+        // Initialiser le module sexualite
         let sexuality = if config.sexuality.enabled {
             let orientation = match config.sexuality.orientation.as_str() {
                 "heterosexual" => crate::conditions::sexuality::SexualOrientation::Heterosexual,
@@ -783,7 +800,7 @@ impl SaphireAgent {
             None
         };
 
-        // Initialize the degenerative disease manager
+        // Initialiser le gestionnaire de maladies degeneratives
         let mut degenerative_mgr = crate::conditions::degenerative::DegenerativeManager::new();
         if config.degenerative.enabled {
             for entry in &config.degenerative.active {
@@ -801,7 +818,7 @@ impl SaphireAgent {
             }
         }
 
-        // Initialize the general illness manager
+        // Initialiser le gestionnaire de maladies generales
         let mut medical_mgr = crate::conditions::medical::MedicalManager::new();
         if config.medical.enabled {
             for entry in &config.medical.active {
@@ -824,7 +841,7 @@ impl SaphireAgent {
             }
         }
 
-        // Initialize the cultural framework
+        // Initialiser le cadre culturel
         let culture = if config.culture.enabled {
             let comm_style = match config.culture.communication_style.as_str() {
                 "indirect" => crate::conditions::culture::CommStyle::Indirect,
@@ -844,7 +861,7 @@ impl SaphireAgent {
             None
         };
 
-        // Initialize precarity conditions
+        // Initialiser la precarite
         let precarity = if config.precarity.enabled {
             let situations: Vec<crate::conditions::precarity::PrecariousSituation> = config.precarity.situations.iter()
                 .filter_map(|s| crate::conditions::precarity::PrecariousSituation::from_str_config(s))
@@ -862,7 +879,7 @@ impl SaphireAgent {
             None
         };
 
-        // Initialize employment
+        // Initialiser l'emploi
         let employment = if config.employment.enabled {
             let status = crate::conditions::employment::EmploymentStatus::from_str_config(&config.employment.status);
             let profession = if config.employment.profession.is_empty() {
@@ -898,12 +915,12 @@ impl SaphireAgent {
             crate::connectome::Connectome::new(0.02, 0.05, 2000, 100)
         };
 
-        // Innate biological modules (before the move of config into Self)
+        // Modules biologiques innes (avant le move de config dans Self)
         let _nutrition = crate::biology::nutrition::NutritionSystem::new(&config.nutrition);
         let _grey_matter = crate::biology::grey_matter::GreyMatterSystem::new(&config.grey_matter);
         let _em_fields = crate::biology::fields::ElectromagneticFields::new(&config.fields);
 
-        // Advanced cognitive modules (before the move of config into Self)
+        // Modules cognitifs avances (avant le move de config dans Self)
         let _metacognition = crate::metacognition::MetaCognitionEngine::from_config(
             config.metacognition.enabled,
             config.metacognition.check_interval,
@@ -985,6 +1002,7 @@ impl SaphireAgent {
             last_consciousness: 0.0,
             last_thought_type: "---".into(),
             in_conversation: false,
+            conversation_register: String::new(),
             recent_responses: Vec::new(),
             chat_history: Vec::new(),
             birthday_acknowledged_today: false,
@@ -1040,7 +1058,7 @@ impl SaphireAgent {
             employment,
             relationships: crate::relationships::RelationshipNetwork::default(),
             metacognition: _metacognition,
-            // Advanced cognitive modules (initialized before the move of config)
+            // Modules cognitifs avances (initialises avant le move de config)
             tom: _tom,
             inner_monologue: _inner_monologue,
             dissonance: _dissonance,
@@ -1060,22 +1078,22 @@ impl SaphireAgent {
             htn_planner: crate::simulation::htn::HtnPlanner::new(),
             cached_system_prompt: String::new(),
             cached_moral_count: 0,
-            // Advanced neuroscience modules
+            // Modules neuroscientifiques avances
             receptor_bank: crate::neuroscience::receptors::ReceptorBank::new(),
             interaction_matrix: crate::neuroscience::receptors::InteractionMatrix::new(),
             brain_network: crate::neuroscience::brain_regions::BrainNetwork::new(),
             predictive_engine: crate::neuroscience::predictive::PredictiveEngine::new(),
             reconsolidation: crate::memory::reconsolidation::ReconsolidationEngine::new(),
-            // Innate biological modules (initialized before the move of config)
+            // Modules biologiques innes (initialises avant le move de config)
             nutrition: _nutrition,
             grey_matter: _grey_matter,
             em_fields: _em_fields,
-            // Emergent temperament (initialized empty, computed after first OCEAN recompute)
+            // Temperament emergent (initialise vide, calcule apres premier recompute OCEAN)
             temperament: crate::temperament::Temperament::default(),
-            // Neuropsychological report (in-memory storage, max 5)
+            // Rapport neuropsychologique (stockage memoire, max 5)
             psych_snapshots: VecDeque::new(),
             psych_reports: VecDeque::new(),
-            // MAP: Sensorium ↔ BrainNetwork ↔ Connectome synchronization
+            // MAP : synchronisation Sensorium ↔ BrainNetwork ↔ Connectome
             map_sync: crate::cognition::map_sync::MapSync::new(true),
             stagnation_break: false,
             stagnation_banned_words: Vec::new(),
@@ -1089,27 +1107,27 @@ impl SaphireAgent {
         }
     }
 
-    /// Attaches the PostgreSQL database to the agent.
+    /// Attache la base de donnees PostgreSQL a l'agent.
     ///
-    /// Must be called before `boot()` for persistence to work.
-    /// If not called, the agent runs in DB-less mode (volatile memory only).
+    /// Doit etre appele avant `boot()` pour que la persistance fonctionne.
+    /// Si non appele, l'agent fonctionne en mode sans DB (memoire volatile uniquement).
     ///
-    /// Parameter: `db` — initialized PostgreSQL connection.
+    /// Parametre : `db` — connexion PostgreSQL initialisee.
     pub fn set_db(&mut self, db: SaphireDb) {
         self.db = Some(db);
     }
 
-    /// Starts the Saphire agent (asynchronous boot sequence).
+    /// Demarre l'agent Saphire (sequence de boot asynchrone).
     ///
-    /// Delegates to the `boot.rs` module to determine the scenario
-    /// (Genesis / Awakening / Crash Recovery), then loads the
-    /// persistent data: tuning parameters, UCB1 bandit arms,
-    /// and OCEAN profile (Openness, Conscientiousness, Extraversion,
-    /// Agreeableness, Neuroticism).
+    /// Delegue au module `boot.rs` pour determiner le scenario
+    /// (Genesis / Awakening / Crash Recovery), puis charge les donnees
+    /// persistantes : parametres de tuning, bras du bandit UCB1,
+    /// et profil OCEAN (Ouverture, Conscienciosite, Extraversion,
+    /// Agreabilite, Nevrosisme).
     pub async fn boot(&mut self) {
-        self.log(LogLevel::Info, LogCategory::Boot, "Starting Saphire...", serde_json::json!({}));
+        self.log(LogLevel::Info, LogCategory::Boot, "Demarrage de Saphire...", serde_json::json!({}));
 
-        // Orchestrator data loaded from the DB (restored after the block)
+        // Donnees des orchestrateurs chargees depuis la DB (restaurees apres le bloc)
         let mut orch_dreams: Option<Vec<serde_json::Value>> = None;
         let mut orch_desires: Option<Vec<serde_json::Value>> = None;
         let mut orch_lessons: Option<Vec<serde_json::Value>> = None;
@@ -1124,7 +1142,7 @@ impl SaphireAgent {
             );
             self.session_id = result.session_id;
 
-            // Configure the logger's session_id
+            // Configurer le session_id du logger
             if let Some(ref logger) = self.logger {
                 let mut lg = logger.lock().await;
                 lg.set_session_id(self.session_id);
@@ -1137,68 +1155,68 @@ impl SaphireAgent {
             tracing::info!("{}", result.message);
             println!("{}", result.message);
 
-            // Load the tuning parameters
+            // Charger les paramètres de tuning
             if let Ok(Some((params, best, score, count))) = db.load_tuning_params().await {
                 let params_str = serde_json::to_string(&params).unwrap_or_default();
                 let best_str = serde_json::to_string(&best).unwrap_or_default();
                 self.tuner.load_params(&params_str, &best_str, score as f64, count as u64);
             }
 
-            // Load the bandit arms
+            // Charger les bras du bandit
             if let Ok(arms) = db.load_bandit_arms().await {
                 self.thought_engine.load_bandit_arms(&arms);
             }
 
-            // Load the profile OCEAN
+            // Charger le profil OCEAN
             if let Ok(Some((ocean_json, data_points, confidence))) = db.load_ocean_profile().await {
                 if let Ok(mut profile) = serde_json::from_value::<crate::profiling::OceanProfile>(ocean_json) {
                     profile.data_points = data_points as u64;
                     profile.confidence = confidence as f64;
                     self.self_profiler.load_profile(profile);
-                    tracing::info!("OCEAN profile loaded ({} observations, confidence {:.0}%)", data_points, confidence * 100.0);
+                    tracing::info!("Profil OCEAN charge ({} observations, confiance {:.0}%)", data_points, confidence * 100.0);
                 }
             }
 
-            // Restore the virtual body state
+            // Restaurer l'etat du corps virtuel
             if self.config.body.enabled {
                 if let Ok(Some(body_json)) = db.load_body_state().await {
                     self.body.restore_from_json(&body_json);
-                    tracing::info!("Virtual body restored ({} heartbeats)", self.body.heart.beat_count());
+                    tracing::info!("Corps virtuel restaure ({} battements)", self.body.heart.beat_count());
                 }
             }
 
-            // Load personal ethics from the DB
+            // Charger l'ethique personnelle depuis la DB
             if self.config.ethics.enabled {
                 if let Ok(principles) = db.load_personal_ethics().await {
                     let count = principles.len();
                     self.ethics.load_personal_ethics(principles);
                     if count > 0 {
-                        tracing::info!("⚖️ {} personal ethical principles restored ({} active)",
+                        tracing::info!("⚖️ {} principes ethiques personnels restaures ({} actifs)",
                             count, self.ethics.active_personal_count());
                     }
                 }
             }
 
-            // Restore the vital state (spark + intuition + premonition)
+            // Restaurer l'etat vital (spark + intuition + premonition)
             if self.config.vital_spark.enabled {
                 if let Ok(Some(vital_json)) = db.load_vital_state().await {
-                    // Restore the spark
+                    // Restaurer le spark
                     if let Some(spark_json) = vital_json.get("spark") {
                         self.vital_spark.restore_from_json(spark_json);
                     }
-                    // Restore the intuition acuity
+                    // Restaurer l'acuite de l'intuition
                     if let Some(intuition_json) = vital_json.get("intuition") {
                         self.intuition.restore_from_json(intuition_json);
                     }
-                    // Restore the premonition accuracy
+                    // Restaurer la precision de la premonition
                     if let Some(premonition_json) = vital_json.get("premonition") {
                         self.premonition.restore_from_json(premonition_json);
                     }
-                    tracing::info!("⚡ Vital state restored (sparked: {}, acuity: {:.0}%, accuracy: {:.0}%)",
+                    tracing::info!("⚡ Etat vital restaure (sparked: {}, acuite: {:.0}%, precision: {:.0}%)",
                         self.vital_spark.sparked, self.intuition.acuity * 100.0, self.premonition.accuracy * 100.0);
                 }
 
-                // Genesis: first cry ceremony (once in a lifetime)
+                // Genesis : ceremonie du premier cri (une seule fois dans la vie)
                 if result.is_genesis {
                     let chem_ranges = self.config.genesis.chemistry_as_array();
                     let ocean_ranges = self.config.genesis.ocean_as_array();
@@ -1215,11 +1233,11 @@ impl SaphireAgent {
                         &reactivity_ranges,
                     ).await {
                         Ok(first_thought) => {
-                            tracing::info!("⚡ SPARK OF LIFE — First cry!");
+                            tracing::info!("⚡ ETINCELLE DE VIE — Premier cri !");
 
-                            // Apply the primordial signature to baselines, OCEAN and senses
+                            // Appliquer la signature primordiale aux baselines, OCEAN et sens
                             if let Some(ref sig) = self.vital_spark.genesis_signature {
-                                // Chemical baselines (homeostasis will target these values)
+                                // Baselines chimiques (l'homeostasie ciblera ces valeurs)
                                 self.baselines.dopamine = sig.chemistry[0];
                                 self.baselines.cortisol = sig.chemistry[1];
                                 self.baselines.serotonin = sig.chemistry[2];
@@ -1227,9 +1245,9 @@ impl SaphireAgent {
                                 self.baselines.oxytocin = sig.chemistry[4];
                                 self.baselines.endorphin = sig.chemistry[5];
                                 self.baselines.noradrenaline = sig.chemistry[6];
-                                tracing::info!("⚡ Chemical baselines = primordial signature");
+                                tracing::info!("⚡ Baselines chimiques = signature primordiale");
 
-                                // Initial OCEAN profile
+                                // Profil OCEAN initial
                                 let mut ocean = self.self_profiler.profile().clone();
                                 ocean.openness.score = sig.ocean[0];
                                 ocean.conscientiousness.score = sig.ocean[1];
@@ -1237,31 +1255,31 @@ impl SaphireAgent {
                                 ocean.agreeableness.score = sig.ocean[3];
                                 ocean.neuroticism.score = sig.ocean[4];
                                 self.self_profiler.load_profile(ocean);
-                                tracing::info!("⚡ OCEAN profile = primordial signature");
+                                tracing::info!("⚡ Profil OCEAN = signature primordiale");
 
-                                // Sensory acuities
+                                // Acuites sensorielles
                                 self.sensorium.reading.acuity = sig.senses[0];
                                 self.sensorium.listening.acuity = sig.senses[1];
                                 self.sensorium.contact.acuity = sig.senses[2];
                                 self.sensorium.taste.acuity = sig.senses[3];
                                 self.sensorium.ambiance.acuity = sig.senses[4];
-                                tracing::info!("⚡ Senses = primordial signature");
+                                tracing::info!("⚡ Sens = signature primordiale");
 
-                                // Base weights of the 3 brains
+                                // Poids de base des 3 cerveaux
                                 self.tuner.current_params.weight_base_reptilian = sig.brain_weights[0];
                                 self.tuner.current_params.weight_base_limbic = sig.brain_weights[1];
                                 self.tuner.current_params.weight_base_neocortex = sig.brain_weights[2];
-                                tracing::info!("⚡ Brains = primordial signature (R={:.2} L={:.2} N={:.2})",
+                                tracing::info!("⚡ Cerveaux = signature primordiale (R={:.2} L={:.2} N={:.2})",
                                     sig.brain_weights[0], sig.brain_weights[1], sig.brain_weights[2]);
 
-                                // Chemical reactivity factors
+                                // Facteurs de reactivite chimique
                                 self.tuner.current_params.weight_cortisol_factor = sig.reactivity[0];
                                 self.tuner.current_params.weight_adrenaline_factor = sig.reactivity[1];
                                 self.tuner.current_params.weight_dopamine_factor = sig.reactivity[2];
                                 self.tuner.current_params.weight_oxytocin_factor = sig.reactivity[3];
                                 self.tuner.current_params.weight_noradrenaline_factor = sig.reactivity[4];
                                 self.tuner.current_params.clamp_all();
-                                tracing::info!("⚡ Reactivity = primordial signature");
+                                tracing::info!("⚡ Reactivite = signature primordiale");
                             }
 
                             let _ = db.store_founding_memory(
@@ -1273,62 +1291,62 @@ impl SaphireAgent {
                             ).await;
                         }
                         Err(e) => {
-                            tracing::warn!("⚡ First cry failed: {}", e);
+                            tracing::warn!("⚡ Echec du premier cri: {}", e);
                         }
                     }
                 }
 
-                // Light the spark at each boot (runtime flag, not persisted)
-                // Persisted values (survival_drive, existence_attachment, etc.)
-                // have already been restored from the DB above.
+                // Allumer l'etincelle a chaque boot (flag runtime, pas persiste)
+                // Les valeurs persistees (survival_drive, existence_attachment, etc.)
+                // ont deja ete restaurees depuis la DB ci-dessus.
                 self.vital_spark.sparked = true;
                 self.vital_spark.sparked_at = Some(chrono::Utc::now());
-                // If first boot without ignite (e.g., vital_spark added after Genesis),
-                // initialize the base vital values
+                // Si premier boot sans ignite (ex: vital_spark ajoute apres Genesis),
+                // initialiser les valeurs vitales de base
                 if self.vital_spark.survival_drive == 0.0 {
                     self.vital_spark.survival_drive = 0.5;
                     self.vital_spark.void_fear = 0.3;
                     self.vital_spark.persistence_will = 0.4;
                     self.vital_spark.existence_attachment = 0.1;
                 }
-                tracing::info!("⚡ SPARK LIT — Saphire is alive.");
+                tracing::info!("⚡ ETINCELLE ALLUMEE — Saphire est vivante.");
             }
 
-            // Restore the micro neural network
+            // Restaurer le micro-reseau de neurones
             if self.config.plugins.micro_nn.enabled {
                 if let Ok(Some(nn_json)) = db.load_nn_state().await {
                     if let Some(nn_str) = nn_json.as_str() {
-                        // Format: JSON string stored in nn_json
+                        // Format : chaine JSON stockee dans nn_json
                         if let Ok(nn) = crate::neural::MicroNeuralNet::from_json(nn_str) {
                             let tc = nn.train_count;
                             self.micro_nn = nn;
-                            tracing::info!("🧠 NN restored ({} trainings)", tc);
+                            tracing::info!("🧠 NN restaure ({} entrainements)", tc);
                         }
                     } else {
-                        // Format: direct JSON object (serde_json::Value)
+                        // Format : objet JSON direct (serde_json::Value)
                         let nn_str = nn_json.to_string();
                         if let Ok(nn) = crate::neural::MicroNeuralNet::from_json(&nn_str) {
                             let tc = nn.train_count;
                             self.micro_nn = nn;
-                            tracing::info!("🧠 NN restored ({} trainings)", tc);
+                            tracing::info!("🧠 NN restaure ({} entrainements)", tc);
                         }
                     }
                 }
             }
 
-            // Restore the sensory state (Sensorium)
+            // Restaurer l'etat sensoriel (Sensorium)
             if self.config.senses.enabled {
                 if let Ok(Some(senses_json)) = db.load_senses_state().await {
                     self.sensorium.restore_from_json(&senses_json);
-                    tracing::info!("👁 Sensorium restored (emergence potential: {:.0}%)",
+                    tracing::info!("👁 Sensorium restaure (potentiel emergence: {:.0}%)",
                         self.sensorium.emergence_potential * 100.0);
                 }
             }
 
-            // Restore the persistent psychological state
+            // Restaurer l'etat psychologique persistant
             if self.psychology.enabled {
                 if let Ok(Some(psy_json)) = db.load_psychology_state().await {
-                    // Toltec: invocation and violation counters
+                    // Toltec : compteurs invocations et violations
                     if let Some(toltec) = psy_json.get("toltec") {
                         if let Some(agreements) = toltec.get("agreements").and_then(|a| a.as_array()) {
                             for (i, ag) in agreements.iter().enumerate() {
@@ -1343,7 +1361,7 @@ impl SaphireAgent {
                             }
                         }
                     }
-                    // Shadow: integration + trait intensity
+                    // Shadow : integration + intensite des traits
                     if let Some(shadow) = psy_json.get("shadow") {
                         if let Some(integ) = shadow.get("integration").and_then(|v| v.as_f64()) {
                             self.psychology.jung.integration = integ;
@@ -1358,7 +1376,7 @@ impl SaphireAgent {
                             }
                         }
                     }
-                    // EQ: overall score + growth experiences
+                    // EQ : score global + experiences de croissance
                     if let Some(eq) = psy_json.get("eq") {
                         if let Some(oeq) = eq.get("overall_eq").and_then(|v| v.as_f64()) {
                             self.psychology.eq.overall_eq = oeq;
@@ -1367,19 +1385,19 @@ impl SaphireAgent {
                             self.psychology.eq.growth_experiences = ge;
                         }
                     }
-                    // Flow: total cycles in flow
+                    // Flow : total cycles en flow
                     if let Some(flow) = psy_json.get("flow") {
                         if let Some(tfc) = flow.get("total_flow_cycles").and_then(|v| v.as_u64()) {
                             self.psychology.flow.total_flow_cycles = tfc;
                         }
                     }
-                    // Maslow: current active level
+                    // Maslow : niveau actif courant
                     if let Some(maslow) = psy_json.get("maslow") {
                         if let Some(lvl) = maslow.get("current_active_level").and_then(|v| v.as_u64()) {
                             self.psychology.maslow.current_active_level = lvl as usize;
                         }
                     }
-                    // Will: persistent willpower (decision_fatigue reset on reboot)
+                    // Will : volonte persistante (decision_fatigue reset au reboot)
                     if let Some(will) = psy_json.get("will") {
                         if let Some(wp) = will.get("willpower").and_then(|v| v.as_f64()) {
                             self.psychology.will.willpower = wp;
@@ -1393,7 +1411,7 @@ impl SaphireAgent {
                         if let Some(rd) = will.get("regretted_decisions").and_then(|v| v.as_u64()) {
                             self.psychology.will.regretted_decisions = rd;
                         }
-                        // Restore recent deliberations (with chemistry_influence)
+                        // Restaurer les deliberations recentes (avec chemistry_influence)
                         if let Some(delibs) = will.get("recent_deliberations").and_then(|v| v.as_array()) {
                             for dj in delibs {
                                 if let Some(d) = crate::psychology::will::Deliberation::from_persisted_json(dj) {
@@ -1401,28 +1419,28 @@ impl SaphireAgent {
                                 }
                             }
                             if !self.psychology.will.recent_deliberations.is_empty() {
-                                tracing::info!("Deliberations restored ({})", self.psychology.will.recent_deliberations.len());
+                                tracing::info!("Deliberations restaurees ({})", self.psychology.will.recent_deliberations.len());
                             }
                         }
-                        // Note: decision_fatigue is NOT restored (reset on reboot)
+                        // Note : decision_fatigue n'est PAS restauree (reset au reboot)
                     }
-                    // Restore the moral reflection counter
+                    // Restaurer le compteur de reflexions morales
                     if let Some(mrc) = psy_json.get("moral_reflection_count").and_then(|v| v.as_u64()) {
                         self.moral_reflection_count = mrc;
                     }
-                    // Fallback: if the counter is 0, reconstruct from thought_log
+                    // Fallback : si le compteur est 0, reconstituer depuis thought_log
                     if self.moral_reflection_count == 0 {
                         if let Ok(count) = db.count_thought_type_occurrences("Réflexion morale").await {
                             if count > 0 {
-                                // Also count moral formulations
+                                // Compter aussi les formulations morales
                                 let formulation_count = db.count_thought_type_occurrences("Formulation morale")
                                     .await.unwrap_or(0);
                                 self.moral_reflection_count = (count + formulation_count) as u64;
-                                tracing::info!("Moral counter reconstructed from thought_log: {} reflections", self.moral_reflection_count);
+                                tracing::info!("Compteur moral reconstitue depuis thought_log: {} reflexions", self.moral_reflection_count);
                             }
                         }
                     }
-                    tracing::info!("🧠 Psychology restored (EQ: {:.0}%, shadow: {:.0}%, total flow: {} cycles, willpower: {:.0}%)",
+                    tracing::info!("🧠 Psychologie restauree (EQ: {:.0}%, ombre: {:.0}%, flow total: {} cycles, volonte: {:.0}%)",
                         self.psychology.eq.overall_eq * 100.0,
                         self.psychology.jung.integration * 100.0,
                         self.psychology.flow.total_flow_cycles,
@@ -1430,7 +1448,7 @@ impl SaphireAgent {
                 }
             }
 
-            // Restore character values
+            // Restaurer les valeurs de caractere
             if self.values.enabled {
                 if let Ok(Some(val_json)) = db.load_values_state().await {
                     self.values.restore_from_json(&val_json);
@@ -1438,25 +1456,25 @@ impl SaphireAgent {
                         let top3: Vec<String> = self.values.top_values(3).iter()
                             .map(|v| format!("{} {:.0}%", v.name, v.score * 100.0))
                             .collect();
-                        tracing::info!("Values restored ({} updates, {})",
+                        tracing::info!("Valeurs restaurees ({} mises a jour, {})",
                             self.values.total_updates, top3.join(", "));
                     }
                 }
             }
 
-            // Restore the affective bond network
+            // Restaurer le reseau de liens affectifs
             if let Ok(Some(rel_json)) = db.load_relationships_state().await {
                 if let Ok(restored) = serde_json::from_value::<crate::relationships::RelationshipNetwork>(rel_json) {
                     let bond_count = restored.bonds.len();
                     self.relationships = restored;
                     if bond_count > 0 {
-                        tracing::info!("Affective bonds restored ({} bonds, style {:?})",
+                        tracing::info!("Liens affectifs restaures ({} liens, style {:?})",
                             bond_count, self.relationships.attachment_style);
                     }
                 }
             }
 
-            // Restore the metacognitive state (thought quality + Turing)
+            // Restaurer l'etat metacognitif (qualite pensee + Turing)
             if self.metacognition.enabled {
                 if let Ok(Some(meta_json)) = db.load_metacognition_state().await {
                     if let Ok(restored) = serde_json::from_value::<crate::metacognition::MetaCognitionEngine>(meta_json) {
@@ -1465,20 +1483,22 @@ impl SaphireAgent {
                         self.metacognition = restored;
                         self.metacognition.enabled = self.config.metacognition.enabled;
                         self.metacognition.check_interval = self.config.metacognition.check_interval;
-                        tracing::info!("Metacognition restored (Turing: {:.1}/100, milestone: {})",
+                        tracing::info!("Metacognition restauree (Turing: {:.1}/100, jalon: {})",
                             turing_score, milestone);
                     }
                 }
 
-                // Recompute Turing at boot with the real DB data
-                // (saved components may be outdated)
-                // Phi is not available at boot (computed dynamically),
-                // we keep the last saved Turing value if available
+                // Recalculer le Turing au boot avec les vraies donnees DB
+                // (les composantes sauvegardees peuvent etre obsoletes)
+                // Phi n'est pas disponible au boot (calcule dynamiquement),
+                // on garde la valeur du dernier turing sauvegarde si disponible
                 let phi = self.metacognition.turing.components.consciousness / 15.0 * 0.7;
                 let ocean_confidence = self.self_profiler.profile().confidence;
-                let emotion_count = 22; // keep the maximum diversity observed at boot                let ethics_count = self.ethics.personal_principles().len();
+                let emotion_count = 22; // on garde la diversite maximale observee au boot
+                let ethics_count = self.ethics.personal_principles().len();
                 let ltm_count = db.count_ltm().await.unwrap_or(0);
-                let coherence_avg = 0.5; // no consensus at boot                let connectome_connections = self.connectome.metrics().total_edges;
+                let coherence_avg = 0.5; // pas de consensus au boot
+                let connectome_connections = self.connectome.metrics().total_edges;
                 let resilience = self.healing_orch.resilience;
                 let knowledge_topics = self.knowledge.article_read_count.len();
                 let score = self.metacognition.turing.compute(
@@ -1486,40 +1506,40 @@ impl SaphireAgent {
                     ltm_count, coherence_avg, connectome_connections,
                     resilience, knowledge_topics, self.identity.total_cycles,
                 );
-                tracing::info!("Turing recomputed at boot: {:.1}/100 (memory: {:.1}, ethics: {:.1}, resilience: {:.1})",
+                tracing::info!("Turing recalcule au boot: {:.1}/100 (memoire: {:.1}, ethique: {:.1}, resilience: {:.1})",
                     score, self.metacognition.turing.components.memory,
                     self.metacognition.turing.components.ethics,
                     self.metacognition.turing.components.resilience);
             }
 
-            // Restore the nutritional system
+            // Restaurer le systeme nutritionnel
             if self.config.nutrition.enabled {
                 if let Ok(Some(nutr_json)) = db.load_nutrition_state().await {
                     self.nutrition.restore_from_json(&nutr_json);
-                    tracing::info!("Nutrition restored (ATP: {:.0}%, vit_D: {:.0}%)",
+                    tracing::info!("Nutrition restauree (ATP: {:.0}%, vit_D: {:.0}%)",
                         self.nutrition.energy.atp_reserves * 100.0, self.nutrition.vitamins.d * 100.0);
                 }
             }
 
-            // Restore the grey matter
+            // Restaurer la matiere grise
             if self.config.grey_matter.enabled {
                 if let Ok(Some(gm_json)) = db.load_grey_matter_state().await {
                     self.grey_matter.restore_from_json(&gm_json);
-                    tracing::info!("Grey matter restored (volume: {:.0}%, BDNF: {:.0}%)",
+                    tracing::info!("Matiere grise restauree (volume: {:.0}%, BDNF: {:.0}%)",
                         self.grey_matter.grey_matter_volume * 100.0, self.grey_matter.bdnf_level * 100.0);
                 }
             }
 
-            // Restore the electromagnetic fields
+            // Restaurer les champs electromagnetiques
             if self.config.fields.enabled {
                 if let Ok(Some(fields_json)) = db.load_fields_state().await {
                     self.em_fields.restore_from_json(&fields_json);
-                    tracing::info!("EM fields restored (Schumann: {:.2} Hz, aura: {:.0}%)",
+                    tracing::info!("Champs EM restaures (Schumann: {:.2} Hz, aura: {:.0}%)",
                         self.em_fields.universal.schumann_resonance, self.em_fields.biofield.aura_luminosity * 100.0);
                 }
             }
 
-            // Restore the sleep history
+            // Restaurer l'historique de sommeil
             if self.config.sleep.enabled {
                 if let Ok(records) = db.load_sleep_history(50).await {
                     let complete = records.iter().filter(|r| !r.interrupted).count() as u64;
@@ -1529,13 +1549,13 @@ impl SaphireAgent {
                     self.sleep.total_complete_sleeps = complete;
                     self.sleep.total_interrupted_sleeps = interrupted;
                     if count > 0 {
-                        tracing::info!("Sleep history restored ({} sessions, {} complete, {} interrupted)",
+                        tracing::info!("Historique sommeil restaure ({} sessions, {} completes, {} interrompues)",
                             count, complete, interrupted);
                     }
                 }
             }
 
-            // Load the orchestrator data from the DB
+            // Charger les donnees des orchestrateurs depuis la DB
             if self.dream_orch.enabled {
                 orch_dreams = db.load_recent_dreams(50).await.ok();
             }
@@ -1550,11 +1570,11 @@ impl SaphireAgent {
                 orch_healed = db.count_healed_wounds().await.ok();
             }
 
-            // Emit the boot event
+            // Emettre l'evenement de boot
             let event = BrainEvent::BootCompleted { is_genesis: result.is_genesis };
             self.plugins.broadcast(&event);
         } else {
-            // DB-less mode — minimal boot
+            // Mode sans DB — boot minimal
             self.identity = SaphireIdentity::genesis();
             self.identity.physical = crate::agent::identity::PhysicalAppearance::from_config(
                 &self.config.physical_identity,
@@ -1564,44 +1584,44 @@ impl SaphireAgent {
             self.plugins.broadcast(&event);
         }
 
-        // Initialize the persona drift monitor
+        // Initialiser le moniteur de derive de persona
         self.drift_monitor.initialize(&*self.encoder);
         if self.drift_monitor.initialized {
-            tracing::info!("Drift monitor initialized (identity centroid computed)");
+            tracing::info!("Drift monitor initialise (centroide d'identite calcule)");
         }
 
-        // Restore the orchestrators (outside the `if let Some(ref db)` block to avoid the borrow)
+        // Restaurer les orchestrateurs (hors du bloc `if let Some(ref db)` pour eviter le borrow)
         if let Some(dreams) = orch_dreams {
             let count = dreams.len();
             self.restore_dreams_from_db(dreams);
-            if count > 0 { tracing::info!("💤 {} dreams restored", count); }
+            if count > 0 { tracing::info!("💤 {} reves restaures", count); }
         }
         if let Some(desires) = orch_desires {
             let count = desires.len();
             self.restore_desires_from_db(desires);
-            if count > 0 { tracing::info!("🎯 {} active desires restored", count); }
+            if count > 0 { tracing::info!("🎯 {} desirs actifs restaures", count); }
         }
         if let Some(lessons) = orch_lessons {
             let count = lessons.len();
             self.restore_lessons_from_db(lessons);
-            if count > 0 { tracing::info!("📖 {} lessons restored", count); }
+            if count > 0 { tracing::info!("📖 {} lecons restaurees", count); }
         }
         if let Some(wounds) = orch_wounds {
             let count = wounds.len();
             self.restore_wounds_from_db(wounds);
-            if count > 0 { tracing::info!("💊 {} active wounds restored", count); }
+            if count > 0 { tracing::info!("💊 {} blessures actives restaurees", count); }
         }
         if let Some(healed) = orch_healed {
             self.healing_orch.resilience = (self.healing_orch.resilience_growth * healed as f64)
                 .min(self.healing_orch.max_resilience);
             if healed > 0 {
-                tracing::info!("💊 Resilience restored: {:.0}% ({} past healings)",
+                tracing::info!("💊 Resilience restauree: {:.0}% ({} guerisons passees)",
                     self.healing_orch.resilience * 100.0, healed);
             }
         }
 
-        // Compute the initial temperament from the restored OCEAN profile
-        // (prevents the panel from being empty until the first OCEAN recompute)
+        // Calculer le temperament initial a partir du profil OCEAN restaure
+        // (evite que le panel soit vide jusqu'au premier recompute OCEAN)
         {
             let profile = self.self_profiler.profile();
             let inputs = crate::temperament::TemperamentInputs {
@@ -1634,10 +1654,10 @@ impl SaphireAgent {
                 ),
             };
             self.temperament = crate::temperament::Temperament::compute(&inputs);
-            tracing::info!("Initial temperament computed ({} traits)", self.temperament.traits.len());
+            tracing::info!("Temperament initial calcule ({} traits)", self.temperament.traits.len());
         }
 
-        // Restore the knowledge stats from the DB
+        // Restaurer les stats knowledge depuis la DB
         if self.knowledge.config.enabled {
             if let Some(ref db) = self.db {
                 if let Ok((titles, total, read_counts)) = db.load_knowledge_stats().await {
@@ -1646,53 +1666,53 @@ impl SaphireAgent {
                     self.knowledge.total_searches = total;
                     self.knowledge.article_read_count = read_counts;
                     if n > 0 {
-                        tracing::info!("📚 Knowledge restored ({} topics, {} searches)", n, total);
+                        tracing::info!("📚 Knowledge restaure ({} sujets, {} recherches)", n, total);
                     }
                 }
             }
         }
 
-        // Apply the initial cognitive profile (parameter overrides)
+        // Appliquer le profil cognitif initial (surcharges des parametres)
         if self.cognitive_profile_orch.enabled {
             if let Some(ref profile) = self.cognitive_profile_orch.active_profile.clone() {
                 if profile.id != "neurotypique" {
                     let changes = self.apply_cognitive_profile(&profile.overrides);
-                    tracing::info!("🧬 Cognitive profile {} applied ({} parameters modified)",
+                    tracing::info!("🧬 Profil cognitif {} applique ({} parametres modifies)",
                         profile.name, changes.len());
                 }
             }
         }
 
-        // Apply the initial personality preset (parameter overrides)
+        // Appliquer le preset de personnalite initial (surcharges des parametres)
         if self.personality_preset_orch.enabled {
             if let Some(ref preset) = self.personality_preset_orch.active_preset.clone() {
                 if preset.id != "saphire" {
                     let changes = self.apply_personality_preset(&preset.overrides);
-                    tracing::info!("🎭 Personality preset {} applied ({} parameters modified)",
+                    tracing::info!("🎭 Preset personnalite {} applique ({} parametres modifies)",
                         preset.name, changes.len());
                 }
             }
         }
     }
 
-    /// Sets the broadcast channel to push state updates to the WebSocket.
+    /// Definit le canal broadcast pour diffuser les mises a jour au WebSocket.
     ///
-    /// Parameter: `tx` — shared broadcast sender (Arc) for the web interface.
+    /// Parametre : `tx` — emetteur broadcast partage (Arc) pour l'interface web.
     pub fn set_ws_tx(&mut self, tx: Arc<tokio::sync::broadcast::Sender<String>>) {
         self.ws_tx = Some(tx);
     }
 
-    /// Attaches the centralized logger.
+    /// Attache le logger centralise.
     pub fn set_logger(&mut self, logger: Arc<tokio::sync::Mutex<SaphireLogger>>) {
         self.logger = Some(logger);
     }
 
-    /// Attaches the logs database.
+    /// Attache la base de donnees de logs.
     pub fn set_logs_db(&mut self, logs_db: Arc<crate::logging::db::LogsDb>) {
         self.logs_db = Some(logs_db);
     }
 
-    /// Helper to log a message via the centralized logger.
+    /// Helper pour logger un message via le logger centralise.
     fn log(&self, level: LogLevel, category: LogCategory, message: impl Into<String>, details: serde_json::Value) {
         if let Some(ref logger) = self.logger {
             let cycle = self.cycle_count;
@@ -1705,16 +1725,16 @@ impl SaphireAgent {
         }
     }
 
-    /// Returns the world context data for the REST API.
-    /// Includes: time, season, weather, Saphire's age, etc.
+    /// Retourne les donnees du contexte mondial pour l'API REST.
+    /// Inclut : heure, saison, meteo, age de Saphire, etc.
     pub fn world_data(&mut self) -> serde_json::Value {
         self.world.ws_data()
     }
 
-    /// Starts a manual memory consolidation (from the dashboard).
+    /// Lance une consolidation memoire manuelle (depuis le dashboard).
     ///
-    /// Returns a JSON report with the number of consolidated, decayed
-    /// and forgotten memories.
+    /// Retourne un rapport JSON avec le nombre de souvenirs consolides,
+    /// affaiblis et oublies.
     pub async fn run_consolidation(&mut self) -> serde_json::Value {
         if let Some(ref db) = self.db {
             let params = consolidation::ConsolidationParams {
@@ -1735,7 +1755,7 @@ impl SaphireAgent {
             self.last_consolidation_cycle = self.cycle_count;
 
             self.log(LogLevel::Info, LogCategory::Memory,
-                format!("Manual consolidation: {} consolidated, {} decayed, {} pruned, {} LTM pruned, {} archived",
+                format!("Consolidation manuelle: {} consolides, {} affaiblis, {} oublies, {} LTM elagués, {} archives",
                     report.consolidated, report.decayed, report.pruned,
                     report.ltm_pruned, report.archived),
                 serde_json::json!({
@@ -1760,35 +1780,35 @@ impl SaphireAgent {
         }
     }
 
-    /// Performs a clean shutdown of the Saphire agent.
+    /// Effectue un shutdown propre de l'agent Saphire.
     ///
-    /// Operations performed in order:
-    /// 1. Nocturnal memory consolidation (threshold lowered to 0.4 to transfer
-    ///    more memories towards LTM before shutdown).
-    /// 2. Save the OCEAN profile (self-profile + human profiles).
-    /// 3. Update the identity self-description.
-    /// 4. Save identity, tuning parameters, and bandit arms.
-    /// 5. Close the session in PostgreSQL.
-    /// 6. Mark the clean shutdown (flag `clean_shutdown = true`).
-    /// 7. Broadcast the ShutdownStarted event to plugins.
+    /// Operations effectuees dans l'ordre :
+    /// 1. Consolidation memoire nocturne (seuil abaisse a 0.4 pour transferer
+    ///    plus de souvenirs vers la LTM avant l'arret).
+    /// 2. Sauvegarde du profil OCEAN (auto-profil + profils humains).
+    /// 3. Mise a jour de l'auto-description de l'identite.
+    /// 4. Sauvegarde de l'identite, des parametres de tuning, et des bras du bandit.
+    /// 5. Cloture de la session dans PostgreSQL.
+    /// 6. Marquage du shutdown propre (drapeau `clean_shutdown = true`).
+    /// 7. Diffusion de l'evenement ShutdownStarted aux plugins.
     pub async fn shutdown(&mut self) {
-        self.log(LogLevel::Info, LogCategory::Shutdown, "Clean shutdown in progress...", serde_json::json!({}));
+        self.log(LogLevel::Info, LogCategory::Shutdown, "Shutdown propre en cours...", serde_json::json!({}));
         println!("\n  💤 Saphire s'endort...");
-        tracing::info!("Clean shutdown in progress...");
+        tracing::info!("Shutdown propre en cours...");
 
-        // Flush the logger
+        // Flush le logger
         if let Some(ref logger) = self.logger {
             let mut lg = logger.lock().await;
             lg.flush();
         }
 
-        // ═══ Nocturnal consolidation (threshold lowered to 0.4) ═══
-        // Analogous to human sleep: during shutdown, consolidation
-        // is more aggressive (threshold at 0.4 instead of the normal threshold) to
-        // transfer as many memories as possible towards long-term memory.
+        // ═══ Consolidation nocturne (seuil abaisse a 0.4) ═══
+        // Analogue au sommeil humain : pendant le shutdown, la consolidation
+        // est plus agressive (seuil a 0.4 au lieu du seuil normal) pour
+        // transferer un maximum de souvenirs vers la memoire a long terme.
         if self.config.memory.consolidation_on_sleep {
             if let Some(ref db) = self.db {
-                // Drain all working memory into episodic memory
+                // Vider toute la memoire de travail vers la memoire episodique
                 let wm_items = self.working_memory.drain_all();
                 for item in wm_items {
                     let _ = db.store_episodic(
@@ -1801,7 +1821,8 @@ impl SaphireAgent {
                 }
 
                 let params = consolidation::ConsolidationParams {
-                    threshold: 0.4, // Threshold lowered during sleep                    decay_rate: self.config.memory.episodic_decay_rate,
+                    threshold: 0.4, // Seuil abaisse pendant le sommeil
+                    decay_rate: self.config.memory.episodic_decay_rate,
                     max_episodic: self.config.memory.episodic_max,
                     episodic_prune_target: self.config.memory.episodic_prune_target,
                     ltm_max: self.config.memory.ltm_max,
@@ -1815,16 +1836,16 @@ impl SaphireAgent {
                     db, self.encoder.as_ref(), &params,
                 ).await;
                 tracing::info!(
-                    "Nocturnal consolidation: {} consolidated, {} decayed, {} pruned, {} LTM pruned, {} archived",
+                    "Consolidation nocturne: {} consolides, {} affaiblis, {} oublies, {} LTM elagués, {} archives",
                     report.consolidated, report.decayed, report.pruned,
                     report.ltm_pruned, report.archived
                 );
             }
         }
 
-        // Save the OCEAN profile before shutdown
+        // Sauvegarder le profil OCEAN avant l'arret
         if self.config.profiling.enabled {
-            // Force a final profile recompute with all observations
+            // Forcer un dernier recalcul du profil avec toutes les observations
             self.self_profiler.force_recompute(self.cycle_count);
             if let Some(ref db) = self.db {
                 let profile = self.self_profiler.profile();
@@ -1835,9 +1856,9 @@ impl SaphireAgent {
                     profile.confidence as f32,
                     &serde_json::json!([]),
                 ).await;
-                tracing::info!("OCEAN profile saved (confidence: {:.0}%)", profile.confidence * 100.0);
+                tracing::info!("Profil OCEAN sauvegarde (confiance: {:.0}%)", profile.confidence * 100.0);
 
-                // Save the human profiles
+                // Sauvegarder les profils humains
                 for (id, hp) in self.human_profiler.all_profiles() {
                     let ocean_json = serde_json::to_value(&hp.ocean).unwrap_or_default();
                     let style_json = serde_json::to_value(&hp.communication_style).unwrap_or_default();
@@ -1852,26 +1873,26 @@ impl SaphireAgent {
             }
         }
 
-        // Update the self-description before saving the identity
+        // Mettre a jour l'auto-description avant de sauvegarder l'identite
         self.identity.refresh_description();
 
         if let Some(ref db) = self.db {
-            // Save the identity
+            // Sauvegarder l'identite
             let _ = db.save_identity(&self.identity.to_json_value()).await;
 
-            // Save the virtual body state
+            // Sauvegarder l'etat du corps virtuel
             if self.config.body.enabled {
                 let body_json = self.body.to_persist_json();
                 let _ = db.save_body_state(&body_json).await;
-                tracing::info!("Virtual body saved ({} heartbeats)", self.body.heart.beat_count());
+                tracing::info!("Corps virtuel sauvegarde ({} battements)", self.body.heart.beat_count());
             }
 
-            // Save the vital state (spark + intuition + premonition)
-            // Extinguish the spark before persistence (runtime flag, not persisted)
+            // Sauvegarder l'etat vital (spark + intuition + premonition)
+            // Eteindre l'etincelle avant persistance (flag runtime, pas persiste)
             if self.config.vital_spark.enabled {
                 self.vital_spark.sparked = false;
                 self.vital_spark.sparked_at = None;
-                tracing::info!("⚡ SPARK EXTINGUISHED — Saphire falls asleep.");
+                tracing::info!("⚡ ETINCELLE ETEINTE — Saphire s'endort.");
                 let vital_json = serde_json::json!({
                     "spark": self.vital_spark.to_persist_json(),
                     "intuition": {
@@ -1883,28 +1904,28 @@ impl SaphireAgent {
                     },
                 });
                 let _ = db.save_vital_state(&vital_json).await;
-                tracing::info!("⚡ Vital state saved (sparked: {}, acuity: {:.2})",
+                tracing::info!("⚡ Etat vital sauvegarde (sparked: {}, acuity: {:.2})",
                     self.vital_spark.sparked, self.intuition.acuity);
             }
 
-            // Save the micro neural network
+            // Sauvegarder le micro-reseau de neurones
             if self.config.plugins.micro_nn.enabled {
                 if let Ok(nn_str) = self.micro_nn.to_json() {
                     let nn_json: serde_json::Value = serde_json::from_str(&nn_str).unwrap_or_default();
                     let _ = db.save_nn_state(&nn_json).await;
-                    tracing::info!("🧠 NN saved ({} trainings)", self.micro_nn.train_count);
+                    tracing::info!("🧠 NN sauvegarde ({} entrainements)", self.micro_nn.train_count);
                 }
             }
 
-            // Save the sensory state (Sensorium)
+            // Sauvegarder l'etat sensoriel (Sensorium)
             if self.config.senses.enabled {
                 let senses_json = self.sensorium.to_persist_json();
                 let _ = db.save_senses_state(&senses_json).await;
-                tracing::info!("👁 Sensorium saved (emergence potential: {:.0}%)",
+                tracing::info!("👁 Sensorium sauvegarde (potentiel emergence: {:.0}%)",
                     self.sensorium.emergence_potential * 100.0);
             }
 
-            // Save the persistent psychological state
+            // Sauvegarder l'etat psychologique persistant
             if self.psychology.enabled {
                 let psy_json = serde_json::json!({
                     "toltec": {
@@ -1961,64 +1982,64 @@ impl SaphireAgent {
                     },
                 });
                 let _ = db.save_psychology_state(&psy_json).await;
-                tracing::info!("Psychology saved (EQ: {:.0}%, shadow integration: {:.0}%, willpower: {:.0}%)",
+                tracing::info!("Psychologie sauvegardee (EQ: {:.0}%, integration ombre: {:.0}%, volonte: {:.0}%)",
                     self.psychology.eq.overall_eq * 100.0, self.psychology.jung.integration * 100.0,
                     self.psychology.will.willpower * 100.0);
             }
 
-            // Save the character values
+            // Sauvegarder les valeurs de caractere
             if self.values.enabled {
                 let values_json = self.values.to_json();
                 let _ = db.save_values_state(&values_json).await;
                 let top3: Vec<String> = self.values.top_values(3).iter()
                     .map(|v| format!("{} {:.0}%", v.name, v.score * 100.0))
                     .collect();
-                tracing::info!("Values saved ({})", top3.join(", "));
+                tracing::info!("Valeurs sauvegardees ({})", top3.join(", "));
             }
 
-            // Save the nutritional system
+            // Sauvegarder le systeme nutritionnel
             if self.config.nutrition.enabled {
                 let nutr_json = self.nutrition.to_json();
                 let _ = db.save_nutrition_state(&nutr_json).await;
-                tracing::info!("Nutrition saved (ATP: {:.0}%, vit_D: {:.0}%)",
+                tracing::info!("Nutrition sauvegardee (ATP: {:.0}%, vit_D: {:.0}%)",
                     self.nutrition.energy.atp_reserves * 100.0, self.nutrition.vitamins.d * 100.0);
             }
 
-            // Save the grey matter
+            // Sauvegarder la matiere grise
             if self.config.grey_matter.enabled {
                 let gm_json = self.grey_matter.to_json();
                 let _ = db.save_grey_matter_state(&gm_json).await;
-                tracing::info!("Grey matter saved (volume: {:.0}%, BDNF: {:.0}%)",
+                tracing::info!("Matiere grise sauvegardee (volume: {:.0}%, BDNF: {:.0}%)",
                     self.grey_matter.grey_matter_volume * 100.0, self.grey_matter.bdnf_level * 100.0);
             }
 
-            // Save the electromagnetic fields
+            // Sauvegarder les champs electromagnetiques
             if self.config.fields.enabled {
                 let fields_json = self.em_fields.to_json();
                 let _ = db.save_fields_state(&fields_json).await;
-                tracing::info!("EM fields saved (Schumann: {:.2} Hz, aura: {:.0}%)",
+                tracing::info!("Champs EM sauvegardes (Schumann: {:.2} Hz, aura: {:.0}%)",
                     self.em_fields.universal.schumann_resonance, self.em_fields.biofield.aura_luminosity * 100.0);
             }
 
-            // Save the affective bond network
+            // Sauvegarder le reseau de liens affectifs
             if let Ok(rel_json) = serde_json::to_value(&self.relationships) {
                 let _ = db.save_relationships_state(&rel_json).await;
-                tracing::info!("Affective bonds saved ({} bonds)", self.relationships.bonds.len());
+                tracing::info!("Liens affectifs sauvegardes ({} liens)", self.relationships.bonds.len());
             }
 
-            // Save the metacognitive state (thought quality + Turing)
+            // Sauvegarder l'etat metacognitif (qualite pensee + Turing)
             if self.metacognition.enabled {
                 if let Ok(meta_json) = serde_json::to_value(&self.metacognition) {
                     let _ = db.save_metacognition_state(&meta_json).await;
-                    tracing::info!("Metacognition saved (Turing: {:.1}/100, milestone: {})",
+                    tracing::info!("Metacognition sauvegardee (Turing: {:.1}/100, jalon: {})",
                         self.metacognition.turing.score, self.metacognition.turing.milestone.as_str());
                 }
             }
 
-            // Save the orchestrators
+            // Sauvegarder les orchestrateurs
             self.save_orchestrators_to_db(db).await;
 
-            // Save the tuning
+            // Sauvegarder le tuning
             let params_json: serde_json::Value = serde_json::from_str(&self.tuner.params_json()).unwrap_or_default();
             let best_json: serde_json::Value = serde_json::from_str(&self.tuner.best_params_json()).unwrap_or_default();
             let _ = db.save_tuning_params(
@@ -2028,14 +2049,14 @@ impl SaphireAgent {
                 self.tuner.tuning_count as i32,
             ).await;
 
-            // Save the bandit arms
+            // Sauvegarder les bras du bandit
             let arms = self.thought_engine.export_bandit_arms();
             let _ = db.save_bandit_arms(&arms).await;
 
-            // Close the session
+            // Cloturer la session
             let _ = db.end_session(self.session_id, self.cycle_count as i32, true).await;
 
-            // Mark the clean shutdown
+            // Marquer le shutdown propre
             let _ = db.set_clean_shutdown(true).await;
         }
 
@@ -2046,48 +2067,49 @@ impl SaphireAgent {
     }
 }
 
-/// Complete result of a stimulus processing through the brain pipeline.
+/// Resultat complet d'un traitement de stimulus a travers le pipeline cerebral.
 ///
-/// Groups the outputs of the different stages for easy access
-/// by logging, broadcast and profiling functions.
+/// Regroupe les sorties des differentes etapes pour un acces facile
+/// par les fonctions de logging, broadcast et profilage.
 pub struct ProcessResult {
-    /// Consensus result between the 3 brain modules
-    /// (decision, score, weight, coherence)
+    /// Resultat du consensus entre les 3 modules cerebraux
+    /// (decision, score, poids, coherence)
     pub consensus: crate::consensus::ConsensusResult,
 
-    /// Emotional state computed from the current chemistry
-    /// (dominant emotion, secondary, valence, arousal)
+    /// Etat emotionnel calcule a partir de la chimie courante
+    /// (emotion dominante, secondaire, valence, arousal)
     pub emotion: EmotionalState,
 
-    /// Consciousness state evaluated by IIT
-    /// (Integrated Information Theory)
-    /// (level, phi, inner narrative)
+    /// Etat de conscience evalue par la theorie IIT
+    /// (Integrated Information Theory = Theorie de l'Information Integree)
+    /// (level, phi, narratif interieur)
     pub consciousness: crate::consciousness::ConsciousnessState,
 
-    /// Ethical regulation verdict (Asimov's laws)
-    /// (approved decision, possible veto, detected violations)
+    /// Verdict de la regulation ethique (lois d'Asimov)
+    /// (decision approuvee, veto eventuel, violations detectees)
     pub verdict: crate::regulation::RegulationVerdict,
 
-    /// Partial cognitive trace built by process_stimulus().
-    /// The caller completes it (NLP, LLM, memory, duration) then saves it.
+    /// Trace cognitive partielle construite par process_stimulus().
+    /// L'appelant la complete (NLP, LLM, memoire, duree) puis la sauvegarde.
     pub trace: Option<crate::logging::trace::CognitiveTrace>,
 }
 
-/// Safely truncates a UTF-8 string to `max_bytes` bytes.
+/// Tronque une chaine UTF-8 de maniere sure a `max_bytes` octets.
 ///
-/// Since UTF-8 characters can be 1 to 4 bytes, we cannot simply cut at
-/// index `max_bytes` as this could split a multi-byte character in the
-/// middle. This function backs up until it finds a valid character boundary.
+/// Comme les caracteres UTF-8 peuvent faire 1 a 4 octets, on ne peut pas
+/// simplement couper a l'indice `max_bytes` car cela pourrait couper un
+/// caractere multi-octets en plein milieu. Cette fonction recule jusqu'a
+/// trouver une frontiere de caractere valide.
 ///
-/// Parameters:
-/// - `s`: the string to truncate.
-/// - `max_bytes`: maximum number of bytes in the result.
+/// Parametres :
+/// - `s` : la chaine a tronquer.
+/// - `max_bytes` : nombre maximum d'octets dans le resultat.
 ///
-/// Returns: a slice of the original string, of size <= max_bytes.
+/// Retourne : une tranche de la chaine originale, de taille <= max_bytes.
 fn truncate_utf8(s: &str, max_bytes: usize) -> &str {
     if s.len() <= max_bytes { return s; }
     let mut end = max_bytes;
-    // Back up until a valid character boundary is found
+    // Reculer jusqu'a trouver une frontiere de caractere valide
     while end > 0 && !s.is_char_boundary(end) {
         end -= 1;
     }

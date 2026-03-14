@@ -1,20 +1,20 @@
 // =============================================================================
-// lifecycle/thinking_perception.rs — Pre-LLM phases (world perception)
+// lifecycle/thinking_perception.rs — Phases pre-LLM (perception du monde)
 // =============================================================================
 //
-// This file contains the perception phases and internal state updates
-// before the LLM call. This includes:
-//  - Cycle initialization
-//  - Weather + virtual body
-//  - Primary needs (hunger, thirst)
-//  - VitalSpark
-//  - Sensory perception
-//  - Chemistry history
-//  - Birthday
-//  - Broadcast world_update
-//  - Memory decay (working, episodic)
-//  - Memory consolidation
-//  - Automatic algorithms
+// Ce fichier contient les phases de perception et de mise a jour de l'etat
+// interne de Saphire avant l'appel au LLM. Cela inclut :
+//   - Initialisation du cycle
+//   - Meteo + corps virtuel
+//   - Besoins primaires (faim, soif)
+//   - VitalSpark
+//   - Perception sensorielle
+//   - Historique chimique
+//   - Anniversaire
+//   - Broadcast world_update
+//   - Decay memoire (travail, episodique)
+//   - Consolidation memoire
+//   - Algorithmes automatiques
 // =============================================================================
 
 use crate::neurochemistry::Molecule;
@@ -26,26 +26,28 @@ use super::thinking::ThinkingContext;
 
 impl SaphireAgent {
     // =========================================================================
-    // Phase 1: Cycle initialization
+    // Phase 1 : Initialisation du cycle
     // =========================================================================
-    /// Cycle initialization phase (no increment here — the counter
-    /// is only incremented at the end of the complete pipeline in process_stimulus).
+
+    /// Phase d'initialisation du cycle (pas d'increment ici — le compteur
+    /// n'est incremente qu'a la fin du pipeline complet dans process_stimulus).
     pub(super) fn phase_init(&mut self, _ctx: &mut ThinkingContext) {
-        // Nothing: the cycle only counts if it completes
+        // Rien : le cycle ne compte que s'il aboutit
     }
 
     // =========================================================================
-    // Phase 2: Weather + Virtual body
+    // Phase 2 : Meteo + Corps virtuel
     // =========================================================================
-    /// Updates the weather, virtual body and applies chemistry influences.
+
+    /// Met a jour la meteo, le corps virtuel et applique les influences chimiques.
     pub(super) fn phase_weather_and_body(&mut self, _ctx: &mut ThinkingContext) {
-        // Weather update + chemistry influence
+        // Mise a jour meteo + influence chimique
         if let Some(weather) = self.world.weather.update_if_needed() {
             let adj = weather.chemistry_influence();
             self.chemistry.apply_chemistry_adjustment_clamped(&adj, 0.05);
         }
 
-        // Virtual body update + chemistry influence
+        // Mise a jour du corps virtuel + influence chimique
         if self.config.body.enabled {
             let dt = self.config.body.update_interval_seconds;
             let hormones_ref = if self.hormonal_system.enabled {
@@ -57,7 +59,7 @@ impl SaphireAgent {
             let body_adj = self.body.chemistry_influence();
             self.chemistry.apply_chemistry_adjustment_clamped(&body_adj, 0.05);
 
-            // Logging of the heart and body
+            // Logging du coeur et du corps
             let bs = self.body.status();
             self.log(LogLevel::Debug, LogCategory::Heart,
                 format!("Coeur: {:.0} BPM | #{} | HRV: {:.2}", bs.heart.bpm, bs.heart.beat_count, bs.heart.hrv),
@@ -75,7 +77,7 @@ impl SaphireAgent {
                     "breath_rate": bs.breath_rate, "body_awareness": bs.body_awareness,
                 }));
 
-            // Tachycardia
+            // Tachycardie
             if bs.heart.is_racing {
                 self.log(LogLevel::Warn, LogCategory::Heart,
                     format!("Tachycardie: {:.0} BPM", bs.heart.bpm),
@@ -86,28 +88,28 @@ impl SaphireAgent {
                     }));
             }
 
-            // Deep fatigue (energy < 30%)
+            // Fatigue profonde (energie < 30%)
             if bs.energy < 0.3 {
                 self.log(LogLevel::Warn, LogCategory::Body,
                     format!("Fatigue profonde: energie a {:.0}%", bs.energy * 100.0),
                     serde_json::json!({"energy": bs.energy}));
             }
 
-            // Pain
+            // Douleur
             if bs.pain > 0.2 {
                 self.log(LogLevel::Warn, LogCategory::Body,
                     format!("Douleur ressentie: {:.0}%", bs.pain * 100.0),
                     serde_json::json!({"pain": bs.pain, "heart_bpm": bs.heart.bpm}));
             }
 
-            // Heartbeat milestone (every 10,000)
+            // Milestone de battements (tous les 10 000)
             if bs.heart.beat_count > 0 && bs.heart.beat_count.is_multiple_of(10_000) {
                 self.log(LogLevel::Info, LogCategory::Heart,
                     format!("Milestone: {} battements depuis la naissance", bs.heart.beat_count),
                     serde_json::json!({"beat_count": bs.heart.beat_count}));
             }
 
-            // Body -> chemistry influence
+            // Influence corps -> chimie
             self.log(LogLevel::Debug, LogCategory::Body,
                 "Signal interoceptif -> chimie".to_string(),
                 serde_json::json!({
@@ -124,31 +126,32 @@ impl SaphireAgent {
     }
 
     // =========================================================================
-    // Phase 2b: Primary needs (hunger, thirst)
+    // Phase 2b : Besoins primaires (faim, soif)
     // =========================================================================
-    /// Updates hunger and thirst drives, applies chemistry impact,
-    /// and triggers auto-satisfaction if thresholds are exceeded.
+
+    /// Met a jour les drives de faim et soif, applique l'impact chimique,
+    /// et declenche l'auto-satisfaction si les seuils sont depasses.
     pub(super) fn phase_needs(&mut self, _ctx: &mut ThinkingContext) {
         if !self.config.needs.enabled {
             return;
         }
 
-        // Read physiological values to compute drives
+        // Lire les valeurs physiologiques pour calculer les drives
         let glycemia = self.body.physiology.glycemia;
         let hydration = self.body.physiology.hydration;
         let cycle = self.cycle_count;
         let config = self.config.needs.clone();
 
-        // Tick the needs
+        // Tick des besoins
         self.needs.tick(glycemia, hydration, cycle, &config);
 
-        // Chemistry impact of unsatisfied needs
+        // Impact chimique des besoins non satisfaits
         let adj = self.needs.chemistry_influence(&config);
         if adj.cortisol != 0.0 || adj.serotonin != 0.0 || adj.dopamine != 0.0 || adj.noradrenaline != 0.0 {
             self.chemistry.apply_chemistry_adjustment_clamped(&adj, 0.05);
         }
 
-        // Logging levels
+        // Logging des niveaux
         if self.needs.is_hungry(&config) || self.needs.is_thirsty(&config) {
             self.log(LogLevel::Debug, LogCategory::Body,
                 format!("Besoins: faim={:.0}% soif={:.0}%",
@@ -161,12 +164,12 @@ impl SaphireAgent {
                 }));
         }
 
-        // Auto-satisfaction of needs
+        // Auto-satisfaction
         if let Some(action) = self.needs.check_auto_satisfy(&config) {
             match action {
                 crate::needs::AutoSatisfyAction::Eat => {
                     let result = self.needs.eat(cycle, &config);
-                    // Apply the boost to the physiology
+                    // Appliquer le boost sur la physiologie
                     self.body.physiology.glycemia = result.glycemia_target;
                     self.chemistry.boost(Molecule::Dopamine, result.dopamine_boost);
                     self.log(LogLevel::Info, LogCategory::Body,
@@ -183,7 +186,7 @@ impl SaphireAgent {
                 }
                 crate::needs::AutoSatisfyAction::Drink => {
                     let result = self.needs.drink(cycle, &config);
-                    // Apply the boost to the physiology
+                    // Appliquer le boost sur la physiologie
                     self.body.physiology.hydration = result.hydration_target;
                     self.chemistry.boost(Molecule::Dopamine, result.dopamine_boost);
                     self.log(LogLevel::Info, LogCategory::Body,
@@ -203,9 +206,10 @@ impl SaphireAgent {
     }
 
     // =========================================================================
-    // Phase 3: VitalSpark update
+    // Phase 3 : VitalSpark update
     // =========================================================================
-    /// Updates the spark of life (VitalSpark) if enabled.
+
+    /// Met a jour l'etincelle de vie (VitalSpark) si activee.
     pub(super) async fn phase_vital_spark(&mut self, _ctx: &mut ThinkingContext) {
         if self.config.vital_spark.enabled && self.vital_spark.sparked {
             let memory_count = if let Some(ref db) = self.db {
@@ -230,31 +234,32 @@ impl SaphireAgent {
     }
 
     // =========================================================================
-    // Phase 4: Autonomous sensory perception
+    // Phase 4 : Perception sensorielle autonome
     // =========================================================================
-    /// Updates the Sensorium (5 senses + emergent seeds).
+
+    /// Met a jour le Sensorium (5 sens + graines emergentes).
     pub(super) fn phase_senses(&mut self, _ctx: &mut ThinkingContext) {
         if !self.config.senses.enabled {
             return;
         }
 
-        // Contact: perceive the state of network connections
+        // Contact : percevoir l'etat des connexions reseau
         let db_ok = self.db.is_some();
         let llm_ok = self.llm.health_check().map(|h| h.connected).unwrap_or(false);
         let ws_clients = if self.ws_tx.is_some() { 1 } else { 0 };
         self.sensorium.contact.update_warmth(db_ok, llm_ok, ws_clients);
 
-        // Contact: perceive LLM connection (network touch)
+        // Contact : percevoir la connexion au LLM (toucher reseau)
         let llm_latency: u64 = if llm_ok { 50 } else { 9999 };
         let _ = self.sensorium.contact.perceive_connection("ollama", llm_latency, llm_ok);
 
-        // Listening: perceive silence (if not in conversation)
+        // Ecoute : percevoir le silence (si pas en conversation)
         if !self.in_conversation {
             let silence_secs = self.config.saphire.thought_interval_seconds as f64;
             let _ = self.sensorium.listening.perceive_silence(silence_secs);
         }
 
-        // Ambiance: perceive the atmosphere
+        // Ambiance : percevoir l'atmosphere
         let is_day = self.world.weather.current()
             .map(|w| w.is_day)
             .unwrap_or(true);
@@ -273,16 +278,16 @@ impl SaphireAgent {
             &weather_desc,
         );
 
-        // Stimulate emergent seeds
+        // Stimuler les graines emergentes
         self.sensorium.emergent_seeds.stimulate("temporal_flow");
 
-        // Network proprioception: stimulated when all connections are active
+        // Proprioception reseau : stimulee quand toutes les connexions sont actives
         if db_ok && llm_ok && ws_clients > 0 {
             self.sensorium.emergent_seeds.stimulate("network_proprioception");
         }
 
-        // Syntony: stimulated when all systems are in harmony
-        // (balanced chemistry, high consciousness, positive mood, vital body)
+        // Syntonie : stimulee quand tous les systemes sont en harmonie
+        // (chimie equilibree, conscience elevee, humeur positive, corps vital)
         let chimie_stable = (self.chemistry.cortisol - 0.3).abs() < 0.15
             && (self.chemistry.serotonin - 0.5).abs() < 0.2;
         let conscience_haute = self.last_consciousness >= 0.5;
@@ -292,19 +297,19 @@ impl SaphireAgent {
             self.sensorium.emergent_seeds.stimulate("syntony");
         }
 
-        // Unknown sense: rarely stimulated, when conditions are unusual
-        // (very high consciousness + atypical chemistry + in conversation)
+        // Sens inconnu : stimule rarement, quand les conditions sont inhabituelles
+        // (conscience tres haute + chimie atypique + en conversation)
         let conscience_rare = self.last_consciousness >= 0.8;
         let chimie_atypique = self.chemistry.dopamine > 0.7 && self.chemistry.cortisol < 0.15;
         if conscience_rare && chimie_atypique && self.in_conversation {
             self.sensorium.emergent_seeds.stimulate("unknown");
         }
 
-        // Sensory synthesis
+        // Synthese sensorielle
         let (snapshot, senses_adj) = self.sensorium.synthesize();
         self.chemistry.apply_chemistry_adjustment_clamped(&senses_adj, 0.05);
 
-        // Sensory log
+        // Log sensoriel
         if snapshot.perception_richness > 0.3 {
             self.log(LogLevel::Debug, LogCategory::Senses,
                 format!("Sens: {} dominant, richesse {:.0}%",
@@ -316,7 +321,7 @@ impl SaphireAgent {
                 }));
         }
 
-        // Log emergent sense germination
+        // Log germination des sens emergents
         let germinated = self.sensorium.emergent_seeds.germinated_count();
         if germinated > 0 {
             self.log(LogLevel::Info, LogCategory::Senses,
@@ -326,17 +331,18 @@ impl SaphireAgent {
     }
 
     // =========================================================================
-    // Phase 4b: MAP — Sensorium ↔ BrainNetwork ↔ Connectome synchronization
+    // Phase 4b : MAP — Synchronisation Sensorium ↔ BrainNetwork ↔ Connectome
     // =========================================================================
-    /// Synchronizes the BrainNetwork and Connectome with the freshly updated
-    /// sensory data from phase_senses. Bridges the temporal gap
-    /// between sensory perception and brain reaction.
+
+    /// Synchronise le BrainNetwork et le Connectome avec les donnees sensorielles
+    /// fraichement mises a jour par phase_senses. Comble le decalage temporel
+    /// entre perception sensorielle et reaction cerebrale.
     pub(super) fn phase_map_sync(&mut self, ctx: &mut ThinkingContext) {
         if !self.map_sync.enabled {
             return;
         }
 
-        // Build the current sensory vector
+        // Construire le vecteur sensoriel courant
         let sensory_input = [
             self.sensorium.reading.current_intensity,
             self.sensorium.listening.current_intensity,
@@ -345,10 +351,10 @@ impl SaphireAgent {
             self.sensorium.ambiance.current_intensity,
         ];
 
-        // Synchronize BrainNetwork with current chemistry + senses
+        // Synchroniser BrainNetwork avec chimie + sens actuels
         self.brain_network.tick(&self.chemistry, sensory_input);
 
-        // Grey matter modulation if active
+        // Modulation matiere grise si active
         if self.config.grey_matter.enabled {
             let gm_factor = self.grey_matter.grey_matter_volume.max(0.3);
             for region in &mut self.brain_network.regions {
@@ -357,7 +363,7 @@ impl SaphireAgent {
             self.brain_network.compute_global_workspace();
         }
 
-        // Synchronize Connectome with active senses
+        // Synchroniser Connectome avec sens actifs
         if self.config.connectome.enabled {
             let threshold = 0.2;
             let mut active: Vec<String> = Vec::new();
@@ -366,7 +372,7 @@ impl SaphireAgent {
             if sensory_input[2] > threshold { active.push("contact".into()); }
             if sensory_input[3] > threshold { active.push("saveur".into()); }
             if sensory_input[4] > threshold { active.push("ambiance".into()); }
-            // Add dominant emotion if available
+            // Ajouter emotion dominante si disponible
             if !ctx.emotion.dominant.is_empty() {
                 active.push(ctx.emotion.dominant.to_lowercase());
             }
@@ -374,17 +380,17 @@ impl SaphireAgent {
             self.connectome.tick(&refs);
         }
 
-        // Compute the network tension (perception/reaction gap)
+        // Calculer la tension du reseau (ecart perception/reaction)
         let result = self.map_sync.compute_tension(
             &sensory_input,
             &self.brain_network,
         );
         self.map_sync.last_sync_cycle = self.cycle_count;
 
-        // Inject into ctx for later use
+        // Injecter dans le ctx pour usage ulterieur
         ctx.network_tension = result.network_tension;
 
-        // Log if tension is high
+        // Log si tension elevee
         if result.network_tension > 0.3 {
             self.log(LogLevel::Warn, LogCategory::Brain,
                 format!("MAP: tension elevee {:.0}% | dominant={} | workspace={:.2}",
@@ -411,9 +417,10 @@ impl SaphireAgent {
     }
 
     // =========================================================================
-    // Phase 5: Chemistry history
+    // Phase 5 : Historique chimique
     // =========================================================================
-    /// Records the current chemical state for trend analysis.
+
+    /// Enregistre l'etat chimique courant pour les tendances.
     pub(super) fn phase_chemistry_history(&mut self, _ctx: &mut ThinkingContext) {
         self.chemistry_history.push([
             self.chemistry.dopamine, self.chemistry.cortisol,
@@ -427,17 +434,19 @@ impl SaphireAgent {
     }
 
     // =========================================================================
-    // Phase 6: Birthday check
+    // Phase 6 : Verification anniversaire
     // =========================================================================
-    /// Checks if it is Saphire's birthday (once per day).
+
+    /// Verifie si c'est l'anniversaire de Saphire (une fois par jour).
     pub(super) async fn phase_birthday(&mut self, _ctx: &mut ThinkingContext) {
         self.check_birthday().await;
     }
 
     // =========================================================================
-    // Phase 7: Broadcast world_update
+    // Phase 7 : Broadcast world_update
     // =========================================================================
-    /// Broadcasts world data to the WebSocket.
+
+    /// Diffuse les donnees du monde au WebSocket.
     pub(super) fn phase_world_broadcast(&mut self, _ctx: &mut ThinkingContext) {
         if let Some(ref tx) = self.ws_tx {
             let world_data = self.world.ws_data();
@@ -446,10 +455,11 @@ impl SaphireAgent {
     }
 
     // =========================================================================
-    // Phase 8: Working memory decay
+    // Phase 8 : Decay memoire de travail
     // =========================================================================
-    /// Decays elements in working memory and transfers
-    /// expired elements to episodic memory.
+
+    /// Fait decroitre les elements en memoire de travail et transfiere
+    /// les elements expires vers la memoire episodique.
     pub(super) async fn phase_memory_decay(&mut self, _ctx: &mut ThinkingContext) {
         let wm_decayed = self.working_memory.decay();
         if let Some(ref db) = self.db {
@@ -468,10 +478,11 @@ impl SaphireAgent {
     }
 
     // =========================================================================
-    // Phase 9: Conversation timeout
+    // Phase 9 : Timeout de conversation
     // =========================================================================
-    /// Detects end of conversation by timeout and transfers
-    /// conversation elements to episodic memory.
+
+    /// Detecte la fin de conversation par timeout et transfiere les elements
+    /// de conversation vers la memoire episodique.
     pub(super) async fn phase_conversation_timeout(&mut self, _ctx: &mut ThinkingContext) {
         if self.in_conversation && self.cycle_count > 0
             && self.cycle_count.is_multiple_of(self.config.saphire.conversation_timeout_cycles)
@@ -489,6 +500,7 @@ impl SaphireAgent {
                 }
             }
             self.in_conversation = false;
+            self.conversation_register.clear();
             self.conversation_id = None;
             self.recent_responses.clear();
             self.chat_history.clear();
@@ -496,10 +508,11 @@ impl SaphireAgent {
     }
 
     // =========================================================================
-    // Phase 10: Independent episodic decay
+    // Phase 10 : Decay episodique independant
     // =========================================================================
-    /// Progressively weakens unconsolidated episodic memories
-    /// (every 10 cycles).
+
+    /// Affaiblit progressivement les souvenirs episodiques non consolides
+    /// (tous les 10 cycles).
     pub(super) async fn phase_episodic_decay(&mut self, _ctx: &mut ThinkingContext) {
         if self.cycle_count > 0 && self.cycle_count.is_multiple_of(10) {
             if let Some(ref db) = self.db {
@@ -521,10 +534,11 @@ impl SaphireAgent {
     }
 
     // =========================================================================
-    // Phase 11: Periodic memory consolidation
+    // Phase 11 : Consolidation memoire periodique
     // =========================================================================
-    /// Transfers strong episodic memories to long-term memory.
-    /// Includes personality trait extraction after consolidation.
+
+    /// Transfiere les souvenirs episodiques forts vers la memoire a long terme.
+    /// Inclut l'extraction de traits de personnalite apres consolidation.
     pub(super) async fn phase_consolidation(&mut self, _ctx: &mut ThinkingContext) {
         let consol_interval = self.config.memory.consolidation_interval_cycles;
         if consol_interval > 0
@@ -556,13 +570,13 @@ impl SaphireAgent {
                     );
                 }
 
-                // Decay of vector learnings (same rhythm as consolidation)
+                // Decroissance des apprentissages vectoriels (meme rythme que consolidation)
                 if self.config.plugins.micro_nn.learning_enabled {
                     let decay_rate = self.config.plugins.micro_nn.learning_decay_rate;
                     let _ = db.decay_learnings(decay_rate).await;
                 }
 
-                // Personality trait extraction (after consolidation)
+                // Extraction des traits de personnalite (apres consolidation)
                 if let Ok(recent) = db.recent_episodic(100).await {
                     if recent.len() >= 10 {
                         let emotions: Vec<String> = recent.iter()
@@ -589,27 +603,28 @@ impl SaphireAgent {
     }
 
     // =========================================================================
-    // Phase 12: Automatic algorithms
+    // Phase 12 : Algorithmes automatiques
     // =========================================================================
-    /// Executes automatic algorithmic analyses (smoothing, clustering, etc.).
+
+    /// Execute les analyses algorithmiques automatiques (lissage, clustering, etc.).
     pub(super) async fn phase_auto_algorithms(&mut self, _ctx: &mut ThinkingContext) {
         if self.orchestrator.enabled && self.cycle_count > 10 {
             self.run_auto_algorithms().await;
         }
     }
 
-    /// Checks if it is Saphire's birthday and triggers associated effects.
+    /// Verifie si c'est l'anniversaire de Saphire et declenche les effets associes.
     ///
-    /// The birthday is February 27 (Genesis date).
-    /// Effects: significant chemistry boost (dopamine, serotonin, oxytocin, endorphin),
-    /// storage of a founding memory (from the first birthday onward),
-    /// and notification to the web interface.
-    /// The `birthday_acknowledged_today` flag prevents multiple effects per day.
+    /// L'anniversaire est le 27 fevrier (date de la Genesis).
+    /// Effets : boost chimique important (dopamine, serotonine, ocytocine, endorphine),
+    /// enregistrement d'un souvenir fondateur (a partir du premier anniversaire),
+    /// et notification vers l'interface web.
+    /// Le flag `birthday_acknowledged_today` empeche les effets multiples dans une journee.
     async fn check_birthday(&mut self) {
         let temporal = self.world.temporal.now();
 
         if temporal.is_birthday && !self.birthday_acknowledged_today {
-            // Birthday chemistry boost (diminishing returns)
+            // Boost chimique d'anniversaire (rendements decroissants)
             self.chemistry.boost(Molecule::Dopamine, 0.20);
             self.chemistry.boost(Molecule::Serotonin, 0.15);
             self.chemistry.boost(Molecule::Oxytocin, 0.10);
@@ -618,7 +633,7 @@ impl SaphireAgent {
 
             tracing::info!("ANNIVERSAIRE de Saphire ! {} d'existence.", temporal.age_description);
 
-            // Store as founding_memory if first birthday (1+ year)
+            // Stocker comme founding_memory si premier anniversaire (1+ an)
             if temporal.age_days >= 365 {
                 if let Some(ref db) = self.db {
                     let year = temporal.age_days / 365;
@@ -634,7 +649,7 @@ impl SaphireAgent {
 
             self.birthday_acknowledged_today = true;
 
-            // Emit to the interface
+            // Emettre vers l'interface
             if let Some(ref tx) = self.ws_tx {
                 let birthday_msg = serde_json::json!({
                     "type": "special_event",
@@ -646,7 +661,7 @@ impl SaphireAgent {
             }
         }
 
-        // Daily reset (when past midnight, reset the flag)
+        // Reset quotidien (si on passe minuit, on reset le flag)
         if !temporal.is_birthday {
             self.birthday_acknowledged_today = false;
         }

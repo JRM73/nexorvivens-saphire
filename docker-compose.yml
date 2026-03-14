@@ -29,6 +29,8 @@ services:
       - ollama_models:/root/.ollama
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
+      - OLLAMA_MAX_LOADED_MODELS=1
+      - OLLAMA_NUM_PARALLEL=1
     deploy:
       resources:
         reservations:
@@ -36,7 +38,7 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
-          memory: 4G
+          memory: 1G
     healthcheck:
       test: ["CMD", "ollama", "list"]
       interval: 30s
@@ -90,25 +92,25 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: saphire-brain
-    ports:
-      - "127.0.0.1:3080:3080"
+    network_mode: host
     volumes:
-      - ./saphire.toml:/app/saphire.toml:ro
-      - ./profiles:/app/profiles:ro
-      - ./personalities:/app/personalities:ro
+      - ./config/saphire.toml:/app/saphire.toml:ro
+      - ./config/profiles:/app/profiles:ro
+      - ./config/personalities:/app/personalities:ro
     environment:
-      - SAPHIRE_DB_HOST=db
+      - SAPHIRE_DB_HOST=127.0.0.1
       - SAPHIRE_DB_PORT=5432
       - SAPHIRE_DB_USER=saphire
       - SAPHIRE_DB_PASSWORD=${SAPHIRE_DB_PASSWORD:-saphire_soul}
       - SAPHIRE_DB_NAME=saphire_soul
-      - SAPHIRE_LOGS_DB_HOST=logs-db
-      - SAPHIRE_LOGS_DB_PORT=5432
+      - SAPHIRE_LOGS_DB_HOST=127.0.0.1
+      - SAPHIRE_LOGS_DB_PORT=5433
       - SAPHIRE_LOGS_DB_USER=saphire
       - SAPHIRE_LOGS_DB_PASSWORD=${SAPHIRE_LOGS_DB_PASSWORD:-saphire_logs}
       - SAPHIRE_LOGS_DB_NAME=saphire_logs
-      - SAPHIRE_LLM_URL=http://llm:11434/v1
-      - SAPHIRE_LLM_MODEL=mistral-nemo:latest
+      - SAPHIRE_LLM_URL=http://127.0.0.1:8080/v1
+      - SAPHIRE_LLM_MODEL=qwen3.5
+      - SAPHIRE_EMBED_URL=http://127.0.0.1:11434
       - SAPHIRE_WEB_HOST=0.0.0.0
       - SAPHIRE_API_KEY=${SAPHIRE_API_KEY:-}
       - RUST_LOG=info
@@ -123,8 +125,6 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
-    networks:
-      - saphire-net
 
 volumes:
   saphire_db_data:

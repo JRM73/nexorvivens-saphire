@@ -19,13 +19,17 @@ impl SaphireDb {
         source_memory_ids: &[i64],
         surreal_connections: &serde_json::Value,
         remembered: bool,
-        sleep_phase: Option<&str>,
+        _sleep_phase: Option<&str>,
     ) -> Result<i64, DbError> {
         let client = self.pool.get().await?;
+        // source_memory_ids converti en JSONB (la colonne est JSONB, pas BIGINT[])
+        let source_ids_json = serde_json::json!(source_memory_ids);
+        // dominant_emotion : colonne NOT NULL DEFAULT '' — envoyer "" si None
+        let emotion_str = dominant_emotion.unwrap_or("");
         let row = client.query_one(
-            "INSERT INTO dream_journal (dream_type, narrative, dominant_emotion, insight, source_memory_ids, surreal_connections, remembered, sleep_phase)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
-            &[&dream_type, &narrative, &dominant_emotion, &insight, &source_memory_ids, &surreal_connections, &remembered, &sleep_phase],
+            "INSERT INTO dream_journal (dream_type, narrative, dominant_emotion, insight, source_memory_ids, surreal_connections, remembered)
+             VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id",
+            &[&dream_type, &narrative, &emotion_str, &insight, &source_ids_json, &surreal_connections, &remembered],
         ).await?;
         Ok(row.get(0))
     }
@@ -34,7 +38,7 @@ impl SaphireDb {
     pub async fn load_recent_dreams(&self, limit: i64) -> Result<Vec<serde_json::Value>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
-            "SELECT id, dream_type, narrative, dominant_emotion, insight, source_memory_ids, surreal_connections, remembered, sleep_phase, created_at
+            "SELECT id, dream_type, narrative, dominant_emotion, insight, source_memory_ids, surreal_connections, remembered, created_at
              FROM dream_journal ORDER BY created_at DESC LIMIT $1",
             &[&limit],
         ).await?;
@@ -47,11 +51,10 @@ impl SaphireDb {
                 "narrative": row.get::<_, String>(2),
                 "dominant_emotion": row.get::<_, Option<String>>(3),
                 "insight": row.get::<_, Option<String>>(4),
-                "source_memory_ids": row.get::<_, Option<Vec<i64>>>(5).unwrap_or_default(),
+                "source_memory_ids": row.get::<_, Option<serde_json::Value>>(5),
                 "surreal_connections": row.get::<_, Option<serde_json::Value>>(6),
                 "remembered": row.get::<_, bool>(7),
-                "sleep_phase": row.get::<_, Option<String>>(8),
-                "created_at": row.get::<_, DateTime<Utc>>(9).to_rfc3339(),
+                "created_at": row.get::<_, DateTime<Utc>>(8).to_rfc3339(),
             }));
         }
         Ok(results)
@@ -269,6 +272,88 @@ impl SaphireDb {
         let row = client.query_one(
             "SELECT COUNT(*) FROM wounds WHERE healed_at IS NOT NULL",
             &[],
+        ).await?;
+        Ok(row.get(0))
+    }
+
+    // ─── Propositions d'auto-modification ─────────────────────────────────────
+
+    /// Sauvegarde une proposition de modification.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn save_change_proposal(
+        &self,
+        title: &str,
+        description: &str,
+        reasoning: &str,
+        proposed_implementation: Option<&str>,
+        domain: &str,
+        priority: f32,
+        emotion: Option<&str>,
+        chemistry: &serde_json::Value,
+        cycle: i64,
+    ) -> Result<i64, DbError> {
+        let client = self.pool.get().await?;
+        let row = client.query_one(
+            "INSERT INTO change_proposals (title, description, reasoning, proposed_implementation, domain, priority, emotion_at_proposal, chemistry_at_proposal, cycle_proposed)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id",
+            &[&title, &description, &reasoning, &proposed_implementation, &domain, &priority, &emotion, &chemistry, &cycle],
+        ).await?;
+        Ok(row.get(0))
+    }
+
+    /// Compte les propositions actives (non resolues).
+    pub async fn count_active_proposals(&self) -> Result<i64, DbError> {
+        let client = self.pool.get().await?;
+        let row = client.query_one(
+            "SELECT COUNT(*) FROM change_proposals WHERE status = 'proposed'",
+            &[],
+        ).await?;
+        Ok(row.get(0))
+    }
+
+    /// Charge les propositions par statut.
+    pub async fn load_proposals(&self, status: &str) -> Result<Vec<serde_json::Value>, DbError> {
+        let client = self.pool.get().await?;
+        let rows = client.query(
+            "SELECT id, title, description, reasoning, proposed_implementation, domain, priority, status, emotion_at_proposal, cycle_proposed, created_at
+             FROM change_proposals WHERE status = $1 ORDER BY priority DESC, created_at DESC",
+            &[&status],
+        ).await?;
+        let mut results = Vec::new();
+        for row in &rows {
+            results.push(serde_json::json!({
+                "id": row.get::<_, i64>(0),
+                "title": row.get::<_, String>(1),
+                "description": row.get::<_, String>(2),
+                "reasoning": row.get::<_, String>(3),
+                "proposed_implementation": row.get::<_, Option<String>>(4),
+                "domain": row.get::<_, String>(5),
+                "priority": row.get::<_, f32>(6),
+                "status": row.get::<_, String>(7),
+                "emotion": row.get::<_, Option<String>>(8),
+                "cycle": row.get::<_, i64>(9),
+                "created_at": row.get::<_, DateTime<Utc>>(10).to_rfc3339(),
+            }));
+        }
+        Ok(results)
+    }
+
+    // ─── Auto-tuning log ──────────────────────────────────────────────────────
+
+    /// Enregistre un ajustement autonome de parametre.
+    pub async fn save_tuning_adjustment(
+        &self,
+        parameter_name: &str,
+        old_value: f32,
+        new_value: f32,
+        reason: &str,
+        cycle: i64,
+    ) -> Result<i64, DbError> {
+        let client = self.pool.get().await?;
+        let row = client.query_one(
+            "INSERT INTO self_tuning_log (parameter_name, old_value, new_value, reason, cycle)
+             VALUES ($1, $2, $3, $4, $5) RETURNING id",
+            &[&parameter_name, &old_value, &new_value, &reason, &cycle],
         ).await?;
         Ok(row.get(0))
     }

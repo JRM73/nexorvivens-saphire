@@ -1,29 +1,42 @@
-// encoder.rs — Encodeur local TF-IDF avec hash FNV-1a
+// encoder.rs — Encodeurs vectoriels pour la mémoire sémantique
 //
-// Ce module implémente un encodeur vectoriel local qui transforme du texte
-// en vecteurs de dimension fixe, sans dépendance à un modèle de langage
-// externe (pas de réseau de neurones, pas d'API).
+// Ce module fournit deux encodeurs interchangeables via le trait TextEncoder :
 //
-// Approche utilisée :
-//   - Tokenisation par découpage sur les espaces blancs (whitespace).
-//   - Extraction de n-grammes : unigrammes, bigrammes et trigrammes.
-//   - Hachage par FNV-1a (Fowler-Noll-Vo 1a = algorithme de hachage
-//     non cryptographique très rapide) pour projeter chaque n-gramme
-//     dans un espace de dimension fixe.
-//   - Pondération dégresssive : unigrammes (1.0), bigrammes (0.5),
-//     trigrammes (0.25), simulant un TF-IDF (Term Frequency-Inverse
-//     Document Frequency = Fréquence du Terme - Fréquence Inverse du
-//     Document) simplifié où les n-grammes plus longs sont plus spécifiques
-//     mais moins fréquents.
-//   - Normalisation L2 (norme euclidienne) finale pour que tous les
-//     vecteurs aient une norme unitaire, ce qui rend la similarité cosinus
-//     équivalente au produit scalaire.
+// 1. LocalEncoder (fallback) :
+//    - TF-IDF simplifié avec hash FNV-1a sur n-grammes
+//    - Rapide, déterministe, aucune dépendance externe
+//    - Qualité sémantique limitée (collisions de hachage)
 //
-// Cette approche est légère, déterministe et ne nécessite aucun modèle
-// pré-entraîné. Le compromis est une qualité sémantique inférieure aux
-// embeddings neuronaux, mais suffisante pour le rappel approximatif.
+// 2. OllamaEncoder (principal) :
+//    - Appelle l'endpoint /api/embeddings d'Ollama
+//    - Utilise un modèle dédié (nomic-embed-text par défaut, 768 dimensions)
+//    - Vrai encodage sémantique ("content" ≈ "heureux" si contextuellement proches)
+//    - Fallback automatique sur LocalEncoder si Ollama est indisponible
 //
-// Dépendances : aucune (module autonome, bibliothèque standard uniquement).
+// Le trait TextEncoder unifie les deux approches et permet au reste du code
+// de fonctionner indépendamment du backend d'encodage choisi.
+
+use std::time::Duration;
+
+/// Trait unifié pour les encodeurs de texte en vecteurs d'embedding.
+///
+/// Toute structure implémentant ce trait peut transformer du texte en
+/// vecteur numérique de dimension fixe, utilisable pour la recherche
+/// par similarité cosinus.
+pub trait TextEncoder: Send + Sync {
+    /// Encode un texte en vecteur de dimension fixe, normalisé L2.
+    fn encode(&self, text: &str) -> Vec<f64>;
+
+    /// Retourne la dimension des vecteurs produits par cet encodeur.
+    fn dim(&self) -> usize;
+
+    /// Nom de l'encodeur (pour le logging).
+    fn name(&self) -> &str;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  LocalEncoder — Fallback léger basé sur FNV-1a
+// ═══════════════════════════════════════════════════════════════════
 
 /// Encodeur local : transforme un texte en vecteur de dimension fixe.
 ///
@@ -32,55 +45,31 @@
 /// est normalisé L2.
 pub struct LocalEncoder {
     /// Dimension de l'espace vectoriel (taille des vecteurs produits).
-    /// Typiquement 256 ou 512. Une dimension plus grande réduit les
-    /// collisions de hachage mais augmente l'utilisation mémoire.
     dim: usize,
 }
 
 impl LocalEncoder {
     /// Crée un nouvel encodeur avec la dimension vectorielle spécifiée.
-    ///
-    /// # Paramètres
-    /// - `dim` : dimension de l'espace vectoriel (ex : 256, 512).
-    ///
-    /// # Retour
-    /// Une instance de LocalEncoder prête à encoder du texte.
     pub fn new(dim: usize) -> Self {
         Self { dim }
     }
+}
 
-    /// Encode un texte en vecteur de dimension fixe.
-    ///
-    /// Le processus d'encodage se déroule en 4 étapes :
-    ///   1. Mise en minuscules et tokenisation par espaces blancs.
-    ///   2. Accumulation des n-grammes hashés dans le vecteur.
-    ///   3. Normalisation L2 pour obtenir un vecteur unitaire.
-    ///
-    /// # Paramètres
-    /// - `text` : texte à encoder (peut être de longueur quelconque).
-    ///
-    /// # Retour
-    /// Vecteur de dimension `self.dim`, normalisé L2. Si le texte est
-    /// vide ou composé uniquement d'espaces, retourne un vecteur nul.
-    pub fn encode(&self, text: &str) -> Vec<f64> {
-        // Étape 1 : Normaliser le texte en minuscules et découper en tokens.
+impl TextEncoder for LocalEncoder {
+    fn encode(&self, text: &str) -> Vec<f64> {
         let lower = text.to_lowercase();
         let tokens: Vec<&str> = lower.split_whitespace().collect();
 
         let mut vector = vec![0.0; self.dim];
 
-        // Étape 2a : Unigrammes (mots individuels), poids 1.0.
-        // Chaque mot est hashé par FNV-1a, puis projeté sur un index
-        // du vecteur via modulo. Le compteur à cet index est incrémenté.
+        // Unigrammes (poids 1.0)
         for token in &tokens {
             let hash = fnv1a(token.as_bytes());
             let idx = (hash as usize) % self.dim;
             vector[idx] += 1.0;
         }
 
-        // Étape 2b : Bigrammes (paires de mots consécutifs), poids 0.5.
-        // Les bigrammes capturent le contexte local et les expressions
-        // de deux mots. Poids réduit car plus spécifiques que les unigrammes.
+        // Bigrammes (poids 0.5)
         for window in tokens.windows(2) {
             let bigram = format!("{} {}", window[0], window[1]);
             let hash = fnv1a(bigram.as_bytes());
@@ -88,9 +77,7 @@ impl LocalEncoder {
             vector[idx] += 0.5;
         }
 
-        // Étape 2c : Trigrammes (triplets de mots consécutifs), poids 0.25.
-        // Les trigrammes capturent des motifs encore plus spécifiques.
-        // Poids minimal pour refléter leur spécificité élevée.
+        // Trigrammes (poids 0.25)
         for window in tokens.windows(3) {
             let trigram = format!("{} {} {}", window[0], window[1], window[2]);
             let hash = fnv1a(trigram.as_bytes());
@@ -98,10 +85,7 @@ impl LocalEncoder {
             vector[idx] += 0.25;
         }
 
-        // Étape 3 : Normalisation L2 (norme euclidienne).
-        // On divise chaque composante par la norme du vecteur pour obtenir
-        // un vecteur unitaire. Cela permet de comparer les vecteurs par
-        // produit scalaire plutôt que par similarité cosinus complète.
+        // Normalisation L2
         let norm: f64 = vector.iter().map(|x| x * x).sum::<f64>().sqrt();
         if norm > 1e-10 {
             for v in &mut vector {
@@ -112,33 +96,228 @@ impl LocalEncoder {
         vector
     }
 
-    /// Retourne la dimension de l'espace vectoriel de cet encodeur.
-    pub fn dim(&self) -> usize {
+    fn dim(&self) -> usize {
         self.dim
     }
+
+    fn name(&self) -> &str {
+        "local-fnv1a"
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  OllamaEncoder — Encodeur sémantique via Ollama
+// ═══════════════════════════════════════════════════════════════════
+
+/// Encodeur sémantique qui appelle l'endpoint /api/embeddings d'Ollama.
+///
+/// Produit des vecteurs de haute dimension (768 pour nomic-embed-text)
+/// avec une vraie compréhension sémantique du texte. Fallback automatique
+/// sur LocalEncoder si Ollama est indisponible.
+pub struct OllamaEncoder {
+    /// URL de base d'Ollama (ex: "http://localhost:11434")
+    base_url: String,
+    /// Nom du modèle d'embedding (ex: "nomic-embed-text")
+    model: String,
+    /// Dimension des vecteurs produits (détectée au premier appel)
+    dim: usize,
+    /// Timeout pour les requêtes HTTP
+    timeout: Duration,
+    /// Encodeur local de fallback (même dimension)
+    fallback: LocalEncoder,
+}
+
+impl OllamaEncoder {
+    /// Crée un nouvel encodeur Ollama.
+    ///
+    /// Détecte automatiquement la dimension du modèle en envoyant un texte
+    /// de test. Si Ollama est indisponible, retourne None.
+    pub fn try_new(base_url: &str, model: &str, timeout_secs: u64) -> Option<Self> {
+        let base_url = base_url.trim_end_matches('/').to_string();
+        // Supprimer /v1 si présent (Ollama natif n'utilise pas /v1)
+        let base_url = base_url.trim_end_matches("/v1").to_string();
+        let timeout = Duration::from_secs(timeout_secs);
+
+        // Détecter la dimension avec retry (Ollama peut mettre du temps à charger le modèle)
+        let max_retries = 3;
+        let mut dim = None;
+        for attempt in 1..=max_retries {
+            match Self::probe_dimension(&base_url, model, timeout) {
+                Ok(d) => {
+                    dim = Some(d);
+                    break;
+                }
+                Err(e) => {
+                    if attempt < max_retries {
+                        tracing::info!(
+                            "OllamaEncoder: tentative {}/{} échouée ({}), retry dans 5s...",
+                            attempt, max_retries, e
+                        );
+                        std::thread::sleep(Duration::from_secs(5));
+                    } else {
+                        tracing::warn!(
+                            "OllamaEncoder: impossible de détecter la dimension du modèle '{}' \
+                             après {} tentatives: {}. Fallback sur LocalEncoder.",
+                            model, max_retries, e
+                        );
+                        return None;
+                    }
+                }
+            }
+        }
+        let dim = dim.unwrap();
+
+        tracing::info!(
+            "OllamaEncoder initialisé: modèle={}, dimension={}, url={}",
+            model, dim, base_url
+        );
+
+        Some(Self {
+            base_url,
+            model: model.to_string(),
+            dim,
+            timeout,
+            fallback: LocalEncoder::new(dim),
+        })
+    }
+
+    /// Envoie un texte de test pour détecter la dimension du modèle.
+    fn probe_dimension(base_url: &str, model: &str, timeout: Duration) -> Result<usize, String> {
+        let url = format!("{}/api/embeddings", base_url);
+        let body = serde_json::json!({
+            "model": model,
+            "prompt": "dimension test"
+        });
+
+        let agent = ureq::AgentBuilder::new()
+            .timeout(timeout)
+            .build();
+
+        let body_str = serde_json::to_string(&body)
+            .map_err(|e| format!("JSON serialize: {}", e))?;
+
+        let response = agent.post(&url)
+            .set("Content-Type", "application/json")
+            .send_string(&body_str)
+            .map_err(|e| format!("HTTP: {}", e))?;
+
+        let resp_str = response.into_string()
+            .map_err(|e| format!("Read response: {}", e))?;
+
+        let resp: serde_json::Value = serde_json::from_str(&resp_str)
+            .map_err(|e| format!("JSON parse: {}", e))?;
+
+        let embedding = resp["embedding"]
+            .as_array()
+            .ok_or_else(|| "Réponse sans champ 'embedding'".to_string())?;
+
+        if embedding.is_empty() {
+            return Err("Embedding vide".into());
+        }
+
+        Ok(embedding.len())
+    }
+
+    /// Appelle l'API Ollama pour encoder un texte.
+    fn ollama_encode(&self, text: &str) -> Result<Vec<f64>, String> {
+        let url = format!("{}/api/embeddings", self.base_url);
+        let body = serde_json::json!({
+            "model": self.model,
+            "prompt": text
+        });
+
+        let agent = ureq::AgentBuilder::new()
+            .timeout(self.timeout)
+            .build();
+
+        let body_str = serde_json::to_string(&body)
+            .map_err(|e| format!("JSON serialize: {}", e))?;
+
+        let response = agent.post(&url)
+            .set("Content-Type", "application/json")
+            .send_string(&body_str)
+            .map_err(|e| format!("HTTP: {}", e))?;
+
+        let resp_str = response.into_string()
+            .map_err(|e| format!("Read response: {}", e))?;
+
+        let resp: serde_json::Value = serde_json::from_str(&resp_str)
+            .map_err(|e| format!("JSON parse: {}", e))?;
+
+        let embedding_arr = resp["embedding"]
+            .as_array()
+            .ok_or_else(|| "Réponse sans champ 'embedding'".to_string())?;
+
+        let embedding: Vec<f64> = embedding_arr.iter()
+            .filter_map(|v| v.as_f64())
+            .collect();
+
+        if embedding.len() != self.dim {
+            return Err(format!(
+                "Dimension inattendue: {} (attendu {})",
+                embedding.len(), self.dim
+            ));
+        }
+
+        Ok(embedding)
+    }
+}
+
+impl TextEncoder for OllamaEncoder {
+    fn encode(&self, text: &str) -> Vec<f64> {
+        match self.ollama_encode(text) {
+            Ok(embedding) => embedding,
+            Err(e) => {
+                tracing::warn!("OllamaEncoder fallback (LocalEncoder): {}", e);
+                self.fallback.encode(text)
+            }
+        }
+    }
+
+    fn dim(&self) -> usize {
+        self.dim
+    }
+
+    fn name(&self) -> &str {
+        "ollama"
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  Fonctions utilitaires
+// ═══════════════════════════════════════════════════════════════════
+
+/// Crée l'encodeur optimal selon la configuration.
+///
+/// Tente d'abord OllamaEncoder (encodage sémantique de haute qualité).
+/// Si Ollama n'est pas disponible, utilise LocalEncoder en fallback.
+pub fn create_encoder(
+    ollama_base_url: &str,
+    embed_model: &str,
+    timeout_secs: u64,
+    fallback_dim: usize,
+) -> Box<dyn TextEncoder> {
+    // Essayer OllamaEncoder en premier
+    if let Some(encoder) = OllamaEncoder::try_new(ollama_base_url, embed_model, timeout_secs) {
+        return Box::new(encoder);
+    }
+
+    // Fallback sur LocalEncoder
+    tracing::warn!(
+        "Fallback sur LocalEncoder (dim={}). La qualité de recherche sémantique sera dégradée.",
+        fallback_dim
+    );
+    Box::new(LocalEncoder::new(fallback_dim))
 }
 
 /// Calcule le hash FNV-1a 64 bits d'une séquence d'octets.
 ///
 /// FNV-1a (Fowler-Noll-Vo 1a) est un algorithme de hachage non
 /// cryptographique conçu pour être très rapide tout en ayant une bonne
-/// distribution. L'opération de base est :
-///   1. XOR de chaque octet avec le hash courant.
-///   2. Multiplication par le nombre premier FNV (0x100000001b3).
-///
-/// La valeur initiale (offset basis) est 0xcbf29ce484222325.
-///
-/// # Paramètres
-/// - `data` : séquence d'octets à hasher.
-///
-/// # Retour
-/// Valeur de hash 64 bits non signée.
+/// distribution.
 fn fnv1a(data: &[u8]) -> u64 {
-    // Offset basis FNV-1a 64 bits (valeur de départ standardisée).
     let mut hash: u64 = 0xcbf29ce484222325;
     for &byte in data {
-        // XOR avec l'octet courant, puis multiplication par le prime FNV.
-        // wrapping_mul gère le débordement arithmétique (overflow) sans panique.
         hash ^= byte as u64;
         hash = hash.wrapping_mul(0x100000001b3);
     }

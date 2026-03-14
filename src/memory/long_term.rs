@@ -13,16 +13,13 @@
 //   - Vectorielle : chaque souvenir est indexé par un vecteur d'embedding
 //     dans pgvector (extension PostgreSQL pour la recherche vectorielle),
 //     permettant la recherche par similarité cosinus.
-//   - L'encodage vectoriel est délégué au LocalEncoder (module vectorstore),
-//     qui utilise TF-IDF (Term Frequency-Inverse Document Frequency =
-//     Fréquence du Terme - Fréquence Inverse du Document) avec hachage FNV-1a.
+//   - L'encodage vectoriel est délégué au TextEncoder (module vectorstore),
+//     qui peut être un OllamaEncoder (sémantique, 768-dim) ou un
+//     LocalEncoder (FNV-1a, fallback) selon la disponibilité d'Ollama.
 //
 // Dépendances :
-//   - crate::vectorstore::encoder::LocalEncoder : encodeur vectoriel local
+//   - crate::vectorstore::encoder::TextEncoder : trait d'encodage vectoriel
 //     réexporté ici pour un accès pratique depuis les autres modules mémoire.
-//
-// Note architecturale : ce module est volontairement léger car la logique
-// de stockage et recherche en LTM est implémentée dans crate::db (couche DB).
-// Il sert principalement de réexportation et de point de documentation.
 
 pub use crate::vectorstore::encoder::LocalEncoder;
+pub use crate::vectorstore::encoder::TextEncoder;

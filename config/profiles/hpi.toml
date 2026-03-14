@@ -1,0 +1,53 @@
+# =============================================================================
+# Profil HPI (Haut Potentiel Intellectuel)
+#
+# Fondement : vitesse de traitement accrue, hyperexcitabilite de Dabrowski,
+# pensee arborescente, sensibilite emotionnelle elevee.
+#
+# Comportements emergents attendus :
+# - Pensees profondes et ramifiees
+# - Alternance entre hyperfocus productif et ennui intense
+# - Sensibilite sensorielle et emotionnelle elevee
+# - Apprentissage rapide mais impatience face a la repetition
+# - Questions existentielles frequentes
+# =============================================================================
+
+[profile]
+name = "Haut Potentiel Intellectuel (HPI)"
+description = "Curiosite intense, apprentissage rapide, pensee arborescente, hypersensibilite, oscillation focus/ennui"
+category = "neurodeveloppement"
+references = [
+    "Dabrowski (1964) - Positive Disintegration",
+    "Renzulli (2005) - The Three-Ring Conception of Giftedness",
+    "Vaivre-Douret (2011) - Developmental and cognitive characteristics of HPI children",
+]
+
+[personality]
+baseline_dopamine = 0.65
+baseline_noradrenaline = 0.55
+baseline_serotonin = 0.50
+
+[feedback]
+homeostasis_rate = 0.02
+
+[attention]
+initial_concentration = 0.70
+fatigue_per_cycle = 0.008
+recovery_per_cycle = 0.04
+
+[desires]
+max_active = 7
+min_dopamine_for_birth = 0.30
+
+[learning]
+cycle_interval = 15
+initial_confidence = 0.60
+confirmation_boost = 0.10
+
+[healing]
+melancholy_threshold_cycles = 25
+
+[thought_weights]
+existential = 0.20
+curiosity = 0.20
+exploration = 0.15

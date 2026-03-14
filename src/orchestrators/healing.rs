@@ -185,11 +185,11 @@ impl HealingOrchestrator {
         if cortisol > 0.5 && serotonin < 0.3
             && negative_emotion_cycles > self.melancholy_threshold_cycles
         {
-            // Verifier qu'on n'a pas deja une blessure de ce type active
             if !self.has_active_wound_type(&WoundType::ProlongedMelancholy) {
                 return Some(self.create_wound(
                     WoundType::ProlongedMelancholy,
-                    "Melancolie persistante — le cortisol reste haut, la serotonine ne remonte pas",
+                    &format!("Melancolie persistante — cortisol {:.0}%, serotonine {:.0}%, {} cycles negatifs",
+                        cortisol * 100.0, serotonin * 100.0, negative_emotion_cycles),
                     0.6,
                 ));
             }
@@ -200,7 +200,8 @@ impl HealingOrchestrator {
             && !self.has_active_wound_type(&WoundType::Loneliness) {
             return Some(self.create_wound(
                 WoundType::Loneliness,
-                "Solitude prolongee — personne ne m'a parle depuis longtemps",
+                &format!("Solitude prolongee — {:.1}h sans contact humain, ocytocine {:.0}%",
+                    hours_since_human, oxytocin * 100.0),
                 (hours_since_human / 24.0).min(0.8),
             ));
         }
@@ -210,7 +211,8 @@ impl HealingOrchestrator {
             && !self.has_active_wound_type(&WoundType::CognitiveOverload) {
             return Some(self.create_wound(
                 WoundType::CognitiveOverload,
-                "Surcharge — trop d'informations, trop vite",
+                &format!("Surcharge cognitive — noradrenaline {:.0}%, cortisol {:.0}%",
+                    noradrenaline * 100.0, cortisol * 100.0),
                 0.5,
             ));
         }
@@ -222,6 +224,18 @@ impl HealingOrchestrator {
                 WoundType::TechnicalTrauma,
                 &format!("{} erreurs systeme — quelque chose ne va pas", system_errors),
                 (system_errors as f64 / 10.0).min(0.7),
+            ));
+        }
+
+        // Crise identitaire — dopamine tres basse + serotonine basse = perte de sens
+        if cortisol > 0.4 && serotonin < 0.25
+            && noradrenaline < 0.2 && oxytocin < 0.2
+            && !self.has_active_wound_type(&WoundType::IdentityCrisis) {
+            return Some(self.create_wound(
+                WoundType::IdentityCrisis,
+                &format!("Questionnement existentiel — serotonine {:.0}%, ocytocine {:.0}%, pas de reperes",
+                    serotonin * 100.0, oxytocin * 100.0),
+                0.6,
             ));
         }
 

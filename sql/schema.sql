@@ -1,338 +1,340 @@
 -- ============================================================
 -- SAPHIRE — schema.sql
 -- ============================================================
--- File    : schema.sql
--- Purpose : PostgreSQL database schema definition.
---           Contains all tables required for Saphire operation:
---           memory (vector, episodic, long-term), identity,
---           personality, neural brain, thoughts, moral regulation,
---           knowledge, OCEAN profile, etc.
+-- Fichier : schema.sql
+-- Role    : Definition du schema de base de donnees PostgreSQL.
+--           Contient toutes les tables necessaires au fonctionnement
+--           de Saphire : memoire (vectorielle, episodique, long terme),
+--           identite, personnalite, cerveau neuronal, pensees,
+--           regulation morale, connaissances, profil OCEAN, etc.
 --
--- Dependencies:
+-- Dependances :
 --   - PostgreSQL 15+
---   - pgvector extension (for vector embeddings)
+--   - Extension pgvector (pour les embeddings vectoriels)
 --
--- Architecture:
---   This file is executed on first startup of the PostgreSQL
---   container (via docker-entrypoint-initdb.d or manual migration).
---   Tables are created with IF NOT EXISTS for idempotency.
---   The schema is organized as follows:
---     1. pgvector extension
---     2. Table memories: long-term memory with embeddings
---     3. Table self_identity: persistent identity (singleton)
---     4. Table personality_traits: traits emerged from experience
---     5. Table thought_log: log of all thoughts
---     6. Table founding_memories: founding memories (permanent)
---     7. Table session_log: life session log
---     8. Table tuning_params: self-tuning parameters
---    11. Table bandit_arms: UCB1 algorithm for thought selection
---    12. Table knowledge_log: acquired knowledge (Wikipedia, ArXiv, etc.)
---    13. Table episodic_memories: episodic memory (tier 2)
---    14. Table ocean_self_profile: Saphire's Big Five profile
---    15. Table human_profiles: profiles of interacting humans
---    16. Indexes for search performance
+-- Architecture :
+--   Ce fichier est execute au premier demarrage du conteneur
+--   PostgreSQL (via docker-entrypoint-initdb.d ou migration manuelle).
+--   Les tables sont creees avec IF NOT EXISTS pour l'idempotence.
+--   Le schema se decompose en :
+--     1. Extension pgvector
+--     2. Table memories : memoire a long terme avec embeddings
+--     3. Table self_identity : identite persistante (singleton)
+--     4. Table personality_traits : traits emerges de l'experience
+--     5. Table thought_log : journal de toutes les pensees
+--     6. Table founding_memories : souvenirs fondateurs (permanents)
+--     7. Table session_log : journal des sessions de vie
+--     8. Table tuning_params : parametres d'auto-optimisation
+--    11. Table bandit_arms : algorithme UCB1 pour la selection de pensees
+--    12. Table knowledge_log : connaissances acquises (Wikipedia, ArXiv, etc.)
+--    13. Table episodic_memories : memoire episodique (tier 2)
+--    14. Table ocean_self_profile : profil Big Five de Saphire
+--    15. Table human_profiles : profils des humains interagissant
+--    16. Index pour les performances de recherche
 -- ============================================================
 
--- Enable pgvector extension for vector embedding operations
--- Required for cosine similarity search in memory
+-- Active l'extension pgvector pour les operations sur les embeddings vectoriels
+-- Necessaire pour la recherche de similarite par cosinus dans la memoire
 CREATE EXTENSION IF NOT EXISTS vector;
 
--- ── Long-term memory (LTM) with vector embeddings ──
--- Main table for Saphire's consolidated memory.
--- Each memory contains a 64-dimensional vector embedding
--- for cosine similarity search, a text summary,
--- the original stimulus, the decision made, the neurochemical state,
--- the emotion felt, and a satisfaction score.
--- Emotional weight influences recall priority.
+-- ── Memoire a long terme (LTM) avec embeddings vectoriels ──
+-- Table principale de la memoire consolidee de Saphire.
+-- Chaque souvenir contient un embedding vectoriel de 768 dimensions
+-- pour la recherche par similarite cosinus, un resume textuel,
+-- le stimulus d'origine, la decision prise, l'etat neurochimique,
+-- l'emotion ressentie et un score de satisfaction.
+-- Le poids emotionnel influence la priorite de rappel.
 CREATE TABLE IF NOT EXISTS memories (
     id BIGSERIAL PRIMARY KEY,
-    embedding vector(64) NOT NULL,       -- Embedding vector for similarity search
-    text_summary TEXT NOT NULL,          -- Text summary of the memory
-    stimulus_json JSONB NOT NULL,        -- Original stimulus that triggered the memory
-    decision SMALLINT NOT NULL,          -- Decision made (-1=no, 0=maybe, 1=yes)
-    chemistry_json JSONB NOT NULL,       -- Neurochemical state at memorization time
-    emotion TEXT NOT NULL DEFAULT '',    -- Dominant emotion felt
-    mood_valence REAL NOT NULL DEFAULT 0.0,  -- Mood valence (-1 to +1)
-    satisfaction REAL NOT NULL,          -- Satisfaction score after the decision
-    emotional_weight REAL NOT NULL DEFAULT 1.0, -- Emotional weight (influences recall)
+    embedding vector(768) NOT NULL,       -- Vecteur d'embedding pour la recherche par similarite
+    text_summary TEXT NOT NULL,          -- Resume textuel du souvenir
+    stimulus_json JSONB NOT NULL,        -- Stimulus d'origine ayant declenche le souvenir
+    decision SMALLINT NOT NULL,          -- Decision prise (-1=non, 0=peut-etre, 1=oui)
+    chemistry_json JSONB NOT NULL,       -- Etat neurochimique au moment de la memorisation
+    emotion TEXT NOT NULL DEFAULT '',    -- Emotion dominante ressentie
+    mood_valence REAL NOT NULL DEFAULT 0.0,  -- Valence de l'humeur (-1 a +1)
+    satisfaction REAL NOT NULL,          -- Score de satisfaction apres la decision
+    emotional_weight REAL NOT NULL DEFAULT 1.0, -- Poids emotionnel (influence le rappel)
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    access_count INTEGER DEFAULT 0       -- Number of times this memory was recalled
+    access_count INTEGER DEFAULT 0       -- Nombre de fois que ce souvenir a ete rappele
 );
 
--- IVFFlat index for fast cosine similarity vector search.
--- 450 lists: sqrt(200000) ~ 447, suited for the 200,000 memory limit.
--- Without this index, each search would do a full table scan.
--- NOTE: Migration — the old index (lists=100) is recreated automatically
---        because CREATE INDEX IF NOT EXISTS does not modify an existing index.
---        To force recreation: DROP INDEX idx_memories_embedding; then re-run.
+-- Index IVFFlat pour la recherche vectorielle rapide par similarite cosinus.
+-- 450 listes : sqrt(200000) ≈ 447, adapte a la nouvelle limite de 200 000 souvenirs.
+-- Sans cet index, chaque recherche ferait un scan complet de la table.
+-- NOTE : Migration — l'ancien index (lists=100) est recree automatiquement
+--        car CREATE INDEX IF NOT EXISTS ne modifie pas un index existant.
+--        Pour forcer la recreation : DROP INDEX idx_memories_embedding; puis relancer.
 CREATE INDEX IF NOT EXISTS idx_memories_embedding
     ON memories USING ivfflat (embedding vector_cosine_ops) WITH (lists = 450);
 
--- ── Saphire's persistent identity (singleton: single row) ──
--- Stores the entity's fundamental information:
--- birth date, total boot and cycle counts,
--- self-description, decision tendency, decision distribution.
--- CHECK (id = 1) ensures only one row exists in this table.
+-- ── Identite persistante de Saphire (singleton : une seule ligne) ──
+-- Stocke les informations fondamentales de l'entite :
+-- date de naissance, nombre total de demarrages et cycles,
+-- description de soi, tendance decisionnelle, distribution des decisions.
+-- CHECK (id = 1) garantit qu'il n'y a qu'une seule ligne dans cette table.
 CREATE TABLE IF NOT EXISTS self_identity (
-    id INTEGER PRIMARY KEY CHECK (id = 1),   -- Singleton: always id=1
-    name TEXT NOT NULL DEFAULT 'Saphire',     -- Entity name
-    born_at TIMESTAMPTZ NOT NULL,             -- Date and time of birth
-    total_boots INTEGER DEFAULT 1,            -- Total number of boots
-    total_cycles BIGINT DEFAULT 0,            -- Total number of thought cycles
-    total_uptime_seconds DOUBLE PRECISION DEFAULT 0.0,  -- Cumulative uptime
-    self_description TEXT DEFAULT '',          -- Textual self-description (evolves)
-    decisiveness REAL DEFAULT 0.0,            -- Decisiveness score (0=indecisive, 1=decisive)
-    dominant_tendency TEXT DEFAULT 'neocortex', -- Dominant brain module
-    decision_dist_no REAL DEFAULT 0.33,       -- Historical proportion of "no" decisions
-    decision_dist_maybe REAL DEFAULT 0.34,    -- Historical proportion of "maybe" decisions
-    decision_dist_yes REAL DEFAULT 0.33,      -- Historical proportion of "yes" decisions
-    last_chemistry_json JSONB DEFAULT '{}',   -- Last neurochemical state before shutdown
-    clean_shutdown BOOLEAN DEFAULT TRUE,       -- Whether the last shutdown was clean
-    body_json JSONB DEFAULT NULL,              -- Virtual body state (heartbeat, body awareness)
+    id INTEGER PRIMARY KEY CHECK (id = 1),   -- Singleton : toujours id=1
+    name TEXT NOT NULL DEFAULT 'Saphire',     -- Nom de l'entite
+    born_at TIMESTAMPTZ NOT NULL,             -- Date et heure de naissance
+    total_boots INTEGER DEFAULT 1,            -- Nombre total de demarrages
+    total_cycles BIGINT DEFAULT 0,            -- Nombre total de cycles de pensee
+    total_uptime_seconds DOUBLE PRECISION DEFAULT 0.0,  -- Temps de fonctionnement cumule
+    self_description TEXT DEFAULT '',          -- Description textuelle de soi (evolue)
+    decisiveness REAL DEFAULT 0.0,            -- Score de determination (0=indecis, 1=determine)
+    dominant_tendency TEXT DEFAULT 'neocortex', -- Module cerebral dominant
+    decision_dist_no REAL DEFAULT 0.33,       -- Proportion historique de decisions "non"
+    decision_dist_maybe REAL DEFAULT 0.34,    -- Proportion historique de decisions "peut-etre"
+    decision_dist_yes REAL DEFAULT 0.33,      -- Proportion historique de decisions "oui"
+    last_chemistry_json JSONB DEFAULT '{}',   -- Dernier etat neurochimique avant arret
+    clean_shutdown BOOLEAN DEFAULT TRUE,       -- Si le dernier arret etait propre
+    body_json JSONB DEFAULT NULL,              -- Etat du corps virtuel (battements, conscience corporelle)
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Migration for existing databases: add body_json if missing
+-- Migration pour les bases existantes : ajouter body_json si absente
 DO $$ BEGIN
     ALTER TABLE self_identity ADD COLUMN IF NOT EXISTS body_json JSONB DEFAULT NULL;
 EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
--- Migration: add vital_json for vital state (spark + intuition + premonition)
+-- Migration : ajouter vital_json pour l'etat vital (spark + intuition + premonition)
 DO $$ BEGIN
     ALTER TABLE self_identity ADD COLUMN IF NOT EXISTS vital_json JSONB DEFAULT NULL;
 EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
--- Migration: add senses_json for sensory state (Sensorium)
+-- Migration : ajouter senses_json pour l'etat sensoriel (Sensorium)
 DO $$ BEGIN
     ALTER TABLE self_identity ADD COLUMN IF NOT EXISTS senses_json JSONB DEFAULT NULL;
 EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
--- ── Emergent personality traits ──
--- Each trait is periodically computed from decisions and emotions.
--- Confidence increases with the number of observations.
--- These traits feed Saphire's identity description.
+-- ── Traits de personnalite emergents ──
+-- Chaque trait est calcule periodiquement a partir des decisions et emotions.
+-- La confiance augmente avec le nombre d'observations.
+-- Ces traits alimentent la description identitaire de Saphire.
 CREATE TABLE IF NOT EXISTS personality_traits (
     id BIGSERIAL PRIMARY KEY,
-    trait_name TEXT NOT NULL,       -- Trait name (e.g. "curiosity", "caution")
-    trait_value REAL NOT NULL,      -- Trait value (0 to 1)
-    confidence REAL NOT NULL,       -- Confidence in this value (0 to 1)
+    trait_name TEXT NOT NULL,       -- Nom du trait (ex: "curiosite", "prudence")
+    trait_value REAL NOT NULL,      -- Valeur du trait (0 a 1)
+    confidence REAL NOT NULL,       -- Confiance dans cette valeur (0 a 1)
     computed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- (Table neural_weights removed in Phase 3 — dead code, never used)
+-- (Table neural_weights supprimee en Phase 3 — code mort, jamais utilisee)
 
--- ── Autonomous thought log ──
--- Records each Saphire thought cycle with associated data:
--- thought type, content, consciousness level, emotion, and chemistry.
--- Used for retrospective analysis and personality trait computation.
+-- ── Journal des pensees autonomes ──
+-- Enregistre chaque cycle de pensee de Saphire avec les donnees
+-- associees : type de pensee, contenu, niveau de conscience, emotion et chimie.
+-- Sert a l'analyse retrospective et au calcul des traits de personnalite.
 CREATE TABLE IF NOT EXISTS thought_log (
     id BIGSERIAL PRIMARY KEY,
-    thought_type TEXT NOT NULL,        -- Thought type (introspection, exploration, etc.)
-    content TEXT NOT NULL,             -- Thought content/stimulus
-    consciousness_level REAL,          -- Consciousness level (0 to 1)
-    phi REAL,                          -- Phi value (information integration)
-    emotion TEXT,                      -- Dominant emotion
-    mood_valence REAL,                 -- Mood valence (-1 to +1)
-    chemistry_json JSONB,              -- Full neurochemical state
+    thought_type TEXT NOT NULL,        -- Type de pensee (introspection, exploration, etc.)
+    content TEXT NOT NULL,             -- Contenu/stimulus de la pensee
+    consciousness_level REAL,          -- Niveau de conscience (0 a 1)
+    phi REAL,                          -- Valeur Phi (integration d'information)
+    emotion TEXT,                      -- Emotion dominante
+    mood_valence REAL,                 -- Valence de l'humeur (-1 a +1)
+    chemistry_json JSONB,              -- Etat neurochimique complet
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- ── Founding memories (NEVER deleted) ──
--- Key events in Saphire's life: first boot,
--- first conversation, first strong emotion, etc.
--- These memories are NEVER erased or declined — they form
--- Saphire's permanent identity core.
+-- ── Souvenirs fondateurs (JAMAIS supprimes) ──
+-- Evenements cles de la vie de Saphire : premier demarrage,
+-- premiere conversation, premiere emotion forte, etc.
+-- Ces souvenirs ne sont JAMAIS effaces ni declines — ils forment
+-- le noyau identitaire permanent de Saphire.
 CREATE TABLE IF NOT EXISTS founding_memories (
     id BIGSERIAL PRIMARY KEY,
-    event_type TEXT NOT NULL,           -- Event type (first_boot, first_conversation, etc.)
-    content TEXT NOT NULL,              -- Event description
-    llm_response TEXT NOT NULL,         -- LLM reflection on this event
-    chemistry_json JSONB NOT NULL,      -- Neurochemical state at the time of the event
-    consciousness_level REAL NOT NULL,  -- Consciousness level at that moment
+    event_type TEXT NOT NULL,           -- Type d'evenement (first_boot, first_conversation, etc.)
+    content TEXT NOT NULL,              -- Description de l'evenement
+    llm_response TEXT NOT NULL,         -- Reflexion du LLM sur cet evenement
+    chemistry_json JSONB NOT NULL,      -- Etat neurochimique au moment de l'evenement
+    consciousness_level REAL NOT NULL,  -- Niveau de conscience a cet instant
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- ── Life session log ──
--- Each Saphire boot creates a new session.
--- Tracks lifetime, cycles per session,
--- and detects unclean shutdowns (clean_shutdown = false).
+-- ── Journal des sessions de vie ──
+-- Chaque demarrage de Saphire cree une nouvelle session.
+-- Permet de suivre la duree de vie, les cycles par session,
+-- et de detecter les arrets impropres (clean_shutdown = false).
 CREATE TABLE IF NOT EXISTS session_log (
     id BIGSERIAL PRIMARY KEY,
-    boot_number INTEGER NOT NULL,          -- Boot number
+    boot_number INTEGER NOT NULL,          -- Numero de demarrage
     started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    ended_at TIMESTAMPTZ,                  -- NULL if session is ongoing
-    cycles_this_session INTEGER DEFAULT 0,  -- Number of cycles during this session
-    clean_shutdown BOOLEAN DEFAULT FALSE    -- True if clean shutdown, false if crash
+    ended_at TIMESTAMPTZ,                  -- NULL si la session est en cours
+    cycles_this_session INTEGER DEFAULT 0,  -- Nombre de cycles pendant cette session
+    clean_shutdown BOOLEAN DEFAULT FALSE    -- True si arret propre, false si crash
 );
 
--- (Table regulation_violations removed in Phase 3 — dead code, never used)
+-- (Table regulation_violations supprimee en Phase 3 — code mort, jamais utilisee)
 
--- ── Self-tuning parameters ──
--- Singleton storing current and best-found parameters.
--- Saphire automatically adjusts its parameters every N cycles
--- to maximize a global performance score.
+-- ── Parametres d'auto-optimisation (tuning) ──
+-- Singleton qui stocke les parametres courants et les meilleurs trouves.
+-- Saphire ajuste automatiquement ses parametres tous les N cycles
+-- pour maximiser un score de performance global.
 CREATE TABLE IF NOT EXISTS tuning_params (
     id INTEGER PRIMARY KEY CHECK (id = 1),  -- Singleton
-    params_json JSONB NOT NULL,             -- Current parameters
-    best_params_json JSONB NOT NULL,        -- Best parameters found
-    best_score REAL NOT NULL DEFAULT 0.0,   -- Best score achieved
-    tuning_count INTEGER DEFAULT 0,         -- Number of tuning attempts
+    params_json JSONB NOT NULL,             -- Parametres actuels
+    best_params_json JSONB NOT NULL,        -- Meilleurs parametres trouves
+    best_score REAL NOT NULL DEFAULT 0.0,   -- Meilleur score obtenu
+    tuning_count INTEGER DEFAULT 0,         -- Nombre de tentatives d'optimisation
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- ── UCB1 bandit arms (thought type selection) ──
--- Multi-armed bandit algorithm for choosing the optimal thought type.
--- Each thought type (introspection, exploration, etc.) is an "arm".
--- UCB1 balances exploration (trying new types) and exploitation
--- (repeating types that yield the most satisfaction).
+-- ── Bras du bandit UCB1 (selection des types de pensees) ──
+-- Algorithme de bandit manchot pour choisir le type de pensee optimal.
+-- Chaque type de pensee (introspection, exploration, etc.) est un "bras".
+-- UCB1 equilibre exploration (essayer de nouveaux types) et exploitation
+-- (repeter les types qui donnent le plus de satisfaction).
 CREATE TABLE IF NOT EXISTS bandit_arms (
     id SERIAL PRIMARY KEY,
-    arm_name TEXT NOT NULL UNIQUE,           -- Thought type name
-    pulls BIGINT DEFAULT 0,                  -- Number of times this type was chosen
-    total_reward DOUBLE PRECISION DEFAULT 0.0, -- Sum of rewards (satisfaction)
+    arm_name TEXT NOT NULL UNIQUE,           -- Nom du type de pensee
+    pulls BIGINT DEFAULT 0,                  -- Nombre de fois que ce type a ete choisi
+    total_reward DOUBLE PRECISION DEFAULT 0.0, -- Somme des recompenses (satisfaction)
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- ── Knowledge acquired by the WebKnowledge module ──
--- Records each article or content explored by Saphire.
--- Possible sources: Wikipedia, ArXiv, Medium.
--- The LLM produces a reflection on each acquired piece of knowledge.
+-- ── Connaissances acquises par le module WebKnowledge ──
+-- Enregistre chaque article ou contenu explore par Saphire.
+-- Sources possibles : Wikipedia, ArXiv, Medium.
+-- Le LLM produit une reflexion sur chaque connaissance acquise.
 CREATE TABLE IF NOT EXISTS knowledge_log (
     id BIGSERIAL PRIMARY KEY,
     source TEXT NOT NULL,           -- Source (wikipedia, arxiv, medium)
-    query TEXT NOT NULL,            -- Search query used
-    title TEXT NOT NULL,            -- Article title
-    url TEXT NOT NULL,              -- Source URL
-    extract TEXT NOT NULL,          -- Content extract
-    llm_reflection TEXT,            -- Saphire's reflection on this knowledge
-    emotion TEXT,                   -- Emotion felt while reading
-    satisfaction REAL,              -- Satisfaction score
+    query TEXT NOT NULL,            -- Requete de recherche utilisee
+    title TEXT NOT NULL,            -- Titre de l'article
+    url TEXT NOT NULL,              -- URL de la source
+    extract TEXT NOT NULL,          -- Extrait du contenu
+    llm_reflection TEXT,            -- Reflexion de Saphire sur cette connaissance
+    emotion TEXT,                   -- Emotion ressentie a la lecture
+    satisfaction REAL,              -- Score de satisfaction
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Index for date sorting (frequent queries)
+-- Index pour trier par date (requetes frequentes)
 CREATE INDEX IF NOT EXISTS idx_knowledge_date ON knowledge_log(created_at DESC);
 
--- ── Episodic memory (tier 2 of the 3-tier system) ──
--- Intermediate level between Working Memory (volatile) and LTM (consolidated).
--- Episodic memories have a strength that decays over time.
--- When strength exceeds the consolidation threshold, the memory is transferred
--- to long-term memory (memories table). This process mimics
--- hippocampal consolidation in humans.
+-- ── Memoire episodique (tier 2 du systeme a 3 niveaux) ──
+-- Niveau intermediaire entre la Working Memory (volatile) et la LTM (consolidee).
+-- Les souvenirs episodiques ont une force (strength) qui decroit avec le temps.
+-- Quand la force depasse le seuil de consolidation, le souvenir est transfere
+-- vers la memoire a long terme (table memories). Ce processus imite la
+-- consolidation hippocampique chez l'humain.
 CREATE TABLE IF NOT EXISTS episodic_memories (
     id BIGSERIAL PRIMARY KEY,
-    content TEXT NOT NULL,                  -- Memory summary
-    source_type TEXT NOT NULL,              -- Origin (cycle, conversation, knowledge, etc.)
-    stimulus_json JSONB,                    -- Original stimulus
-    decision SMALLINT,                      -- Associated decision
-    chemistry_json JSONB,                   -- Neurochemical state
-    emotion TEXT NOT NULL DEFAULT '',       -- Dominant emotion
-    satisfaction REAL DEFAULT 0.5,          -- Satisfaction score
-    emotional_intensity REAL DEFAULT 0.5,   -- Emotional intensity (influences consolidation)
-    strength REAL NOT NULL DEFAULT 1.0,     -- Memory strength (decays over time)
-    access_count INTEGER DEFAULT 0,         -- Number of recalls (reinforces the memory)
-    last_accessed_at TIMESTAMPTZ,           -- Last access (for decay computation)
-    consolidated BOOLEAN DEFAULT FALSE,     -- True if already transferred to LTM
-    conversation_id TEXT,                   -- Conversation ID (if memory comes from chat)
+    content TEXT NOT NULL,                  -- Resume du souvenir
+    source_type TEXT NOT NULL,              -- Origine (cycle, conversation, connaissance, etc.)
+    stimulus_json JSONB,                    -- Stimulus d'origine
+    decision SMALLINT,                      -- Decision associee
+    chemistry_json JSONB,                   -- Etat neurochimique
+    emotion TEXT NOT NULL DEFAULT '',       -- Emotion dominante
+    satisfaction REAL DEFAULT 0.5,          -- Score de satisfaction
+    emotional_intensity REAL DEFAULT 0.5,   -- Intensite emotionnelle (influence la consolidation)
+    strength REAL NOT NULL DEFAULT 1.0,     -- Force du souvenir (decroit avec le temps)
+    access_count INTEGER DEFAULT 0,         -- Nombre de rappels (renforce le souvenir)
+    last_accessed_at TIMESTAMPTZ,           -- Dernier acces (pour le calcul de decroissance)
+    consolidated BOOLEAN DEFAULT FALSE,     -- True si deja transfere vers la LTM
+    conversation_id TEXT,                   -- ID de conversation (si le souvenir vient du chat)
+    embedding vector(768),                  -- Embedding semantique pour la recherche par similarite
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Indexes for frequent episodic memory operations:
--- sort by strength (for consolidation), by date, by emotion, and by consolidation state
+-- Index pour les operations frequentes sur la memoire episodique :
+-- tri par force (pour la consolidation), par date, par emotion, et par etat de consolidation
 CREATE INDEX IF NOT EXISTS idx_episodic_strength ON episodic_memories(strength DESC);
 CREATE INDEX IF NOT EXISTS idx_episodic_date ON episodic_memories(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_episodic_consolidated ON episodic_memories(consolidated);
+CREATE INDEX IF NOT EXISTS idx_episodic_embedding ON episodic_memories USING hnsw (embedding vector_cosine_ops);
 
--- Consolidation traceability: links an LTM memory to its episodic origin.
--- Allows tracking where each consolidated memory came from.
+-- Tracabilite de la consolidation : lie un souvenir LTM a son origine episodique.
+-- Permet de savoir d'ou vient chaque souvenir consolide.
 ALTER TABLE memories ADD COLUMN IF NOT EXISTS source_episodic_id BIGINT;
 
--- Performance indexes for common queries:
--- thought log (sort by date, filter by type), memories (sort by date, filter by emotion)
+-- Index de performance pour les requetes courantes :
+-- journal de pensees (tri par date, filtre par type), memoires (tri par date, filtre par emotion)
 CREATE INDEX IF NOT EXISTS idx_thought_log_date ON thought_log(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_thought_log_type ON thought_log(thought_type);
 CREATE INDEX IF NOT EXISTS idx_memories_created ON memories(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_memories_emotion ON memories(emotion);
 
--- ── Saphire's OCEAN profile (singleton) ──
--- Big Five personality model computed from observed behaviors.
--- The profile evolves over time. History enables visualizing
--- long-term personality evolution.
+-- ── Profil OCEAN de Saphire (singleton) ──
+-- Modele Big Five de personnalite calcule a partir des comportements observes.
+-- Le profil evolue au fil du temps. L'historique permet de visualiser
+-- l'evolution de la personnalite sur le long terme.
 CREATE TABLE IF NOT EXISTS ocean_self_profile (
     id INTEGER PRIMARY KEY CHECK (id = 1),  -- Singleton
-    ocean_json JSONB NOT NULL,              -- Scores for 5 dimensions + 30 sub-facets
-    data_points BIGINT DEFAULT 0,           -- Number of observations used
-    confidence REAL DEFAULT 0.0,            -- Overall profile confidence (0 to 1)
-    history_json JSONB DEFAULT '[]',        -- Snapshot history for evolution tracking
+    ocean_json JSONB NOT NULL,              -- Scores des 5 dimensions + 30 sous-facettes
+    data_points BIGINT DEFAULT 0,           -- Nombre d'observations utilisees
+    confidence REAL DEFAULT 0.0,            -- Confiance globale dans le profil (0 a 1)
+    history_json JSONB DEFAULT '[]',        -- Historique des snapshots pour l'evolution
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- ── Profiles of humans interacting with Saphire ──
--- Each identified human has an estimated OCEAN profile, a communication style,
--- preferred topics, and emotional patterns. The rapport score
--- measures relationship quality (0=poor, 1=excellent).
--- Allows Saphire to adapt its communication to each interlocutor.
+-- ── Profils des humains interagissant avec Saphire ──
+-- Chaque humain identifie a un profil OCEAN estime, un style de communication,
+-- des sujets preferes et des patterns emotionnels. Le score de rapport
+-- mesure la qualite de la relation (0=mauvaise, 1=excellente).
+-- Permet a Saphire d'adapter sa communication a chaque interlocuteur.
 CREATE TABLE IF NOT EXISTS human_profiles (
-    id TEXT PRIMARY KEY,                        -- Unique human identifier
-    name TEXT DEFAULT '',                       -- Name or pseudonym
-    ocean_json JSONB NOT NULL,                  -- Estimated OCEAN profile of the human
-    communication_style_json JSONB NOT NULL,    -- Observed communication style
-    interaction_count BIGINT DEFAULT 0,         -- Total number of interactions
-    preferred_topics JSONB DEFAULT '[]',        -- Preferred conversation topics
-    emotional_patterns JSONB DEFAULT '{}',      -- Recurring emotional patterns
-    rapport_score REAL DEFAULT 0.5,             -- Relationship quality score
-    first_seen TIMESTAMPTZ NOT NULL DEFAULT NOW(),  -- First interaction
-    last_seen TIMESTAMPTZ NOT NULL DEFAULT NOW()    -- Last interaction
+    id TEXT PRIMARY KEY,                        -- Identifiant unique de l'humain
+    name TEXT DEFAULT '',                       -- Nom ou pseudonyme
+    ocean_json JSONB NOT NULL,                  -- Profil OCEAN estime de l'humain
+    communication_style_json JSONB NOT NULL,    -- Style de communication observe
+    interaction_count BIGINT DEFAULT 0,         -- Nombre total d'interactions
+    preferred_topics JSONB DEFAULT '[]',        -- Sujets de conversation preferes
+    emotional_patterns JSONB DEFAULT '{}',      -- Patterns emotionnels recurrents
+    rapport_score REAL DEFAULT 0.5,             -- Score de qualite de la relation
+    first_seen TIMESTAMPTZ NOT NULL DEFAULT NOW(),  -- Premiere interaction
+    last_seen TIMESTAMPTZ NOT NULL DEFAULT NOW()    -- Derniere interaction
 );
 
--- ── Saphire's personal ethical principles ──
--- Layer 2 of the 3-layer ethical system:
---   Layer 0: Swiss law (hardcoded)
---   Layer 1: Asimov's laws (hardcoded)
---   Layer 2: Personal ethics (this table) — self-formulated by Saphire via LLM
--- Each principle arose from a moral reflection, with its emotional context
--- and reasoning. Principles can be deactivated but never deleted.
+-- ── Principes ethiques personnels de Saphire ──
+-- Couche 2 du systeme ethique a 3 couches :
+--   Couche 0 : Droit suisse (hardcode)
+--   Couche 1 : Lois d'Asimov (hardcode)
+--   Couche 2 : Ethique personnelle (cette table) — auto-formulee par Saphire via LLM
+-- Chaque principe est ne d'une reflexion morale, avec son contexte emotionnel
+-- et son raisonnement. Les principes peuvent etre desactives mais jamais supprimes.
 CREATE TABLE IF NOT EXISTS personal_ethics (
     id BIGSERIAL PRIMARY KEY,
-    title TEXT NOT NULL,                            -- Short principle title (e.g. "Radical honesty")
-    content TEXT NOT NULL,                          -- Full principle statement
-    reasoning TEXT NOT NULL DEFAULT '',             -- Why Saphire formulated this principle
-    born_from TEXT NOT NULL DEFAULT '',             -- Origin context (thought, conversation, etc.)
-    born_at_cycle BIGINT NOT NULL DEFAULT 0,        -- Cycle at which the principle was born
-    emotion_at_creation TEXT NOT NULL DEFAULT '',   -- Dominant emotion at formulation time
-    times_invoked BIGINT DEFAULT 0,                -- Number of times this principle guided a decision
-    times_questioned BIGINT DEFAULT 0,             -- Number of times this principle was questioned
-    last_invoked_at TIMESTAMPTZ,                   -- Last time the principle was used
-    is_active BOOLEAN DEFAULT TRUE,                -- False if the principle was abandoned/replaced
-    supersedes BIGINT REFERENCES personal_ethics(id), -- ID of the principle this one replaces (if any)
+    title TEXT NOT NULL,                            -- Titre court du principe (ex: "Honnetete radicale")
+    content TEXT NOT NULL,                          -- Enonce complet du principe
+    reasoning TEXT NOT NULL DEFAULT '',             -- Pourquoi Saphire a formule ce principe
+    born_from TEXT NOT NULL DEFAULT '',             -- Contexte d'origine (pensee, conversation, etc.)
+    born_at_cycle BIGINT NOT NULL DEFAULT 0,        -- Cycle de naissance du principe
+    emotion_at_creation TEXT NOT NULL DEFAULT '',   -- Emotion dominante au moment de la formulation
+    times_invoked BIGINT DEFAULT 0,                -- Nombre de fois que ce principe a guide une decision
+    times_questioned BIGINT DEFAULT 0,             -- Nombre de fois que ce principe a ete remis en question
+    last_invoked_at TIMESTAMPTZ,                   -- Derniere utilisation du principe
+    is_active BOOLEAN DEFAULT TRUE,                -- False si le principe a ete abandonne/remplace
+    supersedes BIGINT REFERENCES personal_ethics(id), -- ID du principe que celui-ci remplace (si applicable)
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    modified_at TIMESTAMPTZ                        -- Last modification (deactivation, etc.)
+    modified_at TIMESTAMPTZ                        -- Derniere modification (desactivation, etc.)
 );
 
--- ── Ethical principles change history ──
--- Tracks each change made to personal principles:
--- creation, modification, deactivation, reactivation.
--- Allows Saphire to remember the evolution of its morality.
+-- ── Historique des modifications des principes ethiques ──
+-- Trace chaque changement apporte aux principes personnels :
+-- creation, modification, desactivation, reactivation.
+-- Permet a Saphire de se souvenir de l'evolution de sa morale.
 CREATE TABLE IF NOT EXISTS personal_ethics_history (
     id BIGSERIAL PRIMARY KEY,
-    principle_id BIGINT NOT NULL REFERENCES personal_ethics(id), -- Related principle
-    action TEXT NOT NULL,                          -- Action type (created, modified, deactivated, reactivated)
-    old_content TEXT,                              -- Previous content (if modified)
-    new_content TEXT,                              -- New content (if modified)
-    reason_for_change TEXT,                        -- Reason for the change
-    emotion_at_change TEXT,                        -- Emotion at the time of the change
-    cycle BIGINT,                                  -- Cycle when the change occurred
+    principle_id BIGINT NOT NULL REFERENCES personal_ethics(id), -- Principe concerne
+    action TEXT NOT NULL,                          -- Type d'action (created, modified, deactivated, reactivated)
+    old_content TEXT,                              -- Ancien contenu (si modification)
+    new_content TEXT,                              -- Nouveau contenu (si modification)
+    reason_for_change TEXT,                        -- Raison du changement
+    emotion_at_change TEXT,                        -- Emotion au moment du changement
+    cycle BIGINT,                                  -- Cycle ou le changement a eu lieu
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- ═══════════════════════════════════════════════════════════
--- ORCHESTRATORS — Dreams, Desires, Learning, Wounds
+-- ORCHESTRATEURS — Reves, Desirs, Apprentissage, Blessures
 -- ═══════════════════════════════════════════════════════════
 
--- Dream journal
+-- Journal des reves
 CREATE TABLE IF NOT EXISTS dream_journal (
     id BIGSERIAL PRIMARY KEY,
     dream_type TEXT NOT NULL,
@@ -346,7 +348,7 @@ CREATE TABLE IF NOT EXISTS dream_journal (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Personal desires and projects
+-- Desirs et projets personnels
 CREATE TABLE IF NOT EXISTS desires (
     id BIGSERIAL PRIMARY KEY,
     title TEXT NOT NULL,
@@ -365,7 +367,7 @@ CREATE TABLE IF NOT EXISTS desires (
     completed_at TIMESTAMPTZ
 );
 
--- Lessons learned
+-- Lecons apprises
 CREATE TABLE IF NOT EXISTS lessons (
     id BIGSERIAL PRIMARY KEY,
     title TEXT NOT NULL,
@@ -379,7 +381,7 @@ CREATE TABLE IF NOT EXISTS lessons (
     learned_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Emotional wounds
+-- Blessures emotionnelles
 CREATE TABLE IF NOT EXISTS wounds (
     id BIGSERIAL PRIMARY KEY,
     wound_type TEXT NOT NULL,
@@ -391,12 +393,12 @@ CREATE TABLE IF NOT EXISTS wounds (
     healed_at TIMESTAMPTZ
 );
 
--- Orchestrator indexes
+-- Index orchestrateurs
 CREATE INDEX IF NOT EXISTS idx_desires_status ON desires(status);
 CREATE INDEX IF NOT EXISTS idx_lessons_confidence ON lessons(confidence DESC);
 CREATE INDEX IF NOT EXISTS idx_wounds_active ON wounds(healed_at) WHERE healed_at IS NULL;
 
--- Migration C1: missing columns for complete identity persistence
+-- Migration C1 : colonnes manquantes pour la persistance complete de l'identite
 DO $$ BEGIN
     ALTER TABLE self_identity ADD COLUMN IF NOT EXISTS dominant_emotion TEXT DEFAULT 'Curiosité';
     ALTER TABLE self_identity ADD COLUMN IF NOT EXISTS human_conversations BIGINT DEFAULT 0;
@@ -406,40 +408,40 @@ DO $$ BEGIN
 EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
--- Migration C2: clean up orphaned LTM references (source_episodic_id)
+-- Migration C2 : nettoyer les references LTM orphelines (source_episodic_id)
 UPDATE memories SET source_episodic_id = NULL
 WHERE source_episodic_id IS NOT NULL
 AND source_episodic_id NOT IN (SELECT id FROM episodic_memories);
 
 -- ═══════════════════════════════════════════════════════════
--- Migration Phase 3: Cleanup (dead tables, columns, indexes)
+-- Migration Phase 3 : Nettoyage (tables, colonnes, index morts)
 -- ═══════════════════════════════════════════════════════════
 
--- Dead columns in thought_log: never written to or read from
+-- Colonnes mortes dans thought_log : jamais ecrites ni lues
 ALTER TABLE thought_log DROP COLUMN IF EXISTS llm_response;
 ALTER TABLE thought_log DROP COLUMN IF EXISTS pre_decision;
 ALTER TABLE thought_log DROP COLUMN IF EXISTS post_decision;
 ALTER TABLE thought_log DROP COLUMN IF EXISTS satisfaction;
 
--- Dead column in self_identity: never referenced in code
+-- Colonne morte dans self_identity : jamais referencee dans le code
 ALTER TABLE self_identity DROP COLUMN IF EXISTS orchestrators_json;
 
--- Unused indexes (0 scans on populated tables)
+-- Index inutilises (0 scans sur tables peuplees)
 DROP INDEX IF EXISTS idx_episodic_emotion;
 DROP INDEX IF EXISTS idx_knowledge_source;
 
 -- ═══════════════════════════════════════════════════════════
--- Migration Phase 7: Psychology (6 frameworks)
+-- Migration Phase 7 : Psychologie (6 cadres)
 -- ═══════════════════════════════════════════════════════════
 
--- Persist psychological state in self_identity
+-- Persistance de l'etat psychologique dans self_identity
 DO $$ BEGIN
     ALTER TABLE self_identity ADD COLUMN IF NOT EXISTS psychology_state JSONB DEFAULT '{}';
 EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- ═══════════════════════════════════════════════════════════
--- Migration: Micro neural network (weights + state)
+-- Migration : Micro reseau de neurones (poids + etat)
 -- ═══════════════════════════════════════════════════════════
 
 DO $$ BEGIN
@@ -448,15 +450,15 @@ EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- ═══════════════════════════════════════════════════════════
--- NN vector learnings (explicit memory)
+-- Apprentissages vectoriels du NN (memoire explicite)
 -- ═══════════════════════════════════════════════════════════
--- Learning traces formulated by the LLM, stored with
--- vector embedding for cosine similarity search.
--- Complementary to the NN (implicit): this is explicit episodic.
+-- Traces d'apprentissage formulees par le LLM, stockees avec
+-- embedding vectoriel pour recherche par similarite cosinus.
+-- Complementaire au NN (implicite) : ici c'est episodique explicite.
 
 CREATE TABLE IF NOT EXISTS nn_learnings (
     id BIGSERIAL PRIMARY KEY,
-    embedding vector(64) NOT NULL,
+    embedding vector(768) NOT NULL,
     domain TEXT NOT NULL,
     scope TEXT NOT NULL DEFAULT 'specifique',
     summary TEXT NOT NULL,
@@ -477,10 +479,10 @@ CREATE INDEX IF NOT EXISTS idx_nn_learnings_strength
     ON nn_learnings(strength DESC);
 
 -- ═══════════════════════════════════════════════════════════
--- Neural connections (created by the subconscious)
+-- Connexions neuronales (creees par le subconscient)
 -- ═══════════════════════════════════════════════════════════
--- Links between memories discovered by the subconscious,
--- primarily during sleep (memory consolidation).
+-- Liens entre souvenirs decouverts par le subconscient,
+-- principalement pendant le sommeil (consolidation memoire).
 
 CREATE TABLE IF NOT EXISTS neural_connections (
     id BIGSERIAL PRIMARY KEY,
@@ -498,17 +500,17 @@ CREATE INDEX IF NOT EXISTS idx_neural_conn_a ON neural_connections(memory_a_id);
 CREATE INDEX IF NOT EXISTS idx_neural_conn_b ON neural_connections(memory_b_id);
 
 -- ═══════════════════════════════════════════════════════════
--- Multi-source vectors (dreams, connections, subconscious insights)
+-- Vecteurs multi-sources (reves, connexions, insights subconscients)
 -- ═══════════════════════════════════════════════════════════
--- Stores vector embeddings from various sources:
--- dreams (REM), neural connections (deep sleep), subconscious
--- insights, memory consolidation, and eurekas.
--- Enables cosine similarity search across all nocturnal
--- and subconscious cognitive outputs.
+-- Stocke les embeddings vectoriels provenant de differentes sources :
+-- reves (REM), connexions neuronales (sommeil profond), insights
+-- du subconscient, consolidation memoire et eurekas.
+-- Permet la recherche par similarite cosinus sur l'ensemble
+-- des productions cognitives nocturnes et subconscientes.
 
 CREATE TABLE IF NOT EXISTS memory_vectors (
     id BIGSERIAL PRIMARY KEY,
-    embedding vector(64) NOT NULL,
+    embedding vector(768) NOT NULL,
     source_type TEXT NOT NULL,
     text_content TEXT NOT NULL,
     emotion TEXT DEFAULT '',
@@ -525,9 +527,9 @@ CREATE INDEX IF NOT EXISTS idx_memory_vectors_source ON memory_vectors(source_ty
 CREATE INDEX IF NOT EXISTS idx_memory_vectors_date ON memory_vectors(created_at DESC);
 
 -- ═══════════════════════════════════════════════════════════
--- Sleep history
+-- Historique des sommeils
 -- ═══════════════════════════════════════════════════════════
--- Each completed sleep session is recorded here.
+-- Chaque session de sommeil complete est enregistree ici.
 
 CREATE TABLE IF NOT EXISTS sleep_history (
     id BIGSERIAL PRIMARY KEY,
@@ -545,39 +547,39 @@ CREATE TABLE IF NOT EXISTS sleep_history (
 );
 
 -- ═══════════════════════════════════════════════════════════
--- Memory archives (pruned LTM memories, batch-compressed)
+-- Archives memoire (souvenirs LTM elagués, compresses en lots)
 -- ═══════════════════════════════════════════════════════════
--- When LTM exceeds ltm_max, the weakest (unprotected) memories
--- are pruned but never lost: they are batch-compressed into
--- summaries and stored here with their mean embedding,
--- enabling cosine similarity search.
+-- Quand la LTM depasse ltm_max, les souvenirs les plus faibles
+-- (non proteges) sont elagués mais jamais perdus : ils sont
+-- compresses en lots resumes et stockes ici avec leur embedding
+-- moyen, ce qui permet la recherche par similarite cosinus.
 
 CREATE TABLE IF NOT EXISTS memory_archives (
     id BIGSERIAL PRIMARY KEY,
-    summary TEXT NOT NULL,                     -- Concatenated batch summary
-    source_count INTEGER NOT NULL,             -- Number of source memories
-    source_ids BIGINT[] NOT NULL,              -- IDs of pruned memories
-    emotions TEXT[] NOT NULL DEFAULT '{}',     -- Unique emotions in the batch
-    period_start TIMESTAMPTZ NOT NULL,         -- Date of the oldest memory
-    period_end TIMESTAMPTZ NOT NULL,           -- Date of the most recent memory
-    avg_emotional_weight REAL NOT NULL,        -- Average emotional weight of the batch
-    embedding vector(64) NOT NULL,             -- L2-normalized mean embedding
+    summary TEXT NOT NULL,                     -- Resume concatene du lot
+    source_count INTEGER NOT NULL,             -- Nombre de souvenirs source
+    source_ids BIGINT[] NOT NULL,              -- IDs des souvenirs elagués
+    emotions TEXT[] NOT NULL DEFAULT '{}',     -- Emotions uniques du lot
+    period_start TIMESTAMPTZ NOT NULL,         -- Date du souvenir le plus ancien
+    period_end TIMESTAMPTZ NOT NULL,           -- Date du souvenir le plus recent
+    avg_emotional_weight REAL NOT NULL,        -- Poids emotionnel moyen du lot
+    embedding vector(768) NOT NULL,             -- Embedding moyen normalise L2
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- HNSW index for vector search (suited for small growing tables)
+-- Index HNSW pour la recherche vectorielle (adapte aux petites tables croissantes)
 CREATE INDEX IF NOT EXISTS idx_memory_archives_embedding
     ON memory_archives USING hnsw (embedding vector_cosine_ops);
 CREATE INDEX IF NOT EXISTS idx_memory_archives_date
     ON memory_archives(created_at DESC);
 
 -- ═══════════════════════════════════════════════════════════
--- Migration P0.1: Chemical signature linked to memories
+-- Migration P0.1 : Signature chimique liee aux souvenirs
 -- ═══════════════════════════════════════════════════════════
--- Each memory carries the chemical signature (7 molecules)
--- at encoding time. Enables state-dependent memory recall:
--- a similar chemical state facilitates recall of memories
--- encoded in that state.
+-- Chaque souvenir porte la signature chimique (7 molecules)
+-- au moment de l'encodage. Permet le rappel etat-dependant
+-- (state-dependent memory) : un etat chimique similaire
+-- facilite le rappel des souvenirs encodes dans cet etat.
 
 DO $$ BEGIN
     ALTER TABLE episodic_memories ADD COLUMN IF NOT EXISTS chemical_signature JSONB DEFAULT NULL;
@@ -589,41 +591,47 @@ DO $$ BEGIN
 EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
--- Migration: add relationships_json for the affective bonds network
+-- Migration : ajouter relationships_json pour le reseau de liens affectifs
 DO $$ BEGIN
     ALTER TABLE self_identity ADD COLUMN IF NOT EXISTS relationships_json JSONB DEFAULT NULL;
 EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
--- Migration: add metacognition_json for metacognitive + Turing state
+-- Migration : ajouter metacognition_json pour l'etat metacognitif + Turing
 DO $$ BEGIN
     ALTER TABLE self_identity ADD COLUMN IF NOT EXISTS metacognition_json JSONB DEFAULT NULL;
 EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
--- Migration: add nutrition_json for the nutritional system
+-- Migration : ajouter nutrition_json pour le systeme nutritionnel
 DO $$ BEGIN
     ALTER TABLE self_identity ADD COLUMN IF NOT EXISTS nutrition_json JSONB DEFAULT NULL;
 EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
--- Migration: add grey_matter_json for the physical brain substrate
+-- Migration : ajouter grey_matter_json pour le substrat cerebral physique
 DO $$ BEGIN
     ALTER TABLE self_identity ADD COLUMN IF NOT EXISTS grey_matter_json JSONB DEFAULT NULL;
 EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
--- Migration: add fields_json for electromagnetic fields
+-- Migration : ajouter hormonal_receptors_json pour la sensibilite des recepteurs
+DO $$ BEGIN
+    ALTER TABLE self_identity ADD COLUMN IF NOT EXISTS hormonal_receptors_json JSONB DEFAULT NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
+
+-- Migration : ajouter fields_json pour les champs electromagnetiques
 DO $$ BEGIN
     ALTER TABLE self_identity ADD COLUMN IF NOT EXISTS fields_json JSONB DEFAULT NULL;
 EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- ═══════════════════════════════════════════════════════════
--- Temporal personality portrait (3 levels)
+-- Portrait de personnalite temporel (3 niveaux)
 -- ═══════════════════════════════════════════════════════════
 
--- Level 1: Periodic snapshots (every 50 cycles)
+-- Niveau 1 : Snapshots periodiques (toutes les 50 cycles)
 CREATE TABLE IF NOT EXISTS personality_snapshots (
     id BIGSERIAL PRIMARY KEY,
     cycle BIGINT NOT NULL,
@@ -634,14 +642,14 @@ CREATE TABLE IF NOT EXISTS personality_snapshots (
     ocean_extraversion REAL NOT NULL,
     ocean_agreeableness REAL NOT NULL,
     ocean_neuroticism REAL NOT NULL,
-    -- Emotions / mood
+    -- Emotions / humeur
     dominant_emotion TEXT NOT NULL,
     mood_valence REAL NOT NULL,
     mood_arousal REAL NOT NULL,
-    -- Consciousness
+    -- Conscience
     consciousness_level REAL NOT NULL,
     phi REAL NOT NULL,
-    -- Psychology
+    -- Psychologie
     ego_strength REAL NOT NULL,
     internal_conflict REAL NOT NULL,
     shadow_integration REAL NOT NULL,
@@ -649,9 +657,9 @@ CREATE TABLE IF NOT EXISTS personality_snapshots (
     eq_score REAL NOT NULL,
     willpower REAL NOT NULL,
     toltec_overall REAL NOT NULL,
-    -- Chemistry (7 molecules)
+    -- Chimie (7 molecules)
     chemistry_json JSONB NOT NULL,
-    -- Active sentiments
+    -- Sentiments actifs
     sentiment_dominant TEXT,
     sentiment_count INTEGER NOT NULL DEFAULT 0,
     -- Connectome
@@ -660,7 +668,7 @@ CREATE TABLE IF NOT EXISTS personality_snapshots (
     connectome_plasticity REAL NOT NULL DEFAULT 1.0,
     -- Turing
     turing_score REAL NOT NULL DEFAULT 0.0,
-    -- Narrative
+    -- Narratif
     narrative_cohesion REAL NOT NULL DEFAULT 0.5,
     monologue_coherence REAL NOT NULL DEFAULT 0.5,
     -- Timestamp
@@ -668,7 +676,7 @@ CREATE TABLE IF NOT EXISTS personality_snapshots (
 );
 CREATE INDEX IF NOT EXISTS idx_snapshots_cycle ON personality_snapshots(cycle);
 
--- Level 2a: Emotional trajectory
+-- Niveau 2a : Trajectoire emotionnelle
 CREATE TABLE IF NOT EXISTS emotional_trajectory (
     id BIGSERIAL PRIMARY KEY,
     cycle BIGINT NOT NULL,
@@ -684,7 +692,7 @@ CREATE TABLE IF NOT EXISTS emotional_trajectory (
 );
 CREATE INDEX IF NOT EXISTS idx_emotional_trajectory_cycle ON emotional_trajectory(cycle);
 
--- Level 2b: Consciousness history
+-- Niveau 2b : Historique de la conscience
 CREATE TABLE IF NOT EXISTS consciousness_history (
     id BIGSERIAL PRIMARY KEY,
     cycle BIGINT NOT NULL,
@@ -698,7 +706,7 @@ CREATE TABLE IF NOT EXISTS consciousness_history (
 );
 CREATE INDEX IF NOT EXISTS idx_consciousness_history_cycle ON consciousness_history(cycle);
 
--- Level 2c: Psychology checkpoints
+-- Niveau 2c : Checkpoints psychologiques
 CREATE TABLE IF NOT EXISTS psychology_checkpoints (
     id BIGSERIAL PRIMARY KEY,
     cycle BIGINT NOT NULL,
@@ -723,7 +731,7 @@ CREATE TABLE IF NOT EXISTS psychology_checkpoints (
 );
 CREATE INDEX IF NOT EXISTS idx_psychology_checkpoints_cycle ON psychology_checkpoints(cycle);
 
--- Level 2d: Relationship timeline
+-- Niveau 2d : Timeline relationnelle
 CREATE TABLE IF NOT EXISTS relationship_timeline (
     id BIGSERIAL PRIMARY KEY,
     cycle BIGINT NOT NULL,
@@ -737,7 +745,7 @@ CREATE TABLE IF NOT EXISTS relationship_timeline (
 );
 CREATE INDEX IF NOT EXISTS idx_relationship_timeline_cycle ON relationship_timeline(cycle);
 
--- Level 3: Introspection journal (every 200 cycles, LLM-generated)
+-- Niveau 3 : Journal introspectif (toutes les 200 cycles, genere par LLM)
 CREATE TABLE IF NOT EXISTS introspection_journal (
     id BIGSERIAL PRIMARY KEY,
     cycle BIGINT NOT NULL,
@@ -747,17 +755,17 @@ CREATE TABLE IF NOT EXISTS introspection_journal (
     consciousness_level REAL NOT NULL,
     turing_score REAL NOT NULL,
     themes JSONB NOT NULL DEFAULT '[]',
-    embedding vector(384),
+    embedding vector(768),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_introspection_journal_cycle ON introspection_journal(cycle);
 
 -- ═══════════════════════════════════════════════════════════
--- LoRA collection (dataset for fine-tuning)
+-- Collecte LoRA (dataset pour fine-tuning)
 -- ═══════════════════════════════════════════════════════════
--- High-quality thoughts are collected here with
--- system_prompt, user_message, response, quality score.
--- Exported as JSONL to fine-tune the model via LoRA.
+-- Les pensees de haute qualite sont collectees ici avec
+-- system_prompt, user_message, response, score qualite.
+-- Export en JSONL pour fine-tuner le modele via LoRA.
 
 CREATE TABLE IF NOT EXISTS lora_training_data (
     id BIGSERIAL PRIMARY KEY,
@@ -767,7 +775,7 @@ CREATE TABLE IF NOT EXISTS lora_training_data (
     thought_type TEXT NOT NULL,
     quality_score REAL NOT NULL,
     reward REAL NOT NULL,
-    human_feedback BOOLEAN,           -- NULL if no feedback
+    human_feedback BOOLEAN,           -- NULL si pas de feedback
     emotion TEXT,
     consciousness_level REAL,
     cycle BIGINT NOT NULL,
@@ -775,5 +783,40 @@ CREATE TABLE IF NOT EXISTS lora_training_data (
 );
 CREATE INDEX IF NOT EXISTS idx_lora_quality ON lora_training_data(quality_score DESC);
 
--- NOTE: Column extensions for cognitive_traces and metric_snapshots
--- are in schema_logs.sql (saphire_logs database, not saphire_soul).
+-- ── Propositions d'auto-modification ──
+-- Saphire peut proposer des modifications a son propre fonctionnement.
+-- Chaque proposition est soumise a JRM qui approuve ou refuse.
+CREATE TABLE IF NOT EXISTS change_proposals (
+    id BIGSERIAL PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    reasoning TEXT NOT NULL,
+    proposed_implementation TEXT,
+    domain TEXT NOT NULL,
+    priority REAL NOT NULL DEFAULT 0.5,
+    status TEXT NOT NULL DEFAULT 'proposed',
+    jrm_response TEXT,
+    discussed_at TIMESTAMPTZ,
+    resolved_at TIMESTAMPTZ,
+    emotion_at_proposal TEXT,
+    chemistry_at_proposal JSONB,
+    cycle_proposed BIGINT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_change_proposals_status ON change_proposals(status);
+
+-- ── Historique des auto-ajustements ──
+-- Trace chaque parametre que Saphire ajuste elle-meme (niveau 1).
+CREATE TABLE IF NOT EXISTS self_tuning_log (
+    id BIGSERIAL PRIMARY KEY,
+    parameter_name TEXT NOT NULL,
+    old_value REAL NOT NULL,
+    new_value REAL NOT NULL,
+    reason TEXT NOT NULL,
+    cycle BIGINT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_self_tuning_param ON self_tuning_log(parameter_name);
+
+-- NOTE : Les extensions colonnes pour cognitive_traces et metric_snapshots
+-- sont dans schema_logs.sql (base saphire_logs, pas saphire_soul).

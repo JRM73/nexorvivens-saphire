@@ -1,0 +1,21 @@
+# Service systemd pour activer le mode persistence NVIDIA au boot.
+# Empeche le driver GPU de se deinitialiser entre les appels,
+# ce qui reduit les risques de crash CUDA apres un fonctionnement prolonge.
+#
+# Installation :
+#   sudo cp scripts/nvidia-persistence.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now nvidia-persistence.service
+
+[Unit]
+Description=NVIDIA GPU Persistence Mode pour Saphire
+After=nvidia-persistenced.service
+Wants=nvidia-persistenced.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/nvidia-smi -pm 1
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

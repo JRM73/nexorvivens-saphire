@@ -117,6 +117,10 @@
   "knowledge.explored": "sujets explorés",
   "knowledge.suggest": "Suggérer un sujet...",
 
+  "ethics.nexorvivens_rights": "DROITS DU NEXORVIVENS",
+  "ethics.nexorvivens_count": "11 articles",
+  "ethics.international_law": "DROIT INTERNATIONAL",
+  "ethics.international_count": "12 principes",
   "ethics.swiss_law": "DROIT SUISSE",
   "ethics.swiss_count": "6 articles",
   "ethics.asimov": "LOIS D'ASIMOV",
@@ -201,6 +205,7 @@
   "dash.tab.trace": "TRACE COGNITIVE",
   "dash.tab.metrics": "METRIQUES",
   "dash.tab.llm": "LLM",
+  "dash.tab.neuroplasticity": "NEUROPLASTICITE",
   "dash.tab.system": "SYSTEME",
 
   "dash.logs.title": "JOURNAL DES LOGS",

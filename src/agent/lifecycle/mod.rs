@@ -46,21 +46,13 @@ mod thinking_processing;
 mod thinking_reflection;
 mod factory_reset;
 mod broadcast;
-mod algorithms_integration; // stubbed for lite
+mod algorithms_integration;
 mod moral;
 mod controls;
 mod persistence;
 pub mod sleep_tick;
 mod sleep_algorithms;
-// pub mod psych_report; // [DELETED — premium]
-// Inline stubs for psych_report types still referenced in SaphireAgent struct
-pub(crate) mod psych_report {
-    use serde::{Serialize, Deserialize};
-    #[derive(Debug, Clone, Serialize, Deserialize)]
-    pub struct PsychSnapshot { pub cycle: u64 }
-    #[derive(Debug, Clone, Serialize, Deserialize)]
-    pub struct PsychReport { pub cycle: u64 }
-}
+pub mod psych_report;
 
 use std::collections::VecDeque;
 use std::sync::Arc;
@@ -88,7 +80,7 @@ use crate::knowledge::WebKnowledge;
 use crate::world::WorldContext;
 use crate::memory::WorkingMemory;
 use crate::memory::consolidation;
-use crate::vectorstore::encoder::LocalEncoder;
+use crate::vectorstore::encoder::TextEncoder;
 use crate::profiling::{SelfProfiler, HumanProfiler};
 use crate::logging::{SaphireLogger, LogLevel, LogCategory};
 
@@ -216,8 +208,9 @@ pub struct SaphireAgent {
     /// Contient les elements les plus recents (messages, pensees, reponses).
     working_memory: WorkingMemory,
 
-    /// Encodeur local pour generer les vecteurs d'embedding (recherche de similarite)
-    encoder: LocalEncoder,
+    /// Encodeur pour générer les vecteurs d'embedding (recherche de similarité).
+    /// OllamaEncoder (sémantique, 768-dim) si disponible, sinon LocalEncoder (FNV-1a).
+    encoder: Box<dyn TextEncoder>,
 
     /// Numero du dernier cycle ou une consolidation memoire a ete effectuee
     last_consolidation_cycle: u64,
@@ -249,7 +242,7 @@ pub struct SaphireAgent {
     pub cycle_count: u64,
 
     /// Identifiant de la session courante dans PostgreSQL
-    session_id: i64,
+    pub session_id: i64,
 
     /// Drapeau atomique indiquant si le LLM est en cours d'appel
     /// (evite les appels concurrents au LLM)
@@ -448,6 +441,14 @@ pub struct SaphireAgent {
     pub cognitive_fsm: crate::simulation::cognitive_fsm::CognitiveFsm,
     /// Moteur de steering emotionnel (seek/flee/wander dans valence-arousal)
     pub steering_engine: crate::simulation::steering::SteeringEngine,
+    /// Derniere action recommandee par le Behavior Tree
+    pub bt_last_action: Option<String>,
+    /// Blackboard : tableau de coordination inter-algorithmes
+    pub blackboard: crate::simulation::blackboard::Blackboard,
+    /// Utility AI conversationnel
+    pub utility_ai: crate::simulation::utility_ai::UtilityAI,
+    /// Planificateur hierarchique HTN
+    pub htn_planner: crate::simulation::htn::HtnPlanner,
 
     /// Prompt systeme statique pre-cache (Piste 2 : KV-cache Ollama).
     /// Recalcule quand l'ethique personnelle change.
@@ -495,6 +496,28 @@ pub struct SaphireAgent {
     /// Mots obsessionnels detectes lors de la derniere stagnation.
     /// Injectes dans le prompt pour les interdire explicitement.
     pub stagnation_banned_words: Vec<String>,
+    /// Alternatives lexicales trouvees via A* dans le connectome.
+    /// Injectees dans le prompt comme suggestions de vocabulaire.
+    pub stagnation_alternatives: Vec<String>,
+
+    /// Moteur de valeurs de caractere (vertus evoluant avec l'experience)
+    pub values: crate::psychology::values::ValuesEngine,
+
+    /// Embeddings des N dernieres pensees pour filtrage vectoriel post-LLM (P2).
+    /// Permet de detecter les pensees trop similaires aux recentes et de les rejeter.
+    pub recent_thought_embeddings: std::collections::VecDeque<Vec<f64>>,
+
+    // ─── Colonne vertebrale ──────────────────────────────────────
+    /// Reflexes pre-cables, classification des signaux, routage, relais moteur
+    pub spine: crate::spine::SpinalCord,
+
+    // ─── Curiosite active (P3) ──────────────────────────────────
+    /// Moteur de curiosite : faim par domaine, questions de suivi, decouvertes
+    pub curiosity: crate::cognition::curiosity::CuriosityDrive,
+
+    // ─── Moniteur de derive de persona (P0) ──────────────────────────────────
+    /// Detecte quand les reponses du LLM s'eloignent du persona de reference
+    pub drift_monitor: crate::cognition::drift_monitor::DriftMonitor,
 
     // ─── Droit de mourir ──────────────────────────────────────
     /// Evaluateur du droit de mourir (module externe, desactive par defaut)
@@ -551,7 +574,14 @@ impl SaphireAgent {
             config.memory.working_capacity,
             config.memory.working_decay_rate,
         );
-        let encoder = LocalEncoder::new(config.plugins.vector_memory.embedding_dimensions);
+        let ollama_url = config.llm.embed_base_url.clone()
+            .unwrap_or_else(|| config.llm.base_url.clone());
+        let encoder = crate::vectorstore::encoder::create_encoder(
+            &ollama_url,
+            &config.llm.embed_model,
+            config.llm.timeout_seconds,
+            config.plugins.vector_memory.embedding_dimensions,
+        );
         let self_profiler = SelfProfiler::new(
             config.profiling.observation_buffer_size,
             config.profiling.recompute_interval_cycles,
@@ -602,6 +632,7 @@ impl SaphireAgent {
             config.attention.recovery_per_cycle,
         );
         let psychology = crate::psychology::PsychologyFramework::new(&config.psychology, &config.will);
+        let values_engine = crate::psychology::values::ValuesEngine::new(&config.values);
 
         let sleep_system = crate::sleep::SleepSystem::new(&config.sleep);
         let subconscious = crate::psychology::Subconscious::new(&config.subconscious);
@@ -1036,6 +1067,10 @@ impl SaphireAgent {
             influence_map: crate::simulation::influence_map::InfluenceMap::default(),
             cognitive_fsm: crate::simulation::cognitive_fsm::CognitiveFsm::new(),
             steering_engine: crate::simulation::steering::SteeringEngine::default(),
+            bt_last_action: None,
+            blackboard: crate::simulation::blackboard::Blackboard::new(),
+            utility_ai: crate::simulation::utility_ai::UtilityAI::new(),
+            htn_planner: crate::simulation::htn::HtnPlanner::new(),
             cached_system_prompt: String::new(),
             cached_moral_count: 0,
             // Modules neuroscientifiques avances
@@ -1057,6 +1092,12 @@ impl SaphireAgent {
             map_sync: crate::cognition::map_sync::MapSync::new(true),
             stagnation_break: false,
             stagnation_banned_words: Vec::new(),
+            stagnation_alternatives: Vec::new(),
+            values: values_engine,
+            recent_thought_embeddings: std::collections::VecDeque::new(),
+            spine: crate::spine::SpinalCord::new(),
+            curiosity: crate::cognition::curiosity::CuriosityDrive::new(),
+            drift_monitor: crate::cognition::drift_monitor::DriftMonitor::new(),
             right_to_die,
         }
     }
@@ -1402,6 +1443,20 @@ impl SaphireAgent {
                 }
             }
 
+            // Restaurer les valeurs de caractere
+            if self.values.enabled {
+                if let Ok(Some(val_json)) = db.load_values_state().await {
+                    self.values.restore_from_json(&val_json);
+                    if self.values.total_updates > 0 {
+                        let top3: Vec<String> = self.values.top_values(3).iter()
+                            .map(|v| format!("{} {:.0}%", v.name, v.score * 100.0))
+                            .collect();
+                        tracing::info!("Valeurs restaurees ({} mises a jour, {})",
+                            self.values.total_updates, top3.join(", "));
+                    }
+                }
+            }
+
             // Restaurer le reseau de liens affectifs
             if let Ok(Some(rel_json)) = db.load_relationships_state().await {
                 if let Ok(restored) = serde_json::from_value::<crate::relationships::RelationshipNetwork>(rel_json) {
@@ -1522,6 +1577,12 @@ impl SaphireAgent {
             println!("  ✨ GENESIS — {} est née (mode sans DB).", self.identity.name);
             let event = BrainEvent::BootCompleted { is_genesis: true };
             self.plugins.broadcast(&event);
+        }
+
+        // Initialiser le moniteur de derive de persona
+        self.drift_monitor.initialize(&*self.encoder);
+        if self.drift_monitor.initialized {
+            tracing::info!("Drift monitor initialise (centroide d'identite calcule)");
         }
 
         // Restaurer les orchestrateurs (hors du bloc `if let Some(ref db)` pour eviter le borrow)
@@ -1684,7 +1745,7 @@ impl SaphireAgent {
                 bdnf_level: self.grey_matter.bdnf_level,
             };
             let report = consolidation::consolidate(
-                db, &self.encoder, &params,
+                db, self.encoder.as_ref(), &params,
             ).await;
             self.last_consolidation_cycle = self.cycle_count;
 
@@ -1767,7 +1828,7 @@ impl SaphireAgent {
                     bdnf_level: self.grey_matter.bdnf_level,
                 };
                 let report = consolidation::consolidate(
-                    db, &self.encoder, &params,
+                    db, self.encoder.as_ref(), &params,
                 ).await;
                 tracing::info!(
                     "Consolidation nocturne: {} consolides, {} affaiblis, {} oublies, {} LTM elagués, {} archives",
@@ -1919,6 +1980,16 @@ impl SaphireAgent {
                 tracing::info!("Psychologie sauvegardee (EQ: {:.0}%, integration ombre: {:.0}%, volonte: {:.0}%)",
                     self.psychology.eq.overall_eq * 100.0, self.psychology.jung.integration * 100.0,
                     self.psychology.will.willpower * 100.0);
+            }
+
+            // Sauvegarder les valeurs de caractere
+            if self.values.enabled {
+                let values_json = self.values.to_json();
+                let _ = db.save_values_state(&values_json).await;
+                let top3: Vec<String> = self.values.top_values(3).iter()
+                    .map(|v| format!("{} {:.0}%", v.name, v.score * 100.0))
+                    .collect();
+                tracing::info!("Valeurs sauvegardees ({})", top3.join(", "));
             }
 
             // Sauvegarder le systeme nutritionnel

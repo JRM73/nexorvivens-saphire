@@ -52,6 +52,18 @@ impl SaphireAgent {
         // VAGUE 1 — PERCEPTION (enrichir la chimie, puis calculer l'emotion)
         // =====================================================================
 
+        // Etape 0 : colonne vertebrale — reflexes pre-cables et classification
+        // Les reflexes modifient la chimie AVANT le snapshot, pour que le pipeline
+        // traite un etat deja influence par les reactions instinctives.
+        let spine_output = self.spine.process(
+            &stimulus.text,
+            &mut self.chemistry,
+            &self.body,
+            if stimulus.text.is_empty() { "system" } else { "autonomous" },
+        );
+        // Appliquer les commandes motrices sur le corps
+        crate::spine::motor::MotorRelay::apply_commands(&spine_output.motor_commands, &mut self.body);
+
         // Etape 1 : capturer la chimie avant le traitement pour la trace cognitive
         let chemistry_before = serde_json::json!({
             "dopamine": self.chemistry.dopamine,

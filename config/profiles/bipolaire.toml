@@ -1,0 +1,71 @@
+# =============================================================================
+# Profil Bipolaire
+#
+# Fondement : oscillations entre episodes maniaques (dopamine/noradrenaline
+# elevees) et depressifs (deficit serotoninergique, cortisol eleve).
+#
+# Ce profil est unique car il active le BipolarCycleManager qui alterne
+# automatiquement entre les phases manie/euthymie/depression.
+#
+# Comportements emergents attendus :
+# - Phase maniaque : euphorie, insomnie, multiples desirs, decisions rapides
+# - Phase depressive : apathie, hypersomnie, fatigue, desirs abandonnes
+# - Phase euthymique : fonctionnement proche du neurotypique
+# =============================================================================
+
+[profile]
+name = "Trouble bipolaire"
+description = "Oscillation manie/depression avec euthymie intermediaire, cycles automatiques, transitions progressives"
+category = "humeur"
+references = [
+    "Goodwin & Jamison (2007) - Manic-Depressive Illness",
+    "Phillips & Kupfer (2013) - Bipolar disorder diagnosis",
+    "Grande et al. (2016) - Bipolar disorder",
+]
+
+# Valeurs de base (phase euthymique)
+[personality]
+baseline_dopamine = 0.50
+baseline_serotonin = 0.55
+baseline_cortisol = 0.25
+baseline_noradrenaline = 0.45
+
+[feedback]
+homeostasis_rate = 0.02
+
+# Configuration bipolaire : cycles automatiques
+[bipolar]
+cycle_length_cycles = 500
+manie_ratio = 0.30
+depression_ratio = 0.40
+
+# Surcharges en phase maniaque
+[bipolar.manie]
+baseline_dopamine = 0.80
+baseline_adrenaline = 0.50
+baseline_serotonin = 0.70
+baseline_noradrenaline = 0.65
+sleep_threshold = 0.90
+fatigue_per_cycle = 0.003
+max_active = 7
+min_dopamine_for_birth = 0.15
+
+# Surcharges en phase depressive
+[bipolar.depression]
+baseline_dopamine = 0.15
+baseline_serotonin = 0.20
+baseline_cortisol = 0.55
+baseline_endorphin = 0.10
+sleep_threshold = 0.30
+fatigue_per_cycle = 0.05
+max_active = 1
+
+[attention]
+initial_concentration = 0.45
+fatigue_per_cycle = 0.015
+
+[healing]
+melancholy_threshold_cycles = 15
+
+[sleep]
+sleep_threshold = 0.55

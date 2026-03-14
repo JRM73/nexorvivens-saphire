@@ -496,6 +496,38 @@ pub async fn api_metrics_receptors(
     }))
 }
 
+/// GET /api/metrics/spine — Metriques de la colonne vertebrale.
+pub async fn api_metrics_spine(
+    State(state): State<AppState>,
+    axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
+) -> impl IntoResponse {
+    if let Some(ref logs_db) = state.logs_db {
+        let limit: i64 = params.get("limit").and_then(|s| s.parse().ok()).unwrap_or(200);
+        match logs_db.get_spine_metrics(limit).await {
+            Ok(data) => axum::Json(serde_json::json!({"data": data})),
+            Err(e) => { tracing::error!("API metrics: {}", e); axum::Json(serde_json::json!({"error": "internal_error"})) },
+        }
+    } else {
+        axum::Json(serde_json::json!({"error": "LogsDb not available"}))
+    }
+}
+
+/// GET /api/metrics/curiosity — Metriques de curiosite.
+pub async fn api_metrics_curiosity(
+    State(state): State<AppState>,
+    axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
+) -> impl IntoResponse {
+    if let Some(ref logs_db) = state.logs_db {
+        let limit: i64 = params.get("limit").and_then(|s| s.parse().ok()).unwrap_or(200);
+        match logs_db.get_curiosity_metrics(limit).await {
+            Ok(data) => axum::Json(serde_json::json!({"data": data})),
+            Err(e) => { tracing::error!("API metrics: {}", e); axum::Json(serde_json::json!({"error": "internal_error"})) },
+        }
+    } else {
+        axum::Json(serde_json::json!({"error": "LogsDb not available"}))
+    }
+}
+
 /// GET /api/metrics/bdnf — Snapshot BDNF et neuroplasticite.
 pub async fn api_metrics_bdnf(
     State(state): State<AppState>,

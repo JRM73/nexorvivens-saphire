@@ -558,7 +558,7 @@ impl SaphireAgent {
                     bdnf_level: self.grey_matter.bdnf_level,
                 };
                 let report = consolidation::consolidate(
-                    db, &self.encoder, &params,
+                    db, self.encoder.as_ref(), &params,
                 ).await;
                 self.last_consolidation_cycle = self.cycle_count;
                 if report.consolidated > 0 || report.pruned > 0 || report.ltm_pruned > 0 {

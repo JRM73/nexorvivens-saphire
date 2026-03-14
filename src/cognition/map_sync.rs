@@ -121,11 +121,18 @@ impl MapSync {
         if !self.enabled {
             return String::new();
         }
+        let tension_desc = if self.network_tension > 0.5 { "forte" }
+            else if self.network_tension > 0.25 { "moderee" }
+            else { "faible" };
+        let focus_desc = if self.workspace_strength > 0.6 { "concentree" }
+            else if self.workspace_strength > 0.3 { "diffuse" }
+            else { "dispersee" };
         format!(
-            "MAP: tension {:.0}% | dominant={} | workspace={:.2}",
+            "Tension cerebrale {} ({:.0}%), pensee {} ({})",
+            tension_desc,
             self.network_tension * 100.0,
+            focus_desc,
             self.dominant_region,
-            self.workspace_strength,
         )
     }
 

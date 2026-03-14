@@ -223,7 +223,9 @@ pub mod passions;
 pub mod relationships;
 
 // ─── Module de metacognition ─────────────────────────────────────────────────
-// [STUBBED — premium module replaced with stubs in saphire-lite]
+// Auto-reflexion sur la qualite de la pensee, detection de repetitions et
+// biais. Metrique de Turing composite (0-100) mesurant la completude cognitive.
+// Inclut Source Monitoring et detection de biais de confirmation.
 pub mod metacognition;
 
 // ─── Modules cognitifs avances ──────────────────────────────────────────────
@@ -249,6 +251,11 @@ pub mod neuroscience;
 // ─── Modules biologiques innes ──────────────────────────────────────────────
 // Nutrition, matiere grise, champs electromagnetiques.
 pub mod biology;
+
+// ─── Colonne vertebrale ───────────────────────────────────────────────────────
+// Reflexes pre-cables, classification des signaux par urgence, routage vers
+// le pipeline, relais moteur vers le corps virtuel et les effecteurs.
+pub mod spine;
 
 // ─── Module API ─────────────────────────────────────────────────────────────
 // Handlers HTTP/WebSocket, routeur axum, etat partage (AppState).

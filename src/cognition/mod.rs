@@ -13,3 +13,5 @@ pub mod mental_imagery;
 pub mod sentiments;
 pub mod state_clustering;
 pub mod map_sync;
+pub mod curiosity;
+pub mod drift_monitor;

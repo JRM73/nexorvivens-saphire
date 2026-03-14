@@ -77,6 +77,9 @@ impl SaphireConfig {
         if let Ok(model) = std::env::var("SAPHIRE_LLM_MODEL") {
             self.llm.model = model;
         }
+        if let Ok(url) = std::env::var("SAPHIRE_EMBED_URL") {
+            self.llm.embed_base_url = Some(url);
+        }
 
         // Serveur Web
         if let Ok(host) = std::env::var("SAPHIRE_WEB_HOST") {

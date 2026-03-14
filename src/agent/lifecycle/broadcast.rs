@@ -134,6 +134,9 @@ impl SaphireAgent {
                     "neuroplasticity": self.grey_matter.neuroplasticity,
                     "synaptic_density": self.grey_matter.synaptic_density,
                 },
+                "spine": self.spine.to_snapshot_json(),
+                "curiosity": self.curiosity.to_snapshot_json(),
+                "drift_monitor": self.drift_monitor.to_snapshot_json(),
             });
 
             let _ = tx.send(state.to_string());
@@ -345,6 +348,7 @@ impl SaphireAgent {
 
     /// Construit le contexte vital pour les prompts LLM.
     /// Combine spark.describe() + intuition.describe() + premonition.describe().
+    #[allow(dead_code)]
     pub(super) fn build_vital_context(&self) -> String {
         if !self.config.vital_spark.enabled {
             return String::new();
@@ -452,6 +456,7 @@ impl SaphireAgent {
     }
 
     /// Construit le contexte sensoriel pour les prompts LLM.
+    #[allow(dead_code)]
     pub(super) fn build_senses_context(&self) -> String {
         if !self.config.senses.enabled {
             return String::new();
@@ -460,6 +465,7 @@ impl SaphireAgent {
     }
 
     /// Construit le contexte des orchestrateurs pour les prompts LLM.
+    #[allow(dead_code)]
     pub(super) fn build_orchestrators_context(&self) -> String {
         let mut parts = Vec::new();
 
@@ -541,6 +547,7 @@ impl SaphireAgent {
     }
 
     /// Construit le contexte psychologique pour les prompts LLM.
+    #[allow(dead_code)]
     pub(super) fn build_psychology_context(&self) -> String {
         if !self.psychology.enabled {
             return String::new();

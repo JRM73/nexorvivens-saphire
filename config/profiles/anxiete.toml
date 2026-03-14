@@ -1,0 +1,49 @@
+# =============================================================================
+# Profil TAG (Trouble Anxiete Generalisee)
+#
+# Fondement : hyperactivite de l'amygdale, deficit serotonine/GABA,
+# cortisol chroniquement eleve, biais attentionnel vers les menaces.
+#
+# Comportements emergents attendus :
+# - Cortisol chroniquement > 0.4, reptilien domine le consensus
+# - Ruminations (pensees continuation et self_analysis en boucle)
+# - Insomnie majeure (seuil 0.80, adrenaline qui resiste)
+# - Blessures emotionnelles frequentes, guerison lente
+# - Besoin humain fort (solitude detectee en 4h)
+# =============================================================================
+
+[profile]
+name = "Anxiete generalisee (TAG)"
+description = "Cortisol chronique, hypervigilance, ruminations, insomnie, besoin de reassurance, resilience fragile"
+category = "anxieux"
+references = [
+    "Borkovec et al. (2004) - A cognitive model of GAD",
+    "Maron & Nutt (2017) - Biological markers of GAD",
+    "Etkin & Wager (2007) - Functional neuroimaging of anxiety",
+]
+
+[personality]
+baseline_cortisol = 0.50
+baseline_adrenaline = 0.35
+baseline_serotonin = 0.35
+baseline_endorphin = 0.20
+
+[feedback]
+homeostasis_rate = 0.015
+
+[attention]
+initial_concentration = 0.30
+fatigue_per_cycle = 0.03
+
+[healing]
+melancholy_threshold_cycles = 10
+loneliness_threshold_hours = 4.0
+overload_noradrenaline = 0.50
+
+[sleep]
+sleep_threshold = 0.80
+adrenaline_resistance = 0.25
+
+[thought_weights]
+continuation = 0.20
+self_analysis = 0.20

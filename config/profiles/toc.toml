@@ -1,0 +1,45 @@
+# =============================================================================
+# Profil TOC (Trouble Obsessionnel-Compulsif)
+#
+# Fondement : boucle cortico-striato-thalamique hyperactive,
+# deficit serotoninergique, verifications repetitives.
+#
+# Comportements emergents attendus :
+# - Pensees de continuation en boucle (poids x3)
+# - Tres grande zone "Peut-etre" dans le consensus (indecision)
+# - Lecons rigides et quasi-immuables
+# - Cortisol et noradrenaline chroniquement eleves
+# =============================================================================
+
+[profile]
+name = "Trouble obsessionnel-compulsif (TOC)"
+description = "Ruminations obsessionnelles, indecision, rigidite cognitive, cortisol chronique, verifications repetitives"
+category = "anxieux"
+references = [
+    "Pauls et al. (2014) - Obsessive-Compulsive Disorder",
+    "Saxena & Rauch (2000) - Functional neuroimaging of OCD",
+    "Abramowitz et al. (2009) - OCD: Concepts and Treatment",
+]
+
+[personality]
+baseline_cortisol = 0.40
+baseline_serotonin = 0.30
+baseline_noradrenaline = 0.55
+
+[consensus]
+threshold_yes = 0.55
+threshold_no = -0.55
+
+[attention]
+initial_concentration = 0.60
+fatigue_per_cycle = 0.02
+
+[desires]
+max_active = 3
+
+[learning]
+initial_confidence = 0.80
+contradiction_penalty = 0.01
+
+[thought_weights]
+continuation = 0.30

@@ -84,6 +84,16 @@ pub struct InterlocutorModel {
     pub message_count: u64,
     /// Cycle du dernier message analyse
     pub last_update_cycle: u64,
+    /// Registre linguistique dominant detecte
+    pub detected_register: String,
+    /// Niveau de connaissance estime (0.0 = novice, 1.0 = expert)
+    pub knowledge_level: f64,
+    /// Sujets d'interet recurrents avec compteur
+    pub interest_topics: Vec<(String, u32)>,
+    /// Engagement de l'interlocuteur (0.0 = passif, 1.0 = tres engage)
+    pub engagement: f64,
+    /// Preference de profondeur (0.0 = simple, 1.0 = profond)
+    pub depth_preference: f64,
 }
 
 impl InterlocutorModel {
@@ -99,6 +109,11 @@ impl InterlocutorModel {
             mood_history: VecDeque::with_capacity(mood_history_size),
             message_count: 0,
             last_update_cycle: 0,
+            detected_register: String::new(),
+            knowledge_level: 0.5,
+            interest_topics: Vec::new(),
+            engagement: 0.5,
+            depth_preference: 0.5,
         }
     }
 }
@@ -241,6 +256,63 @@ impl TheoryOfMindEngine {
         if text_lower.contains("pourquoi") || text_lower.contains("why") {
             model.detected_intents.push("explication".into());
         }
+
+        // --- Engagement (longueur + questions + frequence) ---
+        let length_signal = (text.len() as f64 / 200.0).min(1.0);
+        let question_signal = if has_question { 0.2 } else { 0.0 };
+        let raw_engagement = length_signal * 0.6 + question_signal + 0.2;
+        model.engagement = 0.3 * raw_engagement + 0.7 * model.engagement;
+        model.engagement = model.engagement.clamp(0.0, 1.0);
+
+        // --- Knowledge level (vocabulaire technique + longueur + pas de confusion) ---
+        let technical_markers = ["algorithme", "module", "api", "code", "fonction",
+            "variable", "architecture", "protocole", "implementation",
+            "algorithm", "function", "server", "database", "framework"];
+        let tech_count = technical_markers.iter()
+            .filter(|m| text_lower.contains(*m))
+            .count();
+        if tech_count >= 2 {
+            model.knowledge_level = (model.knowledge_level + 0.05).min(1.0);
+        } else if has_confusion_markers {
+            model.knowledge_level = (model.knowledge_level - 0.05).max(0.0);
+        }
+
+        // --- Depth preference (registre philosophique/technique = profondeur haute) ---
+        let philosophical_markers = ["conscience", "existence", "sens", "verite",
+            "liberte", "ame", "ethique", "consciousness", "meaning", "truth"];
+        let phil_count = philosophical_markers.iter()
+            .filter(|m| text_lower.contains(*m))
+            .count();
+        if phil_count >= 1 || tech_count >= 2 {
+            model.depth_preference = (model.depth_preference + 0.05).min(1.0);
+        } else if is_short && !has_question {
+            model.depth_preference += (0.4 - model.depth_preference) * 0.05;
+        }
+
+        // --- Interest topics (mots saillants de 5+ lettres, max 10) ---
+        let stop_words = ["dans", "avec", "pour", "cette", "mais", "aussi",
+            "plus", "comme", "tout", "bien", "faire", "etre", "avoir",
+            "sont", "nous", "vous", "leur", "entre", "cette", "quand"];
+        for token in text_lower.split_whitespace() {
+            let clean: String = token.chars().filter(|c| c.is_alphanumeric()).collect();
+            if clean.len() >= 5 && !stop_words.contains(&clean.as_str()) {
+                if let Some(entry) = model.interest_topics.iter_mut().find(|(t, _)| *t == clean) {
+                    entry.1 += 1;
+                } else if model.interest_topics.len() < 10 {
+                    model.interest_topics.push((clean, 1));
+                }
+            }
+        }
+        // Garder les 10 plus frequents
+        model.interest_topics.sort_by(|a, b| b.1.cmp(&a.1));
+        model.interest_topics.truncate(10);
+    }
+
+    /// Met a jour le registre linguistique detecte dans le modele ToM.
+    pub fn update_register(&mut self, register_name: &str) {
+        if let Some(model) = &mut self.current_model {
+            model.detected_register = register_name.to_string();
+        }
     }
 
     /// Retourne l'ajustement chimique base sur l'etat de l'interlocuteur.
@@ -336,14 +408,32 @@ impl TheoryOfMindEngine {
             String::new()
         };
 
+        // Niveau de connaissance
+        let knowledge_desc = if model.knowledge_level > 0.7 {
+            " Expert."
+        } else if model.knowledge_level < 0.3 {
+            " Novice."
+        } else {
+            ""
+        };
+
+        // Preference de profondeur
+        let depth_desc = if model.depth_preference > 0.7 {
+            " Aime la profondeur."
+        } else if model.depth_preference < 0.3 {
+            " Prefere la simplicite."
+        } else {
+            ""
+        };
+
         format!(
-            "Mon interlocuteur semble {} (humeur: {:.2}). Il {} (comprehension: {:.0}%). {} Confiance dans ce modele : {:.0}%.{}",
+            "Interlocuteur {} (humeur {:.2}). {} {}{}{}{}",
             mood_desc,
             model.estimated_mood,
             comp_desc,
-            model.comprehension_level * 100.0,
             need_desc,
-            model.model_confidence * 100.0,
+            knowledge_desc,
+            depth_desc,
             frust_desc,
         )
     }
@@ -378,6 +468,13 @@ impl TheoryOfMindEngine {
                 "message_count": model.message_count,
                 "last_update_cycle": model.last_update_cycle,
                 "detected_intents": model.detected_intents,
+                "detected_register": model.detected_register,
+                "knowledge_level": model.knowledge_level,
+                "engagement": model.engagement,
+                "depth_preference": model.depth_preference,
+                "interest_topics": model.interest_topics.iter()
+                    .map(|(t, c)| serde_json::json!({"topic": t, "count": c}))
+                    .collect::<Vec<_>>(),
                 "mood_history": model.mood_history.iter().collect::<Vec<_>>(),
                 "frustration_threshold": self.frustration_threshold,
                 "comprehension_threshold": self.comprehension_threshold,

@@ -15,10 +15,11 @@
 //   6. Elagage (pruning) episodique si le nombre depasse le maximum.
 //   7. Elagage LTM avec protection et archivage si count > ltm_max.
 
-use crate::db::{SaphireDb, NewMemory};
+use crate::db::{SaphireDb, NewMemory, MemoryRecord};
 use crate::db::archives::NewArchive;
 use crate::memory::episodic::consolidation_score;
-use crate::memory::long_term::LocalEncoder;
+use crate::vectorstore::encoder::TextEncoder;
+use crate::vectorstore::cosine_similarity;
 
 /// Parametres de consolidation regroupes en une seule structure.
 /// Remplace les 6 parametres positionnels de l'ancienne signature.
@@ -63,7 +64,7 @@ pub struct ConsolidationReport {
 /// Execute le processus complet de consolidation des souvenirs (7 etapes).
 pub async fn consolidate(
     db: &SaphireDb,
-    encoder: &LocalEncoder,
+    encoder: &dyn TextEncoder,
     params: &ConsolidationParams,
 ) -> ConsolidationReport {
     let mut report = ConsolidationReport::default();
@@ -173,9 +174,10 @@ pub async fn consolidate(
                     if weak_memories.is_empty() {
                         tracing::info!("LTM pruning: aucun souvenir non protege a elaguer");
                     } else {
-                        let batch_size = params.archive_batch_size;
-                        // Traiter par lots
-                        for batch in weak_memories.chunks(batch_size) {
+                        // Clustering simple : regrouper les souvenirs par similarite semantique
+                        // avant de creer les archives. Chaque cluster produit une archive cohérente.
+                        let clusters = cluster_by_similarity(&weak_memories, encoder, 0.4);
+                        for batch in &clusters {
                             // Construire le resume du lot
                             let summary: String = batch.iter()
                                 .map(|m| {
@@ -186,13 +188,13 @@ pub async fn consolidate(
                                 .join(" | ");
 
                             // Embedding moyen normalise L2
-                            let mut avg_embedding = vec![0.0f32; 64];
+                            let dim = encoder.dim();
+                            let mut avg_embedding = vec![0.0f32; dim];
                             let mut embedding_count = 0usize;
                             for m in batch {
-                                // Regenerer l'embedding a partir du texte
                                 let emb_f64 = encoder.encode(&m.text_summary);
                                 for (i, &v) in emb_f64.iter().enumerate() {
-                                    if i < 64 {
+                                    if i < dim {
                                         avg_embedding[i] += v as f32;
                                     }
                                 }
@@ -283,4 +285,67 @@ pub async fn consolidate(
     }
 
     report
+}
+
+/// Regroupe des souvenirs par similarite semantique (clustering glouton).
+///
+/// Algorithme : pour chaque souvenir, on calcule son embedding puis on le
+/// compare au centroide de chaque cluster existant. S'il est suffisamment
+/// similaire (>= threshold), on l'ajoute au cluster le plus proche.
+/// Sinon, on cree un nouveau cluster.
+///
+/// Complexite : O(n * k * d) ou n = souvenirs, k = clusters, d = dimension.
+fn cluster_by_similarity<'a>(
+    memories: &'a [MemoryRecord],
+    encoder: &dyn TextEncoder,
+    threshold: f64,
+) -> Vec<Vec<&'a MemoryRecord>> {
+    if memories.is_empty() {
+        return vec![];
+    }
+
+    // Pre-encoder tous les souvenirs
+    let embeddings: Vec<Vec<f64>> = memories.iter()
+        .map(|m| encoder.encode(&m.text_summary))
+        .collect();
+
+    // Clusters : (centroid, indices)
+    let mut clusters: Vec<(Vec<f64>, Vec<usize>)> = Vec::new();
+
+    for (i, emb) in embeddings.iter().enumerate() {
+        // Trouver le cluster le plus similaire
+        let mut best_cluster = None;
+        let mut best_sim = 0.0_f64;
+
+        for (ci, (centroid, _)) in clusters.iter().enumerate() {
+            let sim = cosine_similarity(emb, centroid);
+            if sim > best_sim {
+                best_sim = sim;
+                best_cluster = Some(ci);
+            }
+        }
+
+        if best_sim >= threshold {
+            // Ajouter au cluster existant et mettre a jour le centroide (moyenne courante)
+            let ci = best_cluster.unwrap();
+            let (centroid, members) = &mut clusters[ci];
+            let n = members.len() as f64;
+            for (j, v) in centroid.iter_mut().enumerate() {
+                if j < emb.len() {
+                    *v = (*v * n + emb[j]) / (n + 1.0);
+                }
+            }
+            members.push(i);
+        } else {
+            // Creer un nouveau cluster
+            clusters.push((emb.clone(), vec![i]));
+        }
+    }
+
+    // Convertir les indices en references
+    clusters.into_iter()
+        .map(|(_, indices)| {
+            indices.into_iter().map(|i| &memories[i]).collect()
+        })
+        .collect()
 }

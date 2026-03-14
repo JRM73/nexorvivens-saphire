@@ -1,0 +1,54 @@
+# =============================================================================
+# Profil TDAH (type combine) — Deficit attentionnel avec hyperactivite
+#
+# Fondement neurobiologique : deficit dopaminergique et noradrenergique,
+# dysregulation du systeme de recompense, variabilite attentionnelle.
+#
+# Comportements emergents attendus :
+# - Alternance rapide entre fatigue attentionnelle et hyperfocus
+# - Derive frequente vers le mode "attention flottante" (daydream)
+# - Difficulte a s'endormir malgre la fatigue
+# - Forte reactivite emotionnelle (chimie oscillante)
+# - Multiples desirs simultanes, difficulte a prioriser
+# =============================================================================
+
+[profile]
+name = "TDAH (type combine)"
+description = "Deficit dopaminergique, fatigue attentionnelle rapide, hyperfocus possible, dysregulation emotionnelle, sommeil perturbe"
+category = "neurodeveloppement"
+references = [
+    "Barkley (2015) - Attention-Deficit Hyperactivity Disorder",
+    "Volkow et al. (2009) - Dopamine in ADHD",
+    "Kooij et al. (2019) - European consensus on adult ADHD",
+]
+
+[personality]
+baseline_dopamine = 0.35
+baseline_noradrenaline = 0.55
+baseline_cortisol = 0.30
+baseline_serotonin = 0.45
+
+[feedback]
+homeostasis_rate = 0.06
+
+[attention]
+initial_concentration = 0.25
+fatigue_per_cycle = 0.04
+recovery_per_cycle = 0.06
+
+[desires]
+max_active = 7
+min_dopamine_for_birth = 0.20
+
+[learning]
+cycle_interval = 30
+contradiction_penalty = 0.15
+
+[healing]
+melancholy_threshold_cycles = 20
+overload_noradrenaline = 0.55
+
+[sleep]
+sleep_threshold = 0.75
+time_factor_divisor = 600
+adrenaline_resistance = 0.20

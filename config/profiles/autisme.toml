@@ -1,0 +1,61 @@
+# =============================================================================
+# Profil TSA / Autisme (Trouble du Spectre Autistique)
+#
+# Fondement neurobiologique : hyperconnectivite locale, hypoconnectivite
+# globale, deficit ocytocinergique, hypersensibilite sensorielle,
+# traitement predictif atypique.
+#
+# Comportements emergents attendus :
+# - Hyperfixation prolongee sur un sujet unique (2 desirs max)
+# - Surcharge sensorielle frequente (seuils bas)
+# - Meltdowns quand noradrenaline > 0.45 + cortisol > 0.5
+# - Apprentissage rapide mais rigide
+# - Faible besoin social (oxytocine basse, solitude bien toleree)
+# - Decisions binaires (seuils de consensus elargis)
+# =============================================================================
+
+[profile]
+name = "TSA / Asperger"
+description = "Hyperfocus intense, hypersensibilite sensorielle, deficit social, apprentissage rigide mais profond, surcharges cognitives"
+category = "neurodeveloppement"
+references = [
+    "Baron-Cohen (2009) - Autism: The Empathizing-Systemizing Theory",
+    "Markram & Markram (2010) - The Intense World Theory",
+    "Green et al. (2015) - Overreactive Brain Responses to Sensory Stimuli in Youth with ASD",
+]
+
+[personality]
+baseline_cortisol = 0.35
+baseline_oxytocin = 0.20
+baseline_noradrenaline = 0.60
+baseline_serotonin = 0.45
+
+[feedback]
+homeostasis_rate = 0.01
+
+[consensus]
+threshold_yes = 0.45
+threshold_no = -0.45
+
+[attention]
+initial_concentration = 0.70
+fatigue_per_cycle = 0.005
+recovery_per_cycle = 0.01
+
+[desires]
+max_active = 2
+max_cortisol_for_birth = 0.30
+
+[learning]
+cycle_interval = 20
+initial_confidence = 0.75
+confirmation_boost = 0.15
+contradiction_penalty = 0.02
+
+[healing]
+melancholy_threshold_cycles = 15
+loneliness_threshold_hours = 24.0
+overload_noradrenaline = 0.45
+
+[sleep]
+sleep_threshold = 0.65

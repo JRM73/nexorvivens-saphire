@@ -10,6 +10,9 @@ use saphire::config::SaphireConfig;
 use saphire::db::SaphireDb;
 use saphire::llm;
 use saphire::plugins::PluginManager;
+use saphire::plugins::web_ui::WebUiPlugin;
+use saphire::plugins::micro_nn::MicroNNPlugin;
+use saphire::plugins::vector_memory::VectorMemoryPlugin;
 use saphire::agent::SaphireAgent;
 use saphire::agent::lifecycle::UserMessage;
 use saphire::logging::SaphireLogger;
@@ -58,7 +61,13 @@ async fn main() {
     println!("  🧠 Modèle LLM : {}", config.llm.model);
     println!("  🌐 Interface web : {}:{}", config.plugins.web_ui.host, config.plugins.web_ui.port);
 
-    let plugins = PluginManager::new();
+    let mut plugins = PluginManager::new();
+    plugins.register(Box::new(WebUiPlugin::new()));
+    plugins.register(Box::new(MicroNNPlugin::new(config.plugins.micro_nn.learning_rate)));
+    plugins.register(Box::new(VectorMemoryPlugin::new(
+        config.plugins.vector_memory.embedding_dimensions,
+        config.plugins.vector_memory.max_memories,
+    )));
 
     // Mode demonstration : backend LLM fictif, sans DB
     if demo_mode {
@@ -263,11 +272,22 @@ async fn main() {
         // Traiter les messages utilisateur en attente
         while let Ok(msg) = user_rx.try_recv() {
             let mut agent = agent.lock().await;
-            let response = agent.handle_human_message(&msg.text, &msg.username).await;
+            let chat_resp = agent.handle_human_message(&msg.text, &msg.username).await;
             let _ = ws_tx.send(serde_json::json!({
                 "type": "chat_response",
-                "content": response,
+                "content": chat_resp.text,
+                "markers": {
+                    "emotion": chat_resp.emotion,
+                    "consciousness": chat_resp.consciousness,
+                    "reflexes": chat_resp.reflexes,
+                    "register": chat_resp.register,
+                    "involves_memory": chat_resp.involves_memory,
+                    "confidence": chat_resp.confidence,
+                }
             }).to_string());
+
+            // Vocaliser la réponse via Sensoria (TTS)
+            speak_via_sensoria(chat_resp.text.clone(), chat_resp.emotion.clone());
         }
 
         // Pensee autonome ou tick de sommeil
@@ -298,11 +318,22 @@ async fn main() {
         tokio::select! {
             Some(msg) = user_rx.recv() => {
                 let mut agent = agent.lock().await;
-                let response = agent.handle_human_message(&msg.text, &msg.username).await;
+                let chat_resp = agent.handle_human_message(&msg.text, &msg.username).await;
                 let _ = ws_tx.send(serde_json::json!({
                     "type": "chat_response",
-                    "content": response,
+                    "content": chat_resp.text,
+                    "markers": {
+                        "emotion": chat_resp.emotion,
+                        "consciousness": chat_resp.consciousness,
+                        "reflexes": chat_resp.reflexes,
+                        "register": chat_resp.register,
+                        "involves_memory": chat_resp.involves_memory,
+                        "confidence": chat_resp.confidence,
+                    }
                 }).to_string());
+
+                // Vocaliser la réponse via Sensoria (TTS)
+                speak_via_sensoria(chat_resp.text.clone(), chat_resp.emotion.clone());
             },
             Some(ctrl) = ctrl_rx.recv() => {
                 let mut agent = agent.lock().await;
@@ -315,6 +346,35 @@ async fn main() {
     // Arret propre
     let mut agent = agent.lock().await;
     agent.shutdown().await;
+}
+
+/// Envoie le texte a Sensoria pour synthese vocale (non-bloquant).
+fn speak_via_sensoria(text: String, emotion: String) {
+    tokio::spawn(async move {
+        let result = tokio::task::spawn_blocking(move || {
+            ureq::post("http://192.168.1.129:9090/api/speak")
+                .set("Content-Type", "application/json")
+                .send_string(&serde_json::json!({
+                    "text": text,
+                    "emotion": emotion,
+                }).to_string())
+        }).await;
+
+        match result {
+            Ok(Ok(resp)) if resp.status() == 200 => {
+                tracing::debug!("[SENSORIA] TTS envoyé avec succès");
+            }
+            Ok(Ok(resp)) => {
+                tracing::warn!("[SENSORIA] TTS réponse {}", resp.status());
+            }
+            Ok(Err(e)) => {
+                tracing::debug!("[SENSORIA] TTS injoignable : {}", e);
+            }
+            Err(e) => {
+                tracing::debug!("[SENSORIA] TTS erreur interne : {}", e);
+            }
+        }
+    });
 }
 
 /// Tronque une chaine de caracteres a `max` caracteres.

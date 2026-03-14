@@ -338,6 +338,80 @@ impl SaphireDb {
         Ok(row.get(0))
     }
 
+    /// Version de store_episodic avec embedding semantique.
+    /// L'embedding est stocke dans la meme transaction pour la recherche par similarite.
+    pub async fn store_episodic_with_embedding(
+        &self,
+        content: &str,
+        source_type: &str,
+        stimulus_json: &serde_json::Value,
+        decision: i16,
+        chemistry_json: &serde_json::Value,
+        emotion: &str,
+        satisfaction: f32,
+        emotional_intensity: f32,
+        conversation_id: Option<&str>,
+        chemical_signature: Option<&crate::neurochemistry::ChemicalSignature>,
+        embedding: &[f32],
+    ) -> Result<i64, DbError> {
+        let client = self.pool.get().await?;
+        let sig_json: Option<serde_json::Value> = chemical_signature
+            .map(|s| serde_json::to_value(s).unwrap_or_default());
+        let embedding_vec = pgvector::Vector::from(embedding.to_vec());
+        let row = client.query_one(
+            "INSERT INTO episodic_memories
+             (content, source_type, stimulus_json, decision, chemistry_json,
+              emotion, satisfaction, emotional_intensity, strength, conversation_id,
+              chemical_signature, embedding)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 1.0, $9, $10, $11)
+             RETURNING id",
+            &[&content, &source_type, stimulus_json, &decision, chemistry_json,
+              &emotion, &satisfaction, &emotional_intensity, &conversation_id,
+              &sig_json, &embedding_vec],
+        ).await?;
+        Ok(row.get(0))
+    }
+
+    /// Stocke l'embedding semantique d'un souvenir episodique.
+    /// Appele apres store_episodic() une fois l'embedding calcule.
+    pub async fn update_episodic_embedding(&self, id: i64, embedding: &[f32]) -> Result<(), DbError> {
+        let client = self.pool.get().await?;
+        let embedding_vec = pgvector::Vector::from(embedding.to_vec());
+        client.execute(
+            "UPDATE episodic_memories SET embedding = $1 WHERE id = $2",
+            &[&embedding_vec, &id],
+        ).await?;
+        Ok(())
+    }
+
+    /// Recherche les souvenirs episodiques par similarite semantique.
+    /// Combine la similarite vectorielle avec la recence pour un rappel
+    /// plus pertinent (score = similarity * 0.7 + recency * 0.3).
+    pub async fn search_similar_episodic(
+        &self,
+        embedding: &[f32],
+        limit: i64,
+        threshold: f64,
+    ) -> Result<Vec<crate::memory::EpisodicRecord>, DbError> {
+        let client = self.pool.get().await?;
+        let embedding_vec = pgvector::Vector::from(embedding.to_vec());
+        let threshold_f32 = threshold as f32;
+        let rows = client.query(
+            "SELECT id, content, source_type, stimulus_json, decision, chemistry_json,
+                    emotion, satisfaction, emotional_intensity, strength, access_count,
+                    last_accessed_at, consolidated, conversation_id, created_at,
+                    chemical_signature
+             FROM episodic_memories
+             WHERE strength > 0.1
+               AND embedding IS NOT NULL
+               AND 1 - (embedding <=> $1) > $3
+             ORDER BY embedding <=> $1
+             LIMIT $2",
+            &[&embedding_vec, &limit, &threshold_f32],
+        ).await?;
+        Ok(rows.iter().map(Self::row_to_episodic).collect())
+    }
+
     /// Recupere les N souvenirs episodiques les plus recents (force > 0.1).
     /// Les souvenirs trop faibles (presque oublies) sont exclus.
     ///

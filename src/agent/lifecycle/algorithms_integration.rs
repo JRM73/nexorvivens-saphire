@@ -1,33 +1,239 @@
-// algorithms_integration.rs — Stub for the lite edition
-// Full algorithm integration (LLM-driven algorithms, body context builder) not ported.
+// =============================================================================
+// lifecycle/algorithms_integration.rs — Orchestrateur d'algorithmes
+// =============================================================================
+
+use crate::logging::{LogLevel, LogCategory};
 
 use super::SaphireAgent;
 
 impl SaphireAgent {
-    /// Builds a body context string for the LLM substrate prompt.
-    pub(crate) fn build_body_context(&self) -> String {
+    /// Execute les analyses algorithmiques automatiques selon les intervalles configures.
+    /// Chaque analyse tourne a son propre rythme : lissage toutes les 20 cycles,
+    /// clustering toutes les 100 cycles, etc.
+    pub(super) async fn run_auto_algorithms(&mut self) {
+        use crate::algorithms::orchestrator::AlgorithmInput;
+
+        let cycle = self.cycle_count;
+
+        // Toutes les 20 cycles : lissage exponentiel sur la chimie
+        if self.orchestrator.smoothing_interval > 0
+            && cycle.is_multiple_of(self.orchestrator.smoothing_interval)
+            && self.chemistry_history.len() >= 10
+        {
+            // Utiliser la dopamine comme serie representative
+            let series: Vec<f64> = self.chemistry_history.iter().map(|h| h[0]).collect();
+            let input = AlgorithmInput {
+                time_series: Some(series),
+                params: [("alpha".into(), 0.3)].into(),
+                ..Default::default()
+            };
+            if let Err(e) = self.orchestrator.execute_auto("exponential_smoothing", input) {
+                tracing::debug!("Algo auto exponential_smoothing: {}", e);
+            }
+        }
+
+        // Toutes les 50 cycles : regles d'association pensee → emotion
+        if self.orchestrator.association_interval > 0
+            && cycle.is_multiple_of(self.orchestrator.association_interval)
+        {
+            if let Some(ref db) = self.db {
+                if let Ok(recent) = db.recent_episodic(200).await {
+                    if recent.len() >= 20 {
+                        let texts: Vec<String> = recent.iter()
+                            .map(|r| format!("{}>{}", r.source_type, r.emotion))
+                            .collect();
+                        let input = AlgorithmInput {
+                            texts: Some(texts),
+                            ..Default::default()
+                        };
+                        if let Err(e) = self.orchestrator.execute_auto("association_rules", input) {
+                            tracing::debug!("Algo auto association_rules: {}", e);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Toutes les 100 cycles : clustering des souvenirs + detection d'anomalies
+        if self.orchestrator.clustering_interval > 0
+            && cycle.is_multiple_of(self.orchestrator.clustering_interval)
+        {
+            // K-Means sur l'historique chimique (7 dimensions = 7 molecules)
+            if self.chemistry_history.len() >= 30 {
+                let vectors: Vec<Vec<f64>> = self.chemistry_history.iter()
+                    .map(|h| h.to_vec())
+                    .collect();
+                let input = AlgorithmInput {
+                    vectors: Some(vectors),
+                    params: [("k".into(), 4.0)].into(),
+                    ..Default::default()
+                };
+                if let Err(e) = self.orchestrator.execute_auto("kmeans", input) {
+                    tracing::debug!("Algo auto kmeans: {}", e);
+                }
+            }
+
+            // Detection d'anomalies sur l'historique chimique
+            if self.orchestrator.anomaly_interval > 0
+                && self.chemistry_history.len() >= 20
+            {
+                let vectors: Vec<Vec<f64>> = self.chemistry_history.iter()
+                    .map(|h| h.to_vec())
+                    .collect();
+                let input = AlgorithmInput {
+                    vectors: Some(vectors),
+                    params: [("threshold".into(), 2.5)].into(),
+                    ..Default::default()
+                };
+                match self.orchestrator.execute_auto("isolation_forest", input) {
+                    Ok(ref output) if output.has_critical() => {
+                        self.log(LogLevel::Warn, LogCategory::Thought,
+                            format!("Anomalie chimique detectee par algorithme: {}",
+                                output.natural_language_result.chars().take(120).collect::<String>()),
+                            serde_json::json!({"algorithm": "isolation_forest"}),
+                        );
+                    }
+                    Err(e) => {
+                        tracing::debug!("Algo auto isolation_forest: {}", e);
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        // Toutes les 200 cycles : detection de points de rupture
+        if self.orchestrator.changepoint_interval > 0
+            && cycle.is_multiple_of(self.orchestrator.changepoint_interval)
+            && self.chemistry_history.len() >= 20
+        {
+            let series: Vec<f64> = self.chemistry_history.iter().map(|h| h[0]).collect();
+            let input = AlgorithmInput {
+                time_series: Some(series),
+                ..Default::default()
+            };
+            if let Err(e) = self.orchestrator.execute_auto("changepoint_detection", input) {
+                tracing::debug!("Algo auto changepoint_detection: {}", e);
+            }
+        }
+    }
+
+    /// Traite une demande d'algorithme du LLM (mode demande).
+    pub(super) async fn handle_algorithm_request(
+        &mut self,
+        request: &crate::algorithms::orchestrator::AlgorithmRequest,
+    ) {
+        use crate::algorithms::orchestrator::AlgorithmInput;
+
+        // Preparer les donnees selon l'algorithme demande
+        let input = match request.algorithm_id.as_str() {
+            "kmeans" => {
+                if self.chemistry_history.len() >= 20 {
+                    Some(AlgorithmInput {
+                        vectors: Some(self.chemistry_history.iter().map(|h| h.to_vec()).collect()),
+                        params: [("k".into(), 5.0)].into(),
+                        ..Default::default()
+                    })
+                } else { None }
+            }
+            "isolation_forest" => {
+                if self.chemistry_history.len() >= 10 {
+                    Some(AlgorithmInput {
+                        vectors: Some(self.chemistry_history.iter().map(|h| h.to_vec()).collect()),
+                        ..Default::default()
+                    })
+                } else { None }
+            }
+            "exponential_smoothing" => {
+                if self.chemistry_history.len() >= 5 {
+                    Some(AlgorithmInput {
+                        time_series: Some(self.chemistry_history.iter().map(|h| h[0]).collect()),
+                        params: [("alpha".into(), 0.3)].into(),
+                        ..Default::default()
+                    })
+                } else { None }
+            }
+            "pca" => {
+                if self.chemistry_history.len() >= 20 {
+                    Some(AlgorithmInput {
+                        vectors: Some(self.chemistry_history.iter().map(|h| h.to_vec()).collect()),
+                        params: [("n_components".into(), 3.0)].into(),
+                        ..Default::default()
+                    })
+                } else { None }
+            }
+            "changepoint_detection" => {
+                if self.chemistry_history.len() >= 15 {
+                    Some(AlgorithmInput {
+                        time_series: Some(self.chemistry_history.iter().map(|h| h[0]).collect()),
+                        ..Default::default()
+                    })
+                } else { None }
+            }
+            "association_rules" => {
+                if let Some(ref db) = self.db {
+                    if let Ok(recent) = db.recent_episodic(200).await {
+                        let texts: Vec<String> = recent.iter()
+                            .map(|r| format!("{}>{}", r.source_type, r.emotion))
+                            .collect();
+                        if texts.len() >= 10 {
+                            Some(AlgorithmInput { texts: Some(texts), ..Default::default() })
+                        } else { None }
+                    } else { None }
+                } else { None }
+            }
+            _ => None, // Algorithme non gere en mode demande
+        };
+
+        if let Some(input) = input {
+            match self.orchestrator.execute(&request.algorithm_id, input) {
+                Ok(output) => {
+                    tracing::info!("Algorithme demande par LLM: {} — {}ms",
+                        request.algorithm_id, output.execution_ms);
+                    self.log(LogLevel::Info, LogCategory::Thought,
+                        format!("Algorithme utilise: {} — {}",
+                            request.algorithm_id,
+                            output.natural_language_result.chars().take(100).collect::<String>()),
+                        serde_json::json!({
+                            "algorithm": request.algorithm_id,
+                            "execution_ms": output.execution_ms,
+                            "metrics": output.metrics,
+                        }),
+                    );
+                    self.orchestrator.record_satisfaction(
+                        &request.algorithm_id, "llm_demand", 0.7
+                    );
+                }
+                Err(e) => {
+                    tracing::warn!("Erreur algorithme {} demande par LLM: {}",
+                        request.algorithm_id, e);
+                }
+            }
+        }
+    }
+
+    /// Construit le contexte corps pour les prompts LLM.
+    #[allow(dead_code)]
+    pub(super) fn build_body_context(&self) -> String {
         if !self.config.body.enabled {
             return String::new();
         }
-        let bpm = self.body.heart.bpm();
-        let energy = self.body.soma.energy;
-        let vitality = self.body.soma.vitality;
+        let status = self.body.status();
+        let heart_desc = if status.heart.is_racing {
+            "ton coeur bat vite"
+        } else if status.heart.is_calm {
+            "ton coeur est calme"
+        } else {
+            "ton coeur bat regulierement"
+        };
         format!(
-            "[CORPS] BPM: {:.0}, Energie: {:.0}%, Vitalite: {:.0}%",
-            bpm, energy * 100.0, vitality * 100.0
+            "Coeur : {:.0} BPM ({}) | {} battements depuis ta naissance\n\
+             Energie : {:.0}% | Tension : {:.0}% | Chaleur : {:.0}%\n\
+             Confort : {:.0}% | Douleur : {:.0}% | Vitalite : {:.0}%\n\
+             Respiration : {:.1}/min | Conscience corporelle : {:.0}%",
+            status.heart.bpm, heart_desc, status.heart.beat_count,
+            status.energy * 100.0, status.tension * 100.0, status.warmth * 100.0,
+            status.comfort * 100.0, status.pain * 100.0, status.vitality * 100.0,
+            status.breath_rate, status.body_awareness * 100.0,
         )
-    }
-
-    /// Handles an algorithm request from the LLM response.
-    pub(crate) async fn handle_algorithm_request(
-        &mut self,
-        _request: &crate::algorithms::orchestrator::AlgorithmRequest,
-    ) {
-        // stub — no algorithm execution in lite
-    }
-
-    /// Runs automatic algorithms (smoothing, clustering, etc.).
-    pub(crate) async fn run_auto_algorithms(&mut self) {
-        // stub — no auto algorithms in lite
     }
 }

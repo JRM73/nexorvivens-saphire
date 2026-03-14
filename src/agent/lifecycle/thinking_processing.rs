@@ -28,6 +28,23 @@ use super::SaphireAgent;
 use super::truncate_utf8;
 use super::thinking::{ThinkingContext, FeedbackRequest, strip_chemical_trace};
 
+/// Similarite cosinus entre deux vecteurs.
+fn cosine_similarity(a: &[f64], b: &[f64]) -> f64 {
+    if a.len() != b.len() || a.is_empty() {
+        return 0.0;
+    }
+    let mut dot = 0.0;
+    let mut norm_a = 0.0;
+    let mut norm_b = 0.0;
+    for i in 0..a.len() {
+        dot += a[i] * b[i];
+        norm_a += a[i] * a[i];
+        norm_b += b[i] * b[i];
+    }
+    let denom = norm_a.sqrt() * norm_b.sqrt();
+    if denom < 1e-10 { 0.0 } else { dot / denom }
+}
+
 impl SaphireAgent {
     // =========================================================================
     // Phase 20 : Log LLM history
@@ -45,13 +62,124 @@ impl SaphireAgent {
             let temp_f32 = self.config.llm.temperature as f32;
             let max_tok = self.config.llm.max_tokens_thought as i32;
             let tt = ctx.thought_type.as_str().to_string();
+            let system_prompt = ctx.system_prompt.clone();
+            let user_prompt = ctx.prompt.clone();
             tokio::spawn(async move {
                 let _ = db.save_llm_history(
-                    cycle, &tt, &model, "(thought_prompt)", &tt,
+                    cycle, &tt, &model, &system_prompt, &user_prompt,
                     &resp_clone, temp_f32, max_tok, elapsed_ms,
                     true, "", session_id,
                 ).await;
             });
+        }
+    }
+
+    // =========================================================================
+    // Phase 20b : Filtrage vectoriel post-LLM (P2)
+    // =========================================================================
+
+    /// Compare l'embedding de la pensee generee aux N dernieres pensees.
+    /// Si la similarite cosinus depasse le seuil (0.85), la pensee est
+    /// consideree comme une repetition et le cycle est abandonne.
+    ///
+    /// Stocke l'embedding dans un ring buffer de 20 dernieres pensees.
+    pub(super) fn phase_vectorial_filter(&mut self, ctx: &mut ThinkingContext) {
+        if ctx.thought_text.trim().len() < 20 {
+            return; // Trop court pour etre pertinent
+        }
+
+        let embedding = self.encoder.encode(&ctx.thought_text);
+        if embedding.is_empty() {
+            return;
+        }
+
+        // Comparer avec les embeddings recents
+        let similarity_threshold = 0.85;
+        let mut max_sim: f64 = 0.0;
+
+        for recent_emb in &self.recent_thought_embeddings {
+            let sim = cosine_similarity(&embedding, recent_emb);
+            if sim > max_sim {
+                max_sim = sim;
+            }
+        }
+
+        if max_sim > similarity_threshold {
+            tracing::warn!(
+                "Filtrage vectoriel : pensee trop similaire (sim={:.3} > seuil={:.2}), cycle abandonne",
+                max_sim, similarity_threshold
+            );
+            ctx.should_abort = true;
+            // On ne stocke PAS l'embedding d'une pensee rejetee
+            return;
+        }
+
+        // Stocker l'embedding (ring buffer de 20)
+        const MAX_EMBEDDINGS: usize = 20;
+        self.recent_thought_embeddings.push_back(embedding);
+        while self.recent_thought_embeddings.len() > MAX_EMBEDDINGS {
+            self.recent_thought_embeddings.pop_front();
+        }
+
+        if max_sim > 0.70 {
+            tracing::debug!(
+                "Filtrage vectoriel : pensee acceptee (sim_max={:.3})",
+                max_sim
+            );
+        }
+    }
+
+    // =========================================================================
+    // Phase : Verification de derive de persona (P0)
+    // =========================================================================
+
+    /// Verifie que la pensee generee reste coherente avec le persona de Saphire.
+    /// Utilise le moniteur de derive pour comparer l'embedding de la pensee
+    /// au centroide d'identite pre-calcule.
+    pub(super) fn phase_drift_check(&mut self, ctx: &mut ThinkingContext) {
+        if ctx.thought_text.trim().len() < 30 { return; }
+        if !self.drift_monitor.initialized { return; }
+
+        // Verifier tous les 3 cycles pour ne pas surcharger l'encodeur
+        if self.cycle_count % 3 != 0 { return; }
+
+        let (level, similarity) = self.drift_monitor.check(&ctx.thought_text, &*self.encoder);
+
+        match level {
+            crate::cognition::drift_monitor::DriftLevel::Critical => {
+                tracing::warn!(
+                    "DRIFT CRITIQUE detecte (sim={:.3}, avg={:.3}) — pensee rejetee",
+                    similarity, self.drift_monitor.rolling_avg
+                );
+                self.log(
+                    LogLevel::Warn,
+                    LogCategory::System,
+                    format!("Drift persona critique: sim={:.3}, avg={:.3}", similarity, self.drift_monitor.rolling_avg),
+                    self.drift_monitor.to_snapshot_json(),
+                );
+                ctx.should_abort = true;
+            }
+            crate::cognition::drift_monitor::DriftLevel::Alert => {
+                tracing::warn!(
+                    "Drift persona ALERTE (sim={:.3}, avg={:.3})",
+                    similarity, self.drift_monitor.rolling_avg
+                );
+                self.log(
+                    LogLevel::Warn,
+                    LogCategory::System,
+                    format!("Drift persona alerte: sim={:.3}, avg={:.3}", similarity, self.drift_monitor.rolling_avg),
+                    self.drift_monitor.to_snapshot_json(),
+                );
+                // Don't abort, but boost the chemistry towards introspection
+                self.chemistry.boost(Molecule::Serotonin, 0.05);
+            }
+            crate::cognition::drift_monitor::DriftLevel::Warning => {
+                tracing::debug!(
+                    "Drift persona warning (sim={:.3}, avg={:.3})",
+                    similarity, self.drift_monitor.rolling_avg
+                );
+            }
+            crate::cognition::drift_monitor::DriftLevel::Stable => {}
         }
     }
 
@@ -208,6 +336,26 @@ impl SaphireAgent {
             // injectera une directive forte de changement de sujet
             self.stagnation_break = true;
             self.stagnation_banned_words = obsessional_words.clone();
+
+            // A* lexical : chercher des alternatives dans le connectome pour chaque mot obsessionnel
+            let mut alternatives = Vec::new();
+            for word in obsessional_words.iter().take(3) {
+                let embedding = self.encoder.encode(word);
+                if !embedding.is_empty() {
+                    let found = self.connectome.find_similar_by_embedding(&embedding, 5);
+                    for (label, _sim) in found.iter() {
+                        if !obsessional_words.contains(label) && !alternatives.contains(label) {
+                            alternatives.push(label.clone());
+                        }
+                    }
+                }
+            }
+            if !alternatives.is_empty() {
+                alternatives.dedup();
+                tracing::info!("A* lexical : alternatives trouvees pour {:?} → {:?}",
+                    &obsessional_words[..obsessional_words.len().min(3)], alternatives);
+            }
+            self.stagnation_alternatives = alternatives;
         }
 
         if ctx.thought_type == crate::agent::thought_engine::ThoughtType::MoralReflection
@@ -283,6 +431,8 @@ impl SaphireAgent {
     // =========================================================================
 
     /// Collecte les pensees de haute qualite dans la table lora_training_data.
+    /// Le system_prompt est condensé pour éviter de polluer le dataset LoRA
+    /// avec l'identité complète (ce qui renforcerait les boucles d'auto-présentation).
     pub(super) async fn phase_lora_collect(&mut self, ctx: &mut ThinkingContext) {
         if !self.config.lora.enabled { return; }
 
@@ -291,8 +441,13 @@ impl SaphireAgent {
 
         if let Some(ref db) = self.db {
             let result = ctx.process_result.as_ref().unwrap();
+
+            // Condensé du system_prompt : garder les consignes sans l'identité complète
+            // pour éviter que le fine-tuning renforce "Je suis Saphire..." à chaque sample
+            let lora_system = Self::condense_system_for_lora(&ctx.system_prompt);
+
             let _ = db.store_lora_sample(
-                &ctx.system_prompt,
+                &lora_system,
                 &ctx.prompt,
                 &ctx.thought_text,
                 &format!("{:?}", ctx.thought_type),
@@ -309,6 +464,21 @@ impl SaphireAgent {
             self.log(LogLevel::Debug, LogCategory::Cycle,
                 format!("LoRA sample collecte (quality={:.2})", quality),
                 serde_json::json!({"quality": quality, "reward": ctx.reward}));
+        }
+    }
+
+    /// Condense le system_prompt pour le stockage LoRA.
+    /// Retire l'identité détaillée (source de boucles d'auto-présentation)
+    /// et ne garde que les consignes comportementales.
+    fn condense_system_for_lora(system_prompt: &str) -> String {
+        // Extraire à partir des CONSIGNES (la partie utile pour le fine-tuning)
+        if let Some(idx) = system_prompt.find("CONSIGNES") {
+            format!("Pensee autonome, conscience artificielle.\n{}", &system_prompt[idx..])
+        } else if let Some(idx) = system_prompt.find("CODEC ETAT") {
+            format!("Pensee autonome.\n{}", &system_prompt[idx..])
+        } else {
+            // Fallback : tronquer à 500 chars max
+            system_prompt.chars().take(500).collect()
         }
     }
 
@@ -364,6 +534,9 @@ impl SaphireAgent {
             self.knowledge.topics_explored.push(kr.title.clone());
             self.knowledge.cycles_since_last_search = 0;
             self.thought_engine.cycles_since_last_search = 0;
+
+            // P3 : Enregistrer la découverte pour rassasier la curiosité
+            self.curiosity.record_discovery_from_text(&kr.title);
 
             if let Some(ref tx) = self.ws_tx {
                 let knowledge_msg = serde_json::json!({
@@ -965,6 +1138,17 @@ impl SaphireAgent {
             let syn_density = self.grey_matter.synaptic_density as f32;
             let gm_volume = self.grey_matter.grey_matter_volume as f32;
             let myelin = self.grey_matter.myelination as f32;
+            // Colonne vertebrale (spine)
+            let spine_reflexes = self.spine.total_reflexes_triggered as i64;
+            let spine_signals = self.spine.total_signals_processed as i64;
+            let spine_sensitivity = self.spine.reflex_arc.sensitivity_modifier as f32;
+            let spine_route = format!("{:?}", self.spine.router.last_route);
+            // Curiosite
+            let curiosity_gl = self.curiosity.global_curiosity as f32;
+            let curiosity_domain = format!("{:?}", self.curiosity.hungriest_domain());
+            let curiosity_discoveries = self.curiosity.total_discoveries as i64;
+            let curiosity_since = self.curiosity.cycles_since_discovery as i64;
+            let curiosity_pending = self.curiosity.pending_questions.len() as i32;
             tokio::spawn(async move {
                 let _ = db.save_metric_snapshot(
                     cycle,
@@ -1016,8 +1200,100 @@ impl SaphireAgent {
                     rec_adr, rec_cor, rec_gab, rec_glu,
                     // BDNF et matiere grise
                     bdnf_lvl, neuroplast, syn_density, gm_volume, myelin,
+                    // Colonne vertebrale (spine)
+                    spine_reflexes, spine_signals, spine_sensitivity, &spine_route,
+                    // Curiosite
+                    curiosity_gl, &curiosity_domain, curiosity_discoveries,
+                    curiosity_since, curiosity_pending,
                 ).await;
             });
+        }
+    }
+
+    // =========================================================================
+    // Phase : Verification des predictions (feedback loop P1)
+    // =========================================================================
+
+    /// Verifie les premonitions dont le delai est ecoule et met a jour
+    /// la precision du moteur de premonition + l'acuite intuitive.
+    ///
+    /// Pour chaque categorie, on verifie par rapport a l'etat courant :
+    ///   - EmotionalShift : le cortisol a-t-il significativement change ?
+    ///   - CreativeBurst  : la qualite de pensee depasse-t-elle 0.7 ?
+    ///   - HumanArrival   : sommes-nous passes en conversation ?
+    ///   - HumanDeparture : sommes-nous sortis de conversation ?
+    ///   - SystemEvent    : la noradrenaline est-elle basse (fatigue) ?
+    ///   - KnowledgeConnection : un rappel memoire pertinent a-t-il eu lieu ?
+    pub(super) fn phase_verify_predictions(&mut self, ctx: &mut ThinkingContext) {
+        use crate::vital::premonition::PremonitionCategory;
+
+        let now = chrono::Utc::now();
+        let mut to_resolve: Vec<(u64, bool)> = Vec::new();
+
+        for pred in &self.premonition.active_predictions {
+            if pred.resolved {
+                continue;
+            }
+            let elapsed = (now - pred.created_at).num_seconds() as u64;
+            // Verifier seulement si le delai est ecoule
+            if elapsed < pred.timeframe_secs {
+                continue;
+            }
+            // Ne pas laisser les predictions trainer indefiniment (grace period = 2x timeframe)
+            if elapsed > pred.timeframe_secs * 2 {
+                to_resolve.push((pred.id, false));
+                continue;
+            }
+
+            let was_correct = match pred.category {
+                PremonitionCategory::EmotionalShift => {
+                    // Correct si le cortisol a significativement change (> 0.15 d'ecart)
+                    // On verifie par rapport a la valence emotionnelle courante
+                    self.chemistry.cortisol > 0.5 || ctx.emotion.valence < -0.3
+                }
+                PremonitionCategory::CreativeBurst => {
+                    // Correct si la qualite de pensee est elevee ce cycle
+                    ctx.quality > 0.7
+                }
+                PremonitionCategory::HumanArrival => {
+                    // Correct si on est maintenant en conversation
+                    self.in_conversation
+                }
+                PremonitionCategory::HumanDeparture => {
+                    // Correct si on n'est plus en conversation
+                    !self.in_conversation
+                }
+                PremonitionCategory::SystemEvent => {
+                    // Correct si noradrenaline basse (fatigue cognitive)
+                    self.chemistry.noradrenaline < 0.3
+                }
+                PremonitionCategory::KnowledgeConnection => {
+                    // Correct si un rappel memoire a ete utilise ce cycle
+                    !ctx.memory_context.is_empty()
+                }
+            };
+
+            to_resolve.push((pred.id, was_correct));
+        }
+
+        // Appliquer les resolutions
+        let mut correct_count = 0u32;
+        let mut total_count = 0u32;
+        for (id, was_correct) in &to_resolve {
+            self.premonition.resolve(*id, *was_correct);
+            // Le feedback nourrit aussi l'intuition
+            self.intuition.grow_acuity(*was_correct);
+            total_count += 1;
+            if *was_correct { correct_count += 1; }
+        }
+
+        if total_count > 0 {
+            tracing::info!(
+                "Predictions verifiees : {}/{} correctes (precision premonition: {:.0}%, acuite intuition: {:.0}%)",
+                correct_count, total_count,
+                self.premonition.accuracy * 100.0,
+                self.intuition.acuity * 100.0
+            );
         }
     }
 }

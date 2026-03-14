@@ -73,13 +73,29 @@ pub fn recall_with_chemical_context(
     chem_weight: f64,
 ) {
     let current_sig = ChemicalSignature::from(current_chemistry);
-    // Recalculer le score de similarite comme mix texte + chimie
+    let now = chrono::Utc::now();
+
+    // Recalculer le score comme mix texte + chimie + recence
     for mem in candidates.iter_mut() {
         let chem_sim = mem.chemical_signature
             .as_ref()
             .map(|sig| sig.similarity(&current_sig))
-            .unwrap_or(0.5); // neutre pour les anciens souvenirs sans signature
-        mem.similarity = mem.similarity * text_weight + chem_sim * chem_weight;
+            .unwrap_or(0.5);
+
+        // Ponderation temporelle : bonus pour les souvenirs recents
+        // Decroissance exponentielle : recency = e^(-age_days / 30)
+        // Un souvenir de 0 jours = 1.0, 30 jours = 0.37, 90 jours = 0.05
+        let age_days = (now - mem.created_at).num_hours() as f64 / 24.0;
+        let recency = (-age_days / 30.0).exp();
+
+        // Score final : 70% texte + 15% chimie + 15% recence
+        // (ajuste les poids pour integrer la recence sans casser le ratio)
+        let recency_weight = 0.15;
+        let adjusted_text = text_weight * (1.0 - recency_weight);
+        let adjusted_chem = chem_weight * (1.0 - recency_weight);
+        mem.similarity = mem.similarity * adjusted_text
+            + chem_sim * adjusted_chem
+            + recency * recency_weight;
     }
     // Re-trier par score final decroissant
     candidates.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity).unwrap_or(std::cmp::Ordering::Equal));

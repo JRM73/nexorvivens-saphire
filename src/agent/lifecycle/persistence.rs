@@ -224,13 +224,19 @@ impl SaphireAgent {
         // Les lecons sont sauvees individuellement a la creation (save_lesson_to_db)
         // Pas de bulk save ici pour eviter les doublons
 
-        // Sauvegarder les blessures actives
+        // Les blessures sont sauvees individuellement a la detection (save_wound_to_db)
+        // On met a jour la progression de guerison des blessures actives
         for wound in &self.healing_orch.active_wounds {
-            let _ = db.save_wound(
-                wound.wound_type.as_str(),
-                &wound.description,
-                wound.severity as f32,
-            ).await;
+            if wound.id > 0 {
+                let healed_at = wound.healed_at;
+                let strategy = wound.healing_strategy.as_deref();
+                let _ = db.update_wound_healing(
+                    wound.id as i64,
+                    wound.healing_progress as f32,
+                    strategy,
+                    healed_at,
+                ).await;
+            }
         }
 
         tracing::info!("Orchestrateurs sauvegardes (reves: {}, desirs: {}, lecons: {}, blessures: {})",

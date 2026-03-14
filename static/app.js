@@ -71,6 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
     connectWebSocket();   // Connexion temps reel au backend
     setupUsernameModal(); // Modal d'identification de l'interlocuteur
     setupChat();          // Envoi de messages utilisateur
+    setupChatModal();     // Chat modal (expand/collapse au clic)
     // Restaurer l'historique de chat depuis sessionStorage
     const saved = JSON.parse(sessionStorage.getItem('saphire_chat_history') || '[]');
     saved.forEach(m => addChatMessage(m.text, m.type, true));
@@ -129,9 +130,9 @@ function initChart() {
 // Gere la reconnexion automatique avec backoff exponentiel
 // (delai x1.5 a chaque echec, plafonne a 10 secondes).
 function connectWebSocket() {
-    // Determine le protocole WebSocket (ws ou wss) selon le protocole HTTP
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = protocol + '//' + window.location.host + '/ws';
+    // URL WebSocket avec token d'authentification (fourni par auth.js)
+    const wsUrl = window.saphireWsUrl ? window.saphireWsUrl('/ws')
+        : (window.location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + window.location.host + '/ws';
 
     ws = new WebSocket(wsUrl);
 
@@ -213,9 +214,18 @@ function handleMessage(data) {
             syncBaselines(data.baselines);
             baselinesInitialized = true;
         }
+        if (data.spine) {
+            updateSpine(data.spine);
+        }
+        if (data.curiosity) {
+            updateCuriosity(data.curiosity);
+        }
+        if (data.drift_monitor) {
+            updateDriftMonitor(data.drift_monitor);
+        }
     } else if (data.type === 'chat_response') {
         // Reponse de Saphire a un message de l'utilisateur
-        addChatMessage(data.content, 'saphire');
+        addChatMessage(data.content, 'saphire', false, data.markers);
     } else if (data.type === 'knowledge_acquired') {
         // Saphire a acquis une nouvelle connaissance (Wikipedia, ArXiv, etc.)
         addKnowledgeToStream(data);
@@ -238,7 +248,7 @@ function handleMessage(data) {
         updateNeeds(data);
     } else if (data.type === 'need_satisfied') {
         // Un besoin a ete auto-satisfait
-        console.log('[Needs] Need satisfied:', data.action);
+        console.log('[Needs] Besoin satisfait:', data.action);
     } else if (data.type === 'factory_reset_done') {
         // Resultat d'un factory reset (chimie, parametres, ou complet)
         handleFactoryResetDone(data);
@@ -256,10 +266,10 @@ function handleMessage(data) {
         updateSenses(data);
     } else if (data.type === 'deliberation_started') {
         // Une deliberation volontaire commence
-        console.log('[Will] Deliberation triggered:', data.trigger);
+        console.log('[Will] Deliberation declenchee:', data.trigger);
     } else if (data.type === 'deliberation_resolved') {
         // La deliberation est resolue
-        console.log('[Will] Choice:', data.chosen, '(confidence:', data.confidence, ')');
+        console.log('[Will] Choix:', data.chosen, '(confiance:', data.confidence, ')');
     } else if (data.type === 'will_update') {
         // Mise a jour du module de volonte
         console.log('[Will] Willpower:', data.willpower, 'Fatigue:', data.decision_fatigue);
@@ -273,7 +283,7 @@ function handleMessage(data) {
         // Saphire s'endort — afficher l'overlay
         showSleepOverlay();
         disableChatInput();
-        console.log('[Sleep] Falling asleep, pressure:', data.sleep_pressure);
+        console.log('[Sleep] Endormissement, pression:', data.sleep_pressure);
     } else if (data.type === 'sleep_update') {
         // Mise a jour pendant le sommeil
         if (data.is_sleeping) {
@@ -284,13 +294,13 @@ function handleMessage(data) {
         hideSleepOverlay();
         enableChatInput();
         showWakeUpMessage(data);
-        console.log('[Sleep] Wake up, quality:', data.quality);
+        console.log('[Sleep] Reveil, qualite:', data.quality);
     } else if (data.type === 'sleep_refusal') {
         // Message pendant le sommeil (refus de repondre)
         addChatMessage(data.message, 'saphire');
     } else if (data.type === 'subconscious_insight') {
         // Insight du subconscient
-        console.log('[Subconscious] Insight:', data.content);
+        console.log('[Subconscient] Insight:', data.content);
         addToStream({
             type: 'state_update',
             thought: '🫧 ' + data.content,
@@ -301,10 +311,20 @@ function handleMessage(data) {
         console.log('[Neural]', data.memory_a, '<->', data.memory_b);
     } else if (data.type === 'subconscious_priming') {
         // Priming subconscient actif
-        console.log('[Subconscious] Priming:', data.prime, 'strength:', data.strength);
+        console.log('[Subconscient] Priming:', data.prime, 'force:', data.strength);
     } else if (data.type === 'temperament_update') {
         // Mise a jour du temperament emergent
         updateTemperament(data);
+    } else if (data.type === 'biology_update') {
+        updateBiology(data);
+    } else if (data.type === 'hormones_update') {
+        updateHormones(data);
+    } else if (data.type === 'sentiments_update') {
+        updateSentiments(data);
+    } else if (data.type === 'psychology_update') {
+        updatePsychology(data);
+    } else if (data.type === 'feedback_result') {
+        showFeedbackResult(data);
     }
 }
 
@@ -321,13 +341,13 @@ function updateSleepIndicator(sleep) {
     pressure.textContent = pct + '%';
 
     if (sleep.is_sleeping) {
-        state.textContent = sleep.phase || I18n.t('sleep.state_sleeping', 'SLEEPING');
+        state.textContent = sleep.phase || I18n.t('sleep.state_sleeping', 'DORT');
         emoji.textContent = sleep.phase_emoji || '\u{1F319}';
         ring.style.borderColor = '#8888ff';
         ring.style.boxShadow = '0 0 12px rgba(136,136,255,0.6)';
         state.style.color = '#aaaaee';
     } else {
-        state.textContent = I18n.t('sleep.state_awake', 'AWAKE');
+        state.textContent = I18n.t('sleep.state_awake', 'ÉVEILLÉE');
         if (pct < 30) {
             emoji.textContent = '\u2600\uFE0F';
             ring.style.borderColor = '#00ff88';
@@ -396,7 +416,7 @@ function disableChatInput() {
     const input = document.getElementById('chat-input');
     if (input) {
         input.disabled = true;
-        input.placeholder = I18n.t('sleep.chat_locked', '💤 Saphire is sleeping... Come back when she wakes up.');
+        input.placeholder = I18n.t('sleep.chat_locked', '💤 Saphire dort... Revenez quand elle sera réveillée.');
     }
     const btn = document.getElementById('send-btn');
     if (btn) btn.disabled = true;
@@ -406,30 +426,30 @@ function enableChatInput() {
     const input = document.getElementById('chat-input');
     if (input) {
         input.disabled = false;
-        input.placeholder = I18n.t('chat.placeholder_awake', 'Write a message...');
+        input.placeholder = I18n.t('chat.placeholder_awake', 'Écrire un message...');
     }
     const btn = document.getElementById('send-btn');
     if (btn) btn.disabled = false;
 }
 
 function showWakeUpMessage(data) {
-    const msg = I18n.t('sleep.waking_up', '☀️ I\'m waking up...') + " " +
-        (data.dreams_count > 0 ? I18n.t('sleep.dreamed', "I dreamed") + " " + data.dreams_count + " times. " : "") +
-        data.memories_consolidated + " " + I18n.t('sleep.memories_consolidated', 'memories consolidated,') + " " +
-        data.connections_created + " " + I18n.t('sleep.connections_created', 'connections created.') + " " +
-        "Quality: " + Math.round((data.quality || 0) * 100) + "%";
+    const msg = I18n.t('sleep.waking_up', '☀️ Je me réveille...') + " " +
+        (data.dreams_count > 0 ? I18n.t('sleep.dreamed', "j'ai rêvé") + " " + data.dreams_count + " fois. " : "") +
+        data.memories_consolidated + " " + I18n.t('sleep.memories_consolidated', 'souvenirs consolidés,') + " " +
+        data.connections_created + " " + I18n.t('sleep.connections_created', 'connexions créées.') + " " +
+        "Qualité : " + Math.round((data.quality || 0) * 100) + "%";
     addChatMessage(msg, 'saphire');
 }
 
 function emergencyWake() {
-    if (confirm('Force wake Saphire? Her sleep will be interrupted.')) {
+    if (confirm('Reveiller Saphire de force ? Son sommeil sera interrompu.')) {
         fetch('/api/sleep/wake', { method: 'POST' })
             .then(r => r.json())
             .then(d => {
                 if (d.success) {
                     hideSleepOverlay();
                     enableChatInput();
-                    addChatMessage("⚠️ Emergency wake up!", 'system');
+                    addChatMessage("⚠️ Reveil d'urgence !", 'system');
                 }
             })
             .catch(err => console.error('Wake error:', err));
@@ -467,19 +487,19 @@ function updateChemistry(chem) {
 // Table de correspondance : chaque emotion a une couleur neon associee
 // Ces 14 emotions emergent de la combinaison des 7 neurotransmetteurs
 const emotionColors = {
-    'Joy': '#ffd93d',
-    'Serenity': '#05ffa1',
-    'Curiosity': '#00f0ff',
-    'Excitement': '#ff6b35',
-    'Anxiety': '#ff2a6d',
-    'Fear': '#ff2a6d',
-    'Sadness': '#6c5ce7',
-    'Anger': '#ff0040',
-    'Boredom': '#556',
-    'Neutral': '#00f0ff',
+    'Joie': '#ffd93d',
+    'Sérénité': '#05ffa1',
+    'Curiosité': '#00f0ff',
+    'Excitation': '#ff6b35',
+    'Anxiété': '#ff2a6d',
+    'Peur': '#ff2a6d',
+    'Tristesse': '#6c5ce7',
+    'Colère': '#ff0040',
+    'Ennui': '#556',
+    'Neutre': '#00f0ff',
     'Surprise': '#b537f2',
-    'Confidence': '#05ffa1',
-    'Disgust': '#a29bfe',
+    'Confiance': '#05ffa1',
+    'Dégoût': '#a29bfe',
     'Contemplation': '#b537f2',
 };
 
@@ -514,7 +534,7 @@ function updateEmotion(emotion, mood) {
         const valBar = document.getElementById('valence-bar');
         const aroBar = document.getElementById('arousal-bar');
 
-        if (desc) desc.textContent = mood.description || I18n.t('emotion.neutral', 'Neutral');
+        if (desc) desc.textContent = mood.description || I18n.t('emotion.neutral', 'Neutre');
         if (valEl) valEl.textContent = (mood.valence || 0).toFixed(2);
         if (aroEl) aroEl.textContent = (mood.arousal || 0).toFixed(2);
 
@@ -617,7 +637,7 @@ function updateRegulation(reg) {
     if (reg.vetoed) {
         const p = document.createElement('div');
         p.className = 'violation-item veto';
-        p.textContent = I18n.t('ethics.veto_active', 'VETO ACTIVE');
+        p.textContent = I18n.t('ethics.veto_active', 'VETO ACTIF');
         container.appendChild(p);
     }
 
@@ -625,13 +645,13 @@ function updateRegulation(reg) {
         reg.violations.forEach(v => {
             const p = document.createElement('div');
             p.className = 'violation-item';
-            p.textContent = (v.law_name || 'Law') + ': ' + (v.reason || '');
+            p.textContent = (v.law_name || 'Loi') + ': ' + (v.reason || '');
             container.appendChild(p);
         });
     } else if (!reg.vetoed) {
         const p = document.createElement('div');
         p.className = 'violation-item ok';
-        p.textContent = I18n.t('ethics.no_violation', 'No violation');
+        p.textContent = I18n.t('ethics.no_violation', 'Aucune violation');
         container.appendChild(p);
     }
 }
@@ -650,7 +670,7 @@ function updateNeuralNetwork(nn) {
     // Afficher la derniere prediction
     const predEl = document.getElementById('nn-prediction');
     if (predEl && nn.last_prediction) {
-        const labels = [I18n.t('brain.yes', 'Yes'), I18n.t('brain.no', 'No'), I18n.t('brain.maybe', 'Maybe'), I18n.t('brain.neutral', 'Neutral')];
+        const labels = [I18n.t('brain.yes', 'Oui'), I18n.t('brain.no', 'Non'), I18n.t('brain.maybe', 'Peut-être'), I18n.t('brain.neutral', 'Neutre')];
         const parts = nn.last_prediction.map((p, i) =>
             `${labels[i]}: ${(p * 100).toFixed(0)}%`
         );
@@ -684,7 +704,7 @@ function addToStream(data) {
     const div = document.createElement('div');
     div.className = 'thought';
 
-    const time = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const time = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const emotion = data.emotion ? data.emotion.dominant : '?';
     const thoughtType = data.thought_type || 'cycle';
     const narrative = data.consciousness ? data.consciousness.narrative : '...';
@@ -735,7 +755,7 @@ function escapeHtml(text) {
 // Fonctionne comme une fenetre glissante de 60 points maximum.
 function updateChart(chem) {
     if (!chart || !chem) return;
-    const time = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const time = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     chartData.labels.push(time);
     chartData.datasets[0].data.push(chem.dopamine || 0);
     chartData.datasets[1].data.push(chem.cortisol || 0);
@@ -834,10 +854,63 @@ function setupChat() {
     });
 }
 
+// ── Chat modal : s'agrandit au centre quand on clique, revient en place quand on clique ailleurs ──
+function setupChatModal() {
+    const chat = document.getElementById('chat-section');
+    const overlay = document.getElementById('chat-overlay');
+    const placeholder = document.getElementById('chat-placeholder');
+    if (!chat || !overlay || !placeholder) return;
+
+    let expanded = false;
+
+    function expandChat() {
+        if (expanded) return;
+        expanded = true;
+        // Sauver la hauteur originale pour le placeholder
+        const rect = chat.getBoundingClientRect();
+        placeholder.style.height = rect.height + 'px';
+        placeholder.classList.add('active');
+        overlay.classList.add('active');
+        chat.classList.add('chat-expanded');
+        // Focus sur l'input
+        const input = document.getElementById('chat-input');
+        if (input) setTimeout(() => input.focus(), 350);
+    }
+
+    function collapseChat() {
+        if (!expanded) return;
+        expanded = false;
+        chat.classList.remove('chat-expanded');
+        overlay.classList.remove('active');
+        // Retirer le placeholder apres l'animation
+        setTimeout(() => {
+            placeholder.classList.remove('active');
+        }, 350);
+    }
+
+    // Clic sur le panneau chat (quand il n'est pas expanded) => ouvrir
+    chat.addEventListener('click', (e) => {
+        if (!expanded) {
+            expandChat();
+            e.stopPropagation();
+        }
+    });
+
+    // Clic sur l'overlay => fermer
+    overlay.addEventListener('click', () => {
+        collapseChat();
+    });
+
+    // Echap => fermer
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && expanded) collapseChat();
+    });
+}
+
 // Ajoute un message dans la zone de chat (utilisateur ou Saphire)
 // Les messages utilisateur sont alignes a droite, ceux de Saphire a gauche.
 // Limite a 50 messages pour les performances.
-function addChatMessage(text, type, skipSave) {
+function addChatMessage(text, type, skipSave, markers) {
     const container = document.getElementById('chat-messages');
     if (!container) return;
 
@@ -847,7 +920,7 @@ function addChatMessage(text, type, skipSave) {
     const label = document.createElement('span');
     label.className = 'msg-label';
     label.textContent = type === 'user'
-        ? (saphireUsername || I18n.t('chat.sender_you', 'YOU')).toUpperCase()
+        ? (saphireUsername || I18n.t('chat.sender_you', 'VOUS')).toUpperCase()
         : I18n.t('chat.sender_saphire', 'SAPHIRE');
 
     const content = document.createElement('span');
@@ -856,6 +929,55 @@ function addChatMessage(text, type, skipSave) {
 
     div.appendChild(label);
     div.appendChild(content);
+
+    // P5 : Marqueurs visuels pour les réponses de Saphire
+    if (markers && type === 'saphire') {
+        const row = document.createElement('div');
+        row.className = 'chat-markers';
+        if (markers.emotion) {
+            const b = document.createElement('span');
+            b.className = 'marker marker-emotion';
+            b.textContent = markers.emotion;
+            b.title = 'Émotion';
+            row.appendChild(b);
+        }
+        if (markers.consciousness !== undefined) {
+            const b = document.createElement('span');
+            b.className = 'marker marker-phi';
+            b.textContent = 'φ ' + markers.consciousness.toFixed(2);
+            b.title = 'Niveau de conscience';
+            row.appendChild(b);
+        }
+        if (markers.register) {
+            const b = document.createElement('span');
+            b.className = 'marker marker-register';
+            b.textContent = markers.register;
+            b.title = 'Registre';
+            row.appendChild(b);
+        }
+        if (markers.involves_memory) {
+            const b = document.createElement('span');
+            b.className = 'marker marker-memory';
+            b.textContent = '🧠';
+            b.title = 'Mémoire impliquée';
+            row.appendChild(b);
+        }
+        if (markers.reflexes && markers.reflexes.length > 0) {
+            const b = document.createElement('span');
+            b.className = 'marker marker-reflex';
+            b.textContent = '⚡ ' + markers.reflexes.join(', ');
+            b.title = 'Réflexes déclenchés';
+            row.appendChild(b);
+        }
+        if (markers.confidence !== undefined && markers.confidence > 0) {
+            const b = document.createElement('span');
+            b.className = 'marker marker-confidence';
+            b.textContent = Math.round(markers.confidence * 100) + '%';
+            b.title = 'Confiance';
+            row.appendChild(b);
+        }
+        div.appendChild(row);
+    }
 
     // Animation de fondu a l'apparition du message
     div.style.opacity = '0';
@@ -1016,11 +1138,11 @@ function setupNeedsButtons() {
             fetch('/api/needs/eat', { method: 'POST' })
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
-                    console.log('[Needs] Meal:', data);
+                    console.log('[Needs] Repas:', data);
                     btnEat.style.boxShadow = '0 0 20px rgba(5,255,161,0.5)';
                     setTimeout(function() { btnEat.style.boxShadow = ''; }, 500);
                 })
-                .catch(function(e) { console.error('[Needs] Eat error:', e); });
+                .catch(function(e) { console.error('[Needs] Erreur eat:', e); });
         });
     }
     var btnDrink = document.getElementById('btn-drink');
@@ -1029,11 +1151,11 @@ function setupNeedsButtons() {
             fetch('/api/needs/drink', { method: 'POST' })
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
-                    console.log('[Needs] Drink:', data);
+                    console.log('[Needs] Boisson:', data);
                     btnDrink.style.boxShadow = '0 0 20px rgba(0,200,255,0.5)';
                     setTimeout(function() { btnDrink.style.boxShadow = ''; }, 500);
                 })
-                .catch(function(e) { console.error('[Needs] Drink error:', e); });
+                .catch(function(e) { console.error('[Needs] Erreur drink:', e); });
         });
     }
 }
@@ -1110,7 +1232,7 @@ function addKnowledgeToStream(data) {
     const div = document.createElement('div');
     div.className = 'thought knowledge-thought';
 
-    const time = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const time = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const sourceClass = normalizeSourceClass(data.source);
     const emotionColor = getEmotionColor(data.emotion || 'Curiosité');
 
@@ -1177,7 +1299,7 @@ function updateKnowledgeCount(total) {
     const count = document.getElementById('knowledge-count');
     const totalEl = document.getElementById('knowledge-total');
     if (count) count.textContent = total;
-    if (totalEl) totalEl.textContent = total + ' topics explored';
+    if (totalEl) totalEl.textContent = total + ' sujets explorés';
 }
 
 // ─── Panneau Monde ───────────────────────────────────────────
@@ -1199,7 +1321,7 @@ function updateWorld(data) {
     if (dt && data.datetime) dt.textContent = data.datetime;
     if (age) {
         const ageStr = data.age || '---';
-        age.textContent = 'Born ' + ageStr + ' ago';
+        age.textContent = 'Née il y a ' + ageStr;
     }
 
     // Meteo : temperature en degres Celsius et description textuelle
@@ -1216,13 +1338,13 @@ function updateWorld(data) {
     if (data.is_birthday) {
         if (bdayRow) {
             bdayRow.style.display = 'block';
-            if (bdayText) bdayText.textContent = "TODAY IS MY BIRTHDAY!";
+            if (bdayText) bdayText.textContent = "AUJOURD'HUI C'EST MON ANNIVERSAIRE !";
         }
         if (bdayBanner) bdayBanner.style.display = 'block';
     } else if (data.days_until_birthday !== undefined && data.days_until_birthday <= 7 && data.days_until_birthday > 0) {
         if (bdayRow) {
             bdayRow.style.display = 'block';
-            if (bdayText) bdayText.textContent = 'Birthday in ' + data.days_until_birthday + ' days';
+            if (bdayText) bdayText.textContent = 'Anniversaire dans ' + data.days_until_birthday + ' jours';
         }
         if (bdayBanner) bdayBanner.style.display = 'none';
     } else {
@@ -1264,7 +1386,7 @@ function updateMemory(data) {
     if (data.episodic) {
         var epCount = document.getElementById('mem-ep-count');
         var epStr = document.getElementById('mem-ep-strength');
-        if (epCount) epCount.textContent = (data.episodic.count || 0) + ' memories';
+        if (epCount) epCount.textContent = (data.episodic.count || 0) + ' souvenirs';
         if (epStr) epStr.textContent = (data.episodic.avg_strength || 0).toFixed(2);
     }
 
@@ -1273,7 +1395,7 @@ function updateMemory(data) {
         var ltmCount = document.getElementById('mem-ltm-count');
         var ltmFounding = document.getElementById('mem-ltm-founding');
         var ltmTraits = document.getElementById('mem-ltm-traits');
-        if (ltmCount) ltmCount.textContent = (data.long_term.count || 0) + ' memories';
+        if (ltmCount) ltmCount.textContent = (data.long_term.count || 0) + ' souvenirs';
         if (ltmFounding) ltmFounding.textContent = data.long_term.founding_count || 0;
         if (ltmTraits) ltmTraits.textContent = data.long_term.personality_traits || 0;
     }
@@ -1282,10 +1404,10 @@ function updateMemory(data) {
     var consolInfo = document.getElementById('mem-consol-info');
     var consolNext = document.getElementById('mem-consol-next');
     if (consolInfo && data.last_consolidation_cycle !== undefined) {
-        consolInfo.textContent = 'Last: cycle ' + data.last_consolidation_cycle;
+        consolInfo.textContent = 'Dernier: cycle ' + data.last_consolidation_cycle;
     }
     if (consolNext && data.next_consolidation_cycles !== undefined) {
-        consolNext.textContent = 'Next: ' + data.next_consolidation_cycles + ' cycles';
+        consolNext.textContent = 'Prochaine: ' + data.next_consolidation_cycles + ' cycles';
     }
 }
 
@@ -1414,11 +1536,11 @@ function updateOcean(data) {
 // Noms des 6 sous-facettes pour chaque dimension OCEAN
 // Basees sur le modele NEO PI-R (Costa & McCrae)
 var oceanFacetNames = {
-    openness: ['Imagination', 'Intellectual curiosity', 'Aesthetic sensitivity', 'Adventurousness', 'Emotional depth', 'Intellectual liberalism'],
-    conscientiousness: ['Self-efficacy', 'Orderliness', 'Sense of duty', 'Ambition', 'Self-discipline', 'Cautiousness'],
-    extraversion: ['Social warmth', 'Gregariousness', 'Assertiveness', 'Activity', 'Stimulation', 'Positive emotions'],
-    agreeableness: ['Trust', 'Sincerity', 'Altruism', 'Cooperation', 'Modesty', 'Social sensitivity'],
-    neuroticism: ['Anxiety', 'Irritability', 'Depressiveness', 'Self-consciousness', 'Impulsiveness', 'Vulnerability'],
+    openness: ['Imagination', 'Curiosite intel.', 'Sensib. esth.', 'Aventurisme', 'Prof. emot.', 'Liberal. intel.'],
+    conscientiousness: ['Auto-efficacite', 'Ordre', 'Sens du devoir', 'Ambition', 'Auto-discipline', 'Prudence'],
+    extraversion: ['Chaleur sociale', 'Gregarite', 'Assertivite', 'Activite', 'Stimulation', 'Emot. positives'],
+    agreeableness: ['Confiance', 'Sincerite', 'Altruisme', 'Cooperation', 'Modestie', 'Sensib. sociale'],
+    neuroticism: ['Anxiete', 'Irritabilite', 'Depressivite', 'Consc. de soi', 'Impulsivite', 'Vulnerabilite'],
 };
 
 // Classes CSS de couleur pour chaque dimension OCEAN
@@ -1473,11 +1595,11 @@ function setupOceanFacets() {
         btn.addEventListener('click', function() {
             if (facetsEl.style.display === 'none') {
                 facetsEl.style.display = 'block';
-                btn.textContent = 'Hide sub-facets';
+                btn.textContent = 'Masquer sous-facettes';
                 if (lastOceanData) renderOceanFacets(lastOceanData);
             } else {
                 facetsEl.style.display = 'none';
-                btn.textContent = 'Sub-facets';
+                btn.textContent = 'Sous-facettes';
             }
         });
     }
@@ -1490,11 +1612,11 @@ function setupOceanFacets() {
 // Couleurs par categorie de temperament
 var temperamentCategoryColors = {
     'Social': '#fd79a8',
-    'Energy': '#ffd93d',
-    'Character': '#0984e3',
-    'Openness': '#b537f2',
-    'Emotional': '#ff2a6d',
-    'Relational': '#05ffa1',
+    'Energie': '#ffd93d',
+    'Caractere': '#0984e3',
+    'Ouverture': '#b537f2',
+    'Emotionnel': '#ff2a6d',
+    'Relationnel': '#05ffa1',
     'Moral': '#00f0ff',
 };
 
@@ -1512,7 +1634,7 @@ function updateTemperament(data) {
         categories[t.category].push(t);
     });
 
-    var categoryOrder = ['Social', 'Energy', 'Character', 'Openness', 'Emotional', 'Relational', 'Moral'];
+    var categoryOrder = ['Social', 'Energie', 'Caractere', 'Ouverture', 'Emotionnel', 'Relationnel', 'Moral'];
     var html = '';
 
     categoryOrder.forEach(function(cat) {
@@ -1549,7 +1671,7 @@ function updateBody(data) {
         const svgEl = document.getElementById('heart-svg');
 
         if (bpmEl) bpmEl.textContent = data.heart.bpm.toFixed(0) + ' BPM';
-        if (beatsEl) beatsEl.textContent = data.heart.beat_count.toLocaleString('en-US') + ' beats';
+        if (beatsEl) beatsEl.textContent = data.heart.beat_count.toLocaleString('fr-FR') + ' battements';
         if (hrvEl) hrvEl.textContent = 'HRV: ' + data.heart.hrv.toFixed(2) + ' | Force: ' + data.heart.strength.toFixed(2);
         if (badgeEl) badgeEl.textContent = data.heart.bpm.toFixed(0);
 
@@ -1667,7 +1789,7 @@ function updateNeeds(data) {
         }
 
         var mealsEl = document.getElementById('needs-meals');
-        if (mealsEl) mealsEl.textContent = 'Meals: ' + data.hunger.meals_count;
+        if (mealsEl) mealsEl.textContent = 'Repas: ' + data.hunger.meals_count;
     }
 
     // Soif
@@ -1686,7 +1808,7 @@ function updateNeeds(data) {
         }
 
         var drinksEl = document.getElementById('needs-drinks');
-        if (drinksEl) drinksEl.textContent = 'Drinks: ' + data.thirst.drinks_count;
+        if (drinksEl) drinksEl.textContent = 'Boissons: ' + data.thirst.drinks_count;
     }
 }
 
@@ -1699,7 +1821,7 @@ function handleSpecialEvent(data) {
         if (bdayBanner) {
             bdayBanner.style.display = 'block';
             const text = bdayBanner.querySelector('.birthday-text');
-            if (text) text.textContent = data.message || 'Happy birthday Saphire!';
+            if (text) text.textContent = data.message || 'Joyeux anniversaire Saphire !';
         }
 
         // Ajoute une entree speciale dans le flux de conscience avec un style dore
@@ -1709,11 +1831,11 @@ function handleSpecialEvent(data) {
             div.className = 'thought';
             div.style.borderLeftColor = 'var(--neon-gold)';
             div.style.background = 'rgba(255,217,61,0.06)';
-            const time = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const time = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
             div.innerHTML =
                 '<div class="thought-header">' +
                     '<span class="thought-time">' + time + '</span>' +
-                    '<span class="thought-type" style="color:var(--neon-gold)">BIRTHDAY</span>' +
+                    '<span class="thought-type" style="color:var(--neon-gold)">ANNIVERSAIRE</span>' +
                 '</div>' +
                 '<div class="thought-content" style="color:var(--neon-gold)">' + escapeHtml(data.message || '') + '</div>';
             stream.appendChild(div);
@@ -1766,8 +1888,8 @@ function setupFactory() {
     if (btnParams) {
         btnParams.addEventListener('click', function() {
             showFactoryConfirm(
-                'RESET PARAMETERS',
-                'Reset all operating parameters to factory defaults?\n\nIncludes chemistry, thresholds, LLM temperature.\nMemories are preserved.',
+                'RESET PARAM\u00C8TRES',
+                'Remettre tous les param\u00E8tres de fonctionnement aux valeurs d\'usine ?\n\nInclut la chimie, les seuils, la temp\u00E9rature LLM.\nLes souvenirs sont pr\u00E9serv\u00E9s.',
                 'parameters_only'
             );
         });
@@ -1777,8 +1899,8 @@ function setupFactory() {
     if (btnEthics) {
         btnEthics.addEventListener('click', function() {
             showFactoryConfirm(
-                'RESET ETHICS',
-                'Deactivate ALL of Saphire\'s personal principles?\n\nSwiss Law and Asimov layers remain intact.\nPrinciples are not deleted, just deactivated.',
+                'RESET \u00C9THIQUE',
+                'D\u00E9sactiver TOUS les principes personnels de Saphire ?\n\nLes couches Droit Suisse et Asimov sont intactes.\nLes principes ne sont pas supprim\u00E9s, juste d\u00E9sactiv\u00E9s.',
                 'personal_ethics_only'
             );
         });
@@ -1788,8 +1910,8 @@ function setupFactory() {
     if (btnPsychology) {
         btnPsychology.addEventListener('click', function() {
             showFactoryConfirm(
-                'RESET PSYCHOLOGY',
-                'Reset the 6 psychological frameworks?\n\nFreud, Maslow, Toltec, Jung, EQ and Flow will be reset to initial values.\nMemories and chemistry are preserved.',
+                'RESET PSYCHOLOGIE',
+                'R\u00E9initialiser les 6 frameworks psychologiques ?\n\nFreud, Maslow, Tolt\u00E8ques, Jung, EQ et Flow seront remis aux valeurs initiales.\nLes souvenirs et la chimie sont pr\u00E9serv\u00E9s.',
                 'psychology_only'
             );
         });
@@ -1799,8 +1921,8 @@ function setupFactory() {
     if (btnFull) {
         btnFull.addEventListener('click', function() {
             showFactoryConfirm(
-                '\u26A0 FULL RESET',
-                'WARNING: This will erase ALL episodic memories, reset all parameters, senses, intuition and ethics to factory defaults.\n\nThe spark, long-term memory, founding memories and beat count are preserved.\n\nThis action is irreversible.',
+                '\u26A0 RESET COMPLET',
+                'ATTENTION : Ceci va effacer TOUS les souvenirs \u00E9pisodiques, remettre tous les param\u00E8tres, sens, intuition et \u00E9thique aux valeurs d\'usine.\n\nL\'\u00E9tincelle, la m\u00E9moire \u00E0 long terme, les founding memories et le beat count sont pr\u00E9serv\u00E9s.\n\nCette action est irr\u00E9versible.',
                 'full_reset'
             );
         });
@@ -1856,7 +1978,7 @@ function factoryReset(level) {
             type: 'factory_reset',
             level: level
         }));
-        showFactoryStatus('Reset ' + level.replace(/_/g, ' ') + ' in progress...', 'pending');
+        showFactoryStatus('Reset ' + level.replace(/_/g, ' ') + ' en cours...', 'pending');
     }
 }
 
@@ -1871,7 +1993,7 @@ function toggleFactoryDiff() {
         return;
     }
 
-    diffEl.innerHTML = '<div style="color:rgba(255,255,255,0.3);text-align:center;padding:0.5rem;">Loading...</div>';
+    diffEl.innerHTML = '<div style="color:rgba(255,255,255,0.3);text-align:center;padding:0.5rem;">Chargement...</div>';
     diffEl.style.display = 'block';
 
     fetch('/api/factory/diff')
@@ -1880,7 +2002,7 @@ function toggleFactoryDiff() {
             renderFactoryDiff(diffEl, data);
         })
         .catch(function(err) {
-            diffEl.innerHTML = '<div style="color:var(--neon-pink);text-align:center;padding:0.5rem;">Error: ' + err + '</div>';
+            diffEl.innerHTML = '<div style="color:var(--neon-pink);text-align:center;padding:0.5rem;">Erreur: ' + err + '</div>';
         });
 }
 
@@ -1888,13 +2010,13 @@ function toggleFactoryDiff() {
 function renderFactoryDiff(container, data) {
     var diffs = data.diffs || [];
     if (diffs.length === 0) {
-        container.innerHTML = '<div class="factory-diff-empty">\u2714 All values are at factory specifications</div>';
+        container.innerHTML = '<div class="factory-diff-empty">\u2714 Toutes les valeurs sont aux sp\u00E9cifications d\'usine</div>';
         return;
     }
 
     var html = '<div class="factory-diff-row factory-diff-header">' +
-        '<span>PARAM</span><span style="text-align:right">CURRENT</span>' +
-        '<span style="text-align:right">FACTORY</span><span style="text-align:right">\u0394</span></div>';
+        '<span>PARAM</span><span style="text-align:right">ACTUEL</span>' +
+        '<span style="text-align:right">USINE</span><span style="text-align:right">\u0394</span></div>';
 
     for (var i = 0; i < diffs.length; i++) {
         var d = diffs[i];
@@ -1925,9 +2047,9 @@ function handleFactoryResetDone(data) {
     var level = data.level || 'Unknown';
 
     if (changes.length > 0) {
-        showFactoryStatus('Reset ' + level + ': ' + changes.length + ' parameter(s) modified', 'success');
+        showFactoryStatus('Reset ' + level + ' : ' + changes.length + ' param\u00E8tre(s) modifi\u00E9(s)', 'success');
     } else {
-        showFactoryStatus('Reset ' + level + ': no changes needed', 'success');
+        showFactoryStatus('Reset ' + level + ' : aucun changement n\u00E9cessaire', 'success');
     }
 
     // Masquer le diff (les valeurs ont change)
@@ -1937,7 +2059,7 @@ function handleFactoryResetDone(data) {
     // Ajouter dans le flux de conscience
     var stream = document.getElementById('stream');
     if (stream) {
-        var time = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        var time = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         var div = document.createElement('div');
         div.className = 'thought';
         var color = level === 'FullReset' ? 'var(--neon-pink)' : 'var(--neon-orange)';
@@ -1947,7 +2069,7 @@ function handleFactoryResetDone(data) {
                 '<span class="thought-type" style="color:' + color + '">FACTORY RESET</span>' +
             '</div>' +
             '<div class="thought-content" style="color:' + color + '">' +
-            'Reset ' + escapeHtml(level) + ': ' + changes.length + ' change(s)' +
+            'Reset ' + escapeHtml(level) + ' : ' + changes.length + ' changement(s)' +
             '</div>';
         stream.appendChild(div);
         stream.scrollTop = stream.scrollHeight;
@@ -1995,10 +2117,10 @@ function updateEthics(data) {
         var moralEl = document.getElementById('ethics-moral-stats');
         if (moralEl) {
             moralEl.innerHTML =
-                '<span>Superego: ' + (mc.superego_strength * 100).toFixed(0) + '%</span>' +
+                '<span>Surmoi: ' + (mc.superego_strength * 100).toFixed(0) + '%</span>' +
                 '<span>EQ: ' + (mc.eq_overall * 100).toFixed(0) + '%</span>' +
-                '<span>Willpower: ' + (mc.will_total_deliberations || 0) + ' delib.</span>' +
-                '<span title="Proud: ' + (mc.will_proud||0) + ' / Regretted: ' + (mc.will_regretted||0) + '">' +
+                '<span>Volonte: ' + (mc.will_total_deliberations || 0) + ' delib.</span>' +
+                '<span title="Fieres: ' + (mc.will_proud||0) + ' / Regrettees: ' + (mc.will_regretted||0) + '">' +
                     '(' + (mc.will_proud||0) + '&#10004; / ' + (mc.will_regretted||0) + '&#10008;)' +
                 '</span>';
         }
@@ -2008,7 +2130,7 @@ function updateEthics(data) {
     var countEl = document.getElementById('ethics-personal-count');
     if (countEl && data.personal) {
         var active = data.personal.active_count || 0;
-        countEl.textContent = active + ' active';
+        countEl.textContent = active + ' actif' + (active > 1 ? 's' : '');
     }
 
     var container = document.getElementById('personal-principles');
@@ -2017,13 +2139,13 @@ function updateEthics(data) {
             return (b.is_active ? 1 : 0) - (a.is_active ? 1 : 0);
         });
         if (principles.length === 0) {
-            container.innerHTML = '<div class="ethics-empty">No personal principle — in gestation...</div>';
+            container.innerHTML = '<div class="ethics-empty">Aucun principe personnel — en gestation...</div>';
         } else {
             var html = '';
             for (var i = 0; i < principles.length; i++) {
                 var p = principles[i];
                 var cardClass = 'ethics-principle-card' + (p.is_active ? '' : ' inactive');
-                var statusTag = p.is_active ? '' : ' [inactive]';
+                var statusTag = p.is_active ? '' : ' [inactif]';
 
                 html += '<div class="' + cardClass + '">' +
                     '<div class="ethics-principle-title">' + escapeHtml(p.title) + statusTag + '</div>' +
@@ -2031,8 +2153,8 @@ function updateEthics(data) {
                     '<div class="ethics-principle-meta">' +
                         '<span>cycle ' + p.born_at_cycle + '</span>' +
                         '<span>' + escapeHtml(p.emotion_at_creation || '—') + '</span>' +
-                        '<span>invoked ' + (p.times_invoked || 0) + 'x</span>' +
-                        '<span>questioned ' + (p.times_questioned || 0) + 'x</span>' +
+                        '<span>invoque ' + (p.times_invoked || 0) + 'x</span>' +
+                        '<span>questionne ' + (p.times_questioned || 0) + 'x</span>' +
                     '</div>' +
                 '</div>';
             }
@@ -2060,12 +2182,12 @@ function updateEthics(data) {
         if (detEl && r.conditions) {
             var labels = {
                 'min_cycles': 'Cycles \u226550',
-                'moral_reflections': 'Moral reflections',
-                'consciousness': 'Consciousness',
-                'cortisol': 'Low cortisol',
-                'serotonin': 'Serotonin',
+                'moral_reflections': 'Reflexions morales',
+                'consciousness': 'Conscience',
+                'cortisol': 'Cortisol bas',
+                'serotonin': 'Serotonine',
                 'cooldown': 'Cooldown',
-                'capacity': 'Capacity'
+                'capacity': 'Capacite'
             };
             var dh = '';
             for (var key in r.conditions) {
@@ -2120,7 +2242,7 @@ function updateVital(data) {
         if (iContainer) {
             var patterns = data.intuition.active_patterns || [];
             if (patterns.length === 0) {
-                iContainer.innerHTML = '<div class="ethics-empty" style="font-size:0.7rem">No active intuition</div>';
+                iContainer.innerHTML = '<div class="ethics-empty" style="font-size:0.7rem">Aucune intuition active</div>';
             } else {
                 var iHtml = '';
                 patterns.forEach(function(p) {
@@ -2142,7 +2264,7 @@ function updateVital(data) {
         if (predContainer) {
             var preds = data.premonition.active_predictions || [];
             if (preds.length === 0) {
-                predContainer.innerHTML = '<div class="ethics-empty" style="font-size:0.7rem">No active prediction</div>';
+                predContainer.innerHTML = '<div class="ethics-empty" style="font-size:0.7rem">Aucune prediction active</div>';
             } else {
                 var predHtml = '';
                 preds.forEach(function(p) {
@@ -2208,7 +2330,7 @@ function updateSenses(data) {
     if (emergentContainer && data.emergent) {
         var seeds = Array.isArray(data.emergent) ? data.emergent : [];
         if (seeds.length === 0) {
-            emergentContainer.innerHTML = '<div class="ethics-empty" style="font-size:0.7rem">No germinated sense</div>';
+            emergentContainer.innerHTML = '<div class="ethics-empty" style="font-size:0.7rem">Aucun sens germe</div>';
         } else {
             var html = '';
             seeds.forEach(function(seed) {
@@ -2220,7 +2342,7 @@ function updateSenses(data) {
                 html += '<div style="padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.05)">' +
                     '<span style="color:' + color + '">' + icon + ' ' + escapeHtml(name) + '</span> ' +
                     '<span style="color:var(--text-dim)">(' + progress.toFixed(0) + '%)</span>' +
-                    (seed.germinated ? ' <span style="color:#4dff91">germinated</span>' : '') +
+                    (seed.germinated ? ' <span style="color:#4dff91">germe</span>' : '') +
                 '</div>';
             });
             emergentContainer.innerHTML = html;
@@ -2239,7 +2361,7 @@ function loadCognitiveProfileIndicator() {
             var nameEl = document.getElementById('cognitive-profile-name');
             if (!indicator || !nameEl) return;
             if (data && data.enabled && data.active_profile) {
-                var name = data.active_profile.name || 'Neurotypical';
+                var name = data.active_profile.name || 'Neurotypique';
                 var id = data.active_profile.id || 'neurotypique';
                 if (id !== 'neurotypique') {
                     nameEl.textContent = name;
@@ -2288,18 +2410,18 @@ setInterval(loadPersonalityPresetIndicator, 30000);
 // ─── Visualisation 3D du cerveau (Three.js) ─────────────────
 // Positions anatomiques normalisees des 12 regions cerebrales
 var brain3DRegions = [
-    { name: 'Amygdala',    x: -0.4, y: -0.3, z:  0.3 },
-    { name: 'Hippocampus', x: -0.5, y: -0.4, z:  0.0 },
-    { name: 'PFC-Dorso',   x: -0.3, y:  0.7, z:  0.4 },
-    { name: 'PFC-Ventro',  x:  0.0, y:  0.6, z:  0.5 },
+    { name: 'Amygdale',    x: -0.4, y: -0.3, z:  0.3 },
+    { name: 'Hippocampe',  x: -0.5, y: -0.4, z:  0.0 },
+    { name: 'CPF-Dorso',   x: -0.3, y:  0.7, z:  0.4 },
+    { name: 'CPF-Ventro',  x:  0.0, y:  0.6, z:  0.5 },
     { name: 'Insula',      x: -0.5, y:  0.0, z:  0.3 },
-    { name: 'ACC',         x:  0.0, y:  0.4, z:  0.2 },
-    { name: 'Basal-Nuclei',x:  0.0, y: -0.1, z:  0.0 },
-    { name: 'Brainstem',   x:  0.0, y: -0.7, z: -0.1 },
-    { name: 'OFC',         x:  0.3, y:  0.5, z:  0.5 },
+    { name: 'CCA',         x:  0.0, y:  0.4, z:  0.2 },
+    { name: 'Noyaux-Base', x:  0.0, y: -0.1, z:  0.0 },
+    { name: 'Tronc',       x:  0.0, y: -0.7, z: -0.1 },
+    { name: 'COF',         x:  0.3, y:  0.5, z:  0.5 },
     { name: 'Temporal',    x:  0.5, y: -0.1, z:  0.3 },
     { name: 'Parietal',    x:  0.0, y:  0.3, z: -0.4 },
-    { name: 'Cerebellum',  x:  0.0, y: -0.8, z: -0.4 }
+    { name: 'Cervelet',    x:  0.0, y: -0.8, z: -0.4 }
 ];
 
 // Connexions anatomiques entre regions (paires d'indices)
@@ -2330,7 +2452,7 @@ var brain3DAnimId = null;
 
 function initBrain3D() {
     if (typeof THREE === 'undefined') {
-        console.warn('[Brain3D] Three.js not loaded — 3D panel disabled');
+        console.warn('[Brain3D] Three.js non charge — panneau 3D desactive');
         return;
     }
     var canvas = document.getElementById('brain-3d-canvas');
@@ -2388,6 +2510,39 @@ function initBrain3D() {
     brain3DHalo = new THREE.Mesh(haloGeo, haloMat);
     brain3DHalo.scale.setScalar(0.14);
     brain3DGroup.add(brain3DHalo);
+
+    // Colonne vertebrale (spine) — serie de petites spheres sous le Tronc
+    var spineGeo = new THREE.SphereGeometry(0.03, 8, 8);
+    var spineMat = new THREE.MeshBasicMaterial({ color: 0x888888, transparent: true, opacity: 0.6 });
+    var spineSegments = [];
+    for (var si = 0; si < 6; si++) {
+        var seg = new THREE.Mesh(spineGeo, spineMat.clone());
+        seg.position.set(0, -0.85 - si * 0.12, 0);
+        brain3DGroup.add(seg);
+        spineSegments.push(seg);
+        // Connect to previous segment
+        if (si > 0) {
+            var spPoints = [
+                new THREE.Vector3(0, -0.85 - (si-1) * 0.12, 0),
+                new THREE.Vector3(0, -0.85 - si * 0.12, 0),
+            ];
+            var spLineGeo = new THREE.BufferGeometry().setFromPoints(spPoints);
+            var spLineMat = new THREE.LineBasicMaterial({ color: 0x666666, transparent: true, opacity: 0.4 });
+            brain3DGroup.add(new THREE.Line(spLineGeo, spLineMat));
+        }
+    }
+    // Connect Tronc to first spine segment
+    var troncRegion = brain3DRegions.find(function(r) { return r.name === 'Tronc'; });
+    if (troncRegion) {
+        var troncPoints = [
+            new THREE.Vector3(troncRegion.x, troncRegion.y, troncRegion.z),
+            new THREE.Vector3(0, -0.85, 0),
+        ];
+        var troncLineGeo = new THREE.BufferGeometry().setFromPoints(troncPoints);
+        var troncLineMat = new THREE.LineBasicMaterial({ color: 0x666666, transparent: true, opacity: 0.4 });
+        brain3DGroup.add(new THREE.Line(troncLineGeo, troncLineMat));
+    }
+    window._spineSegments = spineSegments;
 
     // ── Reperes anatomiques (avant/arriere) ──
     // Cone frontal ("nez") — pointe vers l'avant (+Z)
@@ -2584,4 +2739,175 @@ function updateBrain3D(brainData) {
         var avg = ((actMap[n1] || 0) + (actMap[n2] || 0)) / 2;
         brain3DLines[c].material.opacity = 0.1 + avg * 0.4;
     }
+
+    // Highlight spine when reflexes are active
+    if (window._spineSegments && window._lastSpineData) {
+        var active = window._lastSpineData.total_reflexes_triggered > 0;
+        window._spineSegments.forEach(function(seg) {
+            seg.material.color.setHex(active ? 0xff2a6d : 0x888888);
+            seg.material.opacity = active ? 0.8 : 0.6;
+        });
+    }
+}
+
+// ─── Colonne vertebrale ──────────────────────────────
+function updateSpine(spine) {
+    const el = (id) => document.getElementById(id);
+    if (el('spine-reflexes')) el('spine-reflexes').textContent = spine.total_reflexes_triggered || 0;
+    if (el('spine-signals')) el('spine-signals').textContent = spine.total_signals_processed || 0;
+    if (el('spine-route')) el('spine-route').textContent = spine.last_route || '—';
+    if (el('spine-priority')) el('spine-priority').textContent = spine.last_priority || '—';
+    window._lastSpineData = spine;
+}
+
+// ─── Curiosite ───────────────────────────────────────
+function updateCuriosity(cur) {
+    const el = (id) => document.getElementById(id);
+    if (el('curiosity-global')) el('curiosity-global').textContent = (cur.global_curiosity || 0).toFixed(2);
+    if (el('curiosity-hungriest')) el('curiosity-hungriest').textContent = cur.hungriest_domain || '—';
+    if (el('curiosity-discoveries')) el('curiosity-discoveries').textContent = cur.total_discoveries || 0;
+    if (el('curiosity-questions')) el('curiosity-questions').textContent = cur.pending_questions || 0;
+    // Domain hunger bars
+    const container = document.getElementById('curiosity-domains');
+    if (container && cur.hunger_by_domain) {
+        container.innerHTML = '';
+        const entries = Object.entries(cur.hunger_by_domain).sort((a, b) => b[1] - a[1]);
+        entries.forEach(([domain, hunger]) => {
+            const row = document.createElement('div');
+            row.className = 'domain-bar-row';
+            const label = document.createElement('span');
+            label.className = 'domain-label';
+            label.textContent = domain;
+            const barWrap = document.createElement('div');
+            barWrap.className = 'domain-bar-wrap';
+            const bar = document.createElement('div');
+            bar.className = 'domain-bar-fill';
+            bar.style.width = (hunger * 100) + '%';
+            // Couleur : vert (faim basse) a rouge (faim haute)
+            const hue = Math.round((1 - hunger) * 120);
+            bar.style.background = `hsl(${hue}, 70%, 50%)`;
+            barWrap.appendChild(bar);
+            row.appendChild(label);
+            row.appendChild(barWrap);
+            container.appendChild(row);
+        });
+    }
+}
+
+// ─── Biologie, Hormones, Sentiments, Psychologie ──────────
+function updateBiology(data) {
+    const el = (id) => document.getElementById(id);
+    if (data.grey_matter) {
+        if (el('bio-grey-matter')) el('bio-grey-matter').textContent = (data.grey_matter.volume || 0).toFixed(2);
+        if (el('bio-synaptic')) el('bio-synaptic').textContent = (data.grey_matter.synaptic_density || 0).toFixed(2);
+    }
+    if (data.nutrition) {
+        if (el('bio-nutrition')) el('bio-nutrition').textContent = data.nutrition.status || '—';
+    }
+    if (data.fields) {
+        if (el('bio-fields')) el('bio-fields').textContent = (data.fields.coherence || 0).toFixed(2);
+    }
+}
+
+function updateHormones(data) {
+    const el = (id) => document.getElementById(id);
+    if (el('horm-phase')) el('horm-phase').textContent = data.circadian_phase || '—';
+    const container = document.getElementById('hormones-bars');
+    if (container && data.hormones) {
+        container.innerHTML = '';
+        Object.entries(data.hormones).forEach(([name, level]) => {
+            const row = document.createElement('div');
+            row.className = 'domain-bar-row';
+            const label = document.createElement('span');
+            label.className = 'domain-label';
+            label.textContent = name;
+            const barWrap = document.createElement('div');
+            barWrap.className = 'domain-bar-wrap';
+            const bar = document.createElement('div');
+            bar.className = 'domain-bar-fill';
+            const val = typeof level === 'number' ? level : (level.level || 0);
+            bar.style.width = (val * 100) + '%';
+            bar.style.background = 'var(--accent-pink)';
+            barWrap.appendChild(bar);
+            row.appendChild(label);
+            row.appendChild(barWrap);
+            container.appendChild(row);
+        });
+    }
+}
+
+function updateSentiments(data) {
+    const el = (id) => document.getElementById(id);
+    const list = document.getElementById('sentiments-list');
+    if (list && data.active) {
+        list.innerHTML = '';
+        data.active.forEach(s => {
+            const item = document.createElement('div');
+            item.className = 'sentiment-item';
+            item.innerHTML = '<span class="sentiment-name">' + escapeHtml(s.name || s.target || '?') + '</span><span class="sentiment-value">' + (s.intensity || 0).toFixed(2) + '</span>';
+            list.appendChild(item);
+        });
+        if (el('sentiments-count')) el('sentiments-count').textContent = data.active.length;
+    } else if (list && data.sentiments) {
+        // Alternative format
+        list.innerHTML = '';
+        let count = 0;
+        Object.entries(data.sentiments).forEach(([name, val]) => {
+            if (val && (typeof val === 'number' ? val > 0.1 : val.intensity > 0.1)) {
+                const item = document.createElement('div');
+                item.className = 'sentiment-item';
+                const intensity = typeof val === 'number' ? val : val.intensity;
+                item.innerHTML = '<span class="sentiment-name">' + escapeHtml(name) + '</span><span class="sentiment-value">' + intensity.toFixed(2) + '</span>';
+                list.appendChild(item);
+                count++;
+            }
+        });
+        if (el('sentiments-count')) el('sentiments-count').textContent = count;
+    }
+}
+
+function updatePsychology(data) {
+    const el = (id) => document.getElementById(id);
+    if (data.maslow) {
+        if (el('psy-maslow')) el('psy-maslow').textContent = data.maslow.current_level || data.maslow.level || '—';
+    }
+    if (data.eq) {
+        if (el('psy-eq')) el('psy-eq').textContent = ((data.eq.overall_eq || data.eq.overall || 0) * 100).toFixed(0) + '%';
+    }
+    if (data.flow) {
+        if (el('psy-flow')) el('psy-flow').textContent = data.flow.state || data.flow.current_state || '—';
+    }
+    if (data.shadow || data.jung) {
+        const shadow = data.shadow || data.jung;
+        if (el('psy-archetype')) el('psy-archetype').textContent = shadow.dominant_archetype || shadow.archetype || '—';
+        if (el('psy-shadow')) el('psy-shadow').textContent = ((shadow.integration || 0) * 100).toFixed(0) + '%';
+    }
+    if (data.will) {
+        if (el('psy-fatigue')) el('psy-fatigue').textContent = ((data.will.decision_fatigue || 0) * 100).toFixed(0) + '%';
+    }
+}
+
+function showFeedbackResult(data) {
+    const positive = data.positive ? '👍' : '👎';
+    const boost = data.reward_boost ? ` (+${data.reward_boost.toFixed(2)})` : '';
+    addChatMessage(`${positive} Feedback reçu${boost}`, 'system');
+}
+
+// ─── Moniteur de derive ──────────────────────────────────
+function updateDriftMonitor(drift) {
+    const el = (id) => document.getElementById(id);
+    if (el('drift-level')) {
+        const level = drift.level || 'stable';
+        el('drift-level').textContent = level.toUpperCase();
+        el('drift-level').className = 'tag drift-' + level;
+    }
+    if (el('drift-similarity')) el('drift-similarity').textContent = (drift.last_similarity || 0).toFixed(3);
+    if (el('drift-avg')) el('drift-avg').textContent = (drift.rolling_avg || 0).toFixed(3);
+    if (el('drift-trend')) {
+        const trend = drift.trend || 0;
+        el('drift-trend').textContent = (trend >= 0 ? '+' : '') + trend.toFixed(3);
+        el('drift-trend').style.color = trend >= 0 ? 'var(--neon-green)' : 'var(--neon-pink)';
+    }
+    if (el('drift-checks')) el('drift-checks').textContent = drift.total_checks || 0;
+    if (el('drift-alerts')) el('drift-alerts').textContent = drift.total_alerts || 0;
 }

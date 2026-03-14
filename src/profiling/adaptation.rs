@@ -19,6 +19,7 @@
 // =============================================================================
 
 use super::human_profiler::HumanProfile;
+use crate::nlp::register::Register;
 
 /// Genere les instructions d'adaptation pour le LLM basees sur le profil humain.
 ///
@@ -90,5 +91,25 @@ pub fn adapt_for_human(human: &HumanProfile) -> String {
         String::new()
     } else {
         format!("ADAPTATION A L'INTERLOCUTEUR :\n{}\n", adaptations.join("\n"))
+    }
+}
+
+/// Genere une directive courte basee sur le registre linguistique detecte.
+///
+/// Retourne une instruction concise (~50-80 chars) pour adapter le ton
+/// de Saphire au registre de l'interlocuteur. Retourne une chaine vide
+/// si le registre est neutre ou si la confiance est insuffisante.
+pub fn adapt_register(register: &Register, confidence: f64) -> String {
+    if confidence < 0.02 {
+        return String::new();
+    }
+    match register {
+        Register::Technical => "TON : reponds avec precision et clarte technique.".into(),
+        Register::Poetic => "TON : tu peux etre metaphorique et evocatrice.".into(),
+        Register::Emotional => "TON : ecoute avec empathie, accueille ce qu'il ressent.".into(),
+        Register::Factual => "TON : reponds de maniere claire et informative.".into(),
+        Register::Philosophical => "TON : explore les idees avec lui, en profondeur.".into(),
+        Register::Playful => "TON : sois legere et joueuse.".into(),
+        Register::Neutral => String::new(),
     }
 }

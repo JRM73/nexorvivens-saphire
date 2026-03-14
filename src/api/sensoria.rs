@@ -83,9 +83,12 @@ pub async fn api_hear(
 pub struct SpeakRequest {
     /// Texte que Saphire veut prononcer
     pub text: String,
+    /// Emotion dominante (optionnelle — pour modulation vocale Qwen3-TTS)
+    pub emotion: Option<String>,
 }
 
 /// Envoie du texte a Sensoria pour synthese vocale (TTS).
+/// Si une emotion est fournie, elle est transmise pour modulation vocale.
 pub async fn api_speak(
     State(_state): State<AppState>,
     Json(req): Json<SpeakRequest>,
@@ -98,15 +101,21 @@ pub async fn api_speak(
         })));
     }
 
-    tracing::info!("[SENSORIA] Envoi TTS vers Sensoria : \"{}\"", text);
+    let emotion = req.emotion.unwrap_or_else(|| "Neutre".into());
+
+    tracing::info!("[SENSORIA] Envoi TTS vers Sensoria : \"{}\" [{}]", text, emotion);
 
     // Appel synchrone via ureq dans un spawn_blocking (pour ne pas bloquer le runtime)
     let text_clone = text.clone();
+    let emotion_clone = emotion.clone();
     let result = tokio::task::spawn_blocking(move || {
         let url = format!("http://{}/api/speak", SENSORIA_HOST);
         ureq::post(&url)
             .set("Content-Type", "application/json")
-            .send_string(&serde_json::json!({ "text": text_clone }).to_string())
+            .send_string(&serde_json::json!({
+                "text": text_clone,
+                "emotion": emotion_clone,
+            }).to_string())
     })
     .await;
 
@@ -116,6 +125,7 @@ pub async fn api_speak(
                 (StatusCode::OK, Json(serde_json::json!({
                     "status": "ok",
                     "sent": text,
+                    "emotion": emotion,
                 })))
             } else {
                 (StatusCode::BAD_GATEWAY, Json(serde_json::json!({

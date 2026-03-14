@@ -338,19 +338,14 @@ impl StateClustering {
         match &self.last_result {
             Some(r) => {
                 format!(
-                    "ETAT_COGNITIF: {} (confiance {:.0}%) | PCA=[{:.2}, {:.2}, {:.2}]",
+                    "Proprioception: je me sens {} (certitude {:.0}%)",
                     r.state_label,
                     r.confidence * 100.0,
-                    r.pca_projection[0],
-                    r.pca_projection[1],
-                    r.pca_projection[2],
                 )
             }
             None => {
                 format!(
-                    "ETAT_COGNITIF: calibrage en cours ({}/{} snapshots)",
-                    self.history.len(),
-                    MIN_SNAPSHOTS,
+                    "Proprioception: en cours de calibrage",
                 )
             }
         }
@@ -373,7 +368,7 @@ mod tests {
     fn test_build_snapshot() {
         let chem = [0.5, 0.3, 0.6, 0.2, 0.4, 0.3, 0.5, 0.5, 0.45];
         let snap = StateClustering::build_snapshot(
-            &chem, 0.5, 0.4, 0.6, 0.7, 0.3, 0.65, 0.2, 0.0, 42,
+            &chem, 0.5, 0.4, 0.6, 0.7, 0.3, 0.65, 0.2, 0.1, 42,
         );
         assert_eq!(snap.cycle, 42);
         assert_eq!(snap.dimensions[0], 0.5); // dopamine
@@ -450,8 +445,9 @@ mod tests {
         }
         if sc.last_result.is_some() {
             let line = sc.proprioception_line();
-            assert!(line.contains("ETAT_COGNITIF"));
-            assert!(line.contains("PCA"));
+            assert!(line.contains("Proprioception"));
+            assert!(line.contains("je me sens"));
+            assert!(line.contains("certitude"));
         }
     }
 }

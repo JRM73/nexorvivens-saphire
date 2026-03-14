@@ -327,6 +327,19 @@ impl SaphireAgent {
                 self.config.memory.recall_vectors_threshold = 0.30;
                 c.push(serde_json::json!({"param": "memory_recall", "old": "reset", "new": "defaults"}));
 
+                // Reset colonne vertebrale (reflexes)
+                self.spine = crate::spine::SpinalCord::new();
+                c.push(serde_json::json!({"param": "spine", "old": "reset", "new": "initial"}));
+
+                // Reset curiosite
+                self.curiosity = crate::cognition::curiosity::CuriosityDrive::new();
+                c.push(serde_json::json!({"param": "curiosity", "old": "reset", "new": "initial"}));
+
+                // Reset drift monitor
+                self.drift_monitor = crate::cognition::drift_monitor::DriftMonitor::new();
+                self.drift_monitor.initialize(&*self.encoder);
+                c.push(serde_json::json!({"param": "drift_monitor", "old": "reset", "new": "re-initialized"}));
+
                 // Reset compteurs
                 self.cycle_count = 0;
                 self.last_consolidation_cycle = 0;

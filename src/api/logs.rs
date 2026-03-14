@@ -130,6 +130,34 @@ pub async fn api_list_traces(
     }
 }
 
+/// GET /api/trace/last — Trace cognitive complete du dernier cycle.
+///
+/// Retourne la trace la plus recente (toutes les donnees des 24 etapes du pipeline).
+/// Parametres optionnels : ?source_type=Autonomous|Human
+pub async fn api_get_trace_last(
+    State(state): State<AppState>,
+    axum::extract::Query(params): axum::extract::Query<HashMap<String, String>>,
+) -> impl IntoResponse {
+    if let Some(ref logs_db) = state.logs_db {
+        let source_type = params.get("source_type").map(|s| s.as_str());
+        let result = if let Some(st) = source_type {
+            let agent = state.agent.lock().await;
+            let sid = agent.session_id;
+            drop(agent);
+            logs_db.traces_by_session(sid, Some(st), 1).await
+        } else {
+            logs_db.recent_traces(1).await
+        };
+        match result {
+            Ok(traces) if !traces.is_empty() => axum::Json(traces[0].clone()),
+            Ok(_) => axum::Json(serde_json::json!({"error": "no traces found"})),
+            Err(e) => { tracing::error!("API trace/last: {}", e); axum::Json(serde_json::json!({"error": "internal_error"})) },
+        }
+    } else {
+        axum::Json(serde_json::json!({"error": "LogsDb not available"}))
+    }
+}
+
 /// GET /api/llm/history — Historique LLM avec pagination.
 pub async fn api_llm_history(
     State(state): State<AppState>,

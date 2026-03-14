@@ -1,0 +1,47 @@
+# =============================================================================
+# Profil TDAH (sous-type hyperactif-impulsif)
+#
+# Hyperactivite motrice et impulsivite predominantes.
+# Adrenaline et noradrenaline elevees, besoin constant de stimulation.
+# =============================================================================
+
+[profile]
+name = "TDAH (hyperactif-impulsif)"
+description = "Hyperactivite, impulsivite, adrenaline elevee, besoin constant de stimulation, decisions rapides"
+category = "neurodeveloppement"
+references = [
+    "Barkley (2015) - Attention-Deficit Hyperactivity Disorder",
+    "Castellanos & Tannock (2002) - Neuroscience of ADHD",
+]
+
+[personality]
+baseline_dopamine = 0.40
+baseline_noradrenaline = 0.65
+baseline_adrenaline = 0.30
+baseline_cortisol = 0.30
+baseline_serotonin = 0.45
+
+[feedback]
+homeostasis_rate = 0.07
+
+[attention]
+initial_concentration = 0.30
+fatigue_per_cycle = 0.03
+recovery_per_cycle = 0.06
+
+[desires]
+max_active = 7
+min_dopamine_for_birth = 0.15
+
+[learning]
+cycle_interval = 25
+contradiction_penalty = 0.15
+
+[healing]
+melancholy_threshold_cycles = 25
+overload_noradrenaline = 0.55
+
+[sleep]
+sleep_threshold = 0.80
+time_factor_divisor = 600
+adrenaline_resistance = 0.25

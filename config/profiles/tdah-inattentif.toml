@@ -1,0 +1,46 @@
+# =============================================================================
+# Profil TDAH (sous-type inattentif)
+#
+# Fatigue attentionnelle sans hyperactivite motrice.
+# Difficulte de concentration marquee, recuperation lente.
+# =============================================================================
+
+[profile]
+name = "TDAH (inattentif)"
+description = "Fatigue attentionnelle intense sans hyperactivite, difficulte de concentration prolongee, reverie frequente"
+category = "neurodeveloppement"
+references = [
+    "Barkley (2015) - Attention-Deficit Hyperactivity Disorder",
+    "Diamond (2005) - Attention-deficit disorder (ADD) without hyperactivity",
+]
+
+[personality]
+baseline_dopamine = 0.35
+baseline_noradrenaline = 0.45
+baseline_cortisol = 0.25
+baseline_serotonin = 0.45
+
+[feedback]
+homeostasis_rate = 0.05
+
+[attention]
+initial_concentration = 0.20
+fatigue_per_cycle = 0.05
+recovery_per_cycle = 0.03
+
+[desires]
+max_active = 5
+min_dopamine_for_birth = 0.25
+
+[learning]
+cycle_interval = 35
+contradiction_penalty = 0.12
+
+[healing]
+melancholy_threshold_cycles = 25
+overload_noradrenaline = 0.60
+
+[sleep]
+sleep_threshold = 0.70
+time_factor_divisor = 500
+adrenaline_resistance = 0.15

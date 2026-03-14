@@ -156,8 +156,8 @@ impl ActiveSentiment {
         let intensity = if self.strength > 0.7 { "fort" }
             else if self.strength > 0.4 { "modere" }
             else { "faible" };
-        format!("{} ({}, {} — force {:.0}%)",
-            self.profile_name, self.duration_type.label(), intensity, self.strength * 100.0)
+        format!("{} ({}, {})",
+            self.profile_name, self.duration_type.label(), intensity)
     }
 }
 

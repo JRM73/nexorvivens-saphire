@@ -40,19 +40,43 @@ pub(super) struct FeedbackRequest {
 /// Analyse simple du feedback humain sans appel LLM supplementaire.
 /// Retourne true si le feedback est globalement positif (approbation claire).
 /// Les messages correctifs ("oui mais...", "plus simplement...") sont negatifs.
-pub(super) fn is_positive_feedback(response: &str) -> bool {
-    let lower = response.to_lowercase();
-    // Marqueurs correctifs — l'humain corrige ou suggere une amelioration
-    let corrective = [
-        "mais", "plutot", "simplement", "simple", "par exemple",
-        "tu devrais", "tu peux", "essaie", "il faudrait", "il faut",
-        "au lieu", "instead", "try", "should", "better",
-    ];
-    let has_correction = corrective.iter().any(|w| lower.contains(*w));
-    // Si le message contient un marqueur correctif, c'est un feedback negatif
-    // meme s'il commence par "oui"
-    if has_correction { return false; }
+/// Analyse le sentiment d'un feedback humain via le LLM.
+/// Fallback sur heuristique simple si le LLM echoue.
+pub(super) async fn is_positive_feedback_llm(response: &str, llm_config: &crate::llm::LlmConfig) -> bool {
+    let backend = crate::llm::create_backend(llm_config);
+    let system = "Tu es un analyseur de sentiment. On te donne un message humain envoye en reponse \
+                  a une question posee par une IA. Determine si le sentiment global du message est \
+                  positif (encouragement, accord, interet, compliment, soutien) ou negatif \
+                  (desaccord, critique, correction, rejet). \
+                  Reponds UNIQUEMENT par le mot \"positif\" ou \"negatif\".".to_string();
+    let user = response.to_string();
 
+    let result = tokio::task::spawn_blocking(move || {
+        backend.chat(&system, &user, 0.1, 5)
+    }).await;
+
+    match result {
+        Ok(Ok(answer)) => {
+            let lower = answer.trim().to_lowercase();
+            if lower.contains("positif") {
+                true
+            } else if lower.contains("negatif") || lower.contains("négatif") {
+                false
+            } else {
+                tracing::warn!("Feedback LLM: reponse inattendue '{}', fallback heuristique", answer.trim());
+                is_positive_feedback_heuristic(response)
+            }
+        }
+        _ => {
+            tracing::warn!("Feedback LLM: echec appel, fallback heuristique");
+            is_positive_feedback_heuristic(response)
+        }
+    }
+}
+
+/// Heuristique simple de fallback (ancienne methode).
+fn is_positive_feedback_heuristic(response: &str) -> bool {
+    let lower = response.to_lowercase();
     let positive = [
         "oui", "bien", "exact", "d'accord", "interessant", "bravo",
         "continue", "j'aime", "genial", "super", "bon", "vrai",
@@ -324,6 +348,11 @@ impl SaphireAgent {
 
         // Phases post-LLM : traitement de la reponse
         self.phase_llm_history(&mut ctx);
+        self.phase_vectorial_filter(&mut ctx);         // P2 : filtrage vectoriel anti-repetition
+        self.phase_drift_check(&mut ctx);              // P0 : moniteur de derive de persona
+        if ctx.should_abort {
+            return None;
+        }
         self.phase_algorithm_request(&mut ctx).await;
         self.phase_pipeline(&mut ctx);
         self.phase_monologue(&mut ctx);             // M2 : monologue interieur
@@ -334,6 +363,7 @@ impl SaphireAgent {
         self.phase_working_memory(&mut ctx).await;
         self.phase_memory_echo(&mut ctx).await;
         self.phase_reward_and_ethics(&mut ctx).await;
+        self.phase_verify_predictions(&mut ctx);
         self.phase_maybe_ask_feedback(&mut ctx);
         self.phase_lora_collect(&mut ctx).await;
         self.phase_knowledge_bonus(&mut ctx).await;
@@ -349,10 +379,16 @@ impl SaphireAgent {
         self.phase_personality_snapshot(&mut ctx).await;  // Portrait temporel (50 cycles)
         self.phase_introspection_journal(&mut ctx).await; // Journal introspectif (200 cycles)
         self.phase_desire_birth(&mut ctx).await;
+        self.phase_self_modification(&mut ctx).await;  // Auto-modification niveaux 1+2
         self.phase_psychology(&mut ctx);
+        self.phase_values(&mut ctx);                // Valeurs de caractere (vertus)
         self.phase_narrative(&mut ctx);             // M5 : identite narrative
+        self.phase_behavior_tree(&mut ctx);          // BT : instinct cognitif
         self.phase_game_algorithms(&mut ctx);       // GA2 : influence map, FSM, steering, GOAP
         self.phase_homeostasis(&mut ctx);
+
+        // Filtrage des termes techniques internes avant affichage
+        ctx.thought_text = super::conversation::strip_internal_jargon(&ctx.thought_text);
 
         Some(ctx.thought_text)
     }

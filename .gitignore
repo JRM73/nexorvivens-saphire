@@ -18,22 +18,32 @@ node_modules/
 package.json
 package-lock.json
 
-# Archives
-archives/
-
-# Internal documents
-docs/
-
-# Environment (secrets)
-.env
-
-# Backup directories
-src.bak/
-static/static/
-
-# TLS certificates
+# TLS certificates (sensitive)
 nginx/*.key
 nginx/*.crt
 
 # Logs
 logs/
+
+# Unsloth / fine-tuning cache
+unsloth_compiled_cache/
+
+# LLM model files (too large)
+*.gguf
+
+# Environment (secrets)
+.env
+config/.env
+
+# Datasets (too large)
+datasets/
+
+# Internal documents
+docs/
+
+# Backup directories
+src.bak/
+archives/
+
+# Script state files
+scripts/tools/.lecture-progress.json

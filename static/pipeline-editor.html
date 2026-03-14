@@ -1,1 +1,1170 @@
-<\!DOCTYPE html><html><body>Pipeline editor stub</body></html>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAPHIRE — Pipeline Editor</title>
+<style>
+/* ─── Reset & Base ──────────────────────────────────────────── */
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a12;color:#c8c8d8;font-family:'Share Tech Mono','Consolas',monospace;overflow:hidden;height:100vh;display:flex;flex-direction:column}
+::selection{background:#4a9eff44;color:#fff}
+
+/* ─── Toolbar ───────────────────────────────────────────────── */
+#toolbar{height:48px;background:#12121e;border-bottom:1px solid #2a2a3e;display:flex;align-items:center;padding:0 16px;gap:10px;flex-shrink:0;z-index:100}
+#toolbar h1{font-family:'Orbitron','Share Tech Mono',monospace;font-size:14px;letter-spacing:2px;margin-right:20px;white-space:nowrap;background:linear-gradient(90deg,#00f0ff,#b537f2,#ff2a6d);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;filter:drop-shadow(0 0 8px rgba(0,240,255,0.4))}
+#toolbar h1 .page-label{font-size:12px;letter-spacing:1.5px;-webkit-text-fill-color:rgba(0,240,255,0.7)}
+#toolbar .nav-link{color:#888;font-size:11px;text-decoration:none;border:1px solid #2a2a3e;padding:6px 12px;border-radius:4px;transition:all .15s}
+#toolbar .nav-link:hover{color:#4a9eff;border-color:#4a9eff;background:#1a1a2e}
+#toolbar button,#toolbar select{background:#1a1a2e;color:#c8c8d8;border:1px solid #2a2a3e;padding:6px 12px;font-size:11px;font-family:inherit;cursor:pointer;border-radius:4px;transition:all .15s}
+#toolbar button:hover,#toolbar select:hover{background:#252540;border-color:#4a9eff}
+#toolbar select{min-width:140px}
+.toolbar-sep{width:1px;height:24px;background:#2a2a3e;margin:0 4px}
+
+/* ─── Layout ────────────────────────────────────────────────── */
+#main{display:flex;flex:1;overflow:hidden}
+
+/* ─── Palette ───────────────────────────────────────────────── */
+#palette{width:240px;background:#0e0e1a;border-right:1px solid #2a2a3e;overflow-y:auto;flex-shrink:0;transition:width .2s}
+#palette.collapsed{width:0;border-right:none;overflow:hidden}
+#palette-toggle{position:absolute;left:240px;top:56px;background:#1a1a2e;border:1px solid #2a2a3e;border-left:none;color:#c8c8d8;padding:4px 6px;cursor:pointer;z-index:50;font-size:12px;border-radius:0 4px 4px 0;transition:left .2s}
+#palette-toggle.collapsed{left:0}
+.pal-cat{padding:8px 12px;font-size:11px;color:#888;letter-spacing:1px;border-bottom:1px solid #1a1a2e;user-select:none}
+.pal-item{padding:6px 12px;font-size:11px;cursor:grab;border-bottom:1px solid #14141f;display:flex;align-items:center;gap:8px;user-select:none}
+.pal-item:hover{background:#1a1a2e}
+.pal-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.pal-name{color:#e0e0e8;font-weight:bold;font-size:11px}
+.pal-desc{color:#666;font-size:9px;margin-top:1px}
+
+/* ─── Canvas ────────────────────────────────────────────────── */
+#canvas-wrap{flex:1;position:relative;overflow:hidden;cursor:default}
+canvas{display:block}
+
+/* ─── Context menu ──────────────────────────────────────────── */
+#ctx-menu{display:none;position:absolute;background:#1a1a2e;border:1px solid #2a2a3e;border-radius:4px;z-index:200;min-width:140px;padding:4px 0;box-shadow:0 4px 12px #000a}
+#ctx-menu div{padding:6px 14px;font-size:11px;cursor:pointer}
+#ctx-menu div:hover{background:#252540}
+
+/* ─── Toast ─────────────────────────────────────────────────── */
+#toast{position:fixed;bottom:20px;right:20px;background:#1a1a2e;border:1px solid #4a9eff;color:#c8c8d8;padding:8px 16px;font-size:11px;border-radius:4px;opacity:0;transition:opacity .3s;z-index:300;pointer-events:none}
+#toast.show{opacity:1}
+
+/* ─── Modal ─────────────────────────────────────────────────── */
+.modal-bg{display:none;position:fixed;inset:0;background:#000a;z-index:250;align-items:center;justify-content:center}
+.modal-bg.show{display:flex}
+.modal{background:#12121e;border:1px solid #2a2a3e;border-radius:6px;padding:20px;min-width:300px}
+.modal h3{font-size:13px;color:#4a9eff;margin-bottom:12px}
+.modal input{background:#0a0a12;border:1px solid #2a2a3e;color:#c8c8d8;padding:6px 10px;font-size:12px;font-family:inherit;width:100%;border-radius:4px;margin-bottom:12px}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end}
+.modal-btns button{background:#1a1a2e;border:1px solid #2a2a3e;color:#c8c8d8;padding:6px 14px;font-size:11px;font-family:inherit;cursor:pointer;border-radius:4px}
+.modal-btns button.primary{border-color:#4a9eff;color:#4a9eff}
+</style>
+</head>
+<body>
+
+<!-- ─── Toolbar ──────────────────────────────────────────────── -->
+<div id="toolbar">
+  <h1>SAPHIRE 💎 <span class="page-label">PIPELINE EDITOR</span></h1>
+  <a href="/dashboard" class="nav-link">Dashboard</a>
+  <a href="/brain-map" class="nav-link">Brain Map</a>
+  <a href="/" class="nav-link">Chat</a>
+  <span class="toolbar-sep"></span>
+  <select id="schema-select"><option value="">— Schema par defaut —</option></select>
+  <button id="btn-save">Sauvegarder</button>
+  <button id="btn-reset">Reset defaut</button>
+  <span class="toolbar-sep"></span>
+  <button id="btn-export">Exporter JSON</button>
+  <button id="btn-import">Importer JSON</button>
+  <input type="file" id="import-file" accept=".json" style="display:none">
+  <span class="toolbar-sep"></span>
+  <button id="btn-del-schema">Supprimer schema</button>
+</div>
+
+<!-- ─── Palette toggle ──────────────────────────────────────── -->
+<button id="palette-toggle">◀</button>
+
+<!-- ─── Main area ───────────────────────────────────────────── -->
+<div id="main">
+  <div id="palette"></div>
+  <div id="canvas-wrap">
+    <canvas id="cv"></canvas>
+  </div>
+</div>
+
+<!-- ─── Context menu ────────────────────────────────────────── -->
+<div id="ctx-menu">
+  <div id="ctx-dup">⧉ Dupliquer</div>
+  <div id="ctx-del">✕ Supprimer</div>
+  <div id="ctx-del-conn">✕ Supprimer connexion</div>
+</div>
+
+<!-- ─── Save modal ──────────────────────────────────────────── -->
+<div class="modal-bg" id="save-modal">
+  <div class="modal">
+    <h3>Sauvegarder le schema</h3>
+    <input id="save-name" placeholder="Nom du schema..." autofocus>
+    <div class="modal-btns">
+      <button id="save-cancel">Annuler</button>
+      <button id="save-ok" class="primary">Sauvegarder</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Toast ───────────────────────────────────────────────── -->
+<div id="toast"></div>
+
+<script>
+// =============================================================================
+// SAPHIRE Pipeline Editor — Vanilla JS + Canvas 2D
+// =============================================================================
+
+// ─── Donnees des boxes ──────────────────────────────────────────────────────
+
+const CATEGORIES = {
+  'ENTREE':       '#4a9eff',
+  'CERVEAU':      '#b44aff',
+  'CHIMIE':       '#4aff88',
+  'EMOTION':      '#ff4a88',
+  'CONDITIONS':   '#ff8844',
+  'HORMONES':     '#ffcc44',
+  'CONSCIENCE':   '#44ffee',
+  'REGULATION':   '#ff4444',
+  'SORTIE':       '#888888',
+  'MEMOIRE':      '#44aaff',
+  'VITAL':        '#ff44dd',
+  'NLP':          '#88ff44',
+  'CONNAISSANCE': '#aa88ff',
+  'MONDE':        '#44ddff',
+  'SOCIAL':       '#ffaa44',
+  'PSYCHOLOGIE':  '#ff66ff',
+  'SOMMEIL':      '#6644ff',
+  'CORPS':        '#66ffaa',
+  'SOINS':        '#ff6666',
+  'PROFIL':       '#88ffcc',
+  'ALGO':         '#aaaa44',
+  'COMPORTEMENT': '#cc8844',
+};
+
+const BOX_DEFS = [
+  { id:'stimulus',       cat:'ENTREE',     name:'STIMULUS',        desc:'Le message ou la pensee qui arrive' },
+  { id:'sens',           cat:'ENTREE',     name:'5 SENS',          desc:'Lecture, ecoute, contact, saveur, ambiance' },
+  { id:'modules',        cat:'CERVEAU',    name:'3 CERVEAUX',      desc:'Reptilien (survie), limbique (emotion), neocortex (raison)' },
+  { id:'brain_regions',  cat:'CERVEAU',    name:'12 REGIONS',      desc:'12 zones du cerveau selon la chimie et les sens' },
+  { id:'micro_nn',       cat:'CERVEAU',    name:'RESEAU NEURONAL', desc:'Petit reseau de neurones qui vote au consensus' },
+  { id:'consensus',      cat:'CERVEAU',    name:'CONSENSUS',       desc:'Les 3 cerveaux + le NN votent' },
+  { id:'predictive',     cat:'CERVEAU',    name:'PREDICTION',      desc:'Predit le futur et mesure la surprise (Friston)' },
+  { id:'chimie_photo',   cat:'CHIMIE',     name:'PHOTO CHIMIE',    desc:'Capture les 9 molecules avant traitement' },
+  { id:'recepteurs',     cat:'CHIMIE',     name:'RECEPTEURS',      desc:'Sensibilite des recepteurs (tolerance, adaptation)' },
+  { id:'interactions',   cat:'CHIMIE',     name:'INTERACTIONS',     desc:'Les 9 molecules s\'influencent entre elles' },
+  { id:'retroaction',    cat:'CHIMIE',     name:'RETROACTION',     desc:'La decision modifie la chimie (recompense / stress)' },
+  { id:'emotion',        cat:'EMOTION',    name:'EMOTION (36)',    desc:'Quelle emotion domine ? Calculee depuis la chimie' },
+  { id:'sentiments',     cat:'EMOTION',    name:'SENTIMENTS (20)', desc:'Etats durables (optimisme, confiance...)' },
+  { id:'humeur',         cat:'EMOTION',    name:'HUMEUR',          desc:'Tendance lente (positif/negatif, calme/excite)' },
+  { id:'besoins',        cat:'CONDITIONS', name:'BESOINS',         desc:'Faim et soif modifient la chimie' },
+  { id:'phobies',        cat:'CONDITIONS', name:'PHOBIES',         desc:'Mots-declencheurs de peur dans le texte' },
+  { id:'cinetose',       cat:'CONDITIONS', name:'MAL TRANSPORTS',  desc:'Conflit entre les sens → nausee' },
+  { id:'troubles_alim',  cat:'CONDITIONS', name:'TROUBLES ALIM.',  desc:'Perception faussee de la faim' },
+  { id:'handicaps',      cat:'CONDITIONS', name:'HANDICAPS',       desc:'Douleur chronique, adaptations physiques' },
+  { id:'conditions_ext', cat:'CONDITIONS', name:'STRESS EXTREME',  desc:'Burnout, epuisement, adaptation' },
+  { id:'addictions',     cat:'CONDITIONS', name:'ADDICTIONS',      desc:'Manque, craving, dependance chimique' },
+  { id:'trauma',         cat:'CONDITIONS', name:'TRAUMA / PTSD',   desc:'Flashbacks, hypervigilance' },
+  { id:'iem',            cat:'CONDITIONS', name:'MORT IMMINENTE',  desc:'Phases de l\'experience de mort imminente' },
+  { id:'drogues',        cat:'CONDITIONS', name:'DROGUES',         desc:'Effets pharmacologiques des substances' },
+  { id:'sexualite',      cat:'CONDITIONS', name:'SEXUALITE',       desc:'Libido, attachement, hormones sexuelles' },
+  { id:'degeneratif',    cat:'CONDITIONS', name:'MALADIES DEGEN.', desc:'Alzheimer, Parkinson... progression lente' },
+  { id:'medical',        cat:'CONDITIONS', name:'MALADIES',        desc:'Douleur, immunite, energie generale' },
+  { id:'culture',        cat:'CONDITIONS', name:'CULTURE',         desc:'Tabous culturels, stress social' },
+  { id:'physiologie',    cat:'CONDITIONS', name:'DEGRAD. COGNITIVE',desc:'Manque d\'oxygene ou de sucre → confusion' },
+  { id:'hormones',       cat:'HORMONES',   name:'HORMONES',        desc:'Cycles jour/nuit, testosterone, estrogene' },
+  { id:'conscience',     cat:'CONSCIENCE',  name:'CONSCIENCE',      desc:'Niveau de conscience : integration + GWT' },
+  { id:'metriques_sci',  cat:'CONSCIENCE',  name:'METRIQUES',       desc:'LZC, PCI, Phi* — mesures scientifiques avancees' },
+  { id:'ethique',        cat:'REGULATION', name:'ETHIQUE',         desc:'La decision respecte-t-elle les regles morales ?' },
+  { id:'tuning',         cat:'REGULATION', name:'AUTO-AJUSTEMENT', desc:'Observe les resultats pour ajuster les seuils' },
+  { id:'nn_training',    cat:'SORTIE',     name:'APPRENTISSAGE NN',desc:'Le reseau de neurones apprend de cette decision' },
+  { id:'plugins',        cat:'SORTIE',     name:'BROADCAST',       desc:'Diffuse les evenements aux modules externes' },
+  { id:'connectome',     cat:'SORTIE',     name:'CONNECTOME',      desc:'Renforce les liens entre concepts actifs' },
+  { id:'mortalite',      cat:'SORTIE',     name:'MORTALITE',       desc:'Les organes vitaux tiennent-ils le coup ?' },
+
+  // --- MEMOIRE ---
+  { id:'mem_travail',    cat:'MEMOIRE',      name:'MEM. TRAVAIL',     desc:'RAM 7 slots (loi de Miller), decroissance temporelle' },
+  { id:'mem_episodique', cat:'MEMOIRE',      name:'MEM. EPISODIQUE',  desc:'Souvenirs recents PostgreSQL avec decay progressif' },
+  { id:'mem_ltm',        cat:'MEMOIRE',      name:'MEM. LONG TERME',  desc:'200 000 souvenirs pgvector, recherche semantique' },
+  { id:'consolidation',  cat:'MEMOIRE',      name:'CONSOLIDATION',    desc:'Transfert episodique → LTM pendant le sommeil' },
+  { id:'reconsolidation',cat:'MEMOIRE',      name:'RECONSOLIDATION',  desc:'Chaque rappel modifie le souvenir (Nader 2000)' },
+  { id:'mem_prospective',cat:'MEMOIRE',      name:'MEM. PROSPECTIVE', desc:'Intentions differees : se souvenir de faire' },
+  { id:'raisonnement_analogique', cat:'MEMOIRE', name:'ANALOGIES',    desc:'Detection analogies entre situation courante et LTM' },
+
+  // --- VITAL ---
+  { id:'etincelle',      cat:'VITAL',        name:'ETINCELLE',        desc:'VitalSpark — instinct de survie emergent' },
+  { id:'intuition',      cat:'VITAL',        name:'INTUITION',        desc:'Pattern-matching inconscient, gut feeling' },
+  { id:'premonition',    cat:'VITAL',        name:'PREMONITION',      desc:'Anticipation predictive, sentir ce qui va arriver' },
+  { id:'metacognition',  cat:'VITAL',        name:'METACOGNITION',    desc:'Penser sur ses pensees, qualite, biais, calibration' },
+  { id:'turing',         cat:'VITAL',        name:'METRIQUE TURING',  desc:'Score composite 0-100, 9 composantes, 5 jalons' },
+
+  // --- NLP ---
+  { id:'nlp_pipeline',   cat:'NLP',          name:'PIPELINE NLP',     desc:'Analyse linguistique hybride 3 couches' },
+  { id:'nlp_sentiment',  cat:'NLP',          name:'SENTIMENT',        desc:'Analyse VADER-like bilingue FR+EN (400+ mots)' },
+  { id:'nlp_intent',     cat:'NLP',          name:'INTENTION',        desc:'Detection intention : question, ordre, emotion, menace' },
+  { id:'nlp_dimensions', cat:'NLP',          name:'DIMENSIONS',       desc:'5 dimensions emotionnelles du stimulus' },
+
+  // --- CONNAISSANCE ---
+  { id:'knowledge',      cat:'CONNAISSANCE', name:'CONNAISSANCES',    desc:'WebKnowledge — 13 sources, routing, anti-repetition' },
+  { id:'kn_wikipedia',   cat:'CONNAISSANCE', name:'WIKIPEDIA',        desc:'Encyclopedie (FR/EN), sections rotatives' },
+  { id:'kn_arxiv',       cat:'CONNAISSANCE', name:'ARXIV',            desc:'Articles scientifiques en Atom XML' },
+  { id:'kn_medium',      cat:'CONNAISSANCE', name:'MEDIUM',           desc:'Articles de blog tech via RSS' },
+  { id:'kn_sep',         cat:'CONNAISSANCE', name:'STANFORD PHILO',   desc:'Stanford Encyclopedia of Philosophy' },
+  { id:'kn_gutenberg',   cat:'CONNAISSANCE', name:'GUTENBERG',        desc:'Litterature classique (Project Gutenberg)' },
+  { id:'kn_scholar',     cat:'CONNAISSANCE', name:'SEMANTIC SCHOLAR', desc:'Papers academiques, citations' },
+  { id:'kn_openlibrary', cat:'CONNAISSANCE', name:'OPEN LIBRARY',     desc:'Livres du monde entier' },
+  { id:'kn_philo_rss',   cat:'CONNAISSANCE', name:'PHILO RSS',        desc:'Aeon + Daily Nous (essais philosophiques)' },
+  { id:'kn_hackernews',  cat:'CONNAISSANCE', name:'HACKER NEWS',      desc:'Tech news via Algolia API' },
+  { id:'kn_philarchive', cat:'CONNAISSANCE', name:'PHILARCHIVE',      desc:'Philosophie academique (depot ouvert)' },
+  { id:'kn_archive',     cat:'CONNAISSANCE', name:'INTERNET ARCHIVE', desc:'Archives web, livres numerises' },
+  { id:'kn_custom_rss',  cat:'CONNAISSANCE', name:'RSS PERSO',        desc:'Flux RSS configurables par l\'utilisateur' },
+  { id:'kn_news',        cat:'CONNAISSANCE', name:'ACTUALITES',       desc:'Medias suisses + internationaux en temps reel' },
+
+  // --- MONDE ---
+  { id:'monde_temps',    cat:'MONDE',        name:'TEMPORALITE',      desc:'Date, heure, jour, saison, age de Saphire' },
+  { id:'monde_lieu',     cat:'MONDE',        name:'GEOLOCALISATION',  desc:'Coordonnees, ville, pays (Geneve)' },
+  { id:'monde_meteo',    cat:'MONDE',        name:'METEO',            desc:'Open-Meteo : temperature, humidite, pression' },
+
+  // --- SOCIAL ---
+  { id:'liens',          cat:'SOCIAL',       name:'LIENS AFFECTIFS',  desc:'Reseau relationnel, 6 types, 4 styles d\'attachement' },
+  { id:'famille',        cat:'SOCIAL',       name:'FAMILLE',          desc:'Situation familiale, roles, statut marital' },
+  { id:'tom',            cat:'SOCIAL',       name:'THEORIE ESPRIT',   desc:'Modelise l\'etat mental de l\'interlocuteur' },
+  { id:'profil_humain',  cat:'SOCIAL',       name:'PROFIL HUMAIN',    desc:'Profilage OCEAN de l\'interlocuteur' },
+
+  // --- PSYCHOLOGIE ---
+  { id:'volonte',        cat:'PSYCHOLOGIE',  name:'VOLONTE',          desc:'Deliberation interne volontaire, dilemmes' },
+  { id:'subconscient',   cat:'PSYCHOLOGIE',  name:'SUBCONSCIENT',     desc:'Traitement en arriere-plan, associations' },
+  { id:'freudien',       cat:'PSYCHOLOGIE',  name:'FREUD (CA/MOI)',   desc:'Ca, Moi, Surmoi : dynamique psychique' },
+  { id:'jung',           cat:'PSYCHOLOGIE',  name:'JUNG (OMBRE)',     desc:'Ombre, Archetypes, Integration' },
+  { id:'maslow',         cat:'PSYCHOLOGIE',  name:'MASLOW',           desc:'Pyramide des 5 niveaux de besoins' },
+  { id:'toltec',         cat:'PSYCHOLOGIE',  name:'4 ACCORDS',        desc:'Don Miguel Ruiz : cadre ethique personnel' },
+  { id:'flow',           cat:'PSYCHOLOGIE',  name:'FLOW',             desc:'Csikszentmihalyi : equilibre defi/competence' },
+  { id:'intel_emot',     cat:'PSYCHOLOGIE',  name:'INTEL. EMOT.',     desc:'Goleman : conscience de soi, empathie (5 axes)' },
+  { id:'appropriation',  cat:'PSYCHOLOGIE',  name:'APPROPRIATION',    desc:'Integration des pensees en 1ere personne' },
+  { id:'passions',       cat:'PSYCHOLOGIE',  name:'PASSIONS',         desc:'Centres d\'interet emergents, hobbies' },
+
+  // --- SOMMEIL ---
+  { id:'sommeil',        cat:'SOMMEIL',      name:'CYCLE SOMMEIL',    desc:'Veille/sommeil, pression, 5 phases' },
+  { id:'reves',          cat:'SOMMEIL',      name:'REVES',            desc:'Generation onirique, consolidation nocturne' },
+
+  // --- CORPS ---
+  { id:'coeur',          cat:'CORPS',        name:'COEUR',            desc:'BPM, variabilite cardiaque (HRV)' },
+  { id:'interoception',  cat:'CORPS',        name:'INTEROCEPTION',    desc:'Perception des signaux corporels internes' },
+  { id:'soma',           cat:'CORPS',        name:'SOMA',             desc:'Etat somatique : energie, tension, fatigue' },
+  { id:'nutrition',      cat:'CORPS',        name:'NUTRITION',        desc:'Vitamines, acides amines, ATP, metabolisme' },
+
+  // --- SOINS ---
+  { id:'guerison',       cat:'SOINS',        name:'GUERISON',         desc:'Auto-guerison, stabilisation des spirales' },
+  { id:'therapie',       cat:'SOINS',        name:'THERAPIE',         desc:'Psychotherapie : traumas, phobies, addictions' },
+  { id:'medicaments',    cat:'SOINS',        name:'MEDICAMENTS',      desc:'Medicaments therapeutiques, effets chimiques' },
+  { id:'art_therapie',   cat:'SOINS',        name:'ART-THERAPIE',     desc:'Guerison par la creativite (ecriture, musique)' },
+  { id:'chirurgie',      cat:'SOINS',        name:'CHIRURGIE',        desc:'Interventions, anesthesie, convalescence' },
+
+  // --- CONDITIONS (supplementaires) ---
+  { id:'emploi',         cat:'CONDITIONS',   name:'EMPLOI',           desc:'Statut professionnel, influence economique' },
+  { id:'precarite',      cat:'CONDITIONS',   name:'PRECARITE',        desc:'SDF, refugie, sans-papiers' },
+
+  // --- PROFIL ---
+  { id:'ocean',          cat:'PROFIL',       name:'OCEAN',            desc:'Big Five : 5 dimensions + sous-facettes' },
+  { id:'profil_self',    cat:'PROFIL',       name:'AUTO-PROFIL',      desc:'Auto-profilage comportemental OCEAN' },
+  { id:'temperament',    cat:'PROFIL',       name:'TEMPERAMENT',      desc:'~25 traits (timidite, courage...) deduits d\'OCEAN' },
+  { id:'profil_cognitif',cat:'PROFIL',       name:'PROFIL COGNITIF',  desc:'Neurodivergence : TDAH, autisme, HPI, bipolaire' },
+  { id:'personnalite',   cat:'PROFIL',       name:'PERSONNALITE',     desc:'10 archetypes (philosophe, artiste, stoique...)' },
+
+  // --- ALGO ---
+  { id:'algo_orch',      cat:'ALGO',         name:'ALGO ORCHESTRATEUR',desc:'Pont LLM ↔ 48 algorithmes Rust' },
+  { id:'algo_bandit',    cat:'ALGO',         name:'BANDIT UCB1',      desc:'Exploration/exploitation multi-bras' },
+  { id:'algo_catalog',   cat:'ALGO',         name:'CATALOGUE ALGO',   desc:'Le Vidal de Saphire : fiches algorithmes' },
+
+  // --- COMPORTEMENT ---
+  { id:'behavior_tree',  cat:'COMPORTEMENT', name:'BEHAVIOR TREE',    desc:'Arbre de decision structuree' },
+  { id:'cognitive_fsm',  cat:'COMPORTEMENT', name:'FSM COGNITIVE',    desc:'Etats cognitifs avec transitions chimiques' },
+  { id:'charge_cognitive',cat:'COMPORTEMENT',name:'CHARGE COGNITIVE', desc:'Sweller : ressources mentales utilisees' },
+  { id:'dissonance',     cat:'COMPORTEMENT', name:'DISSONANCE',       desc:'Festinger : contradiction croyances/actions' },
+  { id:'flocking',       cat:'COMPORTEMENT', name:'FLOCKING',         desc:'Boids Reynolds applique aux pensees' },
+  { id:'steering',       cat:'COMPORTEMENT', name:'STEERING',         desc:'Navigation emotionnelle valence-arousal' },
+  { id:'influence_map',  cat:'COMPORTEMENT', name:'CARTE INFLUENCE',  desc:'Grille 2D topics x urgence pour l\'attention' },
+  { id:'monologue',      cat:'COMPORTEMENT', name:'MONOLOGUE INT.',   desc:'Chaine de pensees avec coherence' },
+  { id:'imagerie',       cat:'COMPORTEMENT', name:'IMAGERIE MENTALE', desc:'Representations visuelles internes' },
+  { id:'identite_narr',  cat:'COMPORTEMENT', name:'IDENTITE NARR.',   desc:'McAdams : construction du recit de soi' },
+
+  // --- GENOME / SUBSTRAT ---
+  { id:'genome',         cat:'ENTREE',       name:'GENOME',           desc:'ADN deterministe, predispositions temperament' },
+  { id:'grey_matter',    cat:'CERVEAU',      name:'MATIERE GRISE',    desc:'Densite corticale, myelinisation, neuroplasticite' },
+  { id:'bdnf',           cat:'CERVEAU',      name:'BDNF',             desc:'Facteur neurotrophique : module consolidation memoire et plasticite connectome' },
+  { id:'fields',         cat:'ENTREE',       name:'CHAMPS EM',        desc:'Schumann, solaire, geomagnetisme' },
+];
+
+// Ordre par defaut du pipeline — 3 vagues : PERCEPTION → TRAITEMENT → REPONSE
+const DEFAULT_ORDER = [
+  // VAGUE 1 — PERCEPTION (enrichir la chimie, puis calculer l'emotion)
+  'stimulus','chimie_photo','hormones',
+  'besoins','phobies','cinetose','troubles_alim',
+  'handicaps','conditions_ext','addictions','trauma','iem','drogues',
+  'sexualite','degeneratif','medical','culture',
+  'recepteurs','interactions',
+  'emotion','sentiments','humeur',
+  // VAGUE 2 — TRAITEMENT (cerveau decide avec la bonne emotion)
+  'modules','sens','brain_regions','predictive',
+  'consensus','micro_nn','physiologie',
+  'conscience','metriques_sci',
+  // VAGUE 3 — REPONSE (agir et apprendre)
+  'ethique','tuning','retroaction',
+  'nn_training','plugins','connectome','mortalite',
+  // VAGUE 4 — NLP + CONNAISSANCE (enrichir le contexte)
+  'nlp_pipeline','nlp_sentiment','nlp_intent','nlp_dimensions',
+  'knowledge','kn_wikipedia','kn_arxiv','kn_sep','kn_scholar',
+  'kn_medium','kn_gutenberg','kn_openlibrary','kn_philo_rss',
+  'kn_hackernews','kn_philarchive','kn_archive','kn_custom_rss','kn_news',
+  // VAGUE 5 — MEMOIRE
+  'mem_travail','mem_episodique','mem_ltm','consolidation','reconsolidation',
+  'mem_prospective','raisonnement_analogique',
+  // VAGUE 6 — VITAL + METACOGNITION
+  'etincelle','intuition','premonition','metacognition','turing',
+  // VAGUE 7 — MONDE + SOCIAL
+  'monde_temps','monde_lieu','monde_meteo',
+  'liens','famille','tom','profil_humain',
+  // VAGUE 8 — PSYCHOLOGIE
+  'volonte','subconscient','freudien','jung','maslow',
+  'toltec','flow','intel_emot','appropriation','passions',
+  // VAGUE 9 — SOMMEIL + CORPS + SOINS
+  'sommeil','reves',
+  'coeur','interoception','soma','nutrition',
+  'guerison','therapie','medicaments','art_therapie','chirurgie',
+  // VAGUE 10 — CONDITIONS supplementaires
+  'emploi','precarite',
+  // VAGUE 11 — PROFIL
+  'ocean','profil_self','temperament','profil_cognitif','personnalite',
+  // VAGUE 12 — ALGO + COMPORTEMENT
+  'algo_orch','algo_bandit','algo_catalog',
+  'behavior_tree','cognitive_fsm','charge_cognitive','dissonance',
+  'flocking','steering','influence_map','monologue','imagerie','identite_narr',
+  // VAGUE 13 — GENOME / SUBSTRAT
+  'genome','grey_matter','fields',
+];
+
+// ─── Dimensions ─────────────────────────────────────────────────────────────
+
+const BW = 220, BH = 70, PORT_R = 6, COLS = 8, GAP_X = 260, GAP_Y = 90, PAD = 40;
+
+// ─── Etat ───────────────────────────────────────────────────────────────────
+
+let boxes = [];       // {id, defId, x, y, cat, name, desc, color}
+let conns = [];       // {from: boxIndex, to: boxIndex}
+let nextId = 1;
+
+// Viewport (pan + zoom)
+let vpX = 0, vpY = 0, vpScale = 1;
+
+// Interaction
+let dragging = null;       // {boxIdx, offX, offY}
+let connecting = null;     // {fromIdx, mx, my}
+let panning = null;        // {startX, startY, vpX0, vpY0}
+let hoveredBox = -1;
+let hoveredConn = -1;
+let selectedConn = -1;
+let ctxBox = -1;
+let ctxConn = -1;
+
+// ─── Canvas ─────────────────────────────────────────────────────────────────
+
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+let W, H;
+
+function resize() {
+  const wrap = document.getElementById('canvas-wrap');
+  W = wrap.clientWidth;
+  H = wrap.clientHeight;
+  cv.width = W * devicePixelRatio;
+  cv.height = H * devicePixelRatio;
+  cv.style.width = W + 'px';
+  cv.style.height = H + 'px';
+  ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+  draw();
+}
+window.addEventListener('resize', resize);
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+function screenToWorld(sx, sy) {
+  return [(sx - vpX) / vpScale, (sy - vpY) / vpScale];
+}
+
+function worldToScreen(wx, wy) {
+  return [wx * vpScale + vpX, wy * vpScale + vpY];
+}
+
+function boxAt(wx, wy) {
+  for (let i = boxes.length - 1; i >= 0; i--) {
+    const b = boxes[i];
+    if (wx >= b.x && wx <= b.x + BW && wy >= b.y && wy <= b.y + BH) return i;
+  }
+  return -1;
+}
+
+function portOut(b) { return { x: b.x + BW, y: b.y + BH / 2 }; }
+function portIn(b)  { return { x: b.x, y: b.y + BH / 2 }; }
+
+function dist(ax, ay, bx, by) { return Math.hypot(ax - bx, ay - by); }
+
+function hitPort(wx, wy, port) { return dist(wx, wy, port.x, port.y) < PORT_R + 4; }
+
+function bezierPoint(p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y, t) {
+  const u = 1 - t;
+  const uu = u * u, uuu = uu * u;
+  const tt = t * t, ttt = tt * t;
+  return [
+    uuu * p0x + 3 * uu * t * p1x + 3 * u * tt * p2x + ttt * p3x,
+    uuu * p0y + 3 * uu * t * p1y + 3 * u * tt * p2y + ttt * p3y,
+  ];
+}
+
+function hitConn(wx, wy) {
+  const threshold = 8 / vpScale;
+  for (let i = 0; i < conns.length; i++) {
+    const c = conns[i];
+    if (c.from >= boxes.length || c.to >= boxes.length) continue;
+    const a = portOut(boxes[c.from]);
+    const b = portIn(boxes[c.to]);
+    const cpOff = Math.min(Math.abs(b.x - a.x) * 0.4, 80);
+    // Echantillonner la courbe de Bezier (20 segments)
+    for (let s = 0; s <= 20; s++) {
+      const [px, py] = bezierPoint(a.x, a.y, a.x + cpOff, a.y, b.x - cpOff, b.y, b.x, b.y, s / 20);
+      if (dist(wx, wy, px, py) < threshold) return i;
+    }
+  }
+  return -1;
+}
+
+// ─── Dessin ─────────────────────────────────────────────────────────────────
+
+function draw() {
+  ctx.save();
+  ctx.clearRect(0, 0, W, H);
+
+  // Fond
+  ctx.fillStyle = '#0a0a12';
+  ctx.fillRect(0, 0, W, H);
+
+  // Grille pointillee
+  ctx.save();
+  ctx.translate(vpX, vpY);
+  ctx.scale(vpScale, vpScale);
+  const gs = 40;
+  const x0 = Math.floor(-vpX / vpScale / gs) * gs - gs;
+  const y0 = Math.floor(-vpY / vpScale / gs) * gs - gs;
+  const x1 = x0 + W / vpScale + gs * 2;
+  const y1 = y0 + H / vpScale + gs * 2;
+  ctx.fillStyle = '#1a1a2e';
+  for (let gx = x0; gx < x1; gx += gs) {
+    for (let gy = y0; gy < y1; gy += gs) {
+      ctx.fillRect(gx, gy, 1.5, 1.5);
+    }
+  }
+
+  // Connexions
+  for (let i = 0; i < conns.length; i++) {
+    const c = conns[i];
+    if (c.from >= boxes.length || c.to >= boxes.length) continue;
+    const a = portOut(boxes[c.from]);
+    const b = portIn(boxes[c.to]);
+    const sel = (i === selectedConn || i === hoveredConn);
+    ctx.beginPath();
+    // Courbe de Bezier
+    const cpOff = Math.min(Math.abs(b.x - a.x) * 0.4, 80);
+    ctx.moveTo(a.x, a.y);
+    ctx.bezierCurveTo(a.x + cpOff, a.y, b.x - cpOff, b.y, b.x, b.y);
+    ctx.strokeStyle = sel ? '#fff' : '#4a9eff66';
+    ctx.lineWidth = sel ? 2.5 : 1.5;
+    ctx.stroke();
+    // Fleche
+    const angle = Math.atan2(b.y - (b.y), (b.x) - (b.x - cpOff));
+    const ax1 = b.x - 8 * Math.cos(angle - 0.4);
+    const ay1 = b.y - 8 * Math.sin(angle - 0.4);
+    const ax2 = b.x - 8 * Math.cos(angle + 0.4);
+    const ay2 = b.y - 8 * Math.sin(angle + 0.4);
+    ctx.beginPath();
+    ctx.moveTo(b.x, b.y);
+    ctx.lineTo(ax1, ay1);
+    ctx.moveTo(b.x, b.y);
+    ctx.lineTo(ax2, ay2);
+    ctx.strokeStyle = sel ? '#fff' : '#4a9eff88';
+    ctx.lineWidth = sel ? 2 : 1.5;
+    ctx.stroke();
+  }
+
+  // Connexion en cours
+  if (connecting) {
+    const a = portOut(boxes[connecting.fromIdx]);
+    const [mx, my] = screenToWorld(connecting.mx, connecting.my);
+    ctx.beginPath();
+    const cpOff = Math.min(Math.abs(mx - a.x) * 0.4, 80);
+    ctx.moveTo(a.x, a.y);
+    ctx.bezierCurveTo(a.x + cpOff, a.y, mx - cpOff, my, mx, my);
+    ctx.strokeStyle = '#4a9effaa';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Boxes
+  for (let i = 0; i < boxes.length; i++) {
+    const b = boxes[i];
+    const hov = (i === hoveredBox);
+
+    // Ombre
+    ctx.shadowColor = b.color + '33';
+    ctx.shadowBlur = hov ? 16 : 8;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 2;
+
+    // Fond box
+    ctx.beginPath();
+    roundRect(ctx, b.x, b.y, BW, BH, 6);
+    ctx.fillStyle = hov ? '#1e1e32' : '#14141f';
+    ctx.fill();
+    ctx.strokeStyle = b.color + (hov ? 'cc' : '88');
+    ctx.lineWidth = hov ? 2 : 1;
+    ctx.stroke();
+
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+
+    // Bande de couleur a gauche
+    ctx.beginPath();
+    ctx.moveTo(b.x + 6, b.y);
+    ctx.lineTo(b.x + 6, b.y + BH);
+    ctx.lineTo(b.x, b.y + BH - 6);
+    ctx.arcTo(b.x, b.y + BH, b.x, b.y + BH - 6, 6);
+    ctx.lineTo(b.x, b.y + 6);
+    ctx.arcTo(b.x, b.y, b.x + 6, b.y, 6);
+    ctx.closePath();
+    ctx.fillStyle = b.color + '44';
+    ctx.fill();
+
+    // Nom
+    ctx.fillStyle = '#e8e8f0';
+    ctx.font = 'bold 12px "Share Tech Mono", monospace';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(b.name, b.x + 14, b.y + 22, BW - 28);
+
+    // Description
+    ctx.fillStyle = '#777';
+    ctx.font = '10px "Share Tech Mono", monospace';
+    ctx.fillText(truncText(b.desc, BW - 28), b.x + 14, b.y + 42, BW - 28);
+
+    // Categorie
+    ctx.fillStyle = b.color + '88';
+    ctx.font = '8px "Share Tech Mono", monospace';
+    ctx.fillText(b.cat, b.x + 14, b.y + 58);
+
+    // Port sortie (droite)
+    ctx.beginPath();
+    ctx.arc(b.x + BW, b.y + BH / 2, PORT_R, 0, Math.PI * 2);
+    ctx.fillStyle = '#0a0a12';
+    ctx.fill();
+    ctx.strokeStyle = b.color;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Port entree (gauche)
+    ctx.beginPath();
+    ctx.arc(b.x, b.y + BH / 2, PORT_R, 0, Math.PI * 2);
+    ctx.fillStyle = '#0a0a12';
+    ctx.fill();
+    ctx.strokeStyle = b.color;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  ctx.restore();
+  ctx.restore();
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x, y + h, x, y + h - r, r);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath();
+}
+
+function truncText(t, maxW) {
+  // Simple truncation a 30 caracteres
+  return t.length > 34 ? t.slice(0, 32) + '...' : t;
+}
+
+// ─── Initialisation des boxes ───────────────────────────────────────────────
+
+function defById(id) { return BOX_DEFS.find(d => d.id === id); }
+
+function buildDefaultLayout() {
+  boxes = [];
+  conns = [];
+  nextId = 1;
+  for (let i = 0; i < DEFAULT_ORDER.length; i++) {
+    const d = defById(DEFAULT_ORDER[i]);
+    if (!d) continue;
+    const col = Math.floor(i / COLS);
+    const row = i % COLS;
+    boxes.push({
+      uid: nextId++,
+      defId: d.id,
+      x: PAD + col * GAP_X,
+      y: PAD + row * GAP_Y,
+      cat: d.cat,
+      name: d.name,
+      desc: d.desc,
+      color: CATEGORIES[d.cat],
+    });
+  }
+  // Connexions lineaires par defaut
+  for (let i = 0; i < boxes.length - 1; i++) {
+    conns.push({ from: i, to: i + 1 });
+  }
+}
+
+function addBoxFromDef(d, wx, wy) {
+  boxes.push({
+    uid: nextId++,
+    defId: d.id,
+    x: wx,
+    y: wy,
+    cat: d.cat,
+    name: d.name,
+    desc: d.desc,
+    color: CATEGORIES[d.cat],
+  });
+  draw();
+}
+
+// ─── Palette ────────────────────────────────────────────────────────────────
+
+function buildPalette() {
+  const pal = document.getElementById('palette');
+  pal.innerHTML = '';
+  let lastCat = '';
+  for (const d of BOX_DEFS) {
+    if (d.cat !== lastCat) {
+      lastCat = d.cat;
+      const h = document.createElement('div');
+      h.className = 'pal-cat';
+      h.textContent = d.cat;
+      pal.appendChild(h);
+    }
+    const el = document.createElement('div');
+    el.className = 'pal-item';
+    el.draggable = true;
+    el.innerHTML = `<span class="pal-dot" style="background:${CATEGORIES[d.cat]}"></span><div><div class="pal-name">${d.name}</div><div class="pal-desc">${d.desc}</div></div>`;
+    el.addEventListener('dragstart', e => {
+      e.dataTransfer.setData('text/plain', d.id);
+      e.dataTransfer.effectAllowed = 'copy';
+    });
+    pal.appendChild(el);
+  }
+}
+
+// Drop sur le canvas
+document.getElementById('canvas-wrap').addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+document.getElementById('canvas-wrap').addEventListener('drop', e => {
+  e.preventDefault();
+  const id = e.dataTransfer.getData('text/plain');
+  const d = defById(id);
+  if (!d) return;
+  const rect = cv.getBoundingClientRect();
+  const [wx, wy] = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
+  addBoxFromDef(d, wx - BW / 2, wy - BH / 2);
+});
+
+// Toggle palette
+const palToggle = document.getElementById('palette-toggle');
+palToggle.addEventListener('click', () => {
+  document.getElementById('palette').classList.toggle('collapsed');
+  palToggle.classList.toggle('collapsed');
+  palToggle.textContent = palToggle.classList.contains('collapsed') ? '▶' : '◀';
+  setTimeout(resize, 220);
+});
+
+// ─── Interactions Canvas ────────────────────────────────────────────────────
+
+cv.addEventListener('mousedown', e => {
+  hideCtx();
+  const rect = cv.getBoundingClientRect();
+  const sx = e.clientX - rect.left;
+  const sy = e.clientY - rect.top;
+  const [wx, wy] = screenToWorld(sx, sy);
+
+  // Clic milieu = pan
+  if (e.button === 1) {
+    e.preventDefault();
+    panning = { startX: e.clientX, startY: e.clientY, vpX0: vpX, vpY0: vpY };
+    cv.style.cursor = 'grabbing';
+    return;
+  }
+
+  // Clic droit = menu contextuel (box ou connexion)
+  if (e.button === 2) {
+    const idx = boxAt(wx, wy);
+    if (idx >= 0) {
+      e.preventDefault();
+      ctxBox = idx;
+      ctxConn = -1;
+      showCtx(e.clientX, e.clientY);
+      return;
+    }
+    const ci = hitConn(wx, wy);
+    if (ci >= 0) {
+      e.preventDefault();
+      ctxConn = ci;
+      ctxBox = -1;
+      showCtx(e.clientX, e.clientY);
+      return;
+    }
+    return;
+  }
+
+  // Clic sur port de sortie ?
+  for (let i = 0; i < boxes.length; i++) {
+    if (hitPort(wx, wy, portOut(boxes[i]))) {
+      connecting = { fromIdx: i, mx: sx, my: sy };
+      return;
+    }
+  }
+
+  // Clic sur connexion ?
+  const ci = hitConn(wx, wy);
+  if (ci >= 0) {
+    selectedConn = ci;
+    draw();
+    return;
+  }
+  selectedConn = -1;
+
+  // Clic sur box → drag
+  const idx = boxAt(wx, wy);
+  if (idx >= 0) {
+    dragging = { boxIdx: idx, offX: wx - boxes[idx].x, offY: wy - boxes[idx].y };
+    // Amener au premier plan : splice + push
+    const b = boxes.splice(idx, 1)[0];
+    boxes.push(b);
+    const newIdx = boxes.length - 1;
+    // Recalculer tous les indices de connexions apres le splice+push
+    for (const c of conns) {
+      c.from = (c.from === idx) ? newIdx : (c.from > idx ? c.from - 1 : c.from);
+      c.to   = (c.to === idx)   ? newIdx : (c.to > idx   ? c.to - 1   : c.to);
+    }
+    dragging.boxIdx = newIdx;
+    draw();
+    return;
+  }
+
+  // Clic dans le vide → pan
+  panning = { startX: e.clientX, startY: e.clientY, vpX0: vpX, vpY0: vpY };
+  cv.style.cursor = 'grabbing';
+});
+
+cv.addEventListener('mousemove', e => {
+  const rect = cv.getBoundingClientRect();
+  const sx = e.clientX - rect.left;
+  const sy = e.clientY - rect.top;
+  const [wx, wy] = screenToWorld(sx, sy);
+
+  if (dragging) {
+    boxes[dragging.boxIdx].x = wx - dragging.offX;
+    boxes[dragging.boxIdx].y = wy - dragging.offY;
+    draw();
+    return;
+  }
+
+  if (connecting) {
+    connecting.mx = sx;
+    connecting.my = sy;
+    draw();
+    return;
+  }
+
+  if (panning) {
+    vpX = panning.vpX0 + (e.clientX - panning.startX);
+    vpY = panning.vpY0 + (e.clientY - panning.startY);
+    draw();
+    return;
+  }
+
+  // Hover
+  const newHov = boxAt(wx, wy);
+  const newConn = newHov < 0 ? hitConn(wx, wy) : -1;
+  if (newHov !== hoveredBox || newConn !== hoveredConn) {
+    hoveredBox = newHov;
+    hoveredConn = newConn;
+    cv.style.cursor = newHov >= 0 ? 'grab' : (newConn >= 0 ? 'pointer' : 'default');
+    // Check port hover
+    if (newHov < 0) {
+      for (let i = 0; i < boxes.length; i++) {
+        if (hitPort(wx, wy, portOut(boxes[i]))) {
+          cv.style.cursor = 'crosshair';
+          break;
+        }
+      }
+    }
+    draw();
+  }
+});
+
+cv.addEventListener('mouseup', e => {
+  if (connecting) {
+    const rect = cv.getBoundingClientRect();
+    const [wx, wy] = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
+    // Trouver port d'entree sous le curseur
+    for (let i = 0; i < boxes.length; i++) {
+      if (i !== connecting.fromIdx && hitPort(wx, wy, portIn(boxes[i]))) {
+        // Verifier pas de doublon
+        const exists = conns.some(c => c.from === connecting.fromIdx && c.to === i);
+        if (!exists) {
+          conns.push({ from: connecting.fromIdx, to: i });
+        }
+        break;
+      }
+    }
+    connecting = null;
+    draw();
+    return;
+  }
+  if (dragging) { dragging = null; cv.style.cursor = 'default'; }
+  if (panning) { panning = null; cv.style.cursor = 'default'; }
+});
+
+// Espace + drag pour pan
+let spaceDown = false;
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' && !e.target.matches('input')) {
+    e.preventDefault();
+    spaceDown = true;
+    cv.style.cursor = 'grab';
+  }
+  if (e.code === 'Delete' && selectedConn >= 0) {
+    conns.splice(selectedConn, 1);
+    selectedConn = -1;
+    draw();
+  }
+});
+document.addEventListener('keyup', e => {
+  if (e.code === 'Space') { spaceDown = false; cv.style.cursor = 'default'; }
+});
+
+// Zoom molette
+cv.addEventListener('wheel', e => {
+  e.preventDefault();
+  const rect = cv.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+  const newScale = Math.max(0.2, Math.min(3, vpScale * zoomFactor));
+  // Zoom vers le curseur
+  vpX = mx - (mx - vpX) * (newScale / vpScale);
+  vpY = my - (my - vpY) * (newScale / vpScale);
+  vpScale = newScale;
+  draw();
+}, { passive: false });
+
+// Empecher menu contextuel natif
+cv.addEventListener('contextmenu', e => e.preventDefault());
+
+// ─── Menu contextuel ────────────────────────────────────────────────────────
+
+const ctxMenu = document.getElementById('ctx-menu');
+
+function showCtx(x, y) {
+  // Afficher les items selon le contexte (box ou connexion)
+  document.getElementById('ctx-dup').style.display = ctxBox >= 0 ? '' : 'none';
+  document.getElementById('ctx-del').style.display = ctxBox >= 0 ? '' : 'none';
+  document.getElementById('ctx-del-conn').style.display = ctxConn >= 0 ? '' : 'none';
+  ctxMenu.style.display = 'block';
+  ctxMenu.style.left = x + 'px';
+  ctxMenu.style.top = y + 'px';
+}
+
+function hideCtx() {
+  ctxMenu.style.display = 'none';
+  ctxBox = -1;
+  ctxConn = -1;
+}
+
+document.getElementById('ctx-dup').addEventListener('click', () => {
+  if (ctxBox >= 0 && ctxBox < boxes.length) {
+    const b = boxes[ctxBox];
+    boxes.push({
+      uid: nextId++,
+      defId: b.defId,
+      x: b.x + 30,
+      y: b.y + 30,
+      cat: b.cat,
+      name: b.name,
+      desc: b.desc,
+      color: b.color,
+    });
+    draw();
+  }
+  hideCtx();
+});
+
+document.getElementById('ctx-del').addEventListener('click', () => {
+  if (ctxBox >= 0 && ctxBox < boxes.length) {
+    // Empecher suppression de stimulus (premier node)
+    if (boxes[ctxBox].defId === 'stimulus') {
+      toast('Impossible de supprimer STIMULUS');
+      hideCtx();
+      return;
+    }
+    // Supprimer les connexions liees
+    conns = conns.filter(c => c.from !== ctxBox && c.to !== ctxBox);
+    boxes.splice(ctxBox, 1);
+    // Reindexer les connexions
+    for (const c of conns) {
+      if (c.from > ctxBox) c.from--;
+      if (c.to > ctxBox) c.to--;
+    }
+    selectedConn = -1;
+    draw();
+  }
+  hideCtx();
+});
+
+document.getElementById('ctx-del-conn').addEventListener('click', () => {
+  if (ctxConn >= 0 && ctxConn < conns.length) {
+    conns.splice(ctxConn, 1);
+    selectedConn = -1;
+    draw();
+  }
+  hideCtx();
+});
+
+document.addEventListener('click', e => {
+  if (!ctxMenu.contains(e.target)) hideCtx();
+});
+
+// Double-clic sur connexion → suppression directe
+cv.addEventListener('dblclick', e => {
+  const rect = cv.getBoundingClientRect();
+  const [wx, wy] = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
+  const ci = hitConn(wx, wy);
+  if (ci >= 0) {
+    conns.splice(ci, 1);
+    selectedConn = -1;
+    draw();
+  }
+});
+
+// ─── Sauvegarde / Chargement localStorage ───────────────────────────────────
+
+const STORAGE_KEY = 'saphire_pipeline_schemas';
+
+function getSchemas() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+  catch { return {}; }
+}
+
+function saveSchema(name) {
+  const schemas = getSchemas();
+  schemas[name] = {
+    boxes: boxes.map(b => ({ uid: b.uid, defId: b.defId, x: b.x, y: b.y })),
+    conns: conns.map(c => ({ from: c.from, to: c.to })),
+    nextId,
+    vpX, vpY, vpScale,
+    savedAt: new Date().toISOString(),
+  };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(schemas));
+  refreshSchemaSelect(name);
+  toast('Schema "' + name + '" sauvegarde');
+}
+
+function loadSchema(name) {
+  const schemas = getSchemas();
+  const s = schemas[name];
+  if (!s) return;
+  boxes = [];
+  conns = s.conns.map(c => ({ from: c.from, to: c.to }));
+  nextId = s.nextId || 1;
+  for (const sb of s.boxes) {
+    const d = defById(sb.defId);
+    if (!d) continue;
+    boxes.push({
+      uid: sb.uid || nextId++,
+      defId: d.id,
+      x: sb.x,
+      y: sb.y,
+      cat: d.cat,
+      name: d.name,
+      desc: d.desc,
+      color: CATEGORIES[d.cat],
+    });
+  }
+  if (s.vpX !== undefined) { vpX = s.vpX; vpY = s.vpY; vpScale = s.vpScale; }
+  draw();
+  toast('Schema "' + name + '" charge');
+}
+
+function deleteSchema(name) {
+  const schemas = getSchemas();
+  delete schemas[name];
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(schemas));
+  refreshSchemaSelect('');
+  toast('Schema "' + name + '" supprime');
+}
+
+function refreshSchemaSelect(sel) {
+  const select = document.getElementById('schema-select');
+  const schemas = getSchemas();
+  select.innerHTML = '<option value="">— Schema par defaut —</option>';
+  for (const name of Object.keys(schemas).sort()) {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    if (name === sel) opt.selected = true;
+    select.appendChild(opt);
+  }
+}
+
+// ─── Export / Import JSON ───────────────────────────────────────────────────
+
+function exportJSON() {
+  const data = {
+    saphire_pipeline: true,
+    version: 1,
+    boxes: boxes.map(b => ({ defId: b.defId, x: Math.round(b.x), y: Math.round(b.y) })),
+    conns: conns.map(c => ({ from: c.from, to: c.to })),
+    exportedAt: new Date().toISOString(),
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'saphire-pipeline-' + new Date().toISOString().slice(0, 10) + '.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Schema exporte');
+}
+
+function importJSON(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.saphire_pipeline) { toast('Fichier invalide'); return; }
+      boxes = [];
+      conns = data.conns.map(c => ({ from: c.from, to: c.to }));
+      nextId = 1;
+      for (const sb of data.boxes) {
+        const d = defById(sb.defId);
+        if (!d) continue;
+        boxes.push({
+          uid: nextId++,
+          defId: d.id,
+          x: sb.x,
+          y: sb.y,
+          cat: d.cat,
+          name: d.name,
+          desc: d.desc,
+          color: CATEGORIES[d.cat],
+        });
+      }
+      vpX = 0; vpY = 0; vpScale = 1;
+      draw();
+      toast('Schema importe (' + boxes.length + ' boxes)');
+    } catch (err) {
+      toast('Erreur d\'import : ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ─── Toolbar handlers ───────────────────────────────────────────────────────
+
+document.getElementById('schema-select').addEventListener('change', e => {
+  if (e.target.value) loadSchema(e.target.value);
+  else { buildDefaultLayout(); draw(); }
+});
+
+document.getElementById('btn-save').addEventListener('click', () => {
+  document.getElementById('save-modal').classList.add('show');
+  const input = document.getElementById('save-name');
+  const sel = document.getElementById('schema-select').value;
+  input.value = sel || '';
+  input.focus();
+  input.select();
+});
+
+document.getElementById('save-ok').addEventListener('click', () => {
+  const name = document.getElementById('save-name').value.trim();
+  if (!name) { toast('Nom requis'); return; }
+  saveSchema(name);
+  document.getElementById('save-modal').classList.remove('show');
+});
+
+document.getElementById('save-cancel').addEventListener('click', () => {
+  document.getElementById('save-modal').classList.remove('show');
+});
+
+document.getElementById('save-name').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('save-ok').click();
+  if (e.key === 'Escape') document.getElementById('save-cancel').click();
+});
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+  buildDefaultLayout();
+  vpX = 0; vpY = 0; vpScale = 1;
+  document.getElementById('schema-select').value = '';
+  draw();
+  toast('Pipeline remis a l\'ordre par defaut');
+});
+
+document.getElementById('btn-export').addEventListener('click', exportJSON);
+
+document.getElementById('btn-import').addEventListener('click', () => {
+  document.getElementById('import-file').click();
+});
+
+document.getElementById('import-file').addEventListener('change', e => {
+  if (e.target.files.length > 0) {
+    importJSON(e.target.files[0]);
+    e.target.value = '';
+  }
+});
+
+document.getElementById('btn-del-schema').addEventListener('click', () => {
+  const sel = document.getElementById('schema-select').value;
+  if (!sel) { toast('Aucun schema selectionne'); return; }
+  if (confirm('Supprimer le schema "' + sel + '" ?')) {
+    deleteSchema(sel);
+    buildDefaultLayout();
+    draw();
+  }
+});
+
+// ─── Toast ──────────────────────────────────────────────────────────────────
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+// ─── Init ───────────────────────────────────────────────────────────────────
+
+buildPalette();
+buildDefaultLayout();
+refreshSchemaSelect('');
+resize();
+
+</script>
+</body>
+</html>

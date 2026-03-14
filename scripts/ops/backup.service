@@ -1,0 +1,11 @@
+[Unit]
+Description=Saphire Backup — sauvegarde quotidienne des bases et configs
+After=network.target docker.service
+Wants=docker.service
+
+[Service]
+Type=oneshot
+User=malice
+Group=docker
+WorkingDirectory=/mnt/Data1/code/saphire
+ExecStart=/mnt/Data1/code/saphire/scripts/ops/backup.sh --quiet

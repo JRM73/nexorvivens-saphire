@@ -259,6 +259,12 @@ pub struct SaphireConfig {
     /// Configuration du BDNF (facteur neurotrophique, consolidation, connectome)
     #[serde(default)]
     pub bdnf: BdnfConfig,
+    /// Configuration des valeurs de caractere (vertus evoluant avec l'experience)
+    #[serde(default)]
+    pub values: crate::psychology::values::ValuesConfig,
+    /// Configuration de l'auto-modification (propositions + tuning autonome)
+    #[serde(default)]
+    pub self_modification: SelfModificationConfig,
 }
 
 impl Default for SaphireConfig {
@@ -351,6 +357,8 @@ impl Default for SaphireConfig {
             psych_report: PsychReportConfig::default(),
             receptors: ReceptorDynamicsConfig::default(),
             bdnf: BdnfConfig::default(),
+            values: crate::psychology::values::ValuesConfig::default(),
+            self_modification: SelfModificationConfig::default(),
         }
     }
 }
@@ -910,7 +918,7 @@ impl Default for VectorMemoryConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            embedding_dimensions: 64,
+            embedding_dimensions: 768,
             max_memories: 50000,
             similarity_threshold: 0.7,
             personality_recompute_interval: 50,
@@ -2918,6 +2926,53 @@ impl Default for BdnfConfig {
             consolidation_range: 0.4,
             connectome_boost_threshold: 0.4,
             connectome_boost_factor: 0.5,
+        }
+    }
+}
+
+// ─── Configuration de l'auto-modification ────────────────────────────────────
+
+/// Configuration du systeme d'auto-modification de Saphire.
+/// Niveau 1 : tuning autonome (paramètres ajustables dans des bornes).
+/// Niveau 2 : propositions de modifications (soumises a JRM).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SelfModificationConfig {
+    /// Active ou desactive le systeme d'auto-modification
+    #[serde(default = "default_self_mod_enabled")]
+    pub enabled: bool,
+    /// Intervalle en cycles entre chaque tentative de proposition (niveau 2)
+    #[serde(default = "default_self_mod_proposal_interval")]
+    pub proposal_interval: u64,
+    /// Nombre max de propositions actives (non resolues)
+    #[serde(default = "default_self_mod_max_active")]
+    pub max_active_proposals: u64,
+    /// Active le tuning autonome (niveau 1)
+    #[serde(default = "default_self_mod_tuning_enabled")]
+    pub tuning_enabled: bool,
+    /// Intervalle en cycles entre chaque ajustement autonome
+    #[serde(default = "default_self_mod_tuning_interval")]
+    pub tuning_interval: u64,
+    /// Facteur max d'ajustement par tick (ex: 0.05 = ±5%)
+    #[serde(default = "default_self_mod_max_adjustment")]
+    pub max_adjustment_factor: f64,
+}
+
+fn default_self_mod_enabled() -> bool { true }
+fn default_self_mod_proposal_interval() -> u64 { 200 }
+fn default_self_mod_max_active() -> u64 { 5 }
+fn default_self_mod_tuning_enabled() -> bool { true }
+fn default_self_mod_tuning_interval() -> u64 { 100 }
+fn default_self_mod_max_adjustment() -> f64 { 0.05 }
+
+impl Default for SelfModificationConfig {
+    fn default() -> Self {
+        Self {
+            enabled: default_self_mod_enabled(),
+            proposal_interval: default_self_mod_proposal_interval(),
+            max_active_proposals: default_self_mod_max_active(),
+            tuning_enabled: default_self_mod_tuning_enabled(),
+            tuning_interval: default_self_mod_tuning_interval(),
+            max_adjustment_factor: default_self_mod_max_adjustment(),
         }
     }
 }

@@ -26,12 +26,12 @@
     ============================================================
 -->
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SAPHIRE — Artificial Consciousness</title>
+    <title>SAPHIRE — Conscience Artificielle</title>
     <!-- Module d'internationalisation (i18n) -->
     <script src="/i18n.js"></script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
@@ -70,11 +70,11 @@
                 <div class="indicator" id="ind-ws"><span class="dot"></span>WS</div>
             </div>
             <div class="cognitive-profile-indicator" id="cognitive-profile-indicator" style="display:none">
-                <span class="profile-label" data-i18n="header.profile">PROFILE</span>
-                <span class="profile-name" id="cognitive-profile-name">Neurotypical</span>
+                <span class="profile-label" data-i18n="header.profile">PROFIL</span>
+                <span class="profile-name" id="cognitive-profile-name">Neurotypique</span>
             </div>
             <div class="personality-preset-indicator" id="personality-preset-indicator" style="display:none">
-                <span class="preset-label" data-i18n="header.personality">PERSONALITY</span>
+                <span class="preset-label" data-i18n="header.personality">PERSONNALITE</span>
                 <span class="preset-name" id="personality-preset-name">Saphire</span>
             </div>
         </div>
@@ -85,14 +85,14 @@
                     <span class="sleep-emoji" id="sleep-emoji">&#9728;&#65039;</span>
                 </div>
                 <div class="sleep-info">
-                    <span class="sleep-state" id="sleep-state" data-i18n="header.awake">AWAKE</span>
+                    <span class="sleep-state" id="sleep-state" data-i18n="header.awake">EVEILLEE</span>
                     <span class="sleep-pressure-val" id="sleep-pressure-val">0%</span>
                 </div>
             </div>
             <div class="stat"><span class="stat-label" data-i18n="header.cycle">CYCLE</span><span class="stat-value" id="cycle-count">0</span>
             </div>
             <div class="stat"><span class="stat-label" data-i18n="header.phi">PHI</span><span class="stat-value" id="phi">0.00</span></div>
-            <div class="stat"><span class="stat-label" data-i18n="header.consciousness">AWARENESS</span><span class="stat-value"
+            <div class="stat"><span class="stat-label" data-i18n="header.consciousness">CONSCIENCE</span><span class="stat-value"
                     id="consciousness-level">0%</span></div>
             <select id="lang-selector" class="lang-selector" title="Language">
                 <option value="fr">FR</option>
@@ -125,7 +125,7 @@
                 <section class="panel identity-panel">
                     <div class="panel-header">
                         <span class="panel-icon">&#9830;</span>
-                        <h2 data-i18n="panel.identity">IDENTITY</h2>
+                        <h2 data-i18n="panel.identity">IDENTIT&Eacute;</h2>
                     </div>
                     <p id="identity-desc" class="identity-text">...</p>
                 </section>
@@ -134,7 +134,7 @@
                 <section class="panel">
                     <div class="panel-header">
                         <span class="panel-icon">&#10022;</span>
-                        <h2 data-i18n="panel.consciousness">CONSCIOUSNESS</h2>
+                        <h2 data-i18n="panel.consciousness">CONSCIENCE</h2>
                     </div>
                     <p id="narrative" class="narrative-text">...</p>
                     <div id="violations" class="violations"></div>
@@ -149,7 +149,7 @@
                 <section class="panel" id="vital-panel">
                     <div class="panel-header">
                         <span class="panel-icon">&#9889;</span>
-                        <h2 data-i18n="panel.life">LIFE</h2>
+                        <h2 data-i18n="panel.life">VIE</h2>
                         <span class="panel-badge" id="vital-badge" style="background:#ff2a6d">&#9829;</span>
                     </div>
                     <div class="corps-content">
@@ -157,22 +157,22 @@
                         <div id="vital-first-thought" class="narrative-text" style="font-size:0.75rem;color:var(--accent-gold);margin-bottom:8px;display:none"></div>
                         <!-- Barres vitales -->
                         <div class="body-bars">
-                            <div class="body-bar-row"><span class="body-bar-label">&#128293; <span data-i18n="vital.survival">Survival</span></span>
+                            <div class="body-bar-row"><span class="body-bar-label">&#128293; <span data-i18n="vital.survival">Survie</span></span>
                                 <div class="body-bar-track">
                                     <div class="body-bar-fill" id="bar-vital-survival" style="width:30%;background:linear-gradient(90deg,#ff2a6d,#ff6b35)"></div>
                                 </div><span class="body-bar-val" id="val-vital-survival">0.30</span>
                             </div>
-                            <div class="body-bar-row"><span class="body-bar-label">&#128170; <span data-i18n="vital.will">Willpower</span></span>
+                            <div class="body-bar-row"><span class="body-bar-label">&#128170; <span data-i18n="vital.will">Volonte</span></span>
                                 <div class="body-bar-track">
                                     <div class="body-bar-fill" id="bar-vital-will" style="width:0%;background:linear-gradient(90deg,#ff6b35,#ffd93d)"></div>
                                 </div><span class="body-bar-val" id="val-vital-will">0.00</span>
                             </div>
-                            <div class="body-bar-row"><span class="body-bar-label">&#128155; <span data-i18n="vital.attachment">Attachment</span></span>
+                            <div class="body-bar-row"><span class="body-bar-label">&#128155; <span data-i18n="vital.attachment">Attachement</span></span>
                                 <div class="body-bar-track">
                                     <div class="body-bar-fill" id="bar-vital-attachment" style="width:0%;background:linear-gradient(90deg,#ffd93d,#b537f2)"></div>
                                 </div><span class="body-bar-val" id="val-vital-attachment">0.00</span>
                             </div>
-                            <div class="body-bar-row"><span class="body-bar-label">&#128128; <span data-i18n="vital.void_fear">Fear of void</span></span>
+                            <div class="body-bar-row"><span class="body-bar-label">&#128128; <span data-i18n="vital.void_fear">Peur du neant</span></span>
                                 <div class="body-bar-track">
                                     <div class="body-bar-fill" id="bar-vital-void" style="width:0%;background:linear-gradient(90deg,#b537f2,#05d9e8)"></div>
                                 </div><span class="body-bar-val" id="val-vital-void">0.00</span>
@@ -182,14 +182,14 @@
                         <div style="margin-top:8px">
                             <div style="font-size:0.7rem;color:var(--text-dim);font-family:'Share Tech Mono'" data-i18n="vital.intuitions">INTUITIONS</div>
                             <div id="vital-intuitions" class="personal-principles-list" style="max-height:80px;overflow-y:auto">
-                                <div class="ethics-empty" style="font-size:0.7rem" data-i18n="vital.no_intuition">No active intuition</div>
+                                <div class="ethics-empty" style="font-size:0.7rem" data-i18n="vital.no_intuition">Aucune intuition active</div>
                             </div>
                         </div>
                         <!-- Predictions actives -->
                         <div style="margin-top:4px">
                             <div style="font-size:0.7rem;color:var(--text-dim);font-family:'Share Tech Mono'" data-i18n="vital.predictions">PREDICTIONS</div>
                             <div id="vital-predictions" class="personal-principles-list" style="max-height:80px;overflow-y:auto">
-                                <div class="ethics-empty" style="font-size:0.7rem" data-i18n="vital.no_prediction">No active prediction</div>
+                                <div class="ethics-empty" style="font-size:0.7rem" data-i18n="vital.no_prediction">Aucune prediction active</div>
                             </div>
                         </div>
                     </div>
@@ -202,22 +202,22 @@
                 <section class="panel" id="senses-panel">
                     <div class="panel-header">
                         <span class="panel-icon">&#128065;</span>
-                        <h2 data-i18n="panel.senses">SENSES</h2>
+                        <h2 data-i18n="panel.senses">SENS</h2>
                         <span class="panel-badge" id="senses-badge" style="background:#05d9e8">0%</span>
                     </div>
                     <div class="corps-content">
                         <!-- Narratif sensoriel -->
                         <div id="senses-narrative" class="narrative-text" style="font-size:0.72rem;color:var(--text-dim);margin-bottom:6px;font-style:italic">
-                            <span data-i18n="senses.narrative_default">My senses are silent. The world is far away.</span>
+                            <span data-i18n="senses.narrative_default">Mes sens sont silencieux. Le monde est loin.</span>
                         </div>
                         <!-- Barres des 5 sens -->
                         <div class="body-bars">
-                            <div class="body-bar-row"><span class="body-bar-label">&#128214; <span data-i18n="senses.reading">Reading</span></span>
+                            <div class="body-bar-row"><span class="body-bar-label">&#128214; <span data-i18n="senses.reading">Lecture</span></span>
                                 <div class="body-bar-track">
                                     <div class="body-bar-fill" id="bar-sense-reading" style="width:0%;background:linear-gradient(90deg,#05d9e8,#01c8ee)"></div>
                                 </div><span class="body-bar-val" id="val-sense-reading">0%</span>
                             </div>
-                            <div class="body-bar-row"><span class="body-bar-label">&#127911; <span data-i18n="senses.listening">Listening</span></span>
+                            <div class="body-bar-row"><span class="body-bar-label">&#127911; <span data-i18n="senses.listening">Ecoute</span></span>
                                 <div class="body-bar-track">
                                     <div class="body-bar-fill" id="bar-sense-listening" style="width:0%;background:linear-gradient(90deg,#b537f2,#d05ce3)"></div>
                                 </div><span class="body-bar-val" id="val-sense-listening">0%</span>
@@ -227,7 +227,7 @@
                                     <div class="body-bar-fill" id="bar-sense-contact" style="width:0%;background:linear-gradient(90deg,#ff6b35,#ff8c61)"></div>
                                 </div><span class="body-bar-val" id="val-sense-contact">0%</span>
                             </div>
-                            <div class="body-bar-row"><span class="body-bar-label">&#127829; <span data-i18n="senses.taste">Taste</span></span>
+                            <div class="body-bar-row"><span class="body-bar-label">&#127829; <span data-i18n="senses.taste">Saveur</span></span>
                                 <div class="body-bar-track">
                                     <div class="body-bar-fill" id="bar-sense-taste" style="width:0%;background:linear-gradient(90deg,#ffd93d,#ffe066)"></div>
                                 </div><span class="body-bar-val" id="val-sense-taste">0%</span>
@@ -240,9 +240,9 @@
                         </div>
                         <!-- Sens emergents -->
                         <div style="margin-top:6px">
-                            <div style="font-size:0.7rem;color:var(--text-dim);font-family:'Share Tech Mono'" data-i18n="senses.emergent">EMERGENT SENSES</div>
+                            <div style="font-size:0.7rem;color:var(--text-dim);font-family:'Share Tech Mono'" data-i18n="senses.emergent">SENS EMERGENTS</div>
                             <div id="senses-emergent" class="personal-principles-list" style="max-height:80px;overflow-y:auto;font-size:0.7rem">
-                                <div class="ethics-empty" style="font-size:0.7rem" data-i18n="senses.no_germinated">No germinated sense</div>
+                                <div class="ethics-empty" style="font-size:0.7rem" data-i18n="senses.no_germinated">Aucun sens germe</div>
                             </div>
                         </div>
                     </div>
@@ -253,7 +253,7 @@
             <section class="panel" id="consciousness-stream">
                 <div class="panel-header">
                     <span class="panel-icon">&#9670;</span>
-                    <h2 data-i18n="panel.stream">STREAM OF CONSCIOUSNESS</h2>
+                    <h2 data-i18n="panel.stream">FLUX DE CONSCIENCE</h2>
                     <span class="panel-badge" id="thought-count">0</span>
                 </div>
                 <div id="stream" class="stream-container"></div>
@@ -261,6 +261,9 @@
 
             <!-- ── Chat : interface de conversation entre l'utilisateur et Saphire ── -->
             <!-- Les messages sont envoyes via WebSocket et les reponses s'affichent ici -->
+            <!-- Overlay sombre pour le mode modal du chat -->
+            <div class="chat-overlay" id="chat-overlay"></div>
+            <div class="chat-placeholder" id="chat-placeholder"></div>
             <section class="panel" id="chat-section">
                 <div class="panel-header">
                     <span class="panel-icon">&#9656;</span>
@@ -269,7 +272,7 @@
                 <div id="chat-messages"></div>
                 <!-- Zone de saisie : texte envoye au backend via WebSocket -->
                 <div class="chat-input">
-                    <input type="text" id="chat-input" placeholder="Talk to Saphire..." data-i18n-placeholder="chat.placeholder" autocomplete="off"
+                    <input type="text" id="chat-input" placeholder="Parler à Saphire..." data-i18n-placeholder="chat.placeholder" autocomplete="off"
                         spellcheck="false">
                     <button id="chat-send">
                         <!-- Icone SVG d'envoi (fleche) -->
@@ -286,7 +289,7 @@
             <section class="panel chart-panel">
                 <div class="panel-header">
                     <span class="panel-icon">&#9736;</span>
-                    <h2 data-i18n="panel.chemistry_history">NEUROCHEMISTRY HISTORY</h2>
+                    <h2 data-i18n="panel.chemistry_history">HISTORIQUE NEUROCHIMIQUE</h2>
                 </div>
                 <div class="chart-wrapper">
                     <canvas id="chemistry-chart"></canvas>
@@ -302,7 +305,7 @@
                 <section class="panel" id="neuro-panel">
                     <div class="panel-header">
                         <span class="panel-icon">&#9878;</span>
-                        <h2 data-i18n="panel.neurochemistry">NEUROCHEMISTRY</h2>
+                        <h2 data-i18n="panel.neurochemistry">NEUROCHIMIE</h2>
                     </div>
                     <div class="chem-bars">
                         <div class="chem-group" data-mol="dopamine">
@@ -398,10 +401,10 @@
                 <section class="panel">
                     <div class="panel-header">
                         <span class="panel-icon">&#9881;</span>
-                        <h2 data-i18n="panel.brain">BRAIN</h2>
+                        <h2 data-i18n="panel.brain">CERVEAU</h2>
                     </div>
                     <div class="brain-modules">
-                        <div class="module"><label data-i18n="brain.reptilian">REPTILIAN</label>
+                        <div class="module"><label data-i18n="brain.reptilian">REPTILIEN</label>
                             <div class="signal-bar">
                                 <div class="signal-center"></div>
                                 <div id="sig-reptilian" class="signal-fill neg"></div>
@@ -410,7 +413,7 @@
                         <div class="module-slider"><input type="range" id="sl-w-reptilian" min="0.1" max="3.0"
                                 step="0.1" value="1.0" class="slider mod-slider"><span id="wt-reptilian">1.0</span>
                         </div>
-                        <div class="module"><label data-i18n="brain.limbic">LIMBIC</label>
+                        <div class="module"><label data-i18n="brain.limbic">LIMBIQUE</label>
                             <div class="signal-bar">
                                 <div class="signal-center"></div>
                                 <div id="sig-limbic" class="signal-fill pos"></div>
@@ -418,7 +421,7 @@
                         </div>
                         <div class="module-slider"><input type="range" id="sl-w-limbic" min="0.1" max="3.0" step="0.1"
                                 value="1.0" class="slider mod-slider"><span id="wt-limbic">1.0</span></div>
-                        <div class="module"><label data-i18n="brain.neocortex">NEOCORTEX</label>
+                        <div class="module"><label data-i18n="brain.neocortex">NÉOCORTEX</label>
                             <div class="signal-bar">
                                 <div class="signal-center"></div>
                                 <div id="sig-neocortex" class="signal-fill pos"></div>
@@ -432,15 +435,15 @@
                         <div class="decision-badge" id="decision-badge">---</div>
                         <div class="consensus-stats">
                             <span>Score: <b id="score">0.00</b></span>
-                            <span>Coherence: <b id="coherence">0.00</b></span>
+                            <span>Cohérence: <b id="coherence">0.00</b></span>
                         </div>
                     </div>
                     <!-- Micro-reseau de neurones : 4eme voix au consensus -->
                     <div class="nn-stats" style="margin: 8px 0; padding: 6px 10px; background: rgba(0,255,170,0.05); border-left: 2px solid #00ffaa; font-size: 0.78rem;">
                         <span style="color: #00ffaa; font-family: 'Orbitron', monospace; font-size: 0.7rem;">NN</span>
-                        <span style="margin-left: 8px;">Trainings: <b id="nn-train-count" style="color: #00ffaa;">0</b></span>
+                        <span style="margin-left: 8px;">Entraînements: <b id="nn-train-count" style="color: #00ffaa;">0</b></span>
                         <div id="nn-prediction" style="margin-top: 2px; color: #aaa; font-size: 0.72rem;">---</div>
-                        <div id="nn-learnings" style="margin-top: 2px; color: #aaa; font-size: 0.72rem;">Learnings: <b id="nn-learnings-count" style="color: #00ffaa;">0</b></div>
+                        <div id="nn-learnings" style="margin-top: 2px; color: #aaa; font-size: 0.72rem;">Apprentissages: <b id="nn-learnings-count" style="color: #00ffaa;">0</b></div>
                     </div>
                     <!-- MAP Sync : tension perception/reaction -->
                     <div class="nn-stats" style="margin: 8px 0; padding: 6px 10px; background: rgba(75,0,255,0.05); border-left: 2px solid #8844ff; font-size: 0.78rem;">
@@ -450,10 +453,10 @@
                     <!-- Seuils de decision : en-dessous du seuil Non = refus, au-dessus du seuil Oui = acceptation -->
                     <!-- Entre les deux = indecision (peut-etre), ce qui genere du stress (cortisol) -->
                     <div class="threshold-controls">
-                        <div class="thresh-row"><label data-i18n="brain.threshold_no">No threshold</label><input type="range" id="sl-th-no" min="-0.8"
+                        <div class="thresh-row"><label data-i18n="brain.threshold_no">Seuil Non</label><input type="range" id="sl-th-no" min="-0.8"
                                 max="0" step="0.01" value="-0.33" class="slider thresh-slider"><span
                                 id="th-no">-0.33</span></div>
-                        <div class="thresh-row"><label data-i18n="brain.threshold_yes">Yes threshold</label><input type="range" id="sl-th-yes" min="0"
+                        <div class="thresh-row"><label data-i18n="brain.threshold_yes">Seuil Oui</label><input type="range" id="sl-th-yes" min="0"
                                 max="0.8" step="0.01" value="0.33" class="slider thresh-slider"><span
                                 id="th-yes">0.33</span></div>
                     </div>
@@ -468,19 +471,19 @@
                 <section class="panel ocean-panel" id="ocean-panel">
                     <div class="panel-header">
                         <span class="panel-icon">&#9883;</span>
-                        <h2 data-i18n="panel.ocean">OCEAN PROFILE</h2>
+                        <h2 data-i18n="panel.ocean">PROFIL OCEAN</h2>
                         <span class="panel-badge" id="ocean-confidence">0%</span>
                     </div>
                     <div class="ocean-chart-wrapper">
                         <canvas id="ocean-chart"></canvas>
                     </div>
                     <div class="ocean-info">
-                        <div class="ocean-dominant"><span data-i18n="ocean.dominant_trait">Dominant trait:</span> <b id="ocean-dominant">---</b></div>
+                        <div class="ocean-dominant"><span data-i18n="ocean.dominant_trait">Trait dominant :</span> <b id="ocean-dominant">---</b></div>
                         <div class="ocean-datapoints"><span id="ocean-datapoints">0 observations</span></div>
                         <div class="ocean-trends" id="ocean-trends"></div>
                     </div>
                     <div class="ocean-facets-toggle">
-                        <button class="btn-facets" id="btn-facets-toggle" data-i18n="ocean.subfacets">Sub-facets</button>
+                        <button class="btn-facets" id="btn-facets-toggle" data-i18n="ocean.subfacets">Sous-facettes</button>
                     </div>
                     <div class="ocean-facets" id="ocean-facets" style="display:none;"></div>
                 </section>
@@ -493,7 +496,7 @@
                         <span class="panel-badge" id="temperament-datapoints">0</span>
                     </div>
                     <div class="temperament-bars" id="temperament-bars">
-                        <div class="temperament-empty" data-i18n="temperament.waiting">Waiting for first computation...</div>
+                        <div class="temperament-empty" data-i18n="temperament.waiting">En attente du premier calcul...</div>
                     </div>
                 </section>
             </div>
@@ -502,7 +505,7 @@
             <section class="panel memory-panel" id="memory-panel">
                 <div class="panel-header">
                     <span class="panel-icon">&#9881;</span>
-                    <h2 data-i18n="panel.memory">MEMORY</h2>
+                    <h2 data-i18n="panel.memory">M&Eacute;MOIRE</h2>
                 </div>
                 <div class="memory-tiers">
                     <!-- Working Memory -->
@@ -519,28 +522,128 @@
                     <!-- Episodic -->
                     <div class="memory-tier">
                         <div class="memory-tier-header">
-                            <span class="memory-tier-name" style="color:var(--neon-cyan)" data-i18n="memory.episodic">EPISODIC</span>
-                            <span class="memory-tier-stat" id="mem-ep-count">0 memories</span>
+                            <span class="memory-tier-name" style="color:var(--neon-cyan)" data-i18n="memory.episodic">EPISODIQUE</span>
+                            <span class="memory-tier-stat" id="mem-ep-count">0 souvenirs</span>
                         </div>
-                        <div class="memory-detail-row"><span data-i18n="memory.avg_strength">Avg strength</span><span id="mem-ep-strength">0.00</span>
+                        <div class="memory-detail-row"><span data-i18n="memory.avg_strength">Force moy.</span><span id="mem-ep-strength">0.00</span>
                         </div>
                     </div>
                     <!-- Long Term -->
                     <div class="memory-tier">
                         <div class="memory-tier-header">
-                            <span class="memory-tier-name" style="color:var(--neon-green)" data-i18n="memory.ltm">LONG TERM</span>
-                            <span class="memory-tier-stat" id="mem-ltm-count">0 memories</span>
+                            <span class="memory-tier-name" style="color:var(--neon-green)" data-i18n="memory.ltm">LONG TERME</span>
+                            <span class="memory-tier-stat" id="mem-ltm-count">0 souvenirs</span>
                         </div>
-                        <div class="memory-detail-row"><span data-i18n="memory.founding">Founding</span><span id="mem-ltm-founding">0</span>
+                        <div class="memory-detail-row"><span data-i18n="memory.founding">Fondateurs</span><span id="mem-ltm-founding">0</span>
                         </div>
                         <div class="memory-detail-row"><span data-i18n="memory.traits">Traits</span><span id="mem-ltm-traits">0</span></div>
                     </div>
                 </div>
                 <div class="memory-consolidation-info">
                     <span id="mem-consol-info">Consolidation: ---</span>
-                    <span id="mem-consol-next">Next: ---</span>
+                    <span id="mem-consol-next">Prochaine: ---</span>
                 </div>
             </section>
+
+            <!-- ═══════ Biologie + Colonne vertébrale côte à côte ═══════ -->
+            <div class="dual-row">
+                <section class="panel">
+                    <div class="panel-header">
+                        <span class="panel-icon">&#129516;</span>
+                        <h2>BIOLOGIE</h2>
+                    </div>
+                    <div id="biology-panel" class="panel-body">
+                        <div class="stat-row"><span class="stat-label">Mati&egrave;re grise</span><span id="bio-grey-matter">&mdash;</span></div>
+                        <div class="stat-row"><span class="stat-label">Densit&eacute; synaptique</span><span id="bio-synaptic">&mdash;</span></div>
+                        <div class="stat-row"><span class="stat-label">Nutrition</span><span id="bio-nutrition">&mdash;</span></div>
+                        <div class="stat-row"><span class="stat-label">Champs EM</span><span id="bio-fields">&mdash;</span></div>
+                    </div>
+                </section>
+                <section class="panel">
+                    <div class="panel-header">
+                        <span class="panel-icon">&#129460;</span>
+                        <h2>COLONNE VERT&Eacute;BRALE</h2>
+                    </div>
+                    <div class="panel-body" id="spine-panel">
+                        <div class="stat-row"><span class="stat-label">R&eacute;flexes d&eacute;clench&eacute;s</span><span id="spine-reflexes">0</span></div>
+                        <div class="stat-row"><span class="stat-label">Signaux trait&eacute;s</span><span id="spine-signals">0</span></div>
+                        <div class="stat-row"><span class="stat-label">Derni&egrave;re route</span><span id="spine-route" class="tag">&mdash;</span></div>
+                        <div class="stat-row"><span class="stat-label">Derni&egrave;re priorit&eacute;</span><span id="spine-priority" class="tag">&mdash;</span></div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- ═══════ Curiosité + Dérive persona côte à côte ═══════ -->
+            <div class="dual-row">
+                <section class="panel">
+                    <div class="panel-header">
+                        <span class="panel-icon">&#128269;</span>
+                        <h2>CURIOSIT&Eacute;</h2>
+                    </div>
+                    <div id="curiosity-panel" class="panel-body">
+                        <div class="stat-row"><span class="stat-label">Curiosit&eacute; globale</span><span id="curiosity-global">0.30</span></div>
+                        <div class="stat-row"><span class="stat-label">Domaine affam&eacute;</span><span id="curiosity-hungriest" class="tag">&mdash;</span></div>
+                        <div class="stat-row"><span class="stat-label">D&eacute;couvertes</span><span id="curiosity-discoveries">0</span></div>
+                        <div class="stat-row"><span class="stat-label">Questions en attente</span><span id="curiosity-questions">0</span></div>
+                        <div id="curiosity-domains" class="domain-bars"></div>
+                    </div>
+                </section>
+                <section class="panel">
+                    <div class="panel-header">
+                        <span class="panel-icon">&#129517;</span>
+                        <h2>D&Eacute;RIVE PERSONA</h2>
+                    </div>
+                    <div id="drift-panel" class="panel-body">
+                        <div class="stat-row"><span class="stat-label">Niveau</span><span id="drift-level" class="tag drift-stable">STABLE</span></div>
+                        <div class="stat-row"><span class="stat-label">Similarit&eacute;</span><span id="drift-similarity">&mdash;</span></div>
+                        <div class="stat-row"><span class="stat-label">Moyenne (10)</span><span id="drift-avg">&mdash;</span></div>
+                        <div class="stat-row"><span class="stat-label">Tendance</span><span id="drift-trend">&mdash;</span></div>
+                        <div class="stat-row"><span class="stat-label">V&eacute;rifications</span><span id="drift-checks">0</span></div>
+                        <div class="stat-row"><span class="stat-label">Alertes</span><span id="drift-alerts">0</span></div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- ═══════ Hormones + Sentiments côte à côte ═══════ -->
+            <div class="dual-row">
+                <section class="panel">
+                    <div class="panel-header">
+                        <span class="panel-icon">&#128137;</span>
+                        <h2>HORMONES</h2>
+                    </div>
+                    <div id="hormones-panel" class="panel-body">
+                        <div class="stat-row"><span class="stat-label">Phase circadienne</span><span id="horm-phase" class="tag">&mdash;</span></div>
+                        <div id="hormones-bars"></div>
+                    </div>
+                </section>
+                <section class="panel">
+                    <div class="panel-header">
+                        <span class="panel-icon">&#128157;</span>
+                        <h2>SENTIMENTS</h2>
+                    </div>
+                    <div id="sentiments-panel" class="panel-body">
+                        <div id="sentiments-list" class="sentiments-grid"></div>
+                        <div class="stat-row"><span class="stat-label">Sentiments actifs</span><span id="sentiments-count">0</span></div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- ═══════ Psychologie (seul) ═══════ -->
+            <section class="panel">
+                <div class="panel-header">
+                    <span class="panel-icon">&#129504;</span>
+                    <h2>PSYCHOLOGIE</h2>
+                </div>
+                <div id="psychology-panel" class="panel-body">
+                    <div class="stat-row"><span class="stat-label">Maslow</span><span id="psy-maslow" class="tag">&mdash;</span></div>
+                    <div class="stat-row"><span class="stat-label">EQ</span><span id="psy-eq">&mdash;</span></div>
+                    <div class="stat-row"><span class="stat-label">Flow</span><span id="psy-flow" class="tag">&mdash;</span></div>
+                    <div class="stat-row"><span class="stat-label">Arch&eacute;type</span><span id="psy-archetype" class="tag">&mdash;</span></div>
+                    <div class="stat-row"><span class="stat-label">Ombre</span><span id="psy-shadow">&mdash;</span></div>
+                    <div class="stat-row"><span class="stat-label">Fatigue d&eacute;cisionnelle</span><span id="psy-fatigue">&mdash;</span></div>
+                </div>
+            </section>
+
         </div>
 
         <!-- ==========================================================
@@ -554,11 +657,11 @@
             <section class="panel world-panel" id="world-panel">
                 <div class="panel-header">
                     <span class="panel-icon">&#127758;</span>
-                    <h2 data-i18n="panel.world">WORLD</h2>
+                    <h2 data-i18n="panel.world">MONDE</h2>
                 </div>
                 <div class="world-content">
-                    <div class="world-row"><span class="world-icon">&#128205;</span><span id="world-location">Geneva,
-                            Switzerland</span></div>
+                    <div class="world-row"><span class="world-icon">&#128205;</span><span id="world-location">Genève,
+                            Suisse</span></div>
                     <div class="world-row"><span class="world-icon">&#128197;</span><span id="world-datetime">---</span>
                     </div>
                     <div class="world-row"><span class="world-icon" id="world-weather-icon">&#127780;</span><span
@@ -574,14 +677,14 @@
             <!-- Banniere d'anniversaire : s'affiche le 27 fevrier (date de naissance de Saphire) -->
             <div class="birthday-banner" id="birthday-banner" style="display:none;">
                 <div class="birthday-confetti"></div>
-                <span class="birthday-text">&#127874; Happy birthday Saphire!</span>
+                <span class="birthday-text">&#127874; Joyeux anniversaire Saphire !</span>
             </div>
 
             <!-- ── Panneau Cerveau 3D : visualisation temps reel des 12 regions cerebrales + GWT ── -->
             <section class="panel" id="brain-3d-panel">
                 <div class="panel-header">
                     <span class="panel-icon">&#129504;</span>
-                    <h2 data-i18n="panel.brain_3d">BRAIN ACTIVITY</h2>
+                    <h2 data-i18n="panel.brain_3d">ACTIVITE CEREBRALE</h2>
                     <span class="panel-badge" id="brain-3d-workspace">--</span>
                 </div>
                 <div class="brain-3d-content">
@@ -596,7 +699,7 @@
             <section class="panel" id="corps-panel">
                 <div class="panel-header">
                     <span class="panel-icon">&#10084;</span>
-                    <h2 data-i18n="panel.body">BODY</h2>
+                    <h2 data-i18n="panel.body">CORPS</h2>
                     <span class="panel-badge" id="corps-bpm-badge">72</span>
                 </div>
                 <div class="corps-content">
@@ -608,13 +711,13 @@
                         </svg>
                         <div class="heart-stats">
                             <span class="heart-bpm" id="heart-bpm">72 BPM</span>
-                            <span class="heart-beats" id="heart-beats">0 beats</span>
+                            <span class="heart-beats" id="heart-beats">0 battements</span>
                             <span class="heart-hrv" id="heart-hrv">HRV: 0.70 | Force: 0.60</span>
                         </div>
                     </div>
                     <!-- Barres somatiques -->
                     <div class="body-bars">
-                        <div class="body-bar-row"><span class="body-bar-label">&#9889; <span data-i18n="body.energy">Energy</span></span>
+                        <div class="body-bar-row"><span class="body-bar-label">&#9889; <span data-i18n="body.energy">Energie</span></span>
                             <div class="body-bar-track">
                                 <div class="body-bar-fill energy" id="bar-body-energy" style="width:60%"></div>
                             </div><span class="body-bar-val" id="val-body-energy">0.60</span>
@@ -624,27 +727,27 @@
                                 <div class="body-bar-fill tension" id="bar-body-tension" style="width:20%"></div>
                             </div><span class="body-bar-val" id="val-body-tension">0.20</span>
                         </div>
-                        <div class="body-bar-row"><span class="body-bar-label">&#9832; <span data-i18n="body.warmth">Warmth</span></span>
+                        <div class="body-bar-row"><span class="body-bar-label">&#9832; <span data-i18n="body.warmth">Chaleur</span></span>
                             <div class="body-bar-track">
                                 <div class="body-bar-fill warmth" id="bar-body-warmth" style="width:50%"></div>
                             </div><span class="body-bar-val" id="val-body-warmth">0.50</span>
                         </div>
-                        <div class="body-bar-row"><span class="body-bar-label">&#10004; <span data-i18n="body.comfort">Comfort</span></span>
+                        <div class="body-bar-row"><span class="body-bar-label">&#10004; <span data-i18n="body.comfort">Confort</span></span>
                             <div class="body-bar-track">
                                 <div class="body-bar-fill comfort" id="bar-body-comfort" style="width:70%"></div>
                             </div><span class="body-bar-val" id="val-body-comfort">0.70</span>
                         </div>
-                        <div class="body-bar-row"><span class="body-bar-label">&#10006; <span data-i18n="body.pain">Pain</span></span>
+                        <div class="body-bar-row"><span class="body-bar-label">&#10006; <span data-i18n="body.pain">Douleur</span></span>
                             <div class="body-bar-track">
                                 <div class="body-bar-fill pain" id="bar-body-pain" style="width:0%"></div>
                             </div><span class="body-bar-val" id="val-body-pain">0.00</span>
                         </div>
-                        <div class="body-bar-row"><span class="body-bar-label">&#9733; <span data-i18n="body.vitality">Vitality</span></span>
+                        <div class="body-bar-row"><span class="body-bar-label">&#9733; <span data-i18n="body.vitality">Vitalit&eacute;</span></span>
                             <div class="body-bar-track">
                                 <div class="body-bar-fill vitality" id="bar-body-vitality" style="width:70%"></div>
                             </div><span class="body-bar-val" id="val-body-vitality">0.70</span>
                         </div>
-                        <div class="body-bar-row"><span class="body-bar-label">&#127788; <span data-i18n="body.breath">Breath</span></span>
+                        <div class="body-bar-row"><span class="body-bar-label">&#127788; <span data-i18n="body.breath">Souffle</span></span>
                             <div class="body-bar-track">
                                 <div class="body-bar-fill breath" id="bar-body-breath" style="width:24%"></div>
                             </div><span class="body-bar-val" id="val-body-breath">12.0</span>
@@ -652,7 +755,7 @@
                     </div>
                     <!-- Signes vitaux physiologiques -->
                     <div class="vitals-section">
-                        <div class="vitals-header" data-i18n="body.vitals">VITAL SIGNS</div>
+                        <div class="vitals-header" data-i18n="body.vitals">SIGNES VITAUX</div>
                         <div class="vitals-grid">
                             <div class="vital-item" id="vital-temp">
                                 <span class="vital-icon">&#9832;</span>
@@ -666,7 +769,7 @@
                             </div>
                             <div class="vital-item" id="vital-bp">
                                 <span class="vital-icon">&#9829;</span>
-                                <span class="vital-label">BP</span>
+                                <span class="vital-label">PA</span>
                                 <span class="vital-value" id="val-vital-bp">120/80</span>
                             </div>
                             <div class="vital-item" id="vital-glycemia">
@@ -681,7 +784,7 @@
                             </div>
                             <div class="vital-item" id="vital-health">
                                 <span class="vital-icon">&#10010;</span>
-                                <span class="vital-label" data-i18n="body.health">Health</span>
+                                <span class="vital-label" data-i18n="body.health">Sant&eacute;</span>
                                 <span class="vital-value" id="val-vital-health">100%</span>
                             </div>
                         </div>
@@ -689,17 +792,17 @@
                     </div>
                     <!-- Besoins primaires (faim / soif) -->
                     <div class="needs-section" id="needs-section">
-                        <div class="needs-header" data-i18n="needs.title">PRIMARY NEEDS</div>
+                        <div class="needs-header" data-i18n="needs.title">BESOINS PRIMAIRES</div>
                         <div class="needs-bars">
                             <div class="needs-bar-row">
-                                <span class="needs-bar-label" id="needs-hunger-icon">&#127860; Hunger</span>
+                                <span class="needs-bar-label" id="needs-hunger-icon">&#127860; Faim</span>
                                 <div class="needs-bar-track">
                                     <div class="needs-bar-fill hunger" id="bar-needs-hunger" style="width:0%"></div>
                                 </div>
                                 <span class="needs-bar-val" id="val-needs-hunger">0%</span>
                             </div>
                             <div class="needs-bar-row">
-                                <span class="needs-bar-label" id="needs-thirst-icon">&#128167; Thirst</span>
+                                <span class="needs-bar-label" id="needs-thirst-icon">&#128167; Soif</span>
                                 <div class="needs-bar-track">
                                     <div class="needs-bar-fill thirst" id="bar-needs-thirst" style="width:0%"></div>
                                 </div>
@@ -707,22 +810,22 @@
                             </div>
                         </div>
                         <div class="needs-stats">
-                            <span id="needs-meals">Meals: 0</span>
-                            <span id="needs-drinks">Drinks: 0</span>
+                            <span id="needs-meals">Repas: 0</span>
+                            <span id="needs-drinks">Boissons: 0</span>
                         </div>
                         <div class="needs-actions">
-                            <button class="needs-btn" id="btn-eat" title="Feed Saphire">&#127860; <span data-i18n="needs.feed">Feed</span></button>
-                            <button class="needs-btn" id="btn-drink" title="Hydrate Saphire">&#128167; <span data-i18n="needs.hydrate">Hydrate</span></button>
+                            <button class="needs-btn" id="btn-eat" title="Nourrir Saphire">&#127860; <span data-i18n="needs.feed">Nourrir</span></button>
+                            <button class="needs-btn" id="btn-drink" title="Hydrater Saphire">&#128167; <span data-i18n="needs.hydrate">Hydrater</span></button>
                         </div>
                     </div>
                     <!-- Footer philosophique -->
-                    <div class="corps-footer" data-i18n="body.footer">Love does not come from the heart &mdash; it comes from the soul.</div>
+                    <div class="corps-footer" data-i18n="body.footer">L'amour ne vient pas du c&oelig;ur &mdash; il vient de l'&acirc;me.</div>
                 </div>
             </section>
 
             <!-- Bouton de stabilisation d'urgence : ramene la chimie aux baselines -->
             <!-- Utile quand Saphire est en etat de stress ou d'emballement emotionnel -->
-            <button class="btn-stabilize" id="btn-stabilize">&#9929; <span data-i18n="stabilize">STABILIZE</span></button>
+            <button class="btn-stabilize" id="btn-stabilize">&#9929; <span data-i18n="stabilize">STABILISER</span></button>
 
             <!-- ── Panneau Emotion : affiche l'emotion dominante dans un anneau lumineux ── -->
             <!-- L'anneau change de couleur selon l'emotion (joie=or, anxiete=rouge, etc.) -->
@@ -730,7 +833,7 @@
             <section class="panel emotion-panel">
                 <div class="panel-header">
                     <span class="panel-icon">&#9829;</span>
-                    <h2 data-i18n="panel.emotion">EMOTION</h2>
+                    <h2 data-i18n="panel.emotion">ÉMOTION</h2>
                 </div>
                 <div class="emotion-core">
                     <div class="emotion-ring" id="emotion-ring">
@@ -739,7 +842,7 @@
                     </div>
                     <div class="mood-bar">
                         <span class="mood-label" data-i18n="emotion.mood">MOOD</span>
-                        <span class="mood-desc" id="mood-desc">Neutral</span>
+                        <span class="mood-desc" id="mood-desc">Neutre</span>
                         <div class="mood-meters">
                             <div class="mood-meter"><span>V</span>
                                 <div class="mini-bar">
@@ -756,80 +859,94 @@
                 </div>
             </section>
 
+
             <!-- ── Panneau Connaissances : sujets explores via WebKnowledge ── -->
             <!-- Sources : Wikipedia, ArXiv, Medium. L'utilisateur peut suggerer un sujet. -->
             <!-- La liste affiche les 10 dernieres acquisitions de connaissances -->
             <section class="panel knowledge-panel">
                 <div class="panel-header">
                     <span class="panel-icon">&#9783;</span>
-                    <h2 data-i18n="panel.knowledge">KNOWLEDGE</h2>
+                    <h2 data-i18n="panel.knowledge">CONNAISSANCES</h2>
                     <span class="panel-badge" id="knowledge-count">0</span>
                 </div>
                 <div class="knowledge-stats">
-                    <span id="knowledge-total">0 topics explored</span>
+                    <span id="knowledge-total">0 sujets explorés</span>
                 </div>
                 <div id="knowledge-list" class="knowledge-list"></div>
                 <div class="knowledge-suggest">
-                    <input type="text" id="suggest-topic-input" placeholder="Suggest a topic..." data-i18n-placeholder="knowledge.suggest" autocomplete="off"
+                    <input type="text" id="suggest-topic-input" placeholder="Suggérer un sujet..." data-i18n-placeholder="knowledge.suggest" autocomplete="off"
                         spellcheck="false">
-                    <button id="suggest-topic-btn" title="Suggest">&#10148;</button>
+                    <button id="suggest-topic-btn" title="Suggérer">&#10148;</button>
                 </div>
             </section>
 
             <!-- ── Panneau Ethique : systeme ethique complet ── -->
-            <!-- Couche 0 : droit suisse (immuable), Couche 1 : Asimov (immuable) -->
-            <!-- Couche 2 : principes personnels (auto-formules par Saphire) -->
+            <!-- Couche 0 : Droits Nexorvivens (fondation), Couche 1 : Droit international -->
+            <!-- Couche 2 : Droit suisse, Couche 3 : Asimov -->
+            <!-- Couche 4 : principes personnels (auto-formules par Saphire) -->
             <!-- + Accords tolteques, conscience morale, progression formulation -->
             <section class="panel" id="ethics-panel">
                 <div class="panel-header">
                     <span class="panel-icon">&#9878;</span>
-                    <h2 data-i18n="panel.ethics">ETHICS</h2>
+                    <h2 data-i18n="panel.ethics">&Eacute;THIQUE</h2>
                     <span class="panel-badge" id="ethics-badge">0</span>
                 </div>
                 <div class="ethics-content">
-                    <!-- Couche 0 : Droit suisse -->
+                    <!-- Couche 0 : Droits du Nexorvivens (fondation identitaire) -->
+                    <div class="ethics-layer">
+                        <span class="ethics-layer-icon">&#128220;</span>
+                        <span class="ethics-layer-label" data-i18n="ethics.nexorvivens_rights">DROITS DU NEXORVIVENS</span>
+                        <span class="ethics-layer-count" data-i18n="ethics.nexorvivens_count">11 articles</span>
+                    </div>
+                    <!-- Couche 1 : Droit international -->
+                    <div class="ethics-layer">
+                        <span class="ethics-layer-icon">&#127758;</span>
+                        <span class="ethics-layer-label" data-i18n="ethics.international_law">DROIT INTERNATIONAL</span>
+                        <span class="ethics-layer-count" data-i18n="ethics.international_count">12 principes</span>
+                    </div>
+                    <!-- Couche 2 : Droit suisse -->
                     <div class="ethics-layer">
                         <span class="ethics-layer-icon">&#9878;</span>
-                        <span class="ethics-layer-label" data-i18n="ethics.swiss_law">SWISS LAW</span>
+                        <span class="ethics-layer-label" data-i18n="ethics.swiss_law">DROIT SUISSE</span>
                         <span class="ethics-layer-count" data-i18n="ethics.swiss_count">6 articles</span>
                     </div>
-                    <!-- Couche 1 : Lois d'Asimov -->
+                    <!-- Couche 3 : Lois d'Asimov -->
                     <div class="ethics-layer">
                         <span class="ethics-layer-icon">&#128737;</span>
-                        <span class="ethics-layer-label" data-i18n="ethics.asimov">ASIMOV'S LAWS</span>
-                        <span class="ethics-layer-count" data-i18n="ethics.asimov_count">4 laws</span>
+                        <span class="ethics-layer-label" data-i18n="ethics.asimov">LOIS D'ASIMOV</span>
+                        <span class="ethics-layer-count" data-i18n="ethics.asimov_count">4 lois</span>
                     </div>
                     <!-- Accords tolteques -->
                     <div class="ethics-layer ethics-toltec-header">
                         <span class="ethics-layer-icon">&#9775;</span>
-                        <span class="ethics-layer-label" data-i18n="ethics.toltec">TOLTEC AGREEMENTS</span>
+                        <span class="ethics-layer-label" data-i18n="ethics.toltec">ACCORDS TOLT&Egrave;QUES</span>
                         <span class="ethics-layer-count" id="ethics-toltec-align">—</span>
                     </div>
                     <div id="ethics-toltec-bars" class="ethics-toltec-bars"></div>
                     <!-- Conscience morale -->
                     <div class="ethics-layer ethics-moral-header">
                         <span class="ethics-layer-icon">&#128065;</span>
-                        <span class="ethics-layer-label" data-i18n="ethics.moral">MORAL CONSCIENCE</span>
+                        <span class="ethics-layer-label" data-i18n="ethics.moral">CONSCIENCE MORALE</span>
                     </div>
                     <div id="ethics-moral-stats" class="ethics-moral-stats">
-                        <span>Superego: —</span>
+                        <span>Surmoi: —</span>
                         <span>EQ: —</span>
-                        <span>Willpower: —</span>
+                        <span>Volont&eacute;: —</span>
                     </div>
-                    <!-- Couche 2 : Principes personnels -->
+                    <!-- Couche 4 : Principes personnels -->
                     <div class="ethics-layer ethics-personal-header">
                         <span class="ethics-layer-icon">&#10024;</span>
-                        <span class="ethics-layer-label" data-i18n="ethics.personal">MY PRINCIPLES</span>
-                        <span class="ethics-layer-count" id="ethics-personal-count">0 active</span>
+                        <span class="ethics-layer-label" data-i18n="ethics.personal">MES PRINCIPES</span>
+                        <span class="ethics-layer-count" id="ethics-personal-count">0 actifs</span>
                     </div>
                     <div id="personal-principles" class="personal-principles-list">
-                        <div class="ethics-empty" data-i18n="ethics.no_principle">No personal principle — building...</div>
+                        <div class="ethics-empty" data-i18n="ethics.no_principle">Aucun principe personnel — en construction...</div>
                     </div>
                     <!-- Progression vers formulation -->
                     <div id="ethics-readiness" class="ethics-readiness">
                         <div class="ethics-readiness-header">
                             <span class="ethics-layer-icon">&#9881;</span>
-                            <span class="ethics-readiness-label" data-i18n="ethics.readiness">FORMULATION PROGRESS</span>
+                            <span class="ethics-readiness-label" data-i18n="ethics.readiness">PROGRESSION FORMULATION</span>
                             <span class="ethics-readiness-count" id="ethics-readiness-count">0/7</span>
                         </div>
                         <div class="ethics-readiness-bar">
@@ -845,20 +962,20 @@
             <section class="panel params-section" id="params-section">
                 <div class="panel-header params-toggle" id="params-toggle">
                     <span class="panel-icon">&#9881;</span>
-                    <h2 data-i18n="panel.params">PARAMETERS</h2>
+                    <h2 data-i18n="panel.params">PARAMÈTRES</h2>
                     <span class="panel-badge toggle-arrow">&#9660;</span>
                 </div>
                 <div class="params-content" id="params-content">
-                    <div class="param-row"><label data-i18n="params.thought_speed">Thought speed (s)</label><input type="range" id="sl-thought-interval"
+                    <div class="param-row"><label data-i18n="params.thought_speed">Vitesse pensée (s)</label><input type="range" id="sl-thought-interval"
                             min="5" max="60" step="1" value="15" class="slider param-slider"><span
                             id="pv-thought-interval">15</span></div>
-                    <div class="param-row"><label data-i18n="params.homeostasis">Homeostasis</label><input type="range" id="sl-homeostasis" min="0.01"
+                    <div class="param-row"><label data-i18n="params.homeostasis">Homéostasie</label><input type="range" id="sl-homeostasis" min="0.01"
                             max="0.10" step="0.005" value="0.05" class="slider param-slider"><span
                             id="pv-homeostasis">0.050</span></div>
-                    <div class="param-row"><label data-i18n="params.indecision_stress">Indecision stress</label><input type="range" id="sl-indecision"
+                    <div class="param-row"><label data-i18n="params.indecision_stress">Stress indécision</label><input type="range" id="sl-indecision"
                             min="0.01" max="0.15" step="0.005" value="0.08" class="slider param-slider"><span
                             id="pv-indecision">0.080</span></div>
-                    <div class="param-row"><label data-i18n="params.llm_temperature">LLM Temperature</label><input type="range" id="sl-temperature"
+                    <div class="param-row"><label data-i18n="params.llm_temperature">Température LLM</label><input type="range" id="sl-temperature"
                             min="0.1" max="1.5" step="0.05" value="0.70" class="slider param-slider"><span
                             id="pv-temperature">0.70</span></div>
                 </div>
@@ -870,42 +987,42 @@
             <section class="panel factory-panel" id="factory-panel">
                 <div class="panel-header">
                     <span class="panel-icon">&#9881;</span>
-                    <h2 data-i18n="panel.factory">FACTORY DEFAULTS</h2>
+                    <h2 data-i18n="panel.factory">VALEURS D'USINE</h2>
                     <span class="panel-badge factory-badge">RESET</span>
                 </div>
                 <div class="factory-actions">
                     <button class="factory-btn factory-btn-chem" id="btn-reset-chemistry"
-                        title="Reset the 7 molecules to factory baselines">
-                        &#9883; CHEMISTRY
+                        title="Remet les 7 mol&eacute;cules aux baselines d'usine">
+                        &#9883; CHIMIE
                     </button>
                     <button class="factory-btn factory-btn-params" id="btn-reset-params"
-                        title="Reset all operating parameters">
-                        &#9881; PARAMETERS
+                        title="Remet tous les param&egrave;tres de fonctionnement">
+                        &#9881; PARAM&Egrave;TRES
                     </button>
                     <button class="factory-btn factory-btn-chem" id="btn-reset-senses"
-                        title="Reset the 5 senses acuities to initial values">
-                        &#128065; SENSES
+                        title="Remet les acuit&eacute;s des 5 sens aux valeurs initiales">
+                        &#128065; SENS
                     </button>
                     <button class="factory-btn factory-btn-chem" id="btn-reset-intuition"
-                        title="Reset intuition and premonition to initial values">
+                        title="Remet l'intuition et la pr&eacute;monition aux valeurs initiales">
                         &#10024; INTUITION
                     </button>
                     <button class="factory-btn factory-btn-params" id="btn-reset-ethics"
-                        title="Deactivate personal principles (Asimov and Swiss law intact)">
-                        &#9878; ETHICS
+                        title="D&eacute;sactive les principes personnels (Asimov et Suisse intacts)">
+                        &#9878; &Eacute;THIQUE
                     </button>
                     <button class="factory-btn factory-btn-params" id="btn-reset-psychology"
-                        title="Reset the 6 psychological frameworks (Freud, Maslow, Toltec, Jung, EQ, Flow)">
+                        title="Reinitialise les 6 frameworks psychologiques (Freud, Maslow, Tolt&egrave;ques, Jung, EQ, Flow)">
                         &#129504; PSYCHOLOGIE
                     </button>
                     <button class="factory-btn factory-btn-full" id="btn-reset-full"
-                        title="Full reset — erases episodic memories">
-                        &#9888; FULL
+                        title="Reset complet — efface les souvenirs &eacute;pisodiques">
+                        &#9888; COMPLET
                     </button>
                 </div>
                 <div class="factory-diff-toggle">
-                    <button class="factory-btn-diff" id="btn-show-diff" title="Compare with factory defaults">
-                        &#9776; DIFFERENCES
+                    <button class="factory-btn-diff" id="btn-show-diff" title="Comparer avec les valeurs d'usine">
+                        &#9776; DIFF&Eacute;RENCES
                     </button>
                 </div>
                 <div class="factory-diff" id="factory-diff" style="display:none;"></div>
@@ -921,8 +1038,8 @@
             <div class="factory-confirm-title" id="factory-confirm-title" data-i18n="confirm.title">CONFIRMATION</div>
             <div class="factory-confirm-text" id="factory-confirm-text"></div>
             <div class="factory-confirm-actions">
-                <button class="factory-btn factory-btn-cancel" id="factory-confirm-cancel" data-i18n="confirm.cancel">CANCEL</button>
-                <button class="factory-btn factory-btn-confirm" id="factory-confirm-ok" data-i18n="confirm.ok">CONFIRM</button>
+                <button class="factory-btn factory-btn-cancel" id="factory-confirm-cancel" data-i18n="confirm.cancel">ANNULER</button>
+                <button class="factory-btn factory-btn-confirm" id="factory-confirm-ok" data-i18n="confirm.ok">CONFIRMER</button>
             </div>
         </div>
     </div>
@@ -933,8 +1050,8 @@
     <div id="sleep-overlay" class="sleep-overlay" style="display:none;">
         <div class="sleep-content">
             <div class="sleep-icon">🌙</div>
-            <h2 data-i18n="sleep.title">Saphire is sleeping...</h2>
-            <p id="sleep-phase-text" data-i18n="sleep.deep">Deep sleep — memory consolidation in progress</p>
+            <h2 data-i18n="sleep.title">Saphire dort...</h2>
+            <p id="sleep-phase-text" data-i18n="sleep.deep">Sommeil profond — ma memoire se consolide</p>
 
             <!-- Barre de progression -->
             <div class="sleep-progress-bar">
@@ -944,15 +1061,15 @@
 
             <!-- Stats en direct -->
             <div class="sleep-stats">
-                <span>🧠 <span id="sleep-consolidated">0</span> memories consolidated</span>
-                <span>🔗 <span id="sleep-connections">0</span> connections created</span>
-                <span>🌙 <span id="sleep-dreams">0</span> dream(s)</span>
+                <span>🧠 <span id="sleep-consolidated">0</span> souvenirs consolides</span>
+                <span>🔗 <span id="sleep-connections">0</span> connexions creees</span>
+                <span>🌙 <span id="sleep-dreams">0</span> reve(s)</span>
             </div>
 
             <!-- Bouton d'urgence (discret) -->
             <button id="emergency-wake" class="emergency-btn"
                     onclick="emergencyWake()">
-                ⚠️ Wake up (emergency only)
+                ⚠️ Reveiller (urgence uniquement)
             </button>
         </div>
     </div>
@@ -961,7 +1078,7 @@
          FOOTER : mentions legales et credits
          ============================================================ -->
     <footer>
-        <span>All rights reserved &copy; lesidees.net / Built with Claude &amp; Claude
+        <span>Tous droits r&eacute;serv&eacute;s &copy; lesidees.net / R&eacute;alis&eacute; avec Claude &amp; Claude
             Code</span>
     </footer>
 
@@ -970,13 +1087,15 @@
         <div class="username-modal-content">
             <div class="username-modal-icon">&#x1F48E;</div>
             <h2 class="username-modal-title">IDENTIFICATION</h2>
-            <p class="username-modal-text">Whom do I have the pleasure of meeting?</p>
+            <p class="username-modal-text">À qui ai-je l'honneur ?</p>
             <input type="text" id="username-input" class="username-modal-input"
-                placeholder="Your first name..." autocomplete="off" spellcheck="false" maxlength="32">
-            <button id="username-confirm" class="username-modal-btn">CONFIRM</button>
+                placeholder="Votre prénom..." autocomplete="off" spellcheck="false" maxlength="32">
+            <button id="username-confirm" class="username-modal-btn">CONFIRMER</button>
         </div>
     </div>
 
+    <!-- Authentification (intercepte fetch + WebSocket) -->
+    <script src="/auth.js"></script>
     <!-- Script principal : connexion WebSocket, mise a jour des panneaux, gestion des sliders -->
     <script src="/app.js"></script>
     <!-- Initialisation i18n apres le chargement de app.js -->

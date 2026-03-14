@@ -29,7 +29,7 @@ pub mod encoder;
 pub mod personality;
 
 use serde::{Deserialize, Serialize};
-use self::encoder::LocalEncoder;
+use self::encoder::{LocalEncoder, TextEncoder};
 
 /// Un souvenir encodé sous forme vectorielle.
 ///

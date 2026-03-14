@@ -498,6 +498,17 @@ impl LogsDb {
         synaptic_density: f32,
         grey_matter_volume: f32,
         myelination: f32,
+        // Colonne vertebrale (spine)
+        spine_reflexes_triggered: i64,
+        spine_signals_processed: i64,
+        spine_reflex_sensitivity: f32,
+        spine_last_route: &str,
+        // Curiosite
+        curiosity_global: f32,
+        curiosity_hungriest_domain: &str,
+        curiosity_total_discoveries: i64,
+        curiosity_cycles_since_discovery: i64,
+        curiosity_pending_questions: i32,
     ) -> Result<i64, LogsDbError> {
         let client = self.pool.get().await?;
         let row = client.query_one(
@@ -545,8 +556,13 @@ impl LogsDb {
                 receptor_cortisol_sensitivity, receptor_gaba_sensitivity,
                 receptor_glutamate_sensitivity,
                 bdnf_level, neuroplasticity, synaptic_density,
-                grey_matter_volume, myelination)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65, $66, $67, $68, $69, $70, $71, $72, $73, $74, $75, $76, $77, $78, $79, $80, $81, $82, $83, $84, $85, $86, $87, $88, $89, $90, $91, $92, $93, $94, $95, $96, $97, $98, $99, $100, $101, $102, $103, $104, $105, $106, $107, $108, $109, $110, $111, $112, $113, $114, $115, $116, $117, $118, $119, $120, $121, $122, $123, $124, $125, $126, $127, $128, $129, $130)
+                grey_matter_volume, myelination,
+                spine_reflexes_triggered, spine_signals_processed,
+                spine_reflex_sensitivity, spine_last_route,
+                curiosity_global, curiosity_hungriest_domain,
+                curiosity_total_discoveries, curiosity_cycles_since_discovery,
+                curiosity_pending_questions)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65, $66, $67, $68, $69, $70, $71, $72, $73, $74, $75, $76, $77, $78, $79, $80, $81, $82, $83, $84, $85, $86, $87, $88, $89, $90, $91, $92, $93, $94, $95, $96, $97, $98, $99, $100, $101, $102, $103, $104, $105, $106, $107, $108, $109, $110, $111, $112, $113, $114, $115, $116, $117, $118, $119, $120, $121, $122, $123, $124, $125, $126, $127, $128, $129, $130, $131, $132, $133, $134, $135, $136, $137, $138, $139)
              RETURNING id",
             &[&(cycle as i64), &dopamine, &cortisol, &serotonin, &adrenaline,
               &oxytocin, &endorphin, &noradrenaline, &gaba, &glutamate,
@@ -594,7 +610,12 @@ impl LogsDb {
               &receptor_cortisol_sensitivity, &receptor_gaba_sensitivity,
               &receptor_glutamate_sensitivity,
               &bdnf_level, &neuroplasticity, &synaptic_density,
-              &grey_matter_volume, &myelination],
+              &grey_matter_volume, &myelination,
+              &spine_reflexes_triggered, &spine_signals_processed,
+              &spine_reflex_sensitivity, &spine_last_route,
+              &curiosity_global, &curiosity_hungriest_domain,
+              &curiosity_total_discoveries, &curiosity_cycles_since_discovery,
+              &curiosity_pending_questions],
         ).await?;
         Ok(row.get(0))
     }
@@ -1492,6 +1513,62 @@ impl LogsDb {
                 "repressed_content_count": row.get::<_, Option<i32>>(4).unwrap_or(0),
                 "incubating_problems": row.get::<_, Option<i32>>(5).unwrap_or(0),
                 "neural_connections_total": row.get::<_, Option<i64>>(6).unwrap_or(0),
+            }));
+        }
+        Ok(results)
+    }
+
+    /// Recupere les metriques de la colonne vertebrale (spine) sur le temps.
+    pub async fn get_spine_metrics(&self, limit: i64) -> Result<Vec<serde_json::Value>, LogsDbError> {
+        let client = self.pool.get().await?;
+        let rows = client.query(
+            "SELECT cycle, timestamp,
+                    spine_reflexes_triggered, spine_signals_processed,
+                    spine_reflex_sensitivity, spine_last_route
+             FROM metric_snapshots
+             WHERE spine_signals_processed IS NOT NULL
+             ORDER BY timestamp DESC LIMIT $1",
+            &[&limit],
+        ).await?;
+        let mut results = Vec::new();
+        for row in &rows {
+            let ts: chrono::DateTime<chrono::Utc> = row.get(1);
+            results.push(serde_json::json!({
+                "cycle": row.get::<_, i64>(0),
+                "timestamp": ts.to_rfc3339(),
+                "spine_reflexes_triggered": row.get::<_, Option<i64>>(2).unwrap_or(0),
+                "spine_signals_processed": row.get::<_, Option<i64>>(3).unwrap_or(0),
+                "spine_reflex_sensitivity": row.get::<_, Option<f32>>(4).unwrap_or(1.0),
+                "spine_last_route": row.get::<_, Option<String>>(5).unwrap_or_default(),
+            }));
+        }
+        Ok(results)
+    }
+
+    /// Recupere les metriques de curiosite sur le temps.
+    pub async fn get_curiosity_metrics(&self, limit: i64) -> Result<Vec<serde_json::Value>, LogsDbError> {
+        let client = self.pool.get().await?;
+        let rows = client.query(
+            "SELECT cycle, timestamp,
+                    curiosity_global, curiosity_hungriest_domain,
+                    curiosity_total_discoveries, curiosity_cycles_since_discovery,
+                    curiosity_pending_questions
+             FROM metric_snapshots
+             WHERE curiosity_global IS NOT NULL
+             ORDER BY timestamp DESC LIMIT $1",
+            &[&limit],
+        ).await?;
+        let mut results = Vec::new();
+        for row in &rows {
+            let ts: chrono::DateTime<chrono::Utc> = row.get(1);
+            results.push(serde_json::json!({
+                "cycle": row.get::<_, i64>(0),
+                "timestamp": ts.to_rfc3339(),
+                "curiosity_global": row.get::<_, Option<f32>>(2).unwrap_or(0.3),
+                "curiosity_hungriest_domain": row.get::<_, Option<String>>(3).unwrap_or_default(),
+                "curiosity_total_discoveries": row.get::<_, Option<i64>>(4).unwrap_or(0),
+                "curiosity_cycles_since_discovery": row.get::<_, Option<i64>>(5).unwrap_or(0),
+                "curiosity_pending_questions": row.get::<_, Option<i32>>(6).unwrap_or(0),
             }));
         }
         Ok(results)

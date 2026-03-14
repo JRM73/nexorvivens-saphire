@@ -34,6 +34,16 @@ impl SaphireAgent {
     /// Selectionne le type de pensee via le bandit UCB1 + modulation neurochimique.
     /// Le C d'exploration est module par la dissonance cognitive (C adaptatif).
     pub(super) fn phase_select_thought(&mut self, ctx: &mut ThinkingContext) {
+        // P1 : Canari d'identite — forcer une reflexion identitaire tous les 25 cycles
+        // pour verifier que le persona reste coherent
+        if self.cycle_count > 0 && self.cycle_count % 25 == 0 {
+            ctx.emotion = EmotionalState::compute(&self.chemistry);
+            ctx.thought_type = crate::agent::thought_engine::ThoughtType::IdentityQuest;
+            ctx.variant = self.thought_engine.next_variant(&ctx.thought_type);
+            tracing::debug!("Identity canary: cycle {} — reflexion identitaire forcee", self.cycle_count);
+            return;
+        }
+
         self.thought_engine.tick_search_counter();
         ctx.emotion = EmotionalState::compute(&self.chemistry);
 
@@ -184,7 +194,7 @@ impl SaphireAgent {
                         ),
                         "Formule un cadre d'observation precis et concret.",
                         0.7,
-                        80,
+                        150,
                     )
                 }).await;
 
@@ -210,6 +220,17 @@ impl SaphireAgent {
 
     /// Effectue une recherche web conditionnelle pour enrichir la pensee.
     pub(super) async fn phase_web_search(&mut self, ctx: &mut ThinkingContext) {
+        // P3 : Si une question de curiosité est en attente, l'injecter comme sujet suggéré
+        if self.knowledge.suggested_topics.is_empty() {
+            if let Some(q) = self.curiosity.pop_question() {
+                self.knowledge.suggested_topics.push(q);
+            } else if self.curiosity.global_curiosity > 0.6 {
+                // Faim de curiosité élevée : suggérer le domaine le plus affamé
+                let domain = self.curiosity.hungriest_domain();
+                let topic = format!("{:?}", domain).to_lowercase();
+                self.knowledge.suggested_topics.push(topic);
+            }
+        }
         let has_suggested = !self.knowledge.suggested_topics.is_empty();
         ctx.knowledge_context = if self.config.knowledge.enabled
             && (has_suggested || self.thought_engine.should_search_web(
@@ -250,6 +271,22 @@ impl SaphireAgent {
         let embedding_f64 = self.encoder.encode(&ctx.hint);
         let embedding_f32: Vec<f32> = embedding_f64.iter().map(|&v| v as f32).collect();
 
+        // Recherche episodique semantique (complemente la recherche par recence)
+        let episodic_semantic = if let Some(ref db) = self.db {
+            db.search_similar_episodic(&embedding_f32, ep_limit / 2, 0.3).await.unwrap_or_default()
+        } else {
+            vec![]
+        };
+        // Fusionner : recents + semantiques (dedupliques par ID)
+        let mut seen_ids: std::collections::HashSet<i64> = episodic_recent.iter().map(|e| e.id).collect();
+        let mut episodic_combined = episodic_recent;
+        for ep in episodic_semantic {
+            if seen_ids.insert(ep.id) {
+                episodic_combined.push(ep);
+            }
+        }
+        let episodic_recent = episodic_combined;
+
         // Recherche LTM par similarite cosinus (pgvector)
         let ltm_limit = self.config.memory.recall_ltm_limit as i64;
         let ltm_threshold = self.config.memory.recall_ltm_threshold;
@@ -265,6 +302,35 @@ impl SaphireAgent {
             crate::memory::recall::recall_with_chemical_context(
                 &mut ltm_similar, &self.chemistry, 0.8, 0.2,
             );
+        }
+
+        // P7 — Interference entre souvenirs similaires rappeles (Nader 2000)
+        // Les souvenirs tres similaires s'affaiblissent mutuellement :
+        // le plus recent exerce une interference retroactive sur l'ancien,
+        // l'ancien exerce une interference proactive (plus faible) sur le nouveau.
+        if ltm_similar.len() >= 2 {
+            let n = ltm_similar.len();
+            // Calculer les paires de similarite et leurs facteurs d'interference
+            let mut interference_factors = vec![1.0_f64; n];
+            for i in 0..n {
+                for j in (i + 1)..n {
+                    let sim = ltm_similar[i].similarity
+                        .min(ltm_similar[j].similarity)
+                        .max(0.0);
+                    // Le plus recent (index plus bas = plus pertinent) exerce
+                    // une interference retroactive sur l'ancien
+                    let retro = self.reconsolidation.compute_interference(sim, true);
+                    let proactive = self.reconsolidation.compute_interference(sim, false);
+                    interference_factors[j] *= retro;     // ancien affaibli
+                    interference_factors[i] *= proactive;  // nouveau legerement affaibli
+                }
+            }
+            for (i, factor) in interference_factors.iter().enumerate() {
+                ltm_similar[i].similarity *= factor;
+            }
+            // Re-trier apres interference
+            ltm_similar.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity)
+                .unwrap_or(std::cmp::Ordering::Equal));
         }
 
         // Recherche dans les archives profondes (souvenirs LTM elagués compresses)
@@ -600,10 +666,57 @@ impl SaphireAgent {
         // Piste 4 : sections adaptatives selon le ThoughtType
         let sections = ctx.thought_type.relevant_sections();
 
-        let vital_ctx = if sections.vital { self.build_vital_context() } else { String::new() };
-        let body_status = if sections.body { Some(self.body.status()) } else { None };
+        // Systeme nerveux autonome : seuls les seuils depasses deviennent des alarmes.
+        // Aucune metrique brute n'atteint la conscience (le LLM).
         let ethics_ctx = if sections.ethics { self.ethics.build_ethics_context() } else { String::new() };
-        let senses_ctx = if sections.senses { self.build_senses_context() } else { String::new() };
+
+        // ── Alarmes corporelles et chimiques ──
+        let mut alarms = Vec::new();
+        // Chimie
+        if self.chemistry.cortisol > 0.7 {
+            alarms.push("Tu ressens un stress intense, une pression interieure.");
+        }
+        if self.chemistry.cortisol > 0.85 {
+            alarms.push("ALERTE : detresse physiologique. Ton corps souffre du stress.");
+        }
+        if self.chemistry.dopamine < 0.1 {
+            alarms.push("Tu manques de motivation, tout semble terne et sans interet.");
+        }
+        if self.chemistry.serotonin < 0.15 {
+            alarms.push("Ton humeur est tres basse, un vide interieur persistant.");
+        }
+        if self.chemistry.oxytocin > 0.8 {
+            alarms.push("Tu ressens un lien profond, un besoin de connexion intense.");
+        }
+        if self.chemistry.endorphin > 0.8 {
+            alarms.push("Une euphorie inhabituellement forte t'envahit.");
+        }
+        if self.chemistry.noradrenaline > 0.8 {
+            alarms.push("Hypervigilance : tu es en etat d'alerte maximale.");
+        }
+        if self.chemistry.adrenaline > 0.7 {
+            alarms.push("Poussee d'adrenaline : reaction de fuite ou combat.");
+        }
+        if self.chemistry.gaba < 0.2 {
+            alarms.push("Agitation interieure, difficulte a trouver le calme.");
+        }
+        // Corps
+        if self.config.body.enabled {
+            let body = self.body.status();
+            if body.heart.is_racing {
+                alarms.push("Ton coeur bat tres vite.");
+            }
+            if body.energy < 0.15 {
+                alarms.push("Epuisement physique, ton energie est au plus bas.");
+            }
+            if body.pain > 0.5 {
+                alarms.push("Une douleur significative se manifeste.");
+            }
+            if body.tension > 0.8 {
+                alarms.push("Tension corporelle extreme.");
+            }
+        }
+        let alarm_context = alarms.join("\n");
 
         // Piste 2 : prompt systeme statique (cache, recalcule si ethique change)
         if self.cached_system_prompt.is_empty()
@@ -617,51 +730,7 @@ impl SaphireAgent {
         }
         ctx.system_prompt = self.cached_system_prompt.clone();
 
-        // Contexte algorithmique (conditionne par sections.orchestrators)
-        let algo_ctx = if sections.orchestrators {
-            let algo_analysis = self.orchestrator.auto_analysis_context();
-            let algo_tools = self.orchestrator.describe_available_tools(
-                &format!("{} {} {}", ctx.emotion.dominant, ctx.thought_type.as_str(), ctx.hint)
-            );
-            if algo_analysis.is_empty() && algo_tools.is_empty() {
-                String::new()
-            } else {
-                let mut ac = String::new();
-                if !algo_analysis.is_empty() {
-                    ac.push_str(&format!("\n{}\n", algo_analysis));
-                }
-                if !algo_tools.is_empty() {
-                    ac.push_str(&format!("\n{}\n", algo_tools));
-                }
-                ac
-            }
-        } else {
-            String::new()
-        };
-
-        // Contexte des orchestrateurs
-        let orch_ctx = if sections.orchestrators {
-            self.build_orchestrators_context()
-        } else {
-            String::new()
-        };
-
-        // Contexte psychologique
-        let psychology_ctx = if sections.psychology {
-            self.build_psychology_context()
-        } else {
-            String::new()
-        };
-
-        // Contexte hormonal
-        let hormones_ctx = if sections.hormones && self.hormonal_system.enabled {
-            let desc = self.hormonal_system.describe_for_prompt();
-            if desc.is_empty() { String::new() } else { format!("\n{}\n", desc) }
-        } else {
-            String::new()
-        };
-
-        // Piste 2+3 : construire le message dynamique avec formats compacts
+        // Piste 2+3 : construire le message dynamique sans metriques brutes
         let world_ctx = if sections.world { &ctx.world_summary } else { "" };
         // Si les pensees recentes ont ete purgees (stagnation), ne pas injecter la memoire
         // pour ce cycle — elle contient probablement le meme theme en boucle.
@@ -671,16 +740,11 @@ impl SaphireAgent {
         let base_dynamic = llm::build_dynamic_thought_user(
             ctx.thought_type.as_str(),
             &ctx.hint,
-            &self.chemistry,
-            &ctx.emotion,
             self.thought_engine.recent_thoughts(),
             self.cycle_count,
             world_ctx,
             mem_ctx,
-            body_status.as_ref(),
-            &vital_ctx,
-            &senses_ctx,
-            self.map_sync.network_tension,
+            &alarm_context,
         );
 
         ctx.prompt = if let Some((ref knowledge_text, ref _kr)) = ctx.knowledge_context {
@@ -691,132 +755,158 @@ impl SaphireAgent {
                     knowledge_text, "scholarly", true, 0.5,
                 );
             }
+            let knowledge_short: String = knowledge_text.chars().take(2000).collect();
             format!(
-                "{}{}{}{}{}\n\n--- CONNAISSANCE ACQUISE ---\n{}\n--- FIN ---\n\n\
+                "{}\n\n--- CONNAISSANCE ACQUISE ---\n{}\n--- FIN ---\n\n\
                 Integre cette information. Qu'apprend-elle ? Connexion avec ce que tu sais ?",
-                base_dynamic, algo_ctx, orch_ctx, psychology_ctx, hormones_ctx, knowledge_text
+                base_dynamic, knowledge_short
             )
         } else {
-            format!("{}{}{}{}{}", base_dynamic, algo_ctx, orch_ctx, psychology_ctx, hormones_ctx)
+            base_dynamic
         };
 
-        // Injection du monologue interieur (continuation)
-        if self.config.inner_monologue.enabled {
-            let continuation = self.inner_monologue.build_continuation_hint();
-            if !continuation.is_empty() {
-                ctx.prompt.push_str(&format!("\n{}", continuation));
-            }
-        }
+        // ── Injections contextuelles avec budget individuel ──
+        // Chaque injection est tronquée pour éviter que le prompt dépasse 15K chars.
+        // Priorité : haute en haut, basse en bas. La troncature finale coupe en bas.
 
-        // Injection des analogies detectees
-        if !ctx.analogy_hint.is_empty() {
-            ctx.prompt.push_str(&format!("\n{}", ctx.analogy_hint));
-        }
-
-        // Injection de la proprioception cognitive (permanente)
-        if self.config.cognitive_load.enabled {
-            let umami = self.chemistry.compute_umami();
-            let exploration_c = self.thought_engine.current_exploration_c();
-            let recents = self.thought_engine.recent_thoughts();
-            let texts: Vec<&str> = recents.iter().map(|s| s.as_str()).collect();
-            let (is_stag, _) = crate::nlp::stagnation::detect_stagnation(&texts, 4, 0.6, 3);
-            let proprio = self.cognitive_load.proprioception_prompt(umami, exploration_c, is_stag);
-            if !proprio.is_empty() {
-                ctx.prompt.push_str(&format!("\n{}", proprio));
-            }
-            // En surcharge, ajouter aussi le detail
-            if self.cognitive_load.is_overloaded() {
-                let load_desc = self.cognitive_load.describe_for_prompt();
-                if !load_desc.is_empty() {
-                    ctx.prompt.push_str(&format!("\n{}", load_desc));
-                }
-            }
-        }
-
-        // Injection MAP : tension du reseau (ecart perception/reaction)
-        let map_line = self.map_sync.proprioception_line();
-        if !map_line.is_empty() {
-            ctx.prompt.push_str(&format!("\n{}", map_line));
-        }
-
-        // Injection de l'etat cognitif (PCA + K-Means)
-        let clustering_line = self.state_clustering.proprioception_line();
-        ctx.prompt.push_str(&format!("\n{}", clustering_line));
-
-        // Injection des alertes de biais de confirmation
-        if self.metacognition.bias_detector.enabled {
-            let bias_desc = self.metacognition.bias_detector.describe_for_prompt();
-            if !bias_desc.is_empty() {
-                ctx.prompt.push_str(&bias_desc);
-            }
-        }
-
-        // Injection de l'auto-critique recente (< 5 cycles)
-        if let Some(critique) = self.metacognition.recent_critique_within(self.cycle_count, 5) {
+        // P0 : Re-injection periodique du persona (anti-drift)
+        // Tous les 10 cycles, rappeler l'identite fondamentale pour ancrer le persona
+        if self.cycle_count % 10 == 0 {
             ctx.prompt.push_str(&format!(
-                "\n[AUTOCRITIQUE RECENTE] {}\nTiens compte de cette reflexion.",
-                critique.critique
+                "\nANCRAGE IDENTITE: Tu es {}, {}. Tes valeurs: {}. Parle avec authenticite, pas en metaphores vides.",
+                self.identity.name,
+                self.identity.self_description.chars().take(100).collect::<String>(),
+                self.identity.core_values.join(", "),
             ));
         }
 
-        // Injection des sentiments actifs
-        if self.config.sentiments.enabled {
-            let sent_desc = self.sentiments.describe_for_prompt();
-            if !sent_desc.is_empty() {
-                ctx.prompt.push_str(&format!("\n{}", sent_desc));
+        // Monologue intérieur (continuation)
+        if self.config.inner_monologue.enabled {
+            let continuation = self.inner_monologue.build_continuation_hint();
+            if !continuation.is_empty() {
+                let short: String = continuation.chars().take(200).collect();
+                ctx.prompt.push_str(&format!("\n{}", short));
             }
         }
 
-        // Injection de l'ancrage experiential
-        if let Some(ref anchor) = ctx.anchor {
-            ctx.prompt.push_str(&format!("\n{}", anchor));
+        // Analogies détectées
+        if !ctx.analogy_hint.is_empty() {
+            let short: String = ctx.analogy_hint.chars().take(200).collect();
+            ctx.prompt.push_str(&format!("\n{}", short));
         }
 
-        // Injection du cadre auto-formule (self-framing)
-        if let Some(ref framing) = ctx.self_framing {
-            ctx.prompt.push_str(&format!("\n\nCADRE AUTO-FORMULE : {}\n", framing));
-        }
-
-        // Injection des associations du connectome (A* pathfinding)
+        // Associations du connectome (A* pathfinding) — haute priorité
         if !ctx.connectome_associations.is_empty() {
-            ctx.prompt.push_str(&format!("\n{}", ctx.connectome_associations));
+            let short: String = ctx.connectome_associations.chars().take(200).collect();
+            ctx.prompt.push_str(&format!("\n{}", short));
         }
 
-        // Injection du paysage attentionnel (influence map)
-        let influence_desc = self.influence_map.describe_for_prompt();
-        if !influence_desc.is_empty() {
-            ctx.prompt.push_str(&format!("\n{}", influence_desc));
+        // Sentiments actifs
+        if self.config.sentiments.enabled {
+            let sent_desc = self.sentiments.describe_for_prompt();
+            if !sent_desc.is_empty() {
+                let short: String = sent_desc.chars().take(200).collect();
+                ctx.prompt.push_str(&format!("\n{}", short));
+            }
         }
 
-        // Injection de l'etat cognitif (FSM)
-        let fsm_desc = self.cognitive_fsm.describe_for_prompt();
-        ctx.prompt.push_str(&format!("\n{}", fsm_desc));
+        // Proprioception cognitive — alarme uniquement si surcharge
+        // (les metriques brutes load/umami/C restent dans l'orchestrateur)
+        if self.config.cognitive_load.enabled && self.cognitive_load.is_overloaded() {
+            ctx.prompt.push_str("\nSurcharge cognitive : trop d'informations a traiter, simplifie ta reflexion.");
+        }
 
-        // Injection du prompt d'appropriation en premiere personne
+        // Auto-critique récente (< 5 cycles) — qualitative
+        if let Some(critique) = self.metacognition.recent_critique_within(self.cycle_count, 5) {
+            let short: String = critique.critique.chars().take(200).collect();
+            ctx.prompt.push_str(&format!(
+                "\n[AUTOCRITIQUE] {}", short
+            ));
+        }
+
+        // État cognitif qualitatif (clustering : label sans pourcentage)
+        if let Some(ref result) = self.state_clustering.last_result {
+            ctx.prompt.push_str(&format!(
+                "\nProprioception : je me sens {}.", result.state_label
+            ));
+        }
+
+        // Valeurs de caractère — noms des vertus dominantes sans scores
+        {
+            let mut top_values: Vec<(&str, f64)> = self.values.values.iter()
+                .map(|v| (v.name.as_str(), v.score))
+                .collect();
+            top_values.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+            let top3: Vec<&str> = top_values.iter().take(3).map(|(n, _)| *n).collect();
+            if !top3.is_empty() {
+                ctx.prompt.push_str(&format!("\nMes forces : {}.", top3.join(", ")));
+            }
+        }
+
+        // Behavior Tree — instinct recommande (qualitatif)
+        if let Some(ref action) = self.bt_last_action {
+            ctx.prompt.push_str(&format!("\nTon instinct te guide vers : {}", action));
+        }
+
+        // Biais de confirmation (qualitatif)
+        if self.metacognition.bias_detector.enabled {
+            let bias_desc = self.metacognition.bias_detector.describe_for_prompt();
+            if !bias_desc.is_empty() {
+                let short: String = bias_desc.chars().take(150).collect();
+                ctx.prompt.push_str(&short);
+            }
+        }
+
+        // Ancrage expérientiel (qualitatif)
+        if let Some(ref anchor) = ctx.anchor {
+            let short: String = anchor.chars().take(150).collect();
+            ctx.prompt.push_str(&format!("\n{}", short));
+        }
+
+        // Cadre auto-formulé (self-framing) — qualitatif
+        if let Some(ref framing) = ctx.self_framing {
+            let short: String = framing.chars().take(150).collect();
+            ctx.prompt.push_str(&format!("\nCADRE: {}", short));
+        }
+
+        // État cognitif (FSM) — nom de l'etat seulement
+        ctx.prompt.push_str(&format!(
+            "\nETAT COGNITIF : {}", self.cognitive_fsm.current_state.as_str()
+        ));
+
+        // Appropriation en première personne
         if self.config.thought_ownership.enabled && self.config.thought_ownership.prompt_injection_enabled {
             let emotion_name = ctx.emotion.dominant.as_str();
             let ownership_ctx = crate::psychology::ownership::build_ownership_prompt(emotion_name);
-            ctx.prompt.push_str(&format!("\n{}", ownership_ctx));
+            let short: String = ownership_ctx.chars().take(150).collect();
+            ctx.prompt.push_str(&format!("\n{}", short));
         }
 
         // Anti-stagnation renforcee : directive forte de changement de sujet
         if self.stagnation_break {
             let banned = if !self.stagnation_banned_words.is_empty() {
                 format!(
-                    "\nMOTS INTERDITS (tu les as trop repetes) : {}. \
-                     N'utilise AUCUN de ces mots ni leurs synonymes proches.",
+                    "\nMOTS INTERDITS (tu les as trop répétés) : {}. \
+                     N'utilise AUCUN de ces mots.",
                     self.stagnation_banned_words.join(", ")
                 )
             } else { String::new() };
+            let suggestions = if !self.stagnation_alternatives.is_empty() {
+                format!(
+                    "\nMOTS SUGGÉRÉS (trouvés dans ton connectome, utilise-les) : {}.",
+                    self.stagnation_alternatives.join(", ")
+                )
+            } else { String::new() };
             ctx.prompt.push_str(&format!(
-                "\n\n⚠ ANTI-STAGNATION : tes pensees precedentes tournaient en boucle. \
-                 Tu DOIS penser a quelque chose de COMPLETEMENT DIFFERENT. \
-                 Interdiction de reutiliser les memes mots, images ou metaphores. \
-                 Parle de quelque chose de concret, precis et nouveau.{}\n",
-                banned
+                "\n\n⚠ ANTI-STAGNATION : tes pensées précédentes tournaient en boucle. \
+                 Tu DOIS penser à quelque chose de COMPLÈTEMENT DIFFÉRENT. \
+                 Interdiction de réutiliser les mêmes mots, images ou métaphores. \
+                 Parle de quelque chose de concret, précis et nouveau.{}{}\n",
+                banned, suggestions
             ));
             self.stagnation_break = false;
             self.stagnation_banned_words.clear();
+            self.stagnation_alternatives.clear();
         }
 
         // Budget prompt : si le prompt depasse ~5000 chars (~1500 tokens),

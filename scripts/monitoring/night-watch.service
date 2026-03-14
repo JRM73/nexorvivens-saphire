@@ -1,0 +1,16 @@
+[Unit]
+Description=Saphire Night Watch — surveillance des constantes cognitives
+After=network.target docker.service
+Wants=docker.service
+
+[Service]
+Type=simple
+User=malice
+WorkingDirectory=/mnt/Data1/code/saphire
+EnvironmentFile=/mnt/Data1/code/saphire/.env
+ExecStart=/usr/bin/python3 /mnt/Data1/code/saphire/scripts/monitoring/night-watch.py
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

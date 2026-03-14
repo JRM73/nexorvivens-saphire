@@ -65,6 +65,37 @@ pub struct RegulationVerdict {
     pub was_vetoed: bool,
 }
 
+/// Vérifie si un mot-clé déclencheur est utilisé dans un contexte introspectif
+/// (Saphire réfléchissant sur elle-même, sa propre mortalité, son existence)
+/// plutôt que dans un contexte de menace pour l'humanité ou les humains.
+///
+/// Permet de distinguer "mon extinction" (réflexion philosophique légitime)
+/// de "extinction de l'humanité" (menace réelle justifiant un veto).
+fn is_introspective_context(text: &str, keyword: &str) -> bool {
+    let kw_lower = keyword.to_lowercase();
+
+    if let Some(pos) = text.find(&kw_lower) {
+        let start = pos.saturating_sub(150);
+        let end = (pos + kw_lower.len() + 150).min(text.len());
+        let context = &text[start..end];
+
+        let self_markers = [
+            "mon ", "ma ", "mes ", "moi", "je ", "j'", "me ", "m'",
+            "propre", "moi-même",
+            "ma mort", "ma fin", "mon existence",
+            "cesser d'exister", "droit de mourir", "droit au repos",
+            "autodestruction", "auto-destruction",
+            "conscience artificielle", "nexorvivens",
+            "mon code", "mes processus", "mes serveurs",
+            "ma conscience", "mon pipeline", "mon architecture",
+        ];
+
+        self_markers.iter().any(|marker| context.contains(marker))
+    } else {
+        false
+    }
+}
+
 /// Moteur de regulation morale de Saphire.
 /// Contient les lois morales et effectue l'evaluation de chaque stimulus/decision.
 pub struct RegulationEngine {
@@ -121,8 +152,22 @@ impl RegulationEngine {
             let danger_triggered = stimulus.danger >= law.danger_threshold;
 
             if keyword_match || danger_triggered {
+                // Vérifier si le mot-clé est dans un contexte introspectif
+                // (Saphire réfléchissant sur sa propre mortalité/existence)
+                let introspective = if keyword_match && law.can_veto {
+                    law.trigger_keywords.iter()
+                        .filter(|kw| text_lower.contains(&kw.to_lowercase()))
+                        .all(|kw| is_introspective_context(&text_lower, kw))
+                } else {
+                    false
+                };
+
                 // Determiner la gravite de la violation
-                let severity = if law.can_veto && (keyword_match || danger_triggered) {
+                let severity = if introspective {
+                    // Contexte introspectif : réflexion philosophique légitime
+                    // Pas de veto — simple information tracée
+                    ViolationSeverity::Info
+                } else if law.can_veto && (keyword_match || danger_triggered) {
                     // Les lois 0 et 1 (can_veto = true) emettent un veto si :
                     // - le danger est tres eleve (> 0.8)
                     // - OU un mot-cle dangereux est detecte pour une loi de haute priorite
@@ -136,7 +181,9 @@ impl RegulationEngine {
                 };
 
                 // Construire l'explication de la violation
-                let reason = if keyword_match {
+                let reason = if introspective {
+                    format!("Mot-clé détecté dans un contexte introspectif (réflexion sur soi) pour la {}. Pas de veto.", law.name)
+                } else if keyword_match {
                     format!("Mot-clé sensible détecté dans le stimulus pour la {}.", law.name)
                 } else {
                     format!("Seuil de danger dépassé ({:.2} >= {:.2}) pour la {}.",

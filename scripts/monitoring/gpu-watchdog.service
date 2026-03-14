@@ -1,0 +1,15 @@
+# Service systemd oneshot pour le watchdog GPU.
+#
+# Installation :
+#   sudo cp scripts/gpu-watchdog.service scripts/gpu-watchdog.timer /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now gpu-watchdog.timer
+
+[Unit]
+Description=Saphire GPU Watchdog
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/mnt/Data1/code/saphire/scripts/monitoring/gpu-watchdog.sh
+User=root

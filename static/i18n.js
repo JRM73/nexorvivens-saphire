@@ -9,14 +9,14 @@
 // =============================================================================
 
 const I18n = {
-    current: 'en',
+    current: 'fr',
     translations: {},
     available: ['fr', 'en', 'de', 'es', 'it', 'pt', 'ru', 'zh', 'ja', 'ar'],
     rtlLanguages: ['ar'],
 
     // Charge un fichier de traduction et applique
     async load(lang) {
-        if (!this.available.includes(lang)) lang = 'en';
+        if (!this.available.includes(lang)) lang = 'fr';
         try {
             const resp = await fetch('/i18n/' + lang + '.json');
             if (!resp.ok) throw new Error('HTTP ' + resp.status);
@@ -31,9 +31,9 @@ const I18n = {
                 document.title = this.translations['app.title'];
             }
         } catch (e) {
-            console.warn('[i18n] Loading error ' + lang + ':', e);
-            // Fallback to English if not already the current language
-            if (lang !== 'en') this.load('en');
+            console.warn('[i18n] Erreur chargement ' + lang + ':', e);
+            // Fallback sur le francais si ce n'est pas deja la langue courante
+            if (lang !== 'fr') this.load('fr');
         }
     },
 
@@ -73,7 +73,7 @@ const I18n = {
     // Initialise le systeme i18n au chargement de la page
     init() {
         var saved = localStorage.getItem('saphire-lang');
-        var lang = saved || 'en';
+        var lang = saved || 'fr';
         this.load(lang);
     }
 };

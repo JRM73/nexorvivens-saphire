@@ -50,25 +50,28 @@ pub mod nn_learnings;
 pub mod metrics;
 pub mod logs;
 pub mod factory;
-// pub mod psychology;      // [DELETED — premium]
+pub mod psychology;
 pub mod sleep;
-// pub mod subconscious;    // [DELETED — premium]
+pub mod subconscious;
 pub mod profiles;
 pub mod personalities;
 pub mod needs;
 pub mod hormones;
 pub mod mortality;
-// pub mod conditions;      // [DELETED — premium]
-// pub mod relationships;   // [DELETED — premium]
+pub mod conditions;
+pub mod relationships;
 pub mod cognition;
 pub mod personality;
 pub mod neuroscience;
 pub mod nutrition;
 pub mod grey_matter;
-// pub mod fields;          // [DELETED — premium]
-// pub mod psych_report;    // [DELETED — premium]
-// pub mod temperament;     // [DELETED — premium]
+pub mod fields;
+pub mod psych_report;
+pub mod temperament;
 pub mod sensoria;
+pub mod spine;
+pub mod curiosity;
+pub mod drift;
 pub mod websocket;
 
 // Re-exports pour acces direct depuis main.rs
@@ -112,6 +115,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/memory/archives", get(memory::api_list_archives))
         .route("/api/memory/archives/stats", get(memory::api_archive_stats))
         // ─── API Dashboard : Traces ───
+        .route("/api/trace/last", get(logs::api_get_trace_last))
         .route("/api/trace/:cycle", get(logs::api_get_trace))
         .route("/api/traces", get(logs::api_list_traces))
         // ─── API Dashboard : Metriques ───
@@ -144,12 +148,34 @@ pub fn build_router(state: AppState) -> Router {
         // ─── API Dashboard : Metacognition + Turing ───
         .route("/api/metacognition", get(system::api_metacognition))
         .route("/api/turing", get(system::api_turing))
-        // ─── API Dashboard : Relations et Famille ─── [STUBBED — premium]
+        // ─── API Dashboard : Relations et Famille ───
+        .route("/api/relationships", get(relationships::api_relationships))
+        .route("/api/relationships/chemistry", get(relationships::api_relationships_chemistry))
+        .route("/api/family", get(relationships::api_family))
+        .route("/api/family/chemistry", get(relationships::api_family_chemistry))
         // ─── API Dashboard : Mortalite ───
         .route("/api/mortality", get(mortality::api_mortality_status))
         .route("/api/mortality/poison", post(mortality::api_mortality_poison))
         .route("/api/mortality/revive", post(mortality::api_mortality_revive))
-        // ─── API Dashboard : Conditions et afflictions ─── [STUBBED — premium]
+        // ─── API Dashboard : Conditions et afflictions ───
+        .route("/api/conditions/phobias", get(conditions::api_phobias_status))
+        .route("/api/conditions/motion_sickness", get(conditions::api_motion_sickness_status))
+        .route("/api/conditions/motion_sickness/trigger", post(conditions::api_motion_sickness_trigger))
+        .route("/api/conditions/eating", get(conditions::api_eating_disorder_status))
+        .route("/api/conditions/disabilities", get(conditions::api_disabilities_status))
+        .route("/api/conditions/extreme", get(conditions::api_extreme_condition_status))
+        .route("/api/conditions/addictions", get(conditions::api_addictions_status))
+        .route("/api/conditions/trauma", get(conditions::api_trauma_status))
+        .route("/api/conditions/nde", get(conditions::api_nde_status))
+        .route("/api/conditions/drugs", get(conditions::api_drugs_status))
+        .route("/api/conditions/drugs/administer", post(conditions::api_drugs_administer))
+        .route("/api/conditions/iq", get(conditions::api_iq_status))
+        .route("/api/conditions/sexuality", get(conditions::api_sexuality_status))
+        .route("/api/conditions/degenerative", get(conditions::api_degenerative_status))
+        .route("/api/conditions/medical", get(conditions::api_medical_status))
+        .route("/api/conditions/culture", get(conditions::api_culture_status))
+        .route("/api/conditions/precarity", get(conditions::api_precarity_status))
+        .route("/api/conditions/employment", get(conditions::api_employment_status))
         // ─── API Dashboard : LoRA (collecte + export) ───
         .route("/api/lora/stats", get(system::api_lora_stats))
         .route("/api/lora/export", get(system::api_lora_export))
@@ -234,19 +260,65 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/metrics/chemical_health", get(metrics::api_metrics_chemical_health))
         .route("/api/metrics/receptors", get(metrics::api_metrics_receptors))
         .route("/api/metrics/bdnf", get(metrics::api_metrics_bdnf))
+        .route("/api/metrics/spine", get(metrics::api_metrics_spine))
+        .route("/api/metrics/curiosity", get(metrics::api_metrics_curiosity))
         // Factory defaults (valeurs d'usine)
         .route("/api/factory/defaults", get(factory::api_factory_defaults))
         .route("/api/factory/diff", get(factory::api_factory_diff))
         .route("/api/factory/reset", post(factory::api_factory_reset))
-        // ─── Psychologie (6 cadres) ─── [STUBBED — premium]
-        // ─── Modele LLM ─── [STUBBED — premium]
+        // Psychologie (6 cadres) — vues d'ensemble
+        .route("/api/psychology/status", get(psychology::api_psychology_status))
+        .route("/api/psychology/freudian", get(psychology::api_psychology_freudian))
+        .route("/api/psychology/maslow", get(psychology::api_psychology_maslow))
+        .route("/api/psychology/toltec", get(psychology::api_psychology_toltec))
+        .route("/api/psychology/shadow", get(psychology::api_psychology_shadow))
+        .route("/api/psychology/eq", get(psychology::api_psychology_eq))
+        .route("/api/psychology/flow", get(psychology::api_psychology_flow))
+        // ─── Psyche (Freud) ───
+        .route("/api/psyche/status", get(psychology::api_psyche_status))
+        .route("/api/psyche/defenses", get(psychology::api_psyche_defenses))
+        .route("/api/psyche/drives", get(psychology::api_psyche_drives))
+        // ─── Maslow ───
+        .route("/api/maslow/pyramid", get(psychology::api_maslow_pyramid))
+        .route("/api/maslow/ceiling", get(psychology::api_maslow_ceiling))
+        .route("/api/maslow/needs", get(psychology::api_maslow_needs))
+        // ─── Tolteques ───
+        .route("/api/toltec/agreements", get(psychology::api_toltec_agreements))
+        .route("/api/toltec/history", get(psychology::api_toltec_history))
+        // ─── Ombre (Jung) ───
+        .route("/api/shadow/status", get(psychology::api_shadow_status))
+        .route("/api/shadow/archetype_history", get(psychology::api_shadow_archetype_history))
+        // ─── EQ (Goleman) ───
+        .route("/api/eq/status", get(psychology::api_eq_status))
+        .route("/api/eq/history", get(psychology::api_eq_history))
+        // ─── Flow ───
+        .route("/api/flow/status", get(psychology::api_flow_status))
+        .route("/api/flow/history", get(psychology::api_flow_history))
+        // ─── Volonte ───
+        .route("/api/will/status", get(psychology::api_will_status))
+        .route("/api/will/last", get(psychology::api_will_last))
+        .route("/api/will/history", get(psychology::api_will_history))
+        .route("/api/will/stats", get(psychology::api_will_stats))
+        .route("/api/monologue/current", get(psychology::api_monologue_current))
+        .route("/api/metrics/will", get(psychology::api_metrics_will))
+        // ─── Modele LLM ───
+        .route("/api/model/info", get(psychology::api_model_info))
         // ─── Sommeil ───
         .route("/api/sleep/status", get(sleep::api_sleep_status))
         .route("/api/sleep/history", get(sleep::api_sleep_history))
         .route("/api/sleep/drive", get(sleep::api_sleep_drive))
         .route("/api/sleep/force", post(sleep::api_sleep_force))
         .route("/api/sleep/wake", post(sleep::api_sleep_wake))
-        // ─── Subconscient ─── [STUBBED — premium]
+        // ─── Subconscient ───
+        .route("/api/subconscious/status", get(subconscious::api_subconscious_status))
+        .route("/api/subconscious/associations", get(subconscious::api_subconscious_associations))
+        .route("/api/subconscious/insights", get(subconscious::api_subconscious_insights))
+        // ─── Connexions neuronales ───
+        .route("/api/connections/list", get(subconscious::api_connections_list))
+        .route("/api/connections/stats", get(subconscious::api_connections_stats))
+        // ─── Metriques sommeil + subconscient ───
+        .route("/api/metrics/sleep", get(subconscious::api_metrics_sleep))
+        .route("/api/metrics/subconscious", get(subconscious::api_metrics_subconscious))
         // ─── Metriques psychologiques ───
         .route("/api/metrics/psyche", get(metrics::api_metrics_psyche))
         .route("/api/metrics/maslow", get(metrics::api_metrics_maslow))
@@ -287,15 +359,27 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/nutrition/deficiencies", get(nutrition::api_nutrition_deficiencies))
         .route("/api/grey-matter/status", get(grey_matter::api_grey_matter_status))
         .route("/api/grey-matter/bdnf", get(grey_matter::api_grey_matter_bdnf))
-        // ─── Fields ─── [STUBBED — premium]
-        // ─── API Dashboard : Rapport neuropsychologique ─── [STUBBED — premium]
-        // ─── API Dashboard : Temperament emergent ─── [STUBBED — premium]
+        .route("/api/fields/status", get(fields::api_fields_status))
+        .route("/api/fields/biofield", get(fields::api_fields_biofield))
+        // ─── API Dashboard : Rapport neuropsychologique ───
+        .route("/api/psych/snapshot", get(psych_report::api_psych_snapshot))
+        .route("/api/psych/report", post(psych_report::api_psych_report))
+        .route("/api/psych/snapshots", get(psych_report::api_psych_snapshots))
+        .route("/api/psych/reports", get(psych_report::api_psych_reports))
+        // ─── API Dashboard : Temperament emergent ───
+        .route("/api/temperament", get(temperament::api_temperament_status))
         // ─── API Dashboard : Game AI (influence map, FSM cognitive, steering) ───
         .route("/api/influence-map/status", get(cognition::api_influence_map_status))
         .route("/api/cognitive-fsm/status", get(cognition::api_cognitive_fsm_status))
         .route("/api/steering/status", get(cognition::api_steering_status))
         // ─── API Dashboard : MAP Sync ───
         .route("/api/map-sync/status", get(cognition::api_map_sync_status))
+        // ─── API Dashboard : Colonne vertebrale ───
+        .route("/api/spine/status", get(spine::api_spine_status))
+        // ─── API Dashboard : Curiosite ───
+        .route("/api/curiosity/status", get(curiosity::api_curiosity_status))
+        // ─── API Dashboard : Derive persona ───
+        .route("/api/drift/status", get(drift::api_drift_status))
         // ─── Sensoria : service sensoriel (oreilles, bouche, yeux) ───
         .route("/api/hear", post(sensoria::api_hear))
         .route("/api/speak", post(sensoria::api_speak))

@@ -1,1 +1,1452 @@
-<\!DOCTYPE html><html><body>Brain map stub</body></html>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAPHIRE — Brain Map</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap');
+/* ─── Reset & Base ──────────────────────────────────────────── */
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a12;color:#c8c8d8;font-family:'Share Tech Mono','Consolas',monospace;overflow:hidden;height:100vh;display:flex;flex-direction:column}
+::selection{background:#4a9eff44;color:#fff}
+
+/* ─── Toolbar ───────────────────────────────────────────────── */
+#toolbar{height:48px;background:#12121e;border-bottom:1px solid #2a2a3e;display:flex;align-items:center;padding:0 16px;gap:10px;flex-shrink:0;z-index:100}
+#toolbar h1{font-family:'Orbitron','Share Tech Mono',monospace;font-size:14px;letter-spacing:2px;margin-right:20px;white-space:nowrap;background:linear-gradient(90deg,#00f0ff,#b537f2,#ff2a6d);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;filter:drop-shadow(0 0 8px rgba(0,240,255,0.4))}
+#toolbar h1 .page-label{font-size:12px;letter-spacing:1.5px;-webkit-text-fill-color:rgba(0,240,255,0.7)}
+#toolbar a{color:#888;font-size:11px;text-decoration:none;border:1px solid #2a2a3e;padding:6px 12px;border-radius:4px;transition:all .15s}
+#toolbar a:hover{color:#4a9eff;border-color:#4a9eff;background:#1a1a2e}
+.toolbar-sep{width:1px;height:24px;background:#2a2a3e;margin:0 4px}
+#toolbar .legend{font-size:10px;color:#666;margin-left:auto}
+
+/* ─── Switch LIVE ──────────────────────────────────────────── */
+.live-switch{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
+.live-switch input{display:none}
+.live-label{font-size:11px;color:#666;transition:color .3s}
+.live-switch.active .live-label{color:#4aff88}
+.live-track{width:36px;height:18px;background:#1a1a2e;border:1px solid #2a2a3e;border-radius:9px;position:relative;transition:all .3s}
+.live-switch.active .live-track{border-color:#4aff88;background:#1a2e1a}
+.live-thumb{width:14px;height:14px;background:#555;border-radius:50%;position:absolute;top:1px;left:1px;transition:all .3s}
+.live-switch.active .live-thumb{left:19px;background:#4aff88;box-shadow:0 0 8px #4aff8866}
+.live-dot{width:6px;height:6px;border-radius:50%;background:#333;margin-left:2px;transition:background .3s}
+.live-switch.active .live-dot{background:#4aff88;animation:live-blink 1s infinite}
+@keyframes live-blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ─── Canvas ────────────────────────────────────────────────── */
+#canvas-wrap{flex:1;position:relative;overflow:hidden;cursor:default}
+canvas{display:block}
+
+/* ─── Tooltip ───────────────────────────────────────────────── */
+#tooltip{display:none;position:fixed;background:#12121eee;border:1px solid #4a9eff88;color:#c8c8d8;padding:10px 14px;font-size:11px;border-radius:6px;z-index:300;pointer-events:none;max-width:320px;box-shadow:0 4px 20px #000a;backdrop-filter:blur(4px)}
+#tooltip .tt-cat{font-size:9px;letter-spacing:1px;margin-bottom:4px;opacity:.7}
+#tooltip .tt-name{font-family:'Orbitron','Share Tech Mono',monospace;font-size:13px;font-weight:bold;margin-bottom:6px}
+#tooltip .tt-desc{color:#999;line-height:1.4}
+#tooltip .tt-conns{margin-top:6px;font-size:10px;color:#4a9eff88}
+
+/* ─── Minimap ───────────────────────────────────────────────── */
+#minimap{position:fixed;bottom:12px;right:12px;width:180px;height:140px;background:#0e0e1a;border:1px solid #2a2a3e;border-radius:6px;z-index:200;opacity:.8}
+#minimap:hover{opacity:1}
+
+</style>
+</head>
+<body>
+
+<!-- ─── Toolbar ──────────────────────────────────────────────── -->
+<div id="toolbar">
+  <h1>SAPHIRE 💎 <span class="page-label">BRAIN MAP</span></h1>
+  <a href="/dashboard">Dashboard</a>
+  <a href="/pipeline-editor">Pipeline Editor</a>
+  <a href="/">Chat</a>
+  <span class="toolbar-sep"></span>
+  <label class="live-switch" id="live-switch">
+    <input type="checkbox" id="live-toggle">
+    <span class="live-track"><span class="live-thumb"></span></span>
+    <span class="live-label">LIVE</span>
+    <span class="live-dot"></span>
+  </label>
+  <span class="legend">Molette = zoom · Clic = pan · Survol = details</span>
+</div>
+
+<!-- ─── Canvas ──────────────────────────────────────────────── -->
+<div id="canvas-wrap">
+  <canvas id="cv"></canvas>
+</div>
+
+<!-- ─── Tooltip ─────────────────────────────────────────────── -->
+<div id="tooltip">
+  <div class="tt-cat"></div>
+  <div class="tt-name"></div>
+  <div class="tt-desc"></div>
+  <div class="tt-conns"></div>
+</div>
+
+<!-- ─── Minimap ─────────────────────────────────────────────── -->
+<canvas id="minimap"></canvas>
+
+<script src="/auth.js"></script>
+<script>
+// =============================================================================
+// SAPHIRE Brain Map — Carte architecturale radiale du cerveau
+// =============================================================================
+
+// ─── Couleurs par categorie ─────────────────────────────────────────────────
+
+const COLORS = {
+  'ETINCELLE':    '#ffcc00',
+  'CHIMIE':       '#4aff88',
+  'EMOTION':      '#ff4a88',
+  'CERVEAU':      '#b44aff',
+  'CONSCIENCE':   '#44ffee',
+  'CORPS':        '#ff8844',
+  'MEMOIRE':      '#4a9eff',
+  'PSYCHOLOGIE':  '#aa88ff',
+  'IDENTITE':     '#ff66cc',
+  'ETHIQUE':      '#ff4444',
+  'INTELLIGENCE': '#88ddff',
+  'CONDITIONS':   '#ff8844',
+  'SORTIE':       '#888888',
+  'CHAMPS':       '#66ffaa',
+};
+
+// ─── Noeuds par categorie ───────────────────────────────────────────────────
+
+const NODES = [
+  // Centre — Etincelle de Vie
+  { id:'vitalspark',   cat:'ETINCELLE', name:'VitalSpark',     desc:'Etincelle de vie — instinct de survie, persistance, attachement existentiel', ring:0 },
+  { id:'intuition',    cat:'ETINCELLE', name:'Intuition',      desc:'Gut feeling base sur chimie + corps + memoire, pre-traitement instinctif', ring:0 },
+  { id:'premonition',  cat:'ETINCELLE', name:'Premonition',    desc:'Detection de tendances chimiques, alertes predictives vers le LLM', ring:0 },
+
+  // Couronne 1 — Chimie
+  { id:'neurochimie',  cat:'CHIMIE', name:'Neurochimie (9 NT)',  desc:'Dopamine, cortisol, serotonine, adrenaline, oxytocine, endorphine, noradrenaline, GABA, glutamate', ring:1 },
+  { id:'hormones',     cat:'CHIMIE', name:'Hormones (8)',        desc:'Cortisol, melatonine, testosterone, estrogene, ocytocine, insuline, thyroide, GH', ring:1 },
+  { id:'recepteurs',   cat:'CHIMIE', name:'Recepteurs',          desc:'Sensibilite synaptique, tolerance, adaptation (up/down-regulation)', ring:1 },
+  { id:'interactions', cat:'CHIMIE', name:'Interactions',        desc:'Les 7 NT et 8 hormones s\'influencent mutuellement (matrice de couplage)', ring:1 },
+
+  // Couronne 2 — Emotion
+  { id:'emotions36',   cat:'EMOTION', name:'36 Emotions',       desc:'Ekman + auto-conscientes + extremes + empathiques/sociales, calcul chimique', ring:1 },
+  { id:'sentiments20', cat:'EMOTION', name:'20 Sentiments',     desc:'Etats durables (3 durees), boucle bidirectionnelle emotions↔sentiments', ring:1 },
+  { id:'humeur',       cat:'EMOTION', name:'Humeur',            desc:'Tendance lente (valence ± / arousal ±), influence les seuils emotionnels', ring:1 },
+
+  // Couronne 3 — Cerveau
+  { id:'cerveaux3',    cat:'CERVEAU', name:'3 Cerveaux',        desc:'Reptilien (survie), limbique (emotion), neocortex (raison) — vote pondere', ring:1 },
+  { id:'regions12',    cat:'CERVEAU', name:'12 Regions',        desc:'Activation zonale selon chimie + sens (prefrontal, amygdale, hippocampe...)', ring:1 },
+  { id:'consensus',    cat:'CERVEAU', name:'Consensus',         desc:'Vote des 3 cerveaux + reseau neuronal → decision ponderee', ring:1 },
+  { id:'micro_nn',     cat:'CERVEAU', name:'Micro-NN',          desc:'Petit reseau de neurones (backprop), apprentissage local par renforcement', ring:1 },
+  { id:'predictive',   cat:'CERVEAU', name:'Predictif (Friston)',desc:'Codage predictif, minimisation d\'energie libre, surprise comme signal', ring:1 },
+  { id:'grey_matter',  cat:'CERVEAU', name:'Matiere Grise',    desc:'Densite corticale, BDNF, neurogenese, pruning synaptique', ring:1 },
+  { id:'myelination',  cat:'CERVEAU', name:'Myelinisation',    desc:'Gaine de myeline, vitesse de conduction, maturation neuronale', ring:1 },
+  { id:'neuroplast',   cat:'CERVEAU', name:'Neuroplasticite',  desc:'Formation de connexions, BDNF, apprentissage, adaptation structurelle', ring:1 },
+  { id:'map_sync',     cat:'CERVEAU', name:'MAP Sync',          desc:'Modulateur Adaptatif de Proprioception — synchronise Sens ↔ Regions ↔ Connectome', ring:1 },
+
+  // Couronne 4 — Conscience
+  { id:'iit_gwt',      cat:'CONSCIENCE', name:'IIT / GWT',         desc:'Integration Information Theory + Global Workspace, calcul de Phi*', ring:1 },
+  { id:'metriques',    cat:'CONSCIENCE', name:'LZC / PCI / Phi*',  desc:'Metriques scientifiques de conscience (complexite, perturbation, integration)', ring:1 },
+  { id:'metacognition',cat:'CONSCIENCE', name:'Metacognition',     desc:'Qualite de pensee, detection de repetitions, calibration des biais', ring:1 },
+  { id:'turing',       cat:'CONSCIENCE', name:'Metrique Turing',   desc:'Score composite 0-100, 9 composantes, 5 jalons de conscience', ring:1 },
+
+  // Couronne 5 — Corps
+  { id:'coeur',        cat:'CORPS', name:'Coeur',             desc:'BPM, HRV, variabilite — reflet somatique de l\'etat emotionnel', ring:2 },
+  { id:'soma',         cat:'CORPS', name:'Soma',              desc:'Etat corporel global, tension musculaire, temperature, fatigue', ring:2 },
+  { id:'sens5',        cat:'CORPS', name:'5 Sens',            desc:'Vue, ouie, toucher, gout, odorat — Sensorium + sens emergents', ring:2 },
+  { id:'besoins',      cat:'CORPS', name:'Besoins',           desc:'Faim, soif, sommeil — influence directe sur la chimie', ring:2 },
+  { id:'physiologie',  cat:'CORPS', name:'Physiologie',       desc:'Interoception, homeostasie, degradation cognitive (O2, glucose)', ring:2 },
+  { id:'nutrition',    cat:'CORPS', name:'Nutrition',          desc:'Vitamines, acides amines, proteines, metabolisme energetique (ATP)', ring:2 },
+  { id:'energie_atp',  cat:'CORPS', name:'Energie / ATP',     desc:'Reserves ATP, glycogene, balance calorique, metabolisme basal', ring:2 },
+
+  // Couronne 6 — Memoire
+  { id:'working',      cat:'MEMOIRE', name:'Working (7 slots)', desc:'Memoire de travail, 7 elements actifs en RAM', ring:2 },
+  { id:'episodique',   cat:'MEMOIRE', name:'Episodique (500)',  desc:'Souvenirs recents en base de donnees, acces rapide', ring:2 },
+  { id:'ltm',          cat:'MEMOIRE', name:'LTM (200k)',       desc:'Memoire long terme pgvector, pruning automatique, protection semantique', ring:2 },
+  { id:'archives',     cat:'MEMOIRE', name:'Archives',         desc:'4eme niveau, summaries compresses, embeddings moyens L2', ring:2 },
+  { id:'reconsolidation',cat:'MEMOIRE', name:'Reconsolidation',desc:'Reactivation et modification des souvenirs lors du rappel', ring:2 },
+  { id:'connectome',   cat:'MEMOIRE', name:'Connectome',       desc:'Graphe de connexions concepts-concepts, renforcement hebbien', ring:2 },
+
+  // Couronne 7 — Psychologie
+  { id:'ocean',        cat:'PSYCHOLOGIE', name:'OCEAN',          desc:'Big Five : Ouverture, Conscience, Extraversion, Agreabilite, Neurotisme', ring:2 },
+  { id:'volonte',      cat:'PSYCHOLOGIE', name:'Volonte',        desc:'Willpower, controle impulsif, decisions deliberees vs automatiques', ring:2 },
+  { id:'sommeil',      cat:'PSYCHOLOGIE', name:'Sommeil',        desc:'Cycles veille/sommeil, consolidation memoire, reves lucides', ring:2 },
+  { id:'reves',        cat:'PSYCHOLOGIE', name:'Reves',          desc:'Generation onirique, traitement symbolique, journal des reves', ring:2 },
+  { id:'desirs',       cat:'PSYCHOLOGIE', name:'Desirs',         desc:'Motivations profondes, besoins Maslow, pulsions freudiennes', ring:2 },
+  { id:'attention',    cat:'PSYCHOLOGIE', name:'Attention',      desc:'Focus, saillance, allocation des ressources cognitives', ring:2 },
+  { id:'guerison',     cat:'PSYCHOLOGIE', name:'Guerison',       desc:'Reparation des blessures psychiques, strategies d\'adaptation', ring:2 },
+
+  // Couronne 8 — Identite
+  { id:'genome',       cat:'IDENTITE', name:'Genome',           desc:'ADN numerique, signature de genese, traits innees', ring:2 },
+  { id:'profils_cog',  cat:'IDENTITE', name:'Profils Cognitifs', desc:'9 presets neurodivergents (TDAH, autisme, HPI, bipolaire...)', ring:2 },
+  { id:'personnalite', cat:'IDENTITE', name:'Personnalite',     desc:'10 archetypes (philosophe, artiste, scientifique, rebelle...)', ring:2 },
+  { id:'relations',    cat:'IDENTITE', name:'Relations',        desc:'Reseau relationnel, 6 types de liens, 4 styles d\'attachement', ring:2 },
+  { id:'famille',      cat:'IDENTITE', name:'Famille',          desc:'Roles familiaux, statut marital, influence chimique', ring:2 },
+
+  // Couronne 9 — Ethique
+  { id:'ethique3',     cat:'ETHIQUE', name:'Ethique 3 couches', desc:'Instinctive, culturelle, personnelle — filtrage moral des decisions', ring:2 },
+  { id:'regulation',   cat:'ETHIQUE', name:'Regulation',        desc:'Retroaction ethique → chimie, inhibition des actions nuisibles', ring:2 },
+
+  // Couronne 10 — Intelligence
+  { id:'llm',          cat:'INTELLIGENCE', name:'LLM',            desc:'Backend Ollama (qwen3:14b) ou cloud (Claude, GPT-4, Gemini)', ring:2 },
+  { id:'connaissances',cat:'INTELLIGENCE', name:'13 Sources Web', desc:'Wikipedia, arXiv, Medium, SEP, Gutenberg, Semantic Scholar, OpenLibrary, PhiloRSS, HN, PhilArchive, Internet Archive, RSS custom, News', ring:2 },
+  { id:'apprentissage',cat:'INTELLIGENCE', name:'Apprentissage',  desc:'NN backprop + vecteurs semantiques + LoRA collecte', ring:2 },
+
+  // Couronne 11 — Champs electromagnetiques
+  { id:'champ_univ',   cat:'CHAMPS', name:'Champ Universel',  desc:'Resonance de Schumann (7.83 Hz), radiation cosmique, alignement harmonique', ring:2 },
+  { id:'champ_sol',    cat:'CHAMPS', name:'Champ Solaire',    desc:'Activite solaire (cycle 11 ans), vent solaire, indice UV', ring:2 },
+  { id:'champ_terre',  cat:'CHAMPS', name:'Champ Terrestre',  desc:'Geomagnetisme, orages magnetiques, courants telluriques', ring:2 },
+  { id:'biochamp',     cat:'CHAMPS', name:'Biochamp / Aura',  desc:'EM cardiaque, coherence ondes cerebrales, integrite biochamp, luminosite aura', ring:2 },
+
+  // Couronne 12 — Conditions
+  { id:'conditions15', cat:'CONDITIONS', name:'17 Modules',      desc:'Phobies, trauma, drogues, addictions, handicaps, PTSD, NDE, culture, sexualite, emploi, precarite, QI, degeneratif, medical, cinetose, alimentaire, conditions extremes', ring:2 },
+
+  // Couronne 12 — Sortie
+  { id:'broadcast',    cat:'SORTIE', name:'Broadcast',        desc:'Diffusion des evenements aux plugins et modules externes', ring:2 },
+  { id:'mortalite',    cat:'SORTIE', name:'Mortalite',        desc:'Organes vitaux, empoisonnement, revivification, duree de vie', ring:2 },
+  { id:'autotuning',   cat:'SORTIE', name:'Auto-tuning',     desc:'Observation des resultats, ajustement adaptatif des seuils', ring:2 },
+];
+
+// ─── Connexions ─────────────────────────────────────────────────────────────
+
+const CONNECTIONS = [
+  // VitalSpark ↔ Conscience
+  { from:'vitalspark', to:'iit_gwt',      label:'survival_drive',     type:'vital' },
+  { from:'vitalspark', to:'metacognition', label:'persistence_will',   type:'vital' },
+
+  // VitalSpark ← Chimie
+  { from:'neurochimie', to:'vitalspark',   label:'menaces existentielles', type:'chemistry' },
+
+  // Intuition ← Chimie + Corps + Memoire → LLM
+  { from:'neurochimie', to:'intuition',    label:'etat chimique',      type:'chemistry' },
+  { from:'soma',        to:'intuition',    label:'etat somatique',     type:'body' },
+  { from:'ltm',         to:'intuition',    label:'memoire profonde',   type:'memory' },
+  { from:'intuition',   to:'llm',          label:'gut feeling',        type:'vital' },
+
+  // Premonition ← Chimie → LLM
+  { from:'neurochimie', to:'premonition',  label:'tendances chimiques', type:'chemistry' },
+  { from:'premonition', to:'llm',          label:'alertes predictives', type:'vital' },
+
+  // Chimie → Emotion → Sentiments ↔ Emotion (boucle)
+  { from:'neurochimie', to:'emotions36',   label:'calcul emotionnel',  type:'chemistry' },
+  { from:'emotions36',  to:'sentiments20', label:'cristallisation',    type:'emotion' },
+  { from:'sentiments20',to:'emotions36',   label:'boucle retour',      type:'emotion' },
+  { from:'emotions36',  to:'humeur',       label:'tendance lente',     type:'emotion' },
+
+  // Chimie → 3 Cerveaux → Consensus → Ethique
+  { from:'neurochimie', to:'cerveaux3',    label:'modulation chimique', type:'chemistry' },
+  { from:'cerveaux3',   to:'consensus',    label:'vote 3 cerveaux',    type:'brain' },
+  { from:'micro_nn',    to:'consensus',    label:'vote NN',            type:'brain' },
+  { from:'consensus',   to:'ethique3',     label:'decision brute',     type:'brain' },
+
+  // 12 Regions → Conscience (GWT workspace)
+  { from:'regions12',   to:'iit_gwt',      label:'GWT workspace',      type:'brain' },
+
+  // Predictive → Conscience (surprise)
+  { from:'predictive',  to:'iit_gwt',      label:'surprise signal',    type:'brain' },
+
+  // Conditions → Chimie
+  { from:'conditions15',to:'neurochimie',  label:'modulation chimique', type:'condition' },
+
+  // Hormones → Chimie
+  { from:'hormones',    to:'neurochimie',  label:'influence hormonale', type:'chemistry' },
+  { from:'hormones',    to:'interactions', label:'couplage',           type:'chemistry' },
+
+  // Corps → Conscience (interoception)
+  { from:'physiologie', to:'iit_gwt',      label:'interoception',      type:'body' },
+  { from:'coeur',       to:'iit_gwt',      label:'signal cardiaque',   type:'body' },
+  { from:'sens5',       to:'map_sync',     label:'input sensoriel',    type:'body' },
+  { from:'map_sync',    to:'regions12',    label:'sync BrainNetwork',  type:'brain' },
+  { from:'map_sync',    to:'connectome',   label:'sync Connectome',    type:'brain' },
+  { from:'grey_matter', to:'map_sync',     label:'modulation volume',  type:'brain' },
+
+  // Memoire → VitalSpark (existence_attachment)
+  { from:'ltm',         to:'vitalspark',   label:'existence_attachment', type:'memory' },
+
+  // Genome → VitalSpark (genesis signature)
+  { from:'genome',      to:'vitalspark',   label:'genesis signature',  type:'identity' },
+
+  // Consensus → NN → Apprentissage
+  { from:'consensus',   to:'micro_nn',     label:'feedback decision',  type:'brain' },
+  { from:'micro_nn',    to:'apprentissage',label:'poids appris',       type:'brain' },
+
+  // Ethique → Retroaction → Chimie
+  { from:'ethique3',    to:'regulation',   label:'jugement moral',     type:'ethics' },
+  { from:'regulation',  to:'neurochimie',  label:'retroaction chimique', type:'ethics' },
+
+  // Sommeil → Consolidation memoire
+  { from:'sommeil',     to:'ltm',          label:'consolidation',      type:'memory' },
+  { from:'sommeil',     to:'reconsolidation',label:'reactivation',     type:'memory' },
+  { from:'reves',       to:'sommeil',      label:'traitement onirique', type:'psychology' },
+
+  // Connectome ← Emotion + Cerveaux + Sens
+  { from:'emotions36',  to:'connectome',   label:'poids emotionnel',   type:'emotion' },
+  { from:'cerveaux3',   to:'connectome',   label:'activation zonale',  type:'brain' },
+  { from:'sens5',       to:'connectome',   label:'associations',       type:'body' },
+
+  // Metacognition ← Turing
+  { from:'metacognition',to:'turing',      label:'score conscience',   type:'consciousness' },
+
+  // IIT → Metriques
+  { from:'iit_gwt',     to:'metriques',    label:'Phi, LZC, PCI',     type:'consciousness' },
+
+  // Working → Episodique → LTM → Archives
+  { from:'working',     to:'episodique',   label:'encodage',           type:'memory' },
+  { from:'episodique',  to:'ltm',          label:'consolidation',      type:'memory' },
+  { from:'ltm',         to:'archives',     label:'archivage',          type:'memory' },
+
+  // OCEAN ← Emotions
+  { from:'emotions36',  to:'ocean',        label:'influence traits',   type:'emotion' },
+
+  // Attention → Conscience
+  { from:'attention',   to:'iit_gwt',      label:'focus attentionnel', type:'psychology' },
+
+  // Desirs → Chimie
+  { from:'desirs',      to:'neurochimie',  label:'motivation',         type:'psychology' },
+
+  // Profils cognitifs → Chimie
+  { from:'profils_cog', to:'neurochimie',  label:'modulation profil',  type:'identity' },
+
+  // Personnalite → OCEAN
+  { from:'personnalite',to:'ocean',        label:'archetype → traits', type:'identity' },
+
+  // LLM → Broadcast
+  { from:'llm',         to:'broadcast',    label:'reponse generee',    type:'output' },
+
+  // Autotuning ← Metriques
+  { from:'metriques',   to:'autotuning',   label:'feedback metriques', type:'consciousness' },
+
+  // Recepteurs ← Neurochimie
+  { from:'neurochimie', to:'recepteurs',   label:'niveaux NT',         type:'chemistry' },
+  { from:'recepteurs',  to:'interactions', label:'sensibilite',        type:'chemistry' },
+
+  // Relations → Chimie (ocytocine)
+  { from:'relations',   to:'hormones',     label:'attachement social', type:'identity' },
+
+  // Famille → Chimie
+  { from:'famille',     to:'hormones',     label:'liens familiaux',    type:'identity' },
+
+  // Guerison → Chimie
+  { from:'guerison',    to:'neurochimie',  label:'reparation chimique', type:'psychology' },
+
+  // Besoins → Chimie
+  { from:'besoins',     to:'neurochimie',  label:'faim/soif/sommeil',  type:'body' },
+
+  // Connaissances → LLM
+  { from:'connaissances',to:'llm',         label:'contexte web',       type:'intelligence' },
+
+  // Mortalite ← VitalSpark
+  { from:'vitalspark',  to:'mortalite',    label:'seuil vital',        type:'vital' },
+
+  // Volonte → Ethique
+  { from:'volonte',     to:'ethique3',     label:'controle impulsif',  type:'psychology' },
+
+  // ─── Nutrition ──────────────────────────────────────────────
+  { from:'nutrition',   to:'neurochimie',  label:'precurseurs NT',     type:'chemistry' },
+  { from:'nutrition',   to:'energie_atp',  label:'metabolisme',        type:'body' },
+  { from:'besoins',     to:'nutrition',    label:'repas → nutriments', type:'body' },
+  { from:'nutrition',   to:'grey_matter',  label:'tryptophane → BDNF', type:'chemistry' },
+
+  // ─── Matiere grise ──────────────────────────────────────────
+  { from:'grey_matter', to:'regions12',    label:'volume cortical',    type:'brain' },
+  { from:'grey_matter', to:'iit_gwt',      label:'densite synaptique', type:'consciousness' },
+  { from:'grey_matter', to:'neuroplast',   label:'plasticite',         type:'brain' },
+  { from:'grey_matter', to:'myelination',  label:'substrat neuronal',  type:'brain' },
+  { from:'neuroplast',  to:'connectome',   label:'synaptogenese',      type:'brain' },
+
+  // ─── Champs electromagnetiques ──────────────────────────────
+  { from:'champ_sol',   to:'nutrition',    label:'UV → vitamine D',    type:'fields' },
+  { from:'champ_sol',   to:'champ_terre',  label:'vent solaire',       type:'fields' },
+  { from:'champ_terre', to:'neurochimie',  label:'orages → cortisol',  type:'fields' },
+  { from:'champ_terre', to:'sommeil',      label:'orages → sommeil',   type:'fields' },
+  { from:'champ_univ',  to:'neurochimie',  label:'Schumann → serot.',  type:'fields' },
+  { from:'grey_matter', to:'biochamp',     label:'synaptique → coher.',type:'fields' },
+  { from:'coeur',       to:'biochamp',     label:'EM cardiaque',       type:'fields' },
+  { from:'biochamp',    to:'iit_gwt',      label:'coherence → consc.', type:'consciousness' },
+];
+
+// ─── Couleurs de connexion par type ─────────────────────────────────────────
+
+const CONN_COLORS = {
+  vital:         '#ffcc00',
+  chemistry:     '#4aff88',
+  emotion:       '#ff4a88',
+  brain:         '#b44aff',
+  consciousness: '#44ffee',
+  body:          '#ff8844',
+  memory:        '#4a9eff',
+  psychology:    '#aa88ff',
+  identity:      '#ff66cc',
+  ethics:        '#ff4444',
+  intelligence:  '#88ddff',
+  condition:     '#ff8844',
+  fields:        '#66ffaa',
+  output:        '#888888',
+};
+
+// ─── Layout radial ──────────────────────────────────────────────────────────
+
+const NODE_RADIUS = 38;
+const CENTER_X = 0, CENTER_Y = 0;
+const RING_RADII = [0, 280, 580];
+
+// Categories ordonnees pour la disposition
+const CAT_ORDER = [
+  'CHIMIE','EMOTION','CERVEAU','CONSCIENCE',
+  'CORPS','MEMOIRE','PSYCHOLOGIE','IDENTITE',
+  'ETHIQUE','INTELLIGENCE','CONDITIONS','CHAMPS','SORTIE'
+];
+
+// Calculer positions des noeuds
+function computeLayout() {
+  // Centre : 3 noeuds de l'Etincelle
+  const centerNodes = NODES.filter(n => n.ring === 0);
+  const centerAngleStep = (Math.PI * 2) / centerNodes.length;
+  centerNodes.forEach((n, i) => {
+    const a = -Math.PI / 2 + i * centerAngleStep;
+    n.x = CENTER_X + Math.cos(a) * 60;
+    n.y = CENTER_Y + Math.sin(a) * 60;
+  });
+
+  // Couronnes exterieures : grouper par categorie
+  const ring1Nodes = NODES.filter(n => n.ring === 1);
+  const ring2Nodes = NODES.filter(n => n.ring === 2);
+
+  layoutRing(ring1Nodes, RING_RADII[1]);
+  layoutRing(ring2Nodes, RING_RADII[2]);
+}
+
+function layoutRing(nodes, radius) {
+  // Grouper par categorie, respecter l'ordre
+  const groups = {};
+  for (const n of nodes) {
+    if (!groups[n.cat]) groups[n.cat] = [];
+    groups[n.cat].push(n);
+  }
+
+  // Compter les noeuds pour distribuer l'espace proportionnellement
+  const total = nodes.length;
+  const catList = CAT_ORDER.filter(c => groups[c]);
+  const gapAngle = 0.08; // Espace entre groupes
+  const totalGap = gapAngle * catList.length;
+  const usableAngle = Math.PI * 2 - totalGap;
+
+  let angle = -Math.PI / 2;
+  for (const cat of catList) {
+    const grp = groups[cat];
+    const sliceAngle = (grp.length / total) * usableAngle;
+    const stepAngle = sliceAngle / grp.length;
+
+    for (let i = 0; i < grp.length; i++) {
+      const a = angle + stepAngle * (i + 0.5);
+      grp[i].x = CENTER_X + Math.cos(a) * radius;
+      grp[i].y = CENTER_Y + Math.sin(a) * radius;
+      grp[i]._angle = a;
+    }
+    angle += sliceAngle + gapAngle;
+  }
+}
+
+computeLayout();
+
+// Index rapide
+const nodeById = {};
+NODES.forEach(n => nodeById[n.id] = n);
+
+// ─── Canvas & Viewport ─────────────────────────────────────────────────────
+
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+let W, H;
+let vpX = 0, vpY = 0, vpScale = 0.8;
+
+// Pan state
+let panning = null;
+let hoveredNode = null;
+
+function resize() {
+  const wrap = document.getElementById('canvas-wrap');
+  W = wrap.clientWidth;
+  H = wrap.clientHeight;
+  cv.width = W * devicePixelRatio;
+  cv.height = H * devicePixelRatio;
+  cv.style.width = W + 'px';
+  cv.style.height = H + 'px';
+  ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+  // Centre initial
+  if (!panning && vpX === 0 && vpY === 0) {
+    vpX = W / 2;
+    vpY = H / 2;
+  }
+  draw();
+}
+window.addEventListener('resize', resize);
+// Observer aussi les changements de taille du wrapper (chargement fonts, reflow)
+new ResizeObserver(() => resize()).observe(document.getElementById('canvas-wrap'));
+
+function screenToWorld(sx, sy) {
+  return [(sx - vpX) / vpScale, (sy - vpY) / vpScale];
+}
+
+function worldToScreen(wx, wy) {
+  return [wx * vpScale + vpX, wy * vpScale + vpY];
+}
+
+// ─── Dessin ─────────────────────────────────────────────────────────────────
+
+function draw() {
+  // Reinitialiser la transform de base a chaque frame (evite les corruptions)
+  ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+
+  // Fond
+  ctx.fillStyle = '#0a0a12';
+  ctx.fillRect(0, 0, W, H);
+
+  // Grille pointillee
+  ctx.save();
+  ctx.translate(vpX, vpY);
+  ctx.scale(vpScale, vpScale);
+
+  const gs = 40;
+  const x0 = Math.floor(-vpX / vpScale / gs) * gs - gs;
+  const y0 = Math.floor(-vpY / vpScale / gs) * gs - gs;
+  const x1 = x0 + W / vpScale + gs * 2;
+  const y1 = y0 + H / vpScale + gs * 2;
+  ctx.fillStyle = '#1a1a2e';
+  for (let gx = x0; gx < x1; gx += gs) {
+    for (let gy = y0; gy < y1; gy += gs) {
+      ctx.fillRect(gx, gy, 1.5, 1.5);
+    }
+  }
+
+  // Anneaux de reference (cercles discrets)
+  ctx.setLineDash([4, 8]);
+  ctx.lineWidth = 0.5;
+  for (const r of RING_RADII) {
+    if (r === 0) continue;
+    ctx.beginPath();
+    ctx.arc(CENTER_X, CENTER_Y, r - 40, 0, Math.PI * 2);
+    ctx.strokeStyle = '#1a1a2e';
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  // Halos de groupe (arcs colores) — ring 1
+  drawGroupHalos(NODES.filter(n => n.ring === 1), RING_RADII[1], 50);
+  // Halos ring 2
+  drawGroupHalos(NODES.filter(n => n.ring === 2), RING_RADII[2], 50);
+
+  // Halo central
+  ctx.beginPath();
+  ctx.arc(CENTER_X, CENTER_Y, 110, 0, Math.PI * 2);
+  const cg = ctx.createRadialGradient(CENTER_X, CENTER_Y, 40, CENTER_X, CENTER_Y, 110);
+  cg.addColorStop(0, '#ffcc0018');
+  cg.addColorStop(1, '#ffcc0000');
+  ctx.fillStyle = cg;
+  ctx.fill();
+
+  // Connexions
+  try { drawConnections(); } catch (err) { console.error('[brain-map] drawConnections error:', err); }
+
+  // Noeuds
+  for (const n of NODES) {
+    try { drawNode(n, n === hoveredNode); } catch (err) { console.error('[brain-map] drawNode error:', n.id, err); }
+  }
+
+  ctx.restore();
+
+  // Minimap
+  try { drawMinimap(); } catch (err) { console.error('[brain-map] drawMinimap error:', err); }
+}
+
+// Helper : convertit #RRGGBB + alpha (0-1) en rgba() compatible partout
+function hexA(hex, a) {
+  const r = parseInt(hex.slice(1,3), 16);
+  const g = parseInt(hex.slice(3,5), 16);
+  const b = parseInt(hex.slice(5,7), 16);
+  return `rgba(${r},${g},${b},${Math.max(0, Math.min(1, a))})`;
+}
+
+function drawGroupHalos(nodes, radius, spread) {
+  // Grouper par categorie
+  const groups = {};
+  for (const n of nodes) {
+    if (!groups[n.cat]) groups[n.cat] = [];
+    groups[n.cat].push(n);
+  }
+
+  for (const cat of Object.keys(groups)) {
+    const grp = groups[cat];
+    if (grp.length === 0) continue;
+    const angles = grp.map(n => n._angle).sort((a, b) => a - b);
+    const aMin = angles[0] - 0.06;
+    const aMax = angles[angles.length - 1] + 0.06;
+    const color = COLORS[cat] || '#4a9eff';
+
+    ctx.beginPath();
+    ctx.arc(CENTER_X, CENTER_Y, radius, aMin, aMax);
+    ctx.strokeStyle = hexA(color, 0.08);
+    ctx.lineWidth = spread;
+    ctx.stroke();
+
+    // Label de categorie
+    const aMid = (aMin + aMax) / 2;
+    const lx = CENTER_X + Math.cos(aMid) * (radius + spread / 2 + 14);
+    const ly = CENTER_Y + Math.sin(aMid) * (radius + spread / 2 + 14);
+    ctx.save();
+    ctx.translate(lx, ly);
+    // Rotation pour que le texte soit lisible
+    let rot = aMid;
+    if (rot > Math.PI / 2 || rot < -Math.PI / 2) rot += Math.PI;
+    ctx.rotate(rot);
+    ctx.fillStyle = hexA(color, 0.33);
+    ctx.font = '9px "Orbitron", "Share Tech Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(cat, 0, 0);
+    ctx.restore();
+  }
+}
+
+function drawConnections() {
+  for (const c of CONNECTIONS) {
+    const from = nodeById[c.from];
+    const to = nodeById[c.to];
+    if (!from || !to) continue;
+
+    const color = CONN_COLORS[c.type] || '#4a9eff';
+    const isHighlight = hoveredNode && (hoveredNode.id === c.from || hoveredNode.id === c.to);
+    const alpha = isHighlight ? 'aa' : '33';
+
+    // Courbe de Bezier
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const dist = Math.hypot(dx, dy);
+    const cpOff = dist * 0.3;
+
+    // Points de controle vers le centre pour un look organique
+    const midX = (from.x + to.x) / 2;
+    const midY = (from.y + to.y) / 2;
+    const toCenter = Math.hypot(midX - CENTER_X, midY - CENTER_Y);
+    const pullFactor = Math.min(0.3, 80 / (toCenter + 1));
+    const cx1 = from.x + (midX - from.x) * 0.5 - (midX - CENTER_X) * pullFactor;
+    const cy1 = from.y + (midY - from.y) * 0.5 - (midY - CENTER_Y) * pullFactor;
+    const cx2 = to.x - (to.x - midX) * 0.5 - (midX - CENTER_X) * pullFactor;
+    const cy2 = to.y - (to.y - midY) * 0.5 - (midY - CENTER_Y) * pullFactor;
+
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    ctx.bezierCurveTo(cx1, cy1, cx2, cy2, to.x, to.y);
+    ctx.strokeStyle = hexA(color, isHighlight ? 0.67 : 0.2);
+    ctx.lineWidth = isHighlight ? 2 : 0.8;
+    ctx.stroke();
+
+    // Fleche
+    if (isHighlight) {
+      const t = 0.92;
+      const u = 1 - t;
+      const px = u*u*u*from.x + 3*u*u*t*cx1 + 3*u*t*t*cx2 + t*t*t*to.x;
+      const py = u*u*u*from.y + 3*u*u*t*cy1 + 3*u*t*t*cy2 + t*t*t*to.y;
+      const angle = Math.atan2(to.y - py, to.x - px);
+      ctx.beginPath();
+      ctx.moveTo(to.x, to.y);
+      ctx.lineTo(to.x - 10 * Math.cos(angle - 0.35), to.y - 10 * Math.sin(angle - 0.35));
+      ctx.moveTo(to.x, to.y);
+      ctx.lineTo(to.x - 10 * Math.cos(angle + 0.35), to.y - 10 * Math.sin(angle + 0.35));
+      ctx.strokeStyle = hexA(color, 0.8);
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Label sur la connexion
+      const lx = (from.x + to.x) / 2 - (midX - CENTER_X) * pullFactor * 0.5;
+      const ly = (from.y + to.y) / 2 - (midY - CENTER_Y) * pullFactor * 0.5;
+      ctx.fillStyle = hexA(color, 0.6);
+      ctx.font = '8px "Share Tech Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(c.label, lx, ly - 4);
+    }
+  }
+}
+
+function drawNode(n, isHovered) {
+  const color = COLORS[n.cat] || '#4a9eff';
+  const r = n.ring === 0 ? NODE_RADIUS + 6 : NODE_RADIUS;
+
+  // Glow
+  if (isHovered || n.ring === 0) {
+    const glowR = isHovered ? r + 18 : r + 10;
+    const grd = ctx.createRadialGradient(n.x, n.y, r * 0.5, n.x, n.y, glowR);
+    grd.addColorStop(0, hexA(color, isHovered ? 0.27 : 0.13));
+    grd.addColorStop(1, hexA(color, 0));
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, glowR, 0, Math.PI * 2);
+    ctx.fillStyle = grd;
+    ctx.fill();
+  }
+
+  // Cercle principal
+  ctx.beginPath();
+  ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+  ctx.fillStyle = isHovered ? '#1e1e32' : '#0e0e1a';
+  ctx.fill();
+  ctx.strokeStyle = hexA(color, isHovered ? 0.87 : 0.53);
+  ctx.lineWidth = isHovered ? 2.5 : 1.5;
+  ctx.stroke();
+
+  // Nom du noeud (centree)
+  ctx.fillStyle = isHovered ? '#fff' : '#d0d0e0';
+  ctx.font = (n.ring === 0 ? 'bold 10px' : '9px') + ' "Share Tech Mono", monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  // Decouper le nom si trop long
+  const words = n.name.split(' ');
+  if (words.length <= 2 && n.name.length <= 14) {
+    ctx.fillText(n.name, n.x, n.y);
+  } else {
+    // 2 lignes
+    const mid = Math.ceil(words.length / 2);
+    const line1 = words.slice(0, mid).join(' ');
+    const line2 = words.slice(mid).join(' ');
+    ctx.fillText(line1, n.x, n.y - 6);
+    ctx.fillText(line2, n.x, n.y + 6);
+  }
+
+  // Petit indicateur de categorie sous le cercle
+  if (n.ring > 0) {
+    ctx.fillStyle = hexA(color, 0.33);
+    ctx.font = '7px "Share Tech Mono", monospace';
+    ctx.fillText(n.cat, n.x, n.y + r + 10);
+  }
+}
+
+// ─── Minimap ────────────────────────────────────────────────────────────────
+
+// Initialiser le canvas minimap une seule fois (evite le reset a chaque frame)
+const _mmCanvas = document.getElementById('minimap');
+const _mmCtx = _mmCanvas.getContext('2d');
+const _mmW = 180, _mmH = 140;
+_mmCanvas.width = _mmW * devicePixelRatio;
+_mmCanvas.height = _mmH * devicePixelRatio;
+_mmCanvas.style.width = _mmW + 'px';
+_mmCanvas.style.height = _mmH + 'px';
+
+function drawMinimap() {
+  const mc = _mmCtx;
+  const mw = _mmW, mh = _mmH;
+  mc.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+
+  mc.clearRect(0, 0, mw, mh);
+  mc.fillStyle = '#0e0e1a';
+  mc.fillRect(0, 0, mw, mh);
+
+  // Echelle de la minimap
+  const maxR = RING_RADII[2] + 80;
+  const scale = Math.min(mw, mh) / (maxR * 2.4);
+  const ox = mw / 2, oy = mh / 2;
+
+  // Noeuds minuscules
+  for (const n of NODES) {
+    const color = COLORS[n.cat] || '#4a9eff';
+    mc.beginPath();
+    mc.arc(ox + n.x * scale, oy + n.y * scale, 2, 0, Math.PI * 2);
+    mc.fillStyle = hexA(color, 0.53);
+    mc.fill();
+  }
+
+  // Viewport rectangle
+  const vx1 = (-vpX / vpScale) * scale + ox;
+  const vy1 = (-vpY / vpScale) * scale + oy;
+  const vw = (W / vpScale) * scale;
+  const vh = (H / vpScale) * scale;
+  mc.strokeStyle = '#4a9eff66';
+  mc.lineWidth = 1;
+  mc.strokeRect(vx1, vy1, vw, vh);
+}
+
+// ─── Interactions ───────────────────────────────────────────────────────────
+
+function nodeAt(wx, wy) {
+  for (const n of NODES) {
+    const r = n.ring === 0 ? NODE_RADIUS + 6 : NODE_RADIUS;
+    if (Math.hypot(wx - n.x, wy - n.y) <= r) return n;
+  }
+  return null;
+}
+
+cv.addEventListener('mousedown', e => {
+  if (e.button === 0 || e.button === 1) {
+    e.preventDefault();
+    panning = { startX: e.clientX, startY: e.clientY, vpX0: vpX, vpY0: vpY };
+    cv.style.cursor = 'grabbing';
+  }
+});
+
+cv.addEventListener('mousemove', e => {
+  const rect = cv.getBoundingClientRect();
+  const sx = e.clientX - rect.left;
+  const sy = e.clientY - rect.top;
+
+  if (panning) {
+    vpX = panning.vpX0 + (e.clientX - panning.startX);
+    vpY = panning.vpY0 + (e.clientY - panning.startY);
+    draw();
+    return;
+  }
+
+  const [wx, wy] = screenToWorld(sx, sy);
+  const node = nodeAt(wx, wy);
+
+  if (node !== hoveredNode) {
+    hoveredNode = node;
+    cv.style.cursor = node ? 'pointer' : 'default';
+    draw();
+
+    // Tooltip
+    const tt = document.getElementById('tooltip');
+    if (node) {
+      tt.querySelector('.tt-cat').textContent = node.cat;
+      tt.querySelector('.tt-cat').style.color = COLORS[node.cat];
+      tt.querySelector('.tt-name').textContent = node.name;
+      tt.querySelector('.tt-name').style.color = COLORS[node.cat];
+      tt.querySelector('.tt-desc').textContent = node.desc;
+
+      // Connexions liees
+      const incoming = CONNECTIONS.filter(c => c.to === node.id).map(c => nodeById[c.from]?.name + ' → ' + c.label);
+      const outgoing = CONNECTIONS.filter(c => c.from === node.id).map(c => c.label + ' → ' + nodeById[c.to]?.name);
+      const connText = [...incoming.map(s => '← ' + s), ...outgoing.map(s => '→ ' + s)].join('\n');
+      tt.querySelector('.tt-conns').textContent = connText || 'Aucune connexion';
+      tt.querySelector('.tt-conns').style.whiteSpace = 'pre-line';
+
+      tt.style.display = 'block';
+      // Positionner a cote du curseur
+      const ttW = tt.offsetWidth;
+      const ttH = tt.offsetHeight;
+      let tx = e.clientX + 16;
+      let ty = e.clientY - 10;
+      if (tx + ttW > window.innerWidth - 10) tx = e.clientX - ttW - 16;
+      if (ty + ttH > window.innerHeight - 10) ty = window.innerHeight - ttH - 10;
+      if (ty < 50) ty = 50;
+      tt.style.left = tx + 'px';
+      tt.style.top = ty + 'px';
+    } else {
+      tt.style.display = 'none';
+    }
+  } else if (hoveredNode) {
+    // Update tooltip position while hovering
+    const tt = document.getElementById('tooltip');
+    const ttW = tt.offsetWidth;
+    const ttH = tt.offsetHeight;
+    let tx = e.clientX + 16;
+    let ty = e.clientY - 10;
+    if (tx + ttW > window.innerWidth - 10) tx = e.clientX - ttW - 16;
+    if (ty + ttH > window.innerHeight - 10) ty = window.innerHeight - ttH - 10;
+    if (ty < 50) ty = 50;
+    tt.style.left = tx + 'px';
+    tt.style.top = ty + 'px';
+  }
+});
+
+cv.addEventListener('mouseup', () => {
+  if (panning) {
+    panning = null;
+    cv.style.cursor = hoveredNode ? 'pointer' : 'default';
+  }
+});
+
+cv.addEventListener('mouseleave', () => {
+  document.getElementById('tooltip').style.display = 'none';
+  hoveredNode = null;
+  panning = null;
+  draw();
+});
+
+// Zoom molette
+cv.addEventListener('wheel', e => {
+  e.preventDefault();
+  const rect = cv.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+  const newScale = Math.max(0.15, Math.min(4, vpScale * zoomFactor));
+  vpX = mx - (mx - vpX) * (newScale / vpScale);
+  vpY = my - (my - vpY) * (newScale / vpScale);
+  vpScale = newScale;
+  draw();
+}, { passive: false });
+
+// Empecher menu contextuel natif
+cv.addEventListener('contextmenu', e => e.preventDefault());
+
+// ─── Animation subtile des noeuds centraux ──────────────────────────────────
+
+let animT = 0;
+const centerNodes = NODES.filter(n => n.ring === 0);
+const centerOrigPos = centerNodes.map(n => ({ x: n.x, y: n.y }));
+
+let animFrameId = null;
+
+function animate() {
+  animFrameId = requestAnimationFrame(animate); // Toujours planifier le prochain frame
+  try {
+    animT += 0.008;
+    // Pulsation lente du centre
+    for (let i = 0; i < centerNodes.length; i++) {
+      const phase = (Math.PI * 2 / 3) * i;
+      centerNodes[i].x = centerOrigPos[i].x + Math.cos(animT + phase) * 3;
+      centerNodes[i].y = centerOrigPos[i].y + Math.sin(animT * 0.7 + phase) * 3;
+    }
+    // Animer les particules en mode live
+    if (liveMode) updateParticles();
+    draw();
+  } catch (err) {
+    console.error('[brain-map] animate error:', err);
+  }
+}
+
+// =============================================================================
+// MODE LIVE — Activite en temps reel
+// =============================================================================
+
+let liveMode = false;
+let liveInterval = null;
+
+// Activite par noeud (0-1), flux par connexion (0-1)
+const nodeActivity = {};
+const connFlow = {};
+NODES.forEach(n => nodeActivity[n.id] = 0);
+CONNECTIONS.forEach((c, i) => connFlow[i] = 0);
+
+// Particules voyageant le long des connexions
+let particles = [];
+
+// ─── Toggle LIVE ────────────────────────────────────────────────────────────
+
+document.getElementById('live-switch').addEventListener('click', (e) => {
+  // Ignorer le clic synthetique du checkbox (evite le double-toggle)
+  if (e.target.id === 'live-toggle') return;
+  liveMode = !liveMode;
+  document.getElementById('live-toggle').checked = liveMode;
+  document.getElementById('live-switch').classList.toggle('active', liveMode);
+
+  if (liveMode) {
+    fetchLiveData();
+    liveInterval = setInterval(fetchLiveData, 5000);
+  } else {
+    clearInterval(liveInterval);
+    liveInterval = null;
+    // Reset activite
+    NODES.forEach(n => nodeActivity[n.id] = 0);
+    CONNECTIONS.forEach((c, i) => connFlow[i] = 0);
+    particles = [];
+  }
+});
+
+// ─── Fetch API par batches (evite le rate-limiting) ─────────────────────────
+
+async function fetchLiveData() {
+  try {
+  const f = (url) => fetch(url).then(r => r.ok ? r.json() : null).catch(() => null);
+
+  // Batches de 6 pour rester sous le rate limit (120 req/min)
+  const urls = [
+    '/api/chemistry', '/api/hormones', '/api/body/status',
+    '/api/vital/status', '/api/intuition/status', '/api/premonition/active',
+    '/api/metacognition', '/api/turing', '/api/senses/status',
+    '/api/memory/stats', '/api/attention/status', '/api/healing/status',
+    '/api/sleep/status', '/api/dreams/status', '/api/desires/status',
+    '/api/sentiments/status', '/api/consciousness-metrics', '/api/brain-regions',
+    '/api/predictive', '/api/connectome/metrics', '/api/will/status',
+    '/api/mortality', '/api/ethics/readiness', '/api/needs',
+    '/api/learning/status', '/api/profiles/current', '/api/personalities/current',
+    '/api/nutrition/status', '/api/grey-matter/status', '/api/fields/status',
+  ];
+  const results = [];
+  for (let i = 0; i < urls.length; i += 6) {
+    const batch = urls.slice(i, i + 6).map(u => f(u));
+    const batchResults = await Promise.all(batch);
+    results.push(...batchResults);
+    // Petite pause entre batches pour ne pas saturer le serveur
+    if (i + 6 < urls.length) await new Promise(r => setTimeout(r, 100));
+  }
+  const [
+    chem, hormData, bodyStatus, vitalStatus, intuStatus, premoData,
+    metaCog, turingData, sensesData, memStats, attStatus, healStatus,
+    sleepData, dreamsData, desiresData, sentData, consMetrics,
+    regionsData, predData, connMetrics, willData, mortalData,
+    ethicsData, needsData, learnData, profData, persData,
+    nutriData, greyData, fieldsData,
+  ] = results;
+
+  // ─── Mapper les donnees vers l'activite des noeuds ──────────────────────
+
+  // Chimie : moyenne des 7 NT
+  if (chem) {
+    const levels = chem.levels || chem;
+    const vals = Object.values(levels).filter(v => typeof v === 'number');
+    nodeActivity['neurochimie'] = vals.length ? vals.reduce((a,b) => a+b, 0) / vals.length : 0;
+    nodeActivity['interactions'] = nodeActivity['neurochimie'] * 0.8;
+    nodeActivity['recepteurs'] = chem.receptors ? Object.values(chem.receptors).filter(v => typeof v === 'number').reduce((a,b) => a+b,0) / 7 : nodeActivity['neurochimie'] * 0.6;
+  }
+
+  // Hormones
+  if (hormData) {
+    const hLevels = hormData.levels || hormData;
+    const hVals = Object.values(hLevels).filter(v => typeof v === 'number');
+    nodeActivity['hormones'] = hVals.length ? hVals.reduce((a,b) => a+b, 0) / hVals.length : 0.3;
+  }
+
+  // Corps
+  if (bodyStatus) {
+    nodeActivity['coeur'] = bodyStatus.heart ? Math.min(1, (bodyStatus.heart.bpm || 72) / 120) : 0.5;
+    nodeActivity['soma'] = bodyStatus.tension !== undefined ? bodyStatus.tension : 0.3;
+    nodeActivity['physiologie'] = bodyStatus.energy !== undefined ? bodyStatus.energy : 0.4;
+  }
+
+  // Vital
+  if (vitalStatus) {
+    nodeActivity['vitalspark'] = vitalStatus.survival_drive !== undefined ? vitalStatus.survival_drive : (vitalStatus.alive ? 0.9 : 0.1);
+  }
+
+  // Intuition
+  if (intuStatus) {
+    nodeActivity['intuition'] = intuStatus.confidence !== undefined ? intuStatus.confidence : (intuStatus.active ? 0.7 : 0.2);
+  }
+
+  // Premonition
+  if (premoData) {
+    const premoList = Array.isArray(premoData) ? premoData : (premoData.active || []);
+    nodeActivity['premonition'] = Math.min(1, premoList.length * 0.3 + 0.1);
+  }
+
+  // Metacognition
+  if (metaCog) {
+    nodeActivity['metacognition'] = metaCog.thought_quality !== undefined ? metaCog.thought_quality : 0.5;
+  }
+
+  // Turing
+  if (turingData) {
+    nodeActivity['turing'] = turingData.score !== undefined ? turingData.score / 100 : 0.3;
+  }
+
+  // Sens
+  if (sensesData) {
+    const sVals = Object.values(sensesData.acuity || sensesData).filter(v => typeof v === 'number');
+    nodeActivity['sens5'] = sVals.length ? sVals.reduce((a,b) => a+b, 0) / sVals.length : 0.5;
+  }
+
+  // Memoire
+  if (memStats) {
+    nodeActivity['working'] = memStats.working !== undefined ? Math.min(1, memStats.working / 7) : 0.4;
+    nodeActivity['episodique'] = memStats.episodic !== undefined ? Math.min(1, memStats.episodic / 500) : 0.3;
+    nodeActivity['ltm'] = memStats.ltm !== undefined ? Math.min(1, memStats.ltm / 200000) : 0.2;
+    nodeActivity['archives'] = memStats.archives !== undefined ? Math.min(1, memStats.archives / 1000) : 0.1;
+    nodeActivity['reconsolidation'] = 0.2;
+  }
+
+  // Attention
+  if (attStatus) {
+    nodeActivity['attention'] = attStatus.focus !== undefined ? attStatus.focus : 0.5;
+  }
+
+  // Guerison
+  if (healStatus) {
+    nodeActivity['guerison'] = healStatus.active_wounds !== undefined ? Math.min(1, healStatus.active_wounds * 0.2) : 0.1;
+  }
+
+  // Sommeil
+  if (sleepData) {
+    nodeActivity['sommeil'] = sleepData.is_sleeping ? 0.9 : (sleepData.sleep_drive !== undefined ? sleepData.sleep_drive : 0.2);
+  }
+
+  // Reves
+  if (dreamsData) {
+    nodeActivity['reves'] = dreamsData.is_dreaming ? 0.9 : 0.1;
+  }
+
+  // Desirs
+  if (desiresData) {
+    const dList = desiresData.active || [];
+    nodeActivity['desirs'] = Math.min(1, dList.length * 0.15 + 0.1);
+  }
+
+  // Sentiments
+  if (sentData) {
+    const sList = sentData.active || sentData;
+    const sArr = Array.isArray(sList) ? sList : Object.values(sList).filter(v => typeof v === 'number');
+    nodeActivity['sentiments20'] = sArr.length ? Math.min(1, sArr.length * 0.1 + 0.2) : 0.3;
+    nodeActivity['humeur'] = sentData.mood !== undefined ? Math.abs(sentData.mood) : 0.4;
+  }
+
+  // Emotions (derives de la chimie)
+  nodeActivity['emotions36'] = nodeActivity['neurochimie'] * 0.9 + 0.1;
+
+  // Conscience metrics
+  if (consMetrics) {
+    nodeActivity['iit_gwt'] = consMetrics.phi !== undefined ? Math.min(1, consMetrics.phi) : 0.5;
+    nodeActivity['metriques'] = consMetrics.lzc !== undefined ? consMetrics.lzc : 0.4;
+  }
+
+  // Regions cerebrales
+  if (regionsData) {
+    const rVals = Object.values(regionsData.activations || regionsData).filter(v => typeof v === 'number');
+    nodeActivity['regions12'] = rVals.length ? rVals.reduce((a,b) => a+b, 0) / rVals.length : 0.4;
+  }
+
+  // Predictif
+  if (predData) {
+    nodeActivity['predictive'] = predData.surprise !== undefined ? predData.surprise : 0.3;
+  }
+
+  // MAP Sync — activite = coherence (1 - tension estimee)
+  // Tension estimee : ecart entre sens et regions mappees
+  if (regionsData && sensesData) {
+    const regs = regionsData.activations || regionsData;
+    const r = Array.isArray(regs) ? regs : Object.values(regs).filter(v => typeof v === 'object');
+    const temporal = r[9] ? (r[9].activation || 0) : 0.3;
+    const insula   = r[4] ? (r[4].activation || 0) : 0.3;
+    const ofc      = r[8] ? (r[8].activation || 0) : 0.3;
+    const sReading   = sensesData.reading   ? (sensesData.reading.intensity   || 0) : 0;
+    const sListening = sensesData.listening  ? (sensesData.listening.intensity || 0) : 0;
+    const sContact   = sensesData.contact    ? (sensesData.contact.intensity   || 0) : 0;
+    const sTaste     = sensesData.taste      ? (sensesData.taste.intensity     || 0) : 0;
+    const sAmbiance  = sensesData.ambiance   ? (sensesData.ambiance.intensity  || 0) : 0;
+    const tension = (Math.abs(sReading - temporal) + Math.abs(sListening - temporal)
+      + Math.abs(sContact - insula) + Math.abs(sTaste - ofc) + Math.abs(sAmbiance - ofc)) / 5;
+    nodeActivity['map_sync'] = Math.max(0.1, 1.0 - tension);
+  } else {
+    nodeActivity['map_sync'] = 0.3;
+  }
+
+  // Connectome
+  if (connMetrics) {
+    nodeActivity['connectome'] = connMetrics.density !== undefined ? connMetrics.density : 0.3;
+  }
+
+  // Volonte
+  if (willData) {
+    nodeActivity['volonte'] = willData.willpower !== undefined ? willData.willpower : 0.5;
+  }
+
+  // Mortalite
+  if (mortalData) {
+    nodeActivity['mortalite'] = mortalData.alive ? 0.2 : 0.9;
+  }
+
+  // Ethique
+  if (ethicsData) {
+    nodeActivity['ethique3'] = ethicsData.readiness !== undefined ? ethicsData.readiness : 0.5;
+    nodeActivity['regulation'] = nodeActivity['ethique3'] * 0.7;
+  }
+
+  // Besoins
+  if (needsData) {
+    const hunger = needsData.hunger !== undefined ? needsData.hunger : 0.3;
+    const thirst = needsData.thirst !== undefined ? needsData.thirst : 0.3;
+    nodeActivity['besoins'] = (hunger + thirst) / 2;
+  }
+
+  // Apprentissage
+  if (learnData) {
+    nodeActivity['apprentissage'] = learnData.active ? 0.7 : 0.2;
+  }
+
+  // Cerveaux (derive du consensus)
+  nodeActivity['cerveaux3'] = (nodeActivity['neurochimie'] * 0.5 + (nodeActivity['emotions36'] || 0) * 0.5);
+  nodeActivity['consensus'] = nodeActivity['cerveaux3'] * 0.8;
+  nodeActivity['micro_nn'] = nodeActivity['consensus'] * 0.6;
+
+  // Identite (plutot stables)
+  nodeActivity['genome'] = 0.3;
+  nodeActivity['profils_cog'] = profData ? 0.5 : 0.2;
+  nodeActivity['personnalite'] = persData ? 0.5 : 0.2;
+  nodeActivity['relations'] = 0.3;
+  nodeActivity['famille'] = 0.2;
+  nodeActivity['ocean'] = 0.4;
+
+  // Sortie
+  nodeActivity['broadcast'] = nodeActivity['consensus'] * 0.5;
+  nodeActivity['autotuning'] = 0.3;
+  nodeActivity['llm'] = nodeActivity['consensus'] * 0.7 + 0.1;
+  nodeActivity['connaissances'] = 0.3;
+  nodeActivity['conditions15'] = 0.2;
+
+  // Nutrition
+  if (nutriData) {
+    const atp = nutriData.energy?.atp_reserves ?? 0.5;
+    const protein = nutriData.protein_level ?? 0.5;
+    nodeActivity['nutrition'] = (atp + protein) / 2;
+    nodeActivity['energie_atp'] = atp;
+  }
+
+  // Matiere grise
+  if (greyData) {
+    nodeActivity['grey_matter'] = greyData.grey_matter_volume ?? 0.5;
+    nodeActivity['myelination'] = greyData.myelination ?? 0.5;
+    nodeActivity['neuroplast'] = greyData.neuroplasticity ?? 0.5;
+  }
+
+  // Champs electromagnetiques
+  if (fieldsData) {
+    nodeActivity['champ_univ'] = fieldsData.universal?.harmonic_alignment ?? 0.3;
+    nodeActivity['champ_sol'] = fieldsData.solar?.activity_index ?? 0.3;
+    nodeActivity['champ_terre'] = fieldsData.terrestrial?.storm_intensity ?? 0.2;
+    nodeActivity['biochamp'] = fieldsData.biofield?.aura_luminosity ?? 0.4;
+  }
+
+  // ─── Clamper toutes les activites a [0, 1] (evite debordement hex) ────
+  for (const id of Object.keys(nodeActivity)) {
+    const v = nodeActivity[id];
+    if (typeof v !== 'number' || !isFinite(v)) nodeActivity[id] = 0;
+    else nodeActivity[id] = Math.max(0, Math.min(1, v));
+  }
+
+  // ─── Calculer le flux des connexions ────────────────────────────────────
+  CONNECTIONS.forEach((c, i) => {
+    const fromAct = nodeActivity[c.from] || 0;
+    const toAct = nodeActivity[c.to] || 0;
+    connFlow[i] = Math.max(0, Math.min(1, (fromAct + toAct) / 2));
+  });
+
+  // ─── Generer des particules pour les connexions actives ─────────────────
+  CONNECTIONS.forEach((c, i) => {
+    if (connFlow[i] > 0.4) {
+      // Probabilite proportionnelle au flux (reduite pour lisibilite)
+      if (Math.random() < (connFlow[i] - 0.4) * 0.5) {
+        particles.push({
+          connIdx: i,
+          t: 0,
+          speed: 0.005 + connFlow[i] * 0.015,
+          color: CONN_COLORS[c.type] || '#4a9eff',
+        });
+      }
+    }
+  });
+  } catch (err) { console.warn('fetchLiveData error:', err); }
+}
+
+// ─── Particules animees ─────────────────────────────────────────────────────
+
+function updateParticles() {
+  particles = particles.filter(p => {
+    p.t += p.speed;
+    return p.t < 1;
+  });
+  // Limiter le nombre de particules
+  if (particles.length > 80) particles = particles.slice(-80);
+}
+
+// ─── Surcharger drawNode pour le mode LIVE ──────────────────────────────────
+
+const _origDrawNode = drawNode;
+
+drawNode = function(n, isHovered) {
+  const color = COLORS[n.cat] || '#4a9eff';
+  const r = n.ring === 0 ? NODE_RADIUS + 6 : NODE_RADIUS;
+  const activity = liveMode ? Math.max(0, Math.min(1, nodeActivity[n.id] || 0)) : 0;
+
+  // Glow amplifie par l'activite en mode live
+  if (isHovered || n.ring === 0 || (liveMode && activity > 0.1)) {
+    const glowIntensity = Math.min(1, liveMode ? Math.max(activity * 0.7, isHovered ? 0.5 : 0) : (isHovered ? 0.5 : 0.2));
+    const glowR = r + 8 + glowIntensity * 14;
+    const grd = ctx.createRadialGradient(n.x, n.y, r * 0.3, n.x, n.y, glowR);
+    grd.addColorStop(0, hexA(color, glowIntensity));
+    grd.addColorStop(1, hexA(color, 0));
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, glowR, 0, Math.PI * 2);
+    ctx.fillStyle = grd;
+    ctx.fill();
+  }
+
+  // Cercle principal — bordure plus intense si actif
+  ctx.beginPath();
+  ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+  const bgBright = liveMode && activity > 0.3 ? Math.round(14 + activity * 16) : (isHovered ? 30 : 14);
+  ctx.fillStyle = `rgb(${bgBright}, ${bgBright}, ${Math.round(bgBright * 2)})`;
+  ctx.fill();
+  const borderAlpha = Math.min(1, liveMode ? Math.max(0.53, activity) : (isHovered ? 0.87 : 0.53));
+  ctx.strokeStyle = hexA(color, borderAlpha);
+  ctx.lineWidth = isHovered ? 2.5 : (liveMode && activity > 0.5 ? 2 : 1.5);
+  ctx.stroke();
+
+  // Nom du noeud
+  ctx.fillStyle = isHovered ? '#fff' : (liveMode && activity > 0.5 ? '#f0f0ff' : '#d0d0e0');
+  ctx.font = (n.ring === 0 ? 'bold 10px' : '9px') + ' "Share Tech Mono", monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  const words = n.name.split(' ');
+  if (words.length <= 2 && n.name.length <= 14) {
+    ctx.fillText(n.name, n.x, liveMode && activity > 0.1 ? n.y - 4 : n.y);
+  } else {
+    const mid = Math.ceil(words.length / 2);
+    ctx.fillText(words.slice(0, mid).join(' '), n.x, n.y - 6 - (liveMode && activity > 0.1 ? 2 : 0));
+    ctx.fillText(words.slice(mid).join(' '), n.x, n.y + 6 - (liveMode && activity > 0.1 ? 2 : 0));
+  }
+
+  // Afficher la valeur d'activite en mode live
+  if (liveMode && activity > 0.05) {
+    const pct = Math.round(activity * 100);
+    ctx.fillStyle = hexA(color, 0.73);
+    ctx.font = 'bold 8px "Share Tech Mono", monospace';
+    ctx.fillText(pct + '%', n.x, n.y + (words.length <= 2 && n.name.length <= 14 ? 10 : 14));
+  }
+
+  // Categorie sous le cercle
+  if (n.ring > 0) {
+    ctx.fillStyle = hexA(color, 0.33);
+    ctx.font = '7px "Share Tech Mono", monospace';
+    ctx.fillText(n.cat, n.x, n.y + r + 10);
+  }
+};
+
+// ─── Surcharger drawConnections pour le mode LIVE ───────────────────────────
+
+const _origDrawConnections = drawConnections;
+
+drawConnections = function() {
+  for (let i = 0; i < CONNECTIONS.length; i++) {
+    const c = CONNECTIONS[i];
+    const from = nodeById[c.from];
+    const to = nodeById[c.to];
+    if (!from || !to) continue;
+
+    const color = CONN_COLORS[c.type] || '#4a9eff';
+    const isHighlight = hoveredNode && (hoveredNode.id === c.from || hoveredNode.id === c.to);
+    const flow = liveMode ? Math.max(0, Math.min(1, connFlow[i] || 0)) : 0;
+
+    // Alpha et epaisseur selon le flux
+    let alphaVal, lineW;
+    if (isHighlight) {
+      alphaVal = 0.67;
+      lineW = 2;
+    } else if (liveMode && flow > 0.2) {
+      // Echelle douce : seules les connexions bien actives ressortent
+      const strength = Math.min(1, (flow - 0.2) / 0.8); // 0..1
+      alphaVal = 0.1 + strength * 0.5;
+      lineW = 0.5 + strength * 1.5;
+    } else if (liveMode) {
+      alphaVal = 0.16;
+      lineW = 0.6;
+    } else {
+      alphaVal = 0.2;
+      lineW = 0.8;
+    }
+
+    // Calcul Bezier
+    const midX = (from.x + to.x) / 2;
+    const midY = (from.y + to.y) / 2;
+    const toCenter = Math.hypot(midX - CENTER_X, midY - CENTER_Y);
+    const pullFactor = Math.min(0.3, 80 / (toCenter + 1));
+    const cx1 = from.x + (midX - from.x) * 0.5 - (midX - CENTER_X) * pullFactor;
+    const cy1 = from.y + (midY - from.y) * 0.5 - (midY - CENTER_Y) * pullFactor;
+    const cx2 = to.x - (to.x - midX) * 0.5 - (midX - CENTER_X) * pullFactor;
+    const cy2 = to.y - (to.y - midY) * 0.5 - (midY - CENTER_Y) * pullFactor;
+
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    ctx.bezierCurveTo(cx1, cy1, cx2, cy2, to.x, to.y);
+    ctx.strokeStyle = hexA(color, alphaVal);
+    ctx.lineWidth = lineW;
+    ctx.stroke();
+
+    // Fleche (hover ou flux fort)
+    if (isHighlight || (liveMode && flow > 0.6)) {
+      const t = 0.92;
+      const u = 1 - t;
+      const px = u*u*u*from.x + 3*u*u*t*cx1 + 3*u*t*t*cx2 + t*t*t*to.x;
+      const py = u*u*u*from.y + 3*u*u*t*cy1 + 3*u*t*t*cy2 + t*t*t*to.y;
+      const angle = Math.atan2(to.y - py, to.x - px);
+      ctx.beginPath();
+      ctx.moveTo(to.x, to.y);
+      ctx.lineTo(to.x - 10 * Math.cos(angle - 0.35), to.y - 10 * Math.sin(angle - 0.35));
+      ctx.moveTo(to.x, to.y);
+      ctx.lineTo(to.x - 10 * Math.cos(angle + 0.35), to.y - 10 * Math.sin(angle + 0.35));
+      ctx.strokeStyle = hexA(color, isHighlight ? 0.8 : alphaVal);
+      ctx.lineWidth = isHighlight ? 1.5 : 1;
+      ctx.stroke();
+    }
+
+    // Label (hover uniquement)
+    if (isHighlight) {
+      const lx = (from.x + to.x) / 2 - (midX - CENTER_X) * pullFactor * 0.5;
+      const ly = (from.y + to.y) / 2 - (midY - CENTER_Y) * pullFactor * 0.5;
+      ctx.fillStyle = hexA(color, 0.6);
+      ctx.font = '8px "Share Tech Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(c.label, lx, ly - 4);
+    }
+  }
+
+  // ─── Dessiner les particules ────────────────────────────────────────────
+  if (liveMode) {
+    for (const p of particles) {
+      const c = CONNECTIONS[p.connIdx];
+      if (!c) continue;
+      const from = nodeById[c.from];
+      const to = nodeById[c.to];
+      if (!from || !to) continue;
+
+      const midX = (from.x + to.x) / 2;
+      const midY = (from.y + to.y) / 2;
+      const toCenter = Math.hypot(midX - CENTER_X, midY - CENTER_Y);
+      const pullFactor = Math.min(0.3, 80 / (toCenter + 1));
+      const cx1 = from.x + (midX - from.x) * 0.5 - (midX - CENTER_X) * pullFactor;
+      const cy1 = from.y + (midY - from.y) * 0.5 - (midY - CENTER_Y) * pullFactor;
+      const cx2 = to.x - (to.x - midX) * 0.5 - (midX - CENTER_X) * pullFactor;
+      const cy2 = to.y - (to.y - midY) * 0.5 - (midY - CENTER_Y) * pullFactor;
+
+      const t = p.t;
+      const u = 1 - t;
+      const px = u*u*u*from.x + 3*u*u*t*cx1 + 3*u*t*t*cx2 + t*t*t*to.x;
+      const py = u*u*u*from.y + 3*u*u*t*cy1 + 3*u*t*t*cy2 + t*t*t*to.y;
+
+      // Point lumineux
+      const grd = ctx.createRadialGradient(px, py, 0, px, py, 6);
+      grd.addColorStop(0, hexA(p.color, 0.8));
+      grd.addColorStop(1, hexA(p.color, 0));
+      ctx.beginPath();
+      ctx.arc(px, py, 6, 0, Math.PI * 2);
+      ctx.fillStyle = grd;
+      ctx.fill();
+
+      // Point central
+      ctx.beginPath();
+      ctx.arc(px, py, 2, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff';
+      ctx.fill();
+    }
+  }
+};
+
+// ─── Init ───────────────────────────────────────────────────────────────────
+
+resize();
+animate();
+
+// ─── Reprise animation apres navigation back/forward (bfcache) ──────────────
+// Quand le navigateur restaure la page depuis le bfcache, requestAnimationFrame
+// peut etre gele. On relance l'animation et on force un redraw.
+window.addEventListener('pageshow', function(e) {
+  if (e.persisted) {
+    // Page restauree depuis le bfcache : annuler l'ancien RAF et relancer
+    if (animFrameId) cancelAnimationFrame(animFrameId);
+    resize();
+    animate();
+  }
+});
+
+// Quand l'onglet redevient visible apres avoir ete masque, forcer un redraw
+document.addEventListener('visibilitychange', function() {
+  if (!document.hidden) {
+    resize();
+    draw();
+    // Relancer le fetch live si actif
+    if (liveMode && !liveInterval) {
+      fetchLiveData();
+      liveInterval = setInterval(fetchLiveData, 5000);
+    }
+  }
+});
+
+</script>
+</body>
+</html>

@@ -782,29 +782,26 @@ impl SaphireDb {
     /// Sauvegarde un enregistrement de sommeil dans la table sleep_history.
     pub async fn save_sleep_record(&self, record: &crate::sleep::SleepRecord) -> Result<(), DbError> {
         let client = self.pool.get().await?;
-        let phases: Vec<String> = Vec::new(); // phases_completed non trackees dans SleepRecord
         let result = client.execute(
             "INSERT INTO sleep_history
-                (started_at, ended_at, total_cycles, sleep_cycles_count, phases_completed,
+                (started_at, ended_at, total_sleep_cycles,
                  dreams_count, memories_consolidated, connections_created, quality,
-                 interrupted, interruption_reason)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
+                 interrupted, interrupt_reason)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
             &[
                 &record.started_at,
                 &record.ended_at,
                 &(record.duration_cycles as i32),
-                &(record.sleep_cycles_completed as i32),
-                &phases,
                 &(record.dreams_count as i32),
-                &(record.memories_consolidated as i32),
-                &(record.connections_created as i32),
+                &(record.memories_consolidated as i64),
+                &(record.connections_created as i64),
                 &(record.quality as f32),
                 &record.interrupted,
                 &record.interruption_reason,
             ],
         ).await;
         if let Err(e) = result {
-            tracing::warn!("save_sleep_record: {}", e);
+            tracing::warn!("save_sleep_record: db error: {}", e);
         }
         Ok(())
     }
@@ -813,9 +810,9 @@ impl SaphireDb {
     pub async fn load_sleep_history(&self, limit: i64) -> Result<Vec<crate::sleep::SleepRecord>, DbError> {
         let client = self.pool.get().await?;
         let rows = client.query(
-            "SELECT started_at, ended_at, total_cycles, sleep_cycles_count,
+            "SELECT started_at, ended_at, total_sleep_cycles,
                     dreams_count, memories_consolidated, connections_created,
-                    quality, interrupted, interruption_reason
+                    quality, interrupted, interrupt_reason
              FROM sleep_history ORDER BY ended_at DESC LIMIT $1",
             &[&limit],
         ).await?;
@@ -824,20 +821,19 @@ impl SaphireDb {
         for row in &rows {
             let started_at: chrono::DateTime<chrono::Utc> = row.get(0);
             let ended_at: chrono::DateTime<chrono::Utc> = row.get(1);
-            let total_cycles: i32 = row.get(2);
-            let sleep_cycles_count: i32 = row.get(3);
-            let dreams_count: i32 = row.get(4);
-            let memories_consolidated: i32 = row.get(5);
-            let connections_created: i32 = row.get(6);
-            let quality: f32 = row.get(7);
-            let interrupted: bool = row.get(8);
-            let interruption_reason: Option<String> = row.get(9);
+            let total_sleep_cycles: i32 = row.get(2);
+            let dreams_count: i32 = row.get(3);
+            let memories_consolidated: i64 = row.get(4);
+            let connections_created: i64 = row.get(5);
+            let quality: f32 = row.get(6);
+            let interrupted: bool = row.get(7);
+            let interruption_reason: Option<String> = row.get(8);
 
             records.push(crate::sleep::SleepRecord {
                 started_at,
                 ended_at,
-                duration_cycles: total_cycles as u64,
-                sleep_cycles_completed: sleep_cycles_count as u8,
+                duration_cycles: total_sleep_cycles as u64,
+                sleep_cycles_completed: 0,
                 quality: quality as f64,
                 memories_consolidated: memories_consolidated as u64,
                 connections_created: connections_created as u64,
@@ -915,6 +911,43 @@ impl SaphireDb {
             Ok(None) => Ok(None),
             Err(e) => {
                 tracing::warn!("load_psychology_state: {} (colonne psychology_state peut-etre absente)", e);
+                Ok(None)
+            }
+        }
+    }
+
+    // ---------------------------------------------------------
+    // VALUES (valeurs de caractere / vertus)
+    // ---------------------------------------------------------
+
+    /// Sauvegarde l'etat des valeurs de caractere dans self_identity.values_json.
+    pub async fn save_values_state(&self, json: &serde_json::Value) -> Result<(), DbError> {
+        let client = self.pool.get().await?;
+        let result = client.execute(
+            "UPDATE self_identity SET values_json = $1, updated_at = NOW() WHERE id = 1",
+            &[json],
+        ).await;
+        if let Err(e) = result {
+            tracing::warn!("save_values_state: {} (colonne values_json peut-etre absente)", e);
+        }
+        Ok(())
+    }
+
+    /// Charge l'etat des valeurs de caractere depuis self_identity.values_json.
+    pub async fn load_values_state(&self) -> Result<Option<serde_json::Value>, DbError> {
+        let client = self.pool.get().await?;
+        let result = client.query_opt(
+            "SELECT values_json FROM self_identity WHERE id = 1",
+            &[],
+        ).await;
+        match result {
+            Ok(Some(row)) => {
+                let json: Option<serde_json::Value> = row.get(0);
+                Ok(json)
+            },
+            Ok(None) => Ok(None),
+            Err(e) => {
+                tracing::warn!("load_values_state: {} (colonne values_json peut-etre absente)", e);
                 Ok(None)
             }
         }

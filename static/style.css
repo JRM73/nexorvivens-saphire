@@ -337,6 +337,27 @@ main {
     border: 1px solid rgba(0,240,255,0.15);
 }
 
+/* ─── Contenu des panneaux compacts (stat-row) ─── */
+.panel-body {
+    padding: 0.5rem 1rem;
+}
+.panel-body .stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.3rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-mid);
+}
+.panel-body .stat-label {
+    color: var(--text-dim);
+    font-size: 0.75rem;
+    font-family: 'Share Tech Mono', monospace;
+    letter-spacing: 0.05em;
+}
+
 /* ─── FLUX DE CONSCIENCE ─── */
 /* Zone de defilement verticale pour les pensees.
    Hauteur max de 400px avec une scrollbar fine stylisee en cyan. */
@@ -416,6 +437,105 @@ main {
     color: var(--text-dim); display: block;
     margin-bottom: 0.2rem;
 }
+/* P5 : Marqueurs visuels sous les messages de Saphire */
+.chat-markers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin-top: 0.4rem;
+    padding-top: 0.3rem;
+    border-top: 1px solid rgba(0,240,255,0.1);
+}
+.marker {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.6rem;
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    letter-spacing: 0.05em;
+    line-height: 1.4;
+}
+.marker-emotion {
+    background: rgba(181,55,242,0.15);
+    border: 1px solid rgba(181,55,242,0.3);
+    color: #b537f2;
+}
+.marker-phi {
+    background: rgba(0,240,255,0.1);
+    border: 1px solid rgba(0,240,255,0.25);
+    color: #00f0ff;
+}
+.marker-register {
+    background: rgba(255,217,61,0.1);
+    border: 1px solid rgba(255,217,61,0.25);
+    color: #ffd93d;
+}
+.marker-memory {
+    background: rgba(5,255,161,0.1);
+    border: 1px solid rgba(5,255,161,0.25);
+    color: #05ffa1;
+}
+.marker-reflex {
+    background: rgba(255,42,109,0.1);
+    border: 1px solid rgba(255,42,109,0.25);
+    color: #ff2a6d;
+}
+.marker-confidence {
+    background: rgba(244,162,97,0.1);
+    border: 1px solid rgba(244,162,97,0.25);
+    color: #f4a261;
+}
+
+/* ─── Panneau Colonne vertebrale ─── */
+.spine-grid .stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.3rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.spine-grid .stat-label {
+    color: var(--text-dim);
+    font-size: 0.75rem;
+}
+
+/* ─── Panneau Curiosite ─── */
+#curiosity-panel .stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.3rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+#curiosity-panel .stat-label {
+    color: var(--text-dim);
+    font-size: 0.75rem;
+}
+.domain-bars {
+    margin-top: 0.5rem;
+}
+.domain-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.25rem;
+}
+.domain-label {
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    min-width: 5rem;
+    text-align: right;
+}
+.domain-bar-wrap {
+    flex: 1;
+    height: 6px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 3px;
+    overflow: hidden;
+}
+.domain-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s ease;
+}
+
 /* Zone de saisie du chat : input + bouton d'envoi avec degrade */
 .chat-input {
     display: flex; gap: 0; padding: 0.5rem;
@@ -447,6 +567,58 @@ main {
     transition: filter 0.2s;
 }
 .chat-input button:hover { filter: brightness(1.2); }
+
+/* ─── CHAT MODAL ─── */
+/* Overlay sombre derriere le chat quand il est en mode modal */
+.chat-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    z-index: 999;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+.chat-overlay.active {
+    display: block;
+    opacity: 1;
+}
+
+/* Chat en mode modal : centré, agrandi */
+#chat-section {
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1;
+    cursor: pointer;
+}
+#chat-section.chat-expanded {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(700px, 90vw);
+    max-height: 70vh;
+    z-index: 1000;
+    box-shadow: 0 0 40px rgba(0,240,255,0.15), 0 0 80px rgba(0,240,255,0.05);
+    border-color: var(--neon-cyan);
+    cursor: default;
+    display: flex;
+    flex-direction: column;
+}
+#chat-section.chat-expanded #chat-messages {
+    max-height: none;
+    flex: 1;
+    overflow-y: auto;
+    min-height: 200px;
+}
+/* Placeholder invisible qui maintient l'espace dans le flow */
+.chat-placeholder {
+    display: none;
+}
+.chat-placeholder.active {
+    display: block;
+    margin-bottom: 0.8rem;
+}
 
 /* ─── PANNEAU EMOTION ─── */
 /* Anneau circulaire qui change de couleur selon l'emotion dominante.
@@ -2442,3 +2614,55 @@ footer {
 .username-modal-btn:active {
     transform: translateY(0);
 }
+
+/* ─── PANNEAU BIOLOGIE ─── */
+#biology-panel .stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.3rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+#biology-panel .stat-label { color: var(--text-dim); font-size: 0.75rem; }
+
+/* ─── PANNEAU HORMONES ─── */
+#hormones-panel .stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.3rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+#hormones-panel .stat-label { color: var(--text-dim); font-size: 0.75rem; }
+
+/* ─── PANNEAU SENTIMENTS ─── */
+.sentiments-grid { margin-bottom: 0.5rem; }
+.sentiment-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.2rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    font-size: 0.75rem;
+}
+.sentiment-name { color: var(--neon-pink); }
+.sentiment-value { color: var(--text-dim); }
+
+/* ─── PANNEAU PSYCHOLOGIE ─── */
+#psychology-panel .stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.3rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+#psychology-panel .stat-label { color: var(--text-dim); font-size: 0.75rem; }
+
+/* ─── Panneau Derive persona ─── */
+#drift-panel .stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.3rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+#drift-panel .stat-label { color: var(--text-dim); font-size: 0.75rem; }
+.drift-stable { color: var(--neon-green); }
+.drift-warning { color: #ffd93d; }
+.drift-alert { color: #ff6b35; }
+.drift-critical { color: var(--neon-pink); animation: pulse 1s infinite; }

@@ -1,0 +1,56 @@
+# =============================================================================
+# Profil Neurotypique — Configuration de reference
+#
+# Ce profil represente les valeurs par defaut de Saphire.
+# Il sert de base de comparaison pour tous les autres profils.
+# =============================================================================
+
+[profile]
+name = "Neurotypique"
+description = "Profil de reference : equilibre neurochimique standard, attention stable, regulation emotionnelle normale"
+category = "reference"
+references = [
+    "Valeurs par defaut calibrees de Saphire",
+]
+
+[personality]
+baseline_dopamine = 0.50
+baseline_cortisol = 0.20
+baseline_serotonin = 0.60
+baseline_adrenaline = 0.10
+baseline_oxytocin = 0.40
+baseline_endorphin = 0.30
+baseline_noradrenaline = 0.40
+
+[feedback]
+homeostasis_rate = 0.03
+
+[consensus]
+threshold_yes = 0.33
+threshold_no = -0.33
+
+[attention]
+initial_concentration = 0.50
+fatigue_per_cycle = 0.01
+recovery_per_cycle = 0.02
+
+[desires]
+max_active = 7
+min_dopamine_for_birth = 0.40
+max_cortisol_for_birth = 0.60
+
+[learning]
+cycle_interval = 50
+initial_confidence = 0.50
+confirmation_boost = 0.05
+contradiction_penalty = 0.10
+
+[healing]
+melancholy_threshold_cycles = 50
+loneliness_threshold_hours = 12.0
+overload_noradrenaline = 0.80
+
+[sleep]
+sleep_threshold = 0.50
+time_factor_divisor = 300
+adrenaline_resistance = 0.10

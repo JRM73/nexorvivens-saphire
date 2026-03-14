@@ -298,7 +298,6 @@ impl SaphireAgent {
                                             source_type: "algorithme_subconscient".into(),
                                             strength: 0.6,
                                             emotional_charge: 0.3,
-                                            ..Default::default()
                                         }
                                     );
                                 }
@@ -345,7 +344,6 @@ impl SaphireAgent {
                                     source_type: "algorithme_subconscient".into(),
                                     strength: 0.5,
                                     emotional_charge: 0.4,
-                                    ..Default::default()
                                 }
                             );
                         }

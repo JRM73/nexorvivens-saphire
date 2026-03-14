@@ -26,6 +26,8 @@ pub mod intent;
 pub mod dimensions;
 pub mod dictionaries;
 pub mod stagnation;
+pub mod register;
+pub mod extractor;
 
 use serde::{Deserialize, Serialize};
 use crate::stimulus::Stimulus;
@@ -33,6 +35,7 @@ use self::preprocessor::{TextPreprocessor, StructuralFeatures, Language};
 use self::sentiment::{SentimentLexicon, SentimentResult};
 use self::intent::{IntentClassifier, IntentResult};
 use self::dimensions::DimensionExtractor;
+use self::register::{RegisterDetector, RegisterResult};
 
 /// Resultat complet de l'analyse NLP (Natural Language Processing).
 ///
@@ -50,6 +53,8 @@ pub struct NlpResult {
     pub language: Language,
     /// Les caracteristiques structurelles du texte (majuscules, ponctuation, longueur)
     pub structural_features: StructuralFeatures,
+    /// Le registre linguistique detecte (technique, poetique, emotionnel, etc.)
+    pub register: RegisterResult,
 }
 
 /// Pipeline NLP complet.
@@ -66,6 +71,8 @@ pub struct NlpPipeline {
     intent_classifier: IntentClassifier,
     /// Extracteur de dimensions texte vers Stimulus (5 axes emotionnels)
     dimension_extractor: DimensionExtractor,
+    /// Detecteur de registre linguistique (technique, poetique, emotionnel, etc.)
+    register_detector: RegisterDetector,
 }
 
 impl Default for NlpPipeline {
@@ -87,6 +94,7 @@ impl NlpPipeline {
             sentiment_lexicon: SentimentLexicon::new(),
             intent_classifier: IntentClassifier::new(),
             dimension_extractor: DimensionExtractor::new(),
+            register_detector: RegisterDetector::new(),
         }
     }
 
@@ -127,12 +135,130 @@ impl NlpPipeline {
             stimulus.danger = (stimulus.danger + sentiment.negative * 0.2).min(1.0);
         }
 
+        // Couche 2D : Registre — detection du registre linguistique dominant
+        let register = self.register_detector.detect(&tokens, text);
+
         NlpResult {
             stimulus,
             sentiment,
             intent,
             language: features.language,
             structural_features: features,
+            register,
         }
+    }
+
+    /// Analyse enrichie par LLM : sentiment, intention et registre sont determines
+    /// par le LLM au lieu des regles. Structural features, langue et stimulus restent
+    /// par regles. Fallback sur analyze() si le LLM echoue.
+    pub async fn analyze_with_llm(&self, text: &str, llm_config: &crate::llm::LlmConfig) -> NlpResult {
+        // D'abord, analyse par regles (base)
+        let mut result = self.analyze(text);
+
+        // Appel LLM pour sentiment + intent + register
+        let backend = crate::llm::create_backend(llm_config);
+        let system = "Tu es un analyseur linguistique. Analyse le message suivant et retourne \
+                      UNIQUEMENT un JSON avec ces champs :\n\
+                      - \"sentiment\": nombre entre -1.0 (tres negatif) et 1.0 (tres positif)\n\
+                      - \"positive\": nombre entre 0.0 et 1.0 (intensite positive)\n\
+                      - \"negative\": nombre entre 0.0 et 1.0 (intensite negative)\n\
+                      - \"contradiction\": true/false (le message contient-il une contradiction ou ambivalence)\n\
+                      - \"intent\": un parmi [\"question\", \"demande\", \"expression_emotion\", \"partage_info\", \
+                        \"ordre\", \"menace\", \"compliment\", \"recherche_aide\", \"salutation\", \"adieu\", \
+                        \"philosophique\", \"inconnu\"]\n\
+                      - \"intent_confidence\": nombre entre 0.0 et 1.0\n\
+                      - \"register\": un parmi [\"technique\", \"poetique\", \"emotionnel\", \"factuel\", \
+                        \"philosophique\", \"familier\", \"neutre\"]\n\
+                      - \"register_confidence\": nombre entre 0.0 et 1.0\n\n\
+                      Reponds UNIQUEMENT avec le JSON, sans commentaire.".to_string();
+        let user_msg = text.to_string();
+
+        let llm_result = tokio::task::spawn_blocking(move || {
+            backend.chat(&system, &user_msg, 0.1, 120)
+        }).await;
+
+        match llm_result {
+            Ok(Ok(raw)) => {
+                // Extraire le JSON de la reponse (peut etre entoure de ```json ... ```)
+                let json_str = raw.trim()
+                    .trim_start_matches("```json")
+                    .trim_start_matches("```")
+                    .trim_end_matches("```")
+                    .trim();
+                if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(json_str) {
+                    // Sentiment
+                    if let Some(compound) = parsed["sentiment"].as_f64() {
+                        let compound = compound.clamp(-1.0, 1.0);
+                        let positive = parsed["positive"].as_f64().unwrap_or(0.0).clamp(0.0, 1.0);
+                        let negative = parsed["negative"].as_f64().unwrap_or(0.0).clamp(0.0, 1.0);
+                        let has_contradiction = parsed["contradiction"].as_bool().unwrap_or(false);
+                        result.sentiment = SentimentResult {
+                            compound,
+                            positive,
+                            negative,
+                            has_contradiction,
+                        };
+                        // Re-ajuster le stimulus avec le nouveau sentiment
+                        if compound > 0.3 {
+                            result.stimulus.reward = (result.stimulus.reward + positive * 0.3).min(1.0);
+                        }
+                        if compound < -0.3 {
+                            result.stimulus.danger = (result.stimulus.danger + negative * 0.2).min(1.0);
+                        }
+                    }
+                    // Intent
+                    if let Some(intent_str) = parsed["intent"].as_str() {
+                        let intent = match intent_str {
+                            "question" => intent::Intent::Question,
+                            "demande" => intent::Intent::Request,
+                            "expression_emotion" | "expression_émotion" => intent::Intent::EmotionExpression,
+                            "partage_info" => intent::Intent::InfoSharing,
+                            "ordre" => intent::Intent::Command,
+                            "menace" => intent::Intent::Threat,
+                            "compliment" => intent::Intent::Compliment,
+                            "recherche_aide" => intent::Intent::HelpSeeking,
+                            "salutation" => intent::Intent::Greeting,
+                            "adieu" => intent::Intent::Farewell,
+                            "philosophique" => intent::Intent::Philosophical,
+                            _ => intent::Intent::Unknown,
+                        };
+                        let confidence = parsed["intent_confidence"].as_f64().unwrap_or(0.7).clamp(0.0, 1.0);
+                        result.intent = intent::IntentResult {
+                            primary_intent: intent,
+                            confidence,
+                        };
+                    }
+                    // Register
+                    if let Some(reg_str) = parsed["register"].as_str() {
+                        let reg = match reg_str {
+                            "technique" => register::Register::Technical,
+                            "poetique" | "poétique" => register::Register::Poetic,
+                            "emotionnel" | "émotionnel" => register::Register::Emotional,
+                            "factuel" => register::Register::Factual,
+                            "philosophique" => register::Register::Philosophical,
+                            "familier" => register::Register::Playful,
+                            _ => register::Register::Neutral,
+                        };
+                        let confidence = parsed["register_confidence"].as_f64().unwrap_or(0.7).clamp(0.0, 1.0);
+                        result.register = register::RegisterResult {
+                            primary: reg,
+                            confidence,
+                            secondary: None,
+                        };
+                    }
+                    tracing::debug!("NLP LLM: sentiment={:.2}, intent={:?}, register={}",
+                        result.sentiment.compound,
+                        result.intent.primary_intent,
+                        result.register.primary.as_str());
+                } else {
+                    tracing::warn!("NLP LLM: JSON invalide '{}', fallback regles", json_str.chars().take(100).collect::<String>());
+                }
+            }
+            _ => {
+                tracing::warn!("NLP LLM: echec appel, fallback regles");
+            }
+        }
+
+        result
     }
 }

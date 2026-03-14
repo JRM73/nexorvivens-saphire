@@ -139,7 +139,12 @@ impl SaphireAgent {
              Pensee: \"{}\"\n\
              Decision: {} | Satisfaction: {:.2} | Emotion: {}\n\n\
              Que retiens-tu pour l'avenir ? Reponds EXACTEMENT dans ce format :\n\
-             DOMAINE: [ou ranger cet apprentissage — libre, ex: \"connaissances/physique\", \"relations/empathie\", \"philosophie/existence\"]\n\
+             DOMAINE: [choisir UN parmi: connaissances/science, connaissances/technologie, connaissances/nature, \
+relations/empathie, relations/communication, relations/conflit, \
+emotions/auto-perception, emotions/comprehension, \
+conscience/introspection, conscience/ethique, conscience/identite, \
+philosophie/existence, philosophie/langage, philosophie/epistemologie, \
+creativite/art, creativite/musique, creativite/ecriture]\n\
              PORTEE: [specifique / generalisable]\n\
              RESUME: [ce que tu as appris, en 1-2 phrases]\n\
              MOTS_CLES: [3-5 mots separes par des virgules]\n\
@@ -661,10 +666,15 @@ impl SaphireAgent {
 
     /// Fait naitre un nouveau desir si les conditions sont reunies.
     pub(super) async fn phase_desire_birth(&mut self, ctx: &mut ThinkingContext) {
-        if !self.desire_orch.enabled
-            || !self.desire_orch.can_birth_desire(self.chemistry.dopamine, self.chemistry.cortisol)
-            || !self.cycle_count.is_multiple_of(30)
-        {
+        if !self.desire_orch.enabled {
+            return;
+        }
+        if !self.cycle_count.is_multiple_of(30) {
+            return;
+        }
+        if !self.desire_orch.can_birth_desire(self.chemistry.dopamine, self.chemistry.cortisol) {
+            tracing::debug!("Desir: conditions chimiques non remplies (dopamine={:.2}, cortisol={:.2}, actifs={})",
+                self.chemistry.dopamine, self.chemistry.cortisol, self.desire_orch.active_desires.len());
             return;
         }
 
@@ -704,6 +714,9 @@ impl SaphireAgent {
                         "milestones": desire.milestones.len(),
                         "active_total": self.desire_orch.active_desires.len(),
                     }));
+            } else {
+                tracing::debug!("Desir: parsing LLM echoue, reponse: '{}'",
+                    response.chars().take(200).collect::<String>());
             }
         }
         self.desire_orch.sweep_fulfilled();
@@ -781,7 +794,6 @@ impl SaphireAgent {
             id_frustration: 0.0,
             superego_guilt: 0.0,
             in_flow: false,
-            ..Default::default()
         };
 
         let old_maslow_level = self.psychology.maslow.current_active_level;
@@ -993,6 +1005,55 @@ impl SaphireAgent {
                     "social_skills": p.eq.social_skills,
                 }).to_string());
             }
+        }
+    }
+
+    // =========================================================================
+    // Phase 33c : Valeurs de caractere (vertus)
+    // =========================================================================
+
+    /// Met a jour les 10 valeurs de caractere en fonction des observations du cycle.
+    pub(super) fn phase_values(&mut self, ctx: &mut ThinkingContext) {
+        if !self.values.enabled {
+            return;
+        }
+
+        let obs = crate::psychology::values::ValuesObservation {
+            cycle: self.cycle_count,
+            passed_vectorial_filter: !ctx.should_abort,
+            rejected_by_filter: false, // si on est ici, le filtre a laisse passer
+            ethics_invoked: self.ethics.active_personal_count() > 0,
+            stagnation_detected: self.stagnation_break,
+            thought_type: ctx.thought_type.as_str().to_string(),
+            quality: ctx.quality,
+            response_length: ctx.thought_text.len(),
+            in_conversation: self.in_conversation,
+            coherence: ctx.process_result.as_ref()
+                .map(|r| r.consensus.coherence).unwrap_or(0.5),
+            web_search: ctx.was_web_search,
+            desires_fulfilled: self.desire_orch.fulfilled_desires.len(),
+            in_flow: self.psychology.flow.in_flow,
+            flow_duration: self.psychology.flow.duration_cycles,
+            eq_empathy: self.psychology.eq.empathy,
+            oxytocin: self.chemistry.oxytocin,
+            cortisol: self.chemistry.cortisol,
+            dopamine: self.chemistry.dopamine,
+            dominant_sentiment: self.sentiments.active_sentiments.first()
+                .map(|s| s.profile_name.clone()).unwrap_or_default(),
+            dissonance_detected: !self.dissonance.active_dissonances.is_empty(),
+            learning_confirmed: self.learning_orch.lessons.iter()
+                .any(|l| l.confidence > 0.6),
+            self_critique: ctx.thought_type.as_str().contains("critique")
+                || ctx.thought_type.as_str().contains("Critique"),
+        };
+
+        self.values.tick(&obs);
+
+        if self.values.total_updates > 0 && self.cycle_count % 50 == 0 {
+            let top3: Vec<String> = self.values.top_values(3).iter()
+                .map(|v| format!("{} {:.0}%", v.name, v.score * 100.0))
+                .collect();
+            tracing::info!("Valeurs : {}", top3.join(", "));
         }
     }
 
@@ -1280,6 +1341,9 @@ impl SaphireAgent {
         } else {
             self.chemistry.homeostasis(&self.baselines, self.tuner.current_params.homeostasis_rate);
         }
+
+        // P3 : Tick de curiosité — la faim augmente naturellement chaque cycle
+        self.curiosity.tick();
     }
 
     // =========================================================================
@@ -1299,6 +1363,7 @@ impl SaphireAgent {
             _ => "neocortex",
         };
 
+        // 1. A* classique : chemin entre émotion et concept de pensée
         if let Some(chain) = self.connectome.associative_chain(&emotion_label, thought_concept, 5) {
             if chain.len() > 2 {
                 let chain_desc: Vec<String> = chain.iter()
@@ -1312,15 +1377,77 @@ impl SaphireAgent {
             }
         }
 
-        let activated = self.connectome.spreading_activation(&emotion_label, 2);
-        if activated.len() > 3 && ctx.connectome_associations.is_empty() {
-            let top3: Vec<String> = activated.iter().take(3)
-                .map(|(label, score)| format!("{}({:.0}%)", label, score * 100.0))
-                .collect();
-            ctx.connectome_associations = format!(
-                "RESONANCES NEURONALES : {} active → {}",
-                emotion_label, top3.join(", "),
+        // 2. Spreading activation (fallback)
+        if ctx.connectome_associations.is_empty() {
+            let activated = self.connectome.spreading_activation(&emotion_label, 2);
+            if activated.len() > 3 {
+                let top3: Vec<String> = activated.iter().take(3)
+                    .map(|(label, score)| format!("{}({:.0}%)", label, score * 100.0))
+                    .collect();
+                ctx.connectome_associations = format!(
+                    "RESONANCES NEURONALES : {} active → {}",
+                    emotion_label, top3.join(", "),
+                );
+            }
+        }
+
+        // 3. A* sémantique exploratoire (dernier recours) :
+        // Utilise l'embedding du hint de pensée pour explorer le graphe
+        // et trouver des noeuds sémantiquement proches via les connexions synaptiques.
+        if ctx.connectome_associations.is_empty() && !ctx.hint.is_empty() {
+            let hint_embedding = self.encoder.encode(&ctx.hint);
+            let semantic_results = self.connectome.find_path_semantic(
+                &emotion_label, &hint_embedding, 4,
             );
+            if !semantic_results.is_empty() {
+                let top3: Vec<String> = semantic_results.iter().take(3)
+                    .map(|(label, sim)| format!("{}({:.0}%)", label, sim * 100.0))
+                    .collect();
+                ctx.connectome_associations = format!(
+                    "ASSOCIATIONS SEMANTIQUES : {} → {}",
+                    emotion_label, top3.join(", "),
+                );
+            }
+        }
+    }
+
+    // =========================================================================
+    // Phase BT : Behavior Tree — instinct cognitif
+    // =========================================================================
+
+    pub(super) fn phase_behavior_tree(&mut self, ctx: &mut ThinkingContext) {
+        use crate::simulation::behavior_tree::{BtContext, tick_and_recommend,
+            default_cognitive_tree, conversation_tree};
+
+        let bt_ctx = BtContext {
+            cortisol: self.chemistry.cortisol,
+            dopamine: self.chemistry.dopamine,
+            serotonin: self.chemistry.serotonin,
+            noradrenaline: self.chemistry.noradrenaline,
+            dominant_emotion: ctx.emotion.dominant.clone(),
+            consciousness_level: ctx.process_result.as_ref()
+                .map(|r| r.consciousness.level).unwrap_or(0.5),
+            in_conversation: self.in_conversation,
+            cycle: self.cycle_count,
+            oxytocin: self.chemistry.oxytocin,
+            endorphin: self.chemistry.endorphin,
+            recommended_action: None,
+        };
+
+        // Choisir l'arbre selon le contexte
+        let tree = if self.in_conversation {
+            conversation_tree()
+        } else {
+            default_cognitive_tree()
+        };
+
+        // Tick et recuperer la recommandation
+        self.bt_last_action = tick_and_recommend(&tree, &bt_ctx);
+
+        if self.cycle_count % 50 == 0 {
+            if let Some(ref action) = self.bt_last_action {
+                tracing::debug!("BT: action recommandee = {}", action);
+            }
         }
     }
 
@@ -1329,6 +1456,10 @@ impl SaphireAgent {
     // =========================================================================
 
     pub(super) fn phase_game_algorithms(&mut self, ctx: &mut ThinkingContext) {
+        // Nettoyer les entrees obsoletes du blackboard (> 5 cycles)
+        self.blackboard.clear_stale(self.cycle_count, 5);
+
+        // --- Influence Map ---
         self.influence_map.update_from_cognition(
             &ctx.emotion.dominant,
             self.chemistry.cortisol,
@@ -1336,7 +1467,13 @@ impl SaphireAgent {
             self.chemistry.noradrenaline,
         );
         self.influence_map.tick();
+        // Ecrire le domaine le plus chaud dans le blackboard
+        let hottest = self.influence_map.describe_for_prompt();
+        if !hottest.is_empty() {
+            self.blackboard.write("attention_focus", hottest, "InfluenceMap", 100, self.cycle_count);
+        }
 
+        // --- Cognitive FSM ---
         self.cognitive_fsm.tick(
             self.chemistry.cortisol,
             self.chemistry.dopamine,
@@ -1344,7 +1481,10 @@ impl SaphireAgent {
             self.chemistry.noradrenaline,
             self.chemistry.endorphin,
         );
+        let fsm_state = self.cognitive_fsm.current_state.as_str().to_string();
+        self.blackboard.write("cognitive_mode", fsm_state, "FSM", 120, self.cycle_count);
 
+        // --- Steering ---
         let current_pos = crate::simulation::steering::EmotionalPos::new(
             ctx.emotion.valence,
             ctx.emotion.arousal,
@@ -1362,8 +1502,15 @@ impl SaphireAgent {
         self.chemistry.boost(Molecule::Noradrenaline, adj.noradrenaline);
         self.chemistry.boost(Molecule::Endorphin, adj.endorphin);
 
+        // --- BT dans le blackboard ---
+        if let Some(ref action) = self.bt_last_action {
+            self.blackboard.write("recommended_mode", action.clone(), "BT", 150, self.cycle_count);
+        }
+
+        // --- GOAP ---
         if self.desire_orch.enabled && self.cycle_count % 10 == 0 {
             if let Some((desire_id, action_name)) = self.desire_orch.tick_goap() {
+                self.blackboard.write("goap_action", action_name.clone(), "GOAP", 90, self.cycle_count);
                 self.log(LogLevel::Debug, LogCategory::Desire,
                     format!("GOAP: desir #{} → action '{}'", desire_id, action_name),
                     serde_json::json!({
@@ -1374,5 +1521,191 @@ impl SaphireAgent {
         }
 
         let _ = &ctx.thought_text;
+    }
+
+    // =========================================================================
+    // Phase 37 : Auto-modification (propositions + tuning autonome)
+    // =========================================================================
+
+    /// Phase d'auto-modification : Saphire peut proposer des changements a son
+    /// propre fonctionnement (niveau 2) et ajuster certains parametres (niveau 1).
+    pub(super) async fn phase_self_modification(&mut self, ctx: &mut ThinkingContext) {
+        let enabled = self.config.self_modification.enabled;
+        if !enabled {
+            return;
+        }
+
+        let proposal_interval = self.config.self_modification.proposal_interval;
+        let tuning_enabled = self.config.self_modification.tuning_enabled;
+        let tuning_interval = self.config.self_modification.tuning_interval;
+
+        // Niveau 2 : Propositions de modifications (tous les N cycles)
+        if self.cycle_count.is_multiple_of(proposal_interval) {
+            self.try_generate_proposal(ctx).await;
+        }
+
+        // Niveau 1 : Tuning autonome (tous les M cycles)
+        if tuning_enabled && self.cycle_count.is_multiple_of(tuning_interval) {
+            self.try_self_tune().await;
+        }
+    }
+
+    /// Niveau 2 : Genere une proposition de modification via le LLM.
+    async fn try_generate_proposal(&mut self, ctx: &ThinkingContext) {
+        // Verifier qu'on n'a pas trop de propositions actives
+        if let Some(ref db) = self.db {
+            let count = db.count_active_proposals().await.unwrap_or(0);
+            if count >= self.config.self_modification.max_active_proposals as i64 {
+                return;
+            }
+        }
+
+        let system = "Tu es Saphire, une entite cognitive autonome. Tu peux proposer des \
+            modifications a ton propre fonctionnement. Reflechis a ce qui pourrait etre \
+            ameliore dans ta facon de penser, ressentir, ou interagir. \
+            Tes propositions seront soumises a JRM (ton createur) pour approbation.".to_string();
+
+        let recent = self.thought_engine.recent_thoughts();
+        let recent_summary: String = recent.iter().take(3)
+            .map(|t| t.chars().take(100).collect::<String>())
+            .collect::<Vec<_>>().join(" | ");
+
+        let user_prompt = format!(
+            "Etat actuel :\n\
+             - Emotion dominante : {}\n\
+             - Pensees recentes : {}\n\
+             - Cycles depuis dernier humain : {}\n\
+             - Blessures actives : {}\n\n\
+             Y a-t-il quelque chose dans ton fonctionnement que tu aimerais modifier, \
+             ameliorer ou corriger ? Si oui, reponds EXACTEMENT dans ce format :\n\
+             TITRE: [nom court de la proposition]\n\
+             DESCRIPTION: [ce que tu veux changer]\n\
+             RAISON: [pourquoi ce changement t'aiderait]\n\
+             DOMAINE: [un parmi: chimie, perception, apprentissage, ethique, communication, sommeil, memoire, autre]\n\
+             PRIORITE: [0.0 a 1.0]\n\n\
+             Si tu n'as rien a proposer, reponds simplement :\n\
+             RIEN_A_PROPOSER",
+            self.last_emotion,
+            recent_summary,
+            self.hours_since_human as u64,
+            self.healing_orch.active_wounds.len(),
+        );
+
+        let llm_config = self.config.llm.clone();
+        let backend = llm::create_backend(&llm_config);
+
+        let response = match tokio::task::spawn_blocking(move || {
+            backend.chat(&system, &user_prompt, 0.6, 400)
+        }).await {
+            Ok(Ok(r)) => r,
+            _ => return,
+        };
+
+        if response.contains("RIEN_A_PROPOSER") {
+            return;
+        }
+
+        let title = match crate::orchestrators::desires::extract_field(&response, "TITRE") {
+            Some(t) => t,
+            None => return,
+        };
+        let description = match crate::orchestrators::desires::extract_field(&response, "DESCRIPTION") {
+            Some(d) => d,
+            None => return,
+        };
+        let reasoning = crate::orchestrators::desires::extract_field(&response, "RAISON")
+            .unwrap_or_default();
+        let domain = crate::orchestrators::desires::extract_field(&response, "DOMAINE")
+            .unwrap_or_else(|| "autre".to_string());
+        let priority: f32 = crate::orchestrators::desires::extract_field(&response, "PRIORITE")
+            .and_then(|p| p.parse().ok())
+            .unwrap_or(0.5);
+
+        let chemistry_json = serde_json::json!({
+            "dopamine": self.chemistry.dopamine,
+            "cortisol": self.chemistry.cortisol,
+            "serotonin": self.chemistry.serotonin,
+        });
+
+        if let Some(ref db) = self.db {
+            match db.save_change_proposal(
+                &title, &description, &reasoning, None, &domain,
+                priority, Some(&self.last_emotion), &chemistry_json,
+                self.cycle_count as i64,
+            ).await {
+                Ok(id) => {
+                    self.log(LogLevel::Info, LogCategory::Tuning,
+                        format!("Proposition d'auto-modification #{}: '{}' — {} [{}]",
+                            id, title, description, domain),
+                        serde_json::json!({
+                            "id": id,
+                            "title": title,
+                            "domain": domain,
+                            "priority": priority,
+                        }));
+                }
+                Err(e) => {
+                    tracing::warn!("Erreur save_change_proposal: {}", e);
+                }
+            }
+        }
+
+        let _ = &ctx.thought_text;
+    }
+
+    /// Niveau 1 : Ajuste des parametres en fonction de l'etat interne.
+    async fn try_self_tune(&mut self) {
+        // Seuil de sommeil : si Saphire ressent beaucoup de fatigue, baisser le seuil
+        let fatigue_high = self.chemistry.cortisol > 0.6 && self.chemistry.serotonin < 0.3;
+        let fatigue_low = self.chemistry.cortisol < 0.3 && self.chemistry.serotonin > 0.6;
+        let max_adj = self.config.self_modification.max_adjustment_factor;
+
+        if fatigue_high {
+            let old = self.config.sleep.sleep_threshold;
+            let new = (old - max_adj).max(0.3);
+            if (new - old).abs() > 0.001 {
+                self.config.sleep.sleep_threshold = new;
+                self.log_tuning("sleep_threshold", old, new,
+                    "Fatigue elevee — abaissement du seuil de sommeil").await;
+            }
+        } else if fatigue_low {
+            let old = self.config.sleep.sleep_threshold;
+            let new = (old + max_adj * 0.5).min(0.7);
+            if (new - old).abs() > 0.001 {
+                self.config.sleep.sleep_threshold = new;
+                self.log_tuning("sleep_threshold", old, new,
+                    "Energie stable — remontee du seuil de sommeil").await;
+            }
+        }
+
+        // Intervalle d'apprentissage : si beaucoup de choses nouvelles, apprendre plus souvent
+        let high_novelty = self.chemistry.dopamine > 0.7 && self.chemistry.noradrenaline > 0.5;
+        if high_novelty && self.config.learning.cycle_interval > 25 {
+            let old = self.config.learning.cycle_interval as f64;
+            let new = (old * (1.0 - max_adj)).max(25.0) as u64;
+            if new != self.config.learning.cycle_interval {
+                self.config.learning.cycle_interval = new;
+                self.log_tuning("learning.cycle_interval", old, new as f64,
+                    "Forte novelty — acceleration de l'apprentissage").await;
+            }
+        }
+    }
+
+    /// Log et persiste un ajustement autonome.
+    async fn log_tuning(&mut self, param: &str, old: f64, new: f64, reason: &str) {
+        self.log(LogLevel::Info, LogCategory::Tuning,
+            format!("Auto-tuning: {} {:.3} -> {:.3} ({})", param, old, new, reason),
+            serde_json::json!({
+                "parameter": param,
+                "old_value": old,
+                "new_value": new,
+                "reason": reason,
+            }));
+
+        if let Some(ref db) = self.db {
+            let _ = db.save_tuning_adjustment(
+                param, old as f32, new as f32, reason, self.cycle_count as i64,
+            ).await;
+        }
     }
 }

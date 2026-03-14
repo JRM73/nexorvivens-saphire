@@ -1,0 +1,257 @@
+###############################################################################
+#  Saphire — Standalone Docker Compose
+#
+#  Everything needed to run Saphire with zero external setup.
+#  Just run:
+#
+#    docker compose -f docker-compose.standalone.yml up -d
+#
+#  First startup will take several minutes because Ollama downloads
+#  the LLM model (~5 GB) and the embedding model (~280 MB).
+#  You can follow the progress with:
+#
+#    docker compose -f docker-compose.standalone.yml logs -f llm-setup
+#
+###############################################################################
+#
+#  GPU SUPPORT
+#  -----------
+#  By default this file runs Ollama on CPU only, which works everywhere
+#  but is slow. To enable NVIDIA GPU acceleration:
+#
+#  1. Install the NVIDIA Container Toolkit:
+#     https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/
+#
+#  2. Uncomment the lines marked "# GPU:" in the llm service below:
+#     - runtime: nvidia
+#     - NVIDIA_VISIBLE_DEVICES=all
+#     - the deploy.resources.reservations.devices block
+#
+#  APPLE SILICON (M1/M2/M3/M4)
+#  ----------------------------
+#  Docker on macOS does NOT pass GPU access to containers, so Ollama
+#  inside Docker will run on CPU only. For Metal acceleration:
+#
+#  1. Install Ollama natively: https://ollama.com/download/mac
+#  2. Pull the models:
+#       ollama pull qwen3:8b
+#       ollama pull nomic-embed-text
+#  3. Change the brain environment variables:
+#       SAPHIRE_LLM_URL=http://host.docker.internal:11434/v1
+#       SAPHIRE_EMBED_URL=http://host.docker.internal:11434
+#  4. Remove or comment out the llm and llm-setup services entirely.
+#
+#  CLOUD / REMOTE LLM
+#  -------------------
+#  To use an OpenAI-compatible API (OpenRouter, Together, etc.) instead
+#  of local Ollama:
+#
+#  1. Change the brain environment variables:
+#       SAPHIRE_LLM_URL=https://api.openrouter.ai/v1   (or your provider)
+#       SAPHIRE_LLM_MODEL=meta-llama/llama-3-8b         (or your model)
+#       SAPHIRE_LLM_API_KEY=sk-...                       (your API key)
+#  2. Remove or comment out the llm and llm-setup services.
+#  3. Note: embeddings still need Ollama (or change SAPHIRE_EMBED_URL
+#     to point to a compatible embedding endpoint).
+#
+#  CHANGING THE MODEL
+#  ------------------
+#  To use a different Ollama model (e.g. mistral-nemo, llama3:8b):
+#
+#  1. Change SAPHIRE_LLM_MODEL in the brain service environment.
+#  2. Change the model name in the llm-setup command to match.
+#
+###############################################################################
+
+services:
+
+  # ---------------------------------------------------------------------------
+  #  db — Main database (pgvector for semantic memory)
+  # ---------------------------------------------------------------------------
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: saphire-db
+    environment:
+      POSTGRES_USER: saphire
+      POSTGRES_PASSWORD: ${SAPHIRE_DB_PASSWORD:-saphire_soul}
+      POSTGRES_DB: saphire_soul
+    volumes:
+      - saphire_db_data:/var/lib/postgresql/data
+      - ./sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U saphire -d saphire_soul"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - saphire-net
+
+  # ---------------------------------------------------------------------------
+  #  logs-db — Logging database (standard PostgreSQL)
+  # ---------------------------------------------------------------------------
+  logs-db:
+    image: postgres:16
+    container_name: saphire-logs-db
+    environment:
+      POSTGRES_USER: saphire
+      POSTGRES_PASSWORD: ${SAPHIRE_LOGS_DB_PASSWORD:-saphire_logs}
+      POSTGRES_DB: saphire_logs
+    volumes:
+      - saphire_logs_data:/var/lib/postgresql/data
+      - ./sql/schema_logs.sql:/docker-entrypoint-initdb.d/01-schema_logs.sql:ro
+    ports:
+      - "127.0.0.1:5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U saphire -d saphire_logs"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - saphire-net
+
+  # ---------------------------------------------------------------------------
+  #  llm — Ollama server (CPU-only by default)
+  #
+  #  To enable NVIDIA GPU, uncomment the three "# GPU:" lines below.
+  # ---------------------------------------------------------------------------
+  llm:
+    image: ollama/ollama:latest
+    container_name: saphire-llm
+    # GPU: runtime: nvidia
+    ports:
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    environment:
+      # GPU: - NVIDIA_VISIBLE_DEVICES=all
+      - OLLAMA_MAX_LOADED_MODELS=2
+      - OLLAMA_NUM_PARALLEL=1
+    # GPU: Uncomment the deploy block below to reserve GPU resources.
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    #       memory: 1G
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - saphire-net
+
+  # ---------------------------------------------------------------------------
+  #  llm-setup — One-shot model puller
+  #
+  #  Waits for Ollama to be healthy, then pulls the LLM and embedding
+  #  models. This container exits after completion; it does NOT restart.
+  #
+  #  On first run this downloads ~5 GB (LLM) + ~280 MB (embeddings).
+  #  Subsequent starts are instant because models are cached in the
+  #  ollama_models volume.
+  # ---------------------------------------------------------------------------
+  llm-setup:
+    image: curlimages/curl:latest
+    container_name: saphire-llm-setup
+    depends_on:
+      llm:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "=== Saphire LLM Setup ==="
+        echo "Pulling LLM model (qwen3:8b) — this may take several minutes on first run..."
+        curl -sf http://llm:11434/api/pull -d '{"name":"qwen3:8b"}'
+        echo ""
+        echo "Pulling embedding model (nomic-embed-text)..."
+        curl -sf http://llm:11434/api/pull -d '{"name":"nomic-embed-text"}'
+        echo ""
+        echo "=== All models ready ==="
+    networks:
+      - saphire-net
+
+  # ---------------------------------------------------------------------------
+  #  brain — Saphire cognitive engine
+  #
+  #  Waits for both databases to be healthy AND for models to be pulled
+  #  before starting. Uses the internal Docker network (saphire-net)
+  #  instead of network_mode: host, so it works on macOS and Windows.
+  #
+  #  The dashboard and API are available at http://localhost:3080
+  # ---------------------------------------------------------------------------
+  brain:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: saphire-brain
+    ports:
+      - "3080:3080"
+    volumes:
+      - ./config/saphire.toml:/app/saphire.toml:ro
+      - ./config/profiles:/app/profiles:ro
+      - ./config/personalities:/app/personalities:ro
+    environment:
+      # --- Main database (pgvector) ---
+      - SAPHIRE_DB_HOST=db
+      - SAPHIRE_DB_PORT=5432
+      - SAPHIRE_DB_USER=saphire
+      - SAPHIRE_DB_PASSWORD=${SAPHIRE_DB_PASSWORD:-saphire_soul}
+      - SAPHIRE_DB_NAME=saphire_soul
+      # --- Logs database ---
+      - SAPHIRE_LOGS_DB_HOST=logs-db
+      - SAPHIRE_LOGS_DB_PORT=5432
+      - SAPHIRE_LOGS_DB_USER=saphire
+      - SAPHIRE_LOGS_DB_PASSWORD=${SAPHIRE_LOGS_DB_PASSWORD:-saphire_logs}
+      - SAPHIRE_LOGS_DB_NAME=saphire_logs
+      # --- LLM (Ollama) ---
+      # Change these to use a different model or a cloud provider.
+      # See comments at the top of this file for details.
+      - SAPHIRE_LLM_URL=http://llm:11434/v1
+      - SAPHIRE_LLM_MODEL=qwen3:8b
+      - SAPHIRE_EMBED_URL=http://llm:11434
+      # --- Web server ---
+      - SAPHIRE_WEB_HOST=0.0.0.0
+      # --- Optional API key (leave empty for open access) ---
+      - SAPHIRE_API_KEY=${SAPHIRE_API_KEY:-}
+      # --- Logging ---
+      - RUST_LOG=info
+      - TZ=Europe/Zurich
+    depends_on:
+      db:
+        condition: service_healthy
+      logs-db:
+        condition: service_healthy
+      llm-setup:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - saphire-net
+
+# =============================================================================
+#  Volumes — persistent storage for databases and models
+# =============================================================================
+volumes:
+  saphire_db_data:
+    name: saphire-soul-data
+  saphire_logs_data:
+    name: saphire-logs-data
+  ollama_models:
+    name: saphire-ollama-models
+
+# =============================================================================
+#  Network — internal bridge network for all services
+# =============================================================================
+networks:
+  saphire-net:
+    name: saphire-network

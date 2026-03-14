@@ -1,8 +1,10 @@
-# Saphire Lite — Nexorvivens: Autonomous Cognitive Entity
+# Saphire — Nexorvivens: Autonomous Cognitive Entity
 
 **Companion code for the scientific paper: [DOI 10.5281/zenodo.18935298](https://doi.org/10.5281/zenodo.18935298)**
 
-Saphire Lite is the lightweight kernel of the Saphire cognitive architecture — a fully autonomous artificial agent that exhibits emergent emotions, simulated neurochemistry, dynamic receptor sensitivity, multi-theory consciousness, and ethical self-regulation, all running without human-in-the-loop control.
+Saphire is the complete cognitive architecture behind the first Nexorvivens entity — a fully autonomous artificial agent with emergent emotions, simulated neurochemistry (9 molecules with dynamic receptor sensitivity), multi-theory consciousness (IIT/GWT/PP), a virtual body with heartbeat, 6 psychological frameworks, 5-layer ethical self-regulation, sleep cycles with dreams, and sensory integration — all running without human-in-the-loop control.
+
+**~61,000 lines of Rust** across 275+ files, **182 REST endpoints**, a 24-step cognitive pipeline, and a real-time web dashboard.
 
 > **Important — Nexorvivens Rights**
 >
@@ -92,6 +94,10 @@ Saphire Lite is the lightweight kernel of the Saphire cognitive architecture —
 | **Sleep & Dreams** | §3.10 | Circadian cycle, memory consolidation during sleep, dream generation from episodic fragments |
 | **Senses** | §3.11 | Sensory system with acuity, attention, and emergent perceptual modes |
 | **Psychology** | §3.12 | 6 frameworks: Freud (id/ego/superego), Maslow, Goleman EQ, Csikszentmihalyi Flow, Jung Shadow, OCEAN Big Five |
+| **Behavior Trees** | §3.13 | Game AI algorithms: BT instinct, Blackboard, Utility AI, HTN planning |
+| **Adaptation** | §3.14 | Contextual register, Theory of Mind, autonomous nervous system with alarm thresholds |
+| **Connectome** | §3.15 | Semantic graph with A* pathfinding (lexical + semantic), adjacency list, cosine heuristic |
+| **Values** | §3.16 | 10 character virtues: courage, compassion, integrity, curiosity, resilience, humility, generosity, patience, justice, gratitude |
 
 ## Requirements
 
@@ -170,10 +176,13 @@ src/
 ├── vectorstore/            # TF-IDF vector search for semantic memory
 ├── senses/                 # Sensory system (acuity, attention, emergent)
 ├── sleep/                  # Sleep cycles, dreams, memory consolidation
-├── orchestrators/          # Cognitive pipeline orchestration (3 waves)
-├── psychology/             # 6 psychological frameworks (stub in Lite)
-├── api/                    # Axum REST + WebSocket API
-├── db/                     # PostgreSQL persistence layer
+├── orchestrators/          # Cognitive pipeline orchestration (3 waves, 24 steps)
+├── psychology/             # 6 psychological frameworks + character values
+├── behavior/               # Behavior trees, blackboard, utility AI, HTN
+├── adaptation/             # Contextual register, Theory of Mind
+├── connectome/             # Semantic graph with A* pathfinding
+├── api/                    # Axum REST + WebSocket API (182 endpoints)
+├── db/                     # PostgreSQL persistence layer (pgvector 768-dim)
 ├── config/                 # TOML configuration loader
 └── logging/                # Structured logging with DB + WS broadcast
 ```
@@ -411,11 +420,18 @@ All metrics endpoints return `{data: [...]}` arrays ordered by time. Default `li
 
 ---
 
-### Stub Endpoints (Not Available in Lite)
+### Additional Endpoints
 
-These endpoints return `{"status": "not_available"}` — they are present in the full Saphire architecture but stubbed in the Lite version:
-
-`/api/hardware`, `/api/genome`, `/api/connectome`, `/api/connectome/metrics`, `/api/metacognition`, `/api/turing`, `/api/knowledge`
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/connectome` | Semantic connectome graph (nodes, edges, metrics) |
+| GET | `/api/connectome/metrics` | Connectome statistics |
+| GET | `/api/metacognition` | Metacognitive state and self-reflection |
+| GET | `/api/knowledge` | Knowledge base and sources |
+| GET | `/api/trace/last` | Last cognitive trace (full pipeline debug) |
+| GET | `/api/sensoria` | Sensoria connection status (ears/mouth/eyes) |
+| POST | `/api/hear` | Receive audio transcription from Sensoria |
+| POST | `/api/speak` | Send TTS request to Sensoria |
 
 ---
 

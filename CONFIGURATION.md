@@ -171,6 +171,23 @@ model = "qwen3:8b"
 # api_key = "sk-..."
 ```
 
+### Embeddings
+
+By default, Saphire uses Ollama locally for embeddings (nomic-embed-text, 768 dimensions). You can also use OpenRouter for embeddings, eliminating the need for Ollama entirely:
+
+```toml
+[llm]
+# Default: Ollama (local, no config needed beyond embed_model)
+embed_model = "nomic-embed-text"
+
+# OpenRouter (cloud, no Ollama needed):
+# embed_base_url = "https://openrouter.ai/api/v1"
+# embed_model = "nvidia/llama-nemotron-embed-vl-1b-v2:free"
+# embed_format = "openai"
+```
+
+If you switch to a model with different vector dimensions (e.g., 2048 for Nemotron instead of 768 for nomic), update `sql/schema.sql` before first startup: replace `vector(768)` with `vector(2048)`.
+
 See [INSTALL.md](INSTALL.md) for detailed setup instructions for each option, including recommended models and pricing.
 
 ### Language

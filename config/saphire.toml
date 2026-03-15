@@ -181,7 +181,7 @@ dbname = "saphire_logs"
 backend = "openai_compatible"
 base_url = "http://saphire-llm:11434/v1"
 model = "qwen3:8b"                     # Main LLM model (see INSTALL.md for options)
-embed_model = "nomic-embed-text"       # Embeddings model (don't change unless needed)
+embed_model = "nomic-embed-text"       # Embeddings model (default: nomic-embed-text via Ollama)
 timeout_seconds = 120
 temperature = 0.55
 max_tokens = 1200              # Adjust based on your GPU (RTX 4060 Ti 16 GB: 1200)
@@ -193,6 +193,15 @@ top_p = 0.9                    # Nucleus sampling (0.0-1.0)
 # Optional API key (required for Claude, OpenAI, Gemini, OpenRouter, etc.)
 # Local Ollama does not need one. Uncomment and fill if necessary.
 # api_key = "sk-..."
+#
+# ── Embeddings configuration ──
+# By default, embeddings use Ollama locally (same URL as the LLM).
+# To use OpenRouter or another OpenAI-compatible provider for embeddings:
+#   embed_base_url = "https://openrouter.ai/api/v1"
+#   embed_model = "nvidia/llama-nemotron-embed-vl-1b-v2:free"   # free, 2048-dim, multimodal
+#   embed_format = "openai"       # "ollama" (default) or "openai"
+# If you change embedding dimensions (768 → 2048), update sql/schema.sql accordingly.
+# See INSTALL.md Option E for a full cloud setup without Ollama.
 
 # ── Chemical personality (neurotransmitter baselines) ──
 # Baselines define the "resting" chemical equilibrium of your entity.

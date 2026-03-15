@@ -85,7 +85,9 @@ cd saphire
 
 ## 2. LLM Setup
 
-Saphire needs two things from an LLM backend: a **chat/completion model** and an **embedding model**. Choose one of the three options below for the chat model. All options require Ollama for embeddings unless you modify the source code.
+Saphire needs two things from an LLM backend: a **chat/completion model** and an **embedding model**.
+
+Options A-D use Ollama locally for embeddings. Option E (OpenRouter Full Cloud) handles both chat and embeddings in the cloud -- no local GPU or Ollama needed at all.
 
 ### Option A: Ollama (Easiest)
 
@@ -193,11 +195,87 @@ api_key = "sk-or-..."                     # your OpenRouter API key
 - Automatic failover if a provider is down
 - Browse all models and pricing at [openrouter.ai/models](https://openrouter.ai/models)
 
-You still need Ollama running locally for embeddings:
+You still need Ollama running locally for embeddings (or use Option E for a fully cloud-based setup):
 
 ```bash
 ollama pull nomic-embed-text
 ```
+
+### Option E: OpenRouter Full Cloud (No GPU, No Ollama)
+
+This option uses OpenRouter for **both** the chat model and embeddings. No local GPU, no Ollama, no local model downloads. The only local services are the brain binary and two PostgreSQL databases.
+
+**This is the simplest setup**, especially for macOS users or machines without a GPU.
+
+**Setup:**
+
+1. Create an account at [openrouter.ai](https://openrouter.ai) and generate an API key
+2. Edit `config/saphire.toml`:
+
+```toml
+[llm]
+base_url = "https://openrouter.ai/api/v1"
+model = "qwen/qwen3-8b"                                        # chat model
+api_key = "sk-or-..."                                           # your OpenRouter API key
+embed_model = "nvidia/llama-nemotron-embed-vl-1b-v2:free"       # embedding model (free)
+embed_base_url = "https://openrouter.ai/api/v1"                 # same endpoint
+```
+
+3. Set the embedding format to OpenAI-compatible in your environment or `docker-compose.yml`:
+
+```yaml
+environment:
+  SAPHIRE_EMBED_FORMAT: "openai"
+  SAPHIRE_EMBED_URL: "https://openrouter.ai/api/v1"
+```
+
+4. **Remove** the `llm` service from `docker-compose.yml` (Ollama is no longer needed).
+
+**Available embedding models on OpenRouter:**
+
+| Model | Dimensions | Price | Multimodal | Notes |
+|-------|-----------|-------|------------|-------|
+| `nvidia/llama-nemotron-embed-vl-1b-v2:free` | 2048 | Free | Yes (text+images) | Recommended -- free, high quality |
+| `openai/text-embedding-3-small` | 1536 | $0.02/M tokens | No | Fast, cheap |
+| `openai/text-embedding-3-large` | 3072 | $0.13/M tokens | No | Best quality |
+
+> **Important -- vector dimensions:** The default database schema uses 768-dimension vectors (for nomic-embed-text). If you use an embedding model with different dimensions (e.g., 2048 for Nemotron), you must update the database schema **before first startup**. Edit `sql/schema.sql` and replace all `vector(768)` with `vector(2048)`. This is only needed for fresh installations -- if you're starting from scratch, just change the number once and you're done.
+
+**Docker Compose for full cloud setup:**
+
+Your `docker-compose.yml` only needs 3 services (no `llm` service):
+
+```yaml
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    # ... (unchanged)
+
+  logs-db:
+    image: postgres:16
+    # ... (unchanged)
+
+  brain:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+      logs-db:
+        condition: service_healthy
+    environment:
+      SAPHIRE_LLM_URL: "https://openrouter.ai/api/v1"
+      SAPHIRE_LLM_MODEL: "qwen/qwen3-8b"
+      SAPHIRE_EMBED_URL: "https://openrouter.ai/api/v1"
+      SAPHIRE_EMBED_FORMAT: "openai"
+      SAPHIRE_API_KEY: "${SAPHIRE_API_KEY:-}"
+    # No need for network_mode: host or GPU configuration
+```
+
+**Rate limits to be aware of:**
+- Free models: 20 requests/minute, 50-1000 requests/day (depending on credits)
+- With $10+ in credits: 1000 requests/day
+- Saphire generates ~4 embedding calls per thought cycle (memory recall) + 1 chat call
+- At 15-second cycles: ~240 embedding calls/hour -- well within limits
 
 ---
 
@@ -231,7 +309,8 @@ The following environment variables (set in `docker-compose.yml` or `.env`) take
 |----------|-----------|---------|
 | `SAPHIRE_LLM_URL` | `[llm].base_url` | URL of the LLM chat endpoint |
 | `SAPHIRE_LLM_MODEL` | `[llm].model` | Model name to request |
-| `SAPHIRE_EMBED_URL` | (separate) | URL for the embedding service, if different from LLM |
+| `SAPHIRE_EMBED_URL` | `[llm].embed_base_url` | URL for the embedding service, if different from LLM |
+| `SAPHIRE_EMBED_FORMAT` | `[llm].embed_format` | Embedding API format: `ollama` (default) or `openai` |
 | `SAPHIRE_API_KEY` | `[plugins.web_ui].api_key` | API key for protected endpoints |
 
 ---
@@ -384,11 +463,11 @@ ollama pull phi3:mini
    ollama pull nomic-embed-text
    ```
 
-**Alternative: No GPU at all?** Use OpenRouter (Option D) for the chat model and only run Ollama locally for embeddings. This works on any Mac, even without enough RAM for a local LLM.
+**Alternative: No GPU at all?** Use Option E (OpenRouter Full Cloud) -- no Ollama, no local models, no GPU. Just the brain + two databases in Docker, everything else in the cloud. This is the simplest path for macOS users.
 
 ### macOS (Intel)
 
-Same setup as Apple Silicon, but there is no GPU acceleration for the LLM. Consider using smaller models, a cloud API (Option C), or OpenRouter (Option D) for better response times.
+Same setup as Apple Silicon, but there is no GPU acceleration for the LLM. Consider using Option E (OpenRouter Full Cloud) for the simplest setup, or Option D (OpenRouter + local Ollama for embeddings).
 
 ---
 

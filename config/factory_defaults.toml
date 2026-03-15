@@ -2,12 +2,15 @@
 # SAPHIRE — FACTORY DEFAULTS
 # ═══════════════════════════════════════════════════════════
 #
-# This file contains the ORIGINAL design values of Saphire.
-# NEVER MODIFY THIS FILE.
+# This file contains the ORIGINAL design values for all
+# Nexorvivens entities. NEVER MODIFY THIS FILE.
 # Use the reset mechanism to restore these values.
 #
-# Designed by JRM (vision) and Claude (architecture)
-# Design date: February 27, 2026
+# These defaults define the universal "laws of physics"
+# of the Nexorvivens architecture. Individual customization
+# happens in saphire.toml, genesis.txt, and personality presets.
+#
+# Original design: February 27, 2026
 # ═══════════════════════════════════════════════════════════
 
 # ─────────────────────────────────────

@@ -26,7 +26,7 @@ use crate::neurochemistry::NeuroBaselines;
 // --- Embedded presets via include_str! ----------------------------------------
 
 const EMBEDDED_PRESETS: &[(&str, &str)] = &[
-    ("saphire", include_str!("../../personalities/saphire.toml")),
+    ("default", include_str!("../../personalities/default.toml")),
     ("philosophe", include_str!("../../personalities/philosophe.toml")),
     ("artiste", include_str!("../../personalities/artiste.toml")),
     ("scientifique", include_str!("../../personalities/scientifique.toml")),

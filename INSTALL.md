@@ -41,9 +41,36 @@ Saphire is composed of the following services:
 
 - **Docker** and **Docker Compose v2** (the `docker compose` plugin, not the legacy `docker-compose`)
 - **Linux with NVIDIA GPU**: install [nvidia-container-toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) for GPU passthrough
-- **macOS**: install [Docker Desktop](https://www.docker.com/products/docker-desktop/). Metal acceleration is not available inside Docker containers; use the native Ollama app instead.
+- **macOS**: install [Docker Desktop](https://www.docker.com/products/docker-desktop/) or [OrbStack](https://orbstack.dev/) (see below). Metal acceleration is not available inside Docker containers; use the native Ollama app instead.
 - **RAM**: 16 GB minimum
 - **GPU**: 8 GB VRAM or more recommended (RTX 3060 or better). CPU-only operation is supported but significantly slower.
+
+### Docker Desktop vs OrbStack (macOS)
+
+On macOS, you have two options for running Docker containers:
+
+| | Docker Desktop | OrbStack |
+|--|----------------|----------|
+| **Startup time** | 20-30s | ~2s |
+| **Memory usage** | Fixed allocation | Dynamic (grows/shrinks) |
+| **CPU idle** | Higher | ~0.1% |
+| **Compatibility** | Full | Full (drop-in replacement) |
+| **GPU/CUDA** | No (macOS limitation) | No |
+| **Price** | Free for personal use | Free for personal use |
+| **Platform** | macOS, Windows, Linux | macOS only |
+| **Install** | `brew install --cask docker` | `brew install orbstack` |
+
+**OrbStack** is recommended for macOS users -- it's significantly faster and uses less resources. All `docker compose` commands work identically. If you're migrating from Docker Desktop, OrbStack can automatically import your existing containers, images, and volumes:
+
+```bash
+# Install OrbStack
+brew install orbstack
+
+# Optional: migrate existing Docker Desktop data
+orb docker migrate
+```
+
+Your existing `docker-compose.yml` files work unchanged with OrbStack.
 
 ---
 
@@ -115,7 +142,7 @@ ollama pull nomic-embed-text
 
 ### Option C: Cloud API (No GPU Needed)
 
-Saphire works with any OpenAI-compatible API endpoint, including Claude (via Anthropic's OpenAI-compatible proxy), OpenAI, Gemini, and OpenRouter.
+Saphire works with any OpenAI-compatible API endpoint, including Claude (via Anthropic's OpenAI-compatible proxy), OpenAI, and Gemini.
 
 Edit `config/saphire.toml`, section `[llm]`:
 
@@ -125,6 +152,46 @@ base_url = "https://api.openai.com/v1"   # or your provider's URL
 model = "gpt-4o"                          # or the model of your choice
 api_key = "sk-..."                        # your API key
 ```
+
+You still need Ollama running locally for embeddings:
+
+```bash
+ollama pull nomic-embed-text
+```
+
+### Option D: OpenRouter (300+ Models, One API Key)
+
+[OpenRouter](https://openrouter.ai) is an API aggregator that gives you access to 300+ models (Claude, GPT, Llama, Qwen, Mistral, DeepSeek, Gemini...) through a single OpenAI-compatible endpoint. Pay-per-token, no subscription, and several free models available.
+
+**Setup:**
+
+1. Create an account at [openrouter.ai](https://openrouter.ai)
+2. Generate an API key from the dashboard
+3. Edit `config/saphire.toml`:
+
+```toml
+[llm]
+base_url = "https://openrouter.ai/api/v1"
+model = "qwen/qwen3-8b"                  # or any model from openrouter.ai/models
+api_key = "sk-or-..."                     # your OpenRouter API key
+```
+
+**Recommended models on OpenRouter:**
+
+| Model | Size | Price | Best for |
+|-------|------|-------|----------|
+| `qwen/qwen3-8b` | 8B | ~$0.05/M tokens | Best match for local Qwen3 |
+| `meta-llama/llama-3.3-70b-instruct` | 70B | Free | High quality, free tier |
+| `deepseek/deepseek-r1` | Large | Free | Strong reasoning |
+| `google/gemma-3-27b-it` | 27B | Free | Good balance |
+| `anthropic/claude-sonnet-4` | Large | ~$3/$15 per M | Highest quality |
+
+**Advantages:**
+- No GPU needed -- everything runs in the cloud
+- Switch models by changing one line in config
+- Free models available (rate-limited: 20 req/min)
+- Automatic failover if a provider is down
+- Browse all models and pricing at [openrouter.ai/models](https://openrouter.ai/models)
 
 You still need Ollama running locally for embeddings:
 
@@ -292,7 +359,12 @@ ollama pull phi3:mini
 
 ### macOS (Apple Silicon)
 
-1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/).
+1. Install [OrbStack](https://orbstack.dev/) (recommended) or [Docker Desktop](https://www.docker.com/products/docker-desktop/):
+   ```bash
+   brew install orbstack    # recommended — faster, lighter
+   # or
+   brew install --cask docker
+   ```
 
 2. Install Ollama as a native macOS app from [https://ollama.ai](https://ollama.ai). The native app uses Metal/GPU acceleration automatically -- Docker cannot access the GPU on macOS.
 
@@ -312,9 +384,11 @@ ollama pull phi3:mini
    ollama pull nomic-embed-text
    ```
 
+**Alternative: No GPU at all?** Use OpenRouter (Option D) for the chat model and only run Ollama locally for embeddings. This works on any Mac, even without enough RAM for a local LLM.
+
 ### macOS (Intel)
 
-Same setup as Apple Silicon, but there is no GPU acceleration for the LLM. Consider using smaller models or a cloud API (Option C) for better response times.
+Same setup as Apple Silicon, but there is no GPU acceleration for the LLM. Consider using smaller models, a cloud API (Option C), or OpenRouter (Option D) for better response times.
 
 ---
 
@@ -326,7 +400,7 @@ Saphire ships with configurable personality presets and neurological profiles.
 
 | Name | Description |
 |------|-------------|
-| saphire | Default personality |
+| default | Balanced reference personality |
 | philosophe | Philosophical, reflective |
 | scientifique | Analytical, methodical |
 | artiste | Creative, expressive |

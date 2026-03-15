@@ -155,6 +155,11 @@ model = "qwen3:8b"
 # base_url = "http://host.docker.internal:8080/v1"
 # model = "qwen3.5"
 
+# Cloud — OpenRouter (300+ models, one API key, free tier available)
+# base_url = "https://openrouter.ai/api/v1"
+# model = "qwen/qwen3-8b"
+# api_key = "sk-or-..."
+
 # Cloud — Claude (best quality, paid)
 # base_url = "https://api.anthropic.com/v1"
 # model = "claude-sonnet-4-20250514"
@@ -165,6 +170,8 @@ model = "qwen3:8b"
 # model = "gpt-4o"
 # api_key = "sk-..."
 ```
+
+See [INSTALL.md](INSTALL.md) for detailed setup instructions for each option, including recommended models and pricing.
 
 ### Language
 

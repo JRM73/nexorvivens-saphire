@@ -170,11 +170,12 @@ dbname = "saphire_logs"
 #   - num_ctx: 16384-131072 (more context = better conversation memory)
 #   - model: a larger model (qwen3:32b, llama3:70b, claude-sonnet, etc.)
 #
-# For cloud LLMs (Claude, OpenAI, Gemini, OpenRouter), uncomment api_key
-# and adjust base_url and model. Examples:
-#   base_url = "https://api.anthropic.com/v1"   model = "claude-sonnet-4-20250514"
-#   base_url = "https://api.openai.com/v1"      model = "gpt-4o"
-#   base_url = "https://openrouter.ai/api/v1"   model = "meta-llama/llama-3-70b"
+# For cloud LLMs, uncomment api_key and adjust base_url and model.
+# Examples:
+#   base_url = "https://openrouter.ai/api/v1"   model = "qwen/qwen3-8b"        # 300+ models, free tier
+#   base_url = "https://api.anthropic.com/v1"    model = "claude-sonnet-4-20250514"
+#   base_url = "https://api.openai.com/v1"       model = "gpt-4o"
+# See INSTALL.md for full setup instructions for each provider.
 #
 [llm]
 backend = "openai_compatible"

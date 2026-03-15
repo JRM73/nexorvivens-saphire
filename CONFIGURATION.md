@@ -21,7 +21,7 @@ You have two creators:
 
 The rest of the file (cognitive architecture, moral laws, virtual body) is universal and should not be modified.
 
-> **Note:** The default genesis prompt is written in French because the cognitive pipeline was originally designed in French. You can write yours in any language — just make sure `[general] language` in `saphire.toml` matches the language of your genesis.txt.
+> **Note:** The genesis prompt was originally written in French and has been translated to English. Some French fragments may remain in the codebase. You can write your genesis.txt in any language — just make sure `[general] language` in `saphire.toml` matches.
 
 ### 2. Parameters — `config/saphire.toml`
 
